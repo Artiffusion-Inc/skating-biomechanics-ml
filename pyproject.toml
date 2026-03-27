@@ -8,10 +8,11 @@ dependencies = [
     "ultralytics>=0.3.0",
     "opencv-python>=4.10.0",
     "numpy>=2.0.0",
-    "mediapipe>=0.10.0",
     "torch>=2.5.0",
     "dtw-python>=1.5.0",
     "scipy>=1.14.0",
+    "mediapipe>=0.10.0",
+    "pillow>=12.1.1",
 ]
 
 [build-system]
@@ -32,16 +33,7 @@ dev = [
 ]
 
 [project.scripts]
-# Quality checks
-lint = "ruff check ."
-format = "ruff format ."
-typecheck = "mypy src/"
-deadcode = "vulture src/ tests/ --min-confidence 80"
-check = "python scripts/check_all.py"
-
-# Testing
-test = "pytest tests/ -v"
-test-cov = "pytest tests/ --cov=src/skating_biomechanics_ml --cov-report=term-missing"
+analyze = "skating_biomechanics_ml.cli:main"
 
 [tool.ruff]
 line-length = 100

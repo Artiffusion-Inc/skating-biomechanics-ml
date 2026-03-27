@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
 """Run all quality checks: lint, format check, typecheck, dead code, tests."""
+
 import subprocess
 import sys
 
 
 def run(cmd: list[str], name: str) -> bool:
     """Run a command and return True if successful."""
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"Running: {name}")
-    print(f"{'='*60}")
-    result = subprocess.run(cmd)
+    print(f"{'=' * 60}")
+    result = subprocess.run(cmd, check=False)
     success = result.returncode == 0
     status = "✓ PASSED" if success else "✗ FAILED"
     print(f"\n{status}: {name}")
@@ -30,15 +31,15 @@ def main() -> int:
     for cmd, name in checks:
         results.append(run(cmd, name))
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print("SUMMARY")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     for (cmd, name), success in zip(checks, results):
         status = "✓" if success else "✗"
         print(f"{status} {name}")
 
     all_passed = all(results)
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     if all_passed:
         print("✓ ALL CHECKS PASSED")
         return 0
