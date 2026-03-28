@@ -14,15 +14,10 @@ Dependencies:
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
 from filterpy.kalman import KalmanFilter, RTS_smoother
 from scipy.ndimage import median_filter
-from scipy.signal import find_peaks
-
-if TYPE_CHECKING:
-    from .types import NormalizedPose
 
 
 def hampel_filter(
@@ -50,8 +45,7 @@ def hampel_filter(
         Hampel, F. R. "The influence curve and its role in outlier detection"
         Proceedings of the IMS 1971.
     """
-    if window_size < min_samples:
-        window_size = min_samples
+    window_size = max(window_size, min_samples)
 
     poses_filtered = poses.copy()
     n_frames, n_kpts, n_coords = poses.shape
