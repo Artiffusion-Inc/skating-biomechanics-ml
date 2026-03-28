@@ -121,11 +121,19 @@ NormalizedPose = NDArray[np.float32]  # (num_frames, 33, 2) with x, y in [0,1]
 PixelPose = NDArray[np.float32]  # (num_frames, 33, 2) with x, y in pixels
 TimeSeries = NDArray[np.float32]  # (num_frames,) time series data
 
+# 3D Pose types (H3.6M 17-keypoint format)
+Pose3D = NDArray[np.float32]  # (num_frames, 17, 3) with x, y, z in meters
+H36MPose2D = NDArray[np.float32]  # (num_frames, 17, 2) with x, y normalized
+H36MPose3D = NDArray[np.float32]  # (num_frames, 17, 3) with x, y, z in meters
+
 __all__ = [
     "FrameKeypoints",
     "NormalizedPose",
     "PixelPose",
     "TimeSeries",
+    "Pose3D",
+    "H36MPose2D",
+    "H36MPose3D",
     "BKey",
     "BladeType",
     "BLAZEPOSE_INDICES",
@@ -141,6 +149,7 @@ __all__ = [
     "assert_pose_format",
     "normalize_pixel_poses",
     "pixelize_normalized_poses",
+    "RecommendationRule",
 ]
 
 

@@ -303,6 +303,62 @@ summary = detector.get_blade_summary(states)
 
 ---
 
+### Phase 14: 3D Pose & Physics Engine ✅ 70%
+**Status:** Infrastructure complete, model integration pending
+
+- [x] BlazePose 33 → H3.6M 17 keypoint mapping
+- [x] PhysicsEngine (CoM, Moment of Inertia, Angular Momentum)
+- [x] Parabolic trajectory fitting for jump height
+- [x] AthletePose3DExtractor skeleton (temporal windows)
+- [ ] Load AthletePose3D fine-tuned models
+- [ ] Integrate into AnalysisPipeline
+- [ ] Add 3D pose visualization
+
+**Key Features:**
+1. **blazepose_to_h36m()** - Convert 33kp BlazePose to 17kp H3.6M format
+2. **PhysicsEngine** - Calculate CoM, I, L from 3D poses
+   - Dempster anthropometric tables (segment masses)
+   - Parabolic trajectory fit for accurate jump height
+   - Solves the 60% flight time error problem!
+3. **AthletePose3DExtractor** - Monocular 3D pose estimation
+   - 81-frame temporal windows
+   - MotionAgFormer-S (59MB) for real-time
+
+**Files:** `pose_3d/blazepose_to_h36m.py`, `analysis/physics_engine.py`, `pose_3d/athletepose_extractor.py`
+**Tests:** `tests/pose_3d/` (11 passing), `tests/analysis/test_physics_engine.py` (18 passing)
+
+**Usage:**
+```python
+from src.pose_3d import blazepose_to_h36m, AthletePose3DExtractor
+from src.analysis import PhysicsEngine
+
+# Convert BlazePose to H3.6M
+poses_h36m = blazepose_to_h36m(blazepose_poses)  # (N, 33, 2) -> (N, 17, 2)
+
+# Calculate physics
+engine = PhysicsEngine(body_mass=60.0)
+poses_3d = extractor.extract_sequence(poses_h36m)  # (N, 17, 3)
+com = engine.calculate_center_of_mass(poses_3d)
+result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
+# result["height"] - accurate jump height from parabolic fit
+```
+
+**Model Files Downloaded:**
+- `/home/michael/Downloads/model_params-20260328T155319Z-3-001.zip` (1GB)
+  - motionagformer-s-ap3d.pth.tr (59MB) - Recommended
+  - TCPFormer_ap3d_81.pth.tr (422MB) - Higher accuracy
+  - moganet_b_ap2d_384x288.pth (570MB) - 2D detection
+- `/home/michael/Downloads/pose_3d.zip` (1.4GB) - Training data examples
+- `/home/michael/Downloads/cam_param.json` - Camera calibration reference
+
+**Remaining Work:**
+1. Extract models to `src/models/athletepose3d/`
+2. Implement actual model loading (requires AthletePose3D repo code)
+3. Add 3D skeleton visualization (project to 2D with camera params)
+4. Integrate physics metrics into AnalysisReport
+
+---
+
 ## Current Blockers
 
 ### HIGH Priority
@@ -462,6 +518,7 @@ summary = detector.get_blade_summary(states)
 |---------|------|--------|-------|
 | 0.1 | 2026-03-27 | MVP 85% | Core pipeline working, visualization complete |
 | 0.2 | 2026-03-28 | MVP 90% | Blade edge detection (BDA algorithm), research findings |
+| 0.3 | 2026-03-28 | MVP 92% | 3D pose infrastructure, PhysicsEngine, keypoint mapping |
 
 ---
 
