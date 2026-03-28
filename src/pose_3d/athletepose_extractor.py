@@ -205,16 +205,22 @@ class AthletePose3DExtractor:
         else:
             poses_2d_padded = poses_2d
 
-        # Process in windows
-        poses_3d_list = []
-        for i in range(0, len(poses_2d_padded) - self.TEMPORAL_WINDOW + 1, self.TEMPORAL_WINDOW // 2):
-            window = poses_2d_padded[i:i + self.TEMPORAL_WINDOW]
-            pose_3d = self._extract_window(window)
-            poses_3d_list.append(pose_3d)
+        # Process in windows with stride for overlap
+        stride = self.TEMPORAL_WINDOW // 4  # 25% overlap for smoother output
+        poses_3d_accum = np.zeros((len(poses_2d_padded), 17, 3), dtype=np.float32)
+        poses_3d_count = np.zeros(len(poses_2d_padded), dtype=np.int32)
 
-        # Merge overlapping windows (simple average)
-        # For now, just concatenate and trim
-        poses_3d = np.vstack(poses_3d_list)[:n_frames]
+        for i in range(0, len(poses_2d_padded) - self.TEMPORAL_WINDOW + 1, stride):
+            window = poses_2d_padded[i:i + self.TEMPORAL_WINDOW]
+            poses_3d_window = self._extract_window(window)  # (81, 17, 3)
+
+            # Accumulate poses from this window
+            end_idx = i + self.TEMPORAL_WINDOW
+            poses_3d_accum[i:end_idx] += poses_3d_window
+            poses_3d_count[i:end_idx] += 1
+
+        # Average overlapping regions
+        poses_3d = poses_3d_accum[:n_frames] / poses_3d_count[:n_frames, np.newaxis, np.newaxis]
 
         return poses_3d
 
@@ -225,7 +231,7 @@ class AthletePose3DExtractor:
             window: (81, 17, 2) or (81, 17, 3) array
 
         Returns:
-            pose_3d: (17, 3) array (middle frame of window)
+            pose_3d: (81, 17, 3) array - all frames in window
         """
         # Ensure correct format
         if window.shape[2] == 3:
@@ -241,15 +247,15 @@ class AthletePose3DExtractor:
         # Run inference
         with torch.no_grad():
             model = self._load_model()
-            output = model(tensor)  # (1, 81, 17, 3) or (1, 17, 3)
+            output = model(tensor)  # (1, 81, 17, 3)
 
-        # Extract result
+        # Extract all frames from output
         if output.dim() == 4:
-            # Full sequence output - take middle frame
-            pose_3d = output[0, self.TEMPORAL_WINDOW // 2].cpu().numpy()
+            # Full sequence output - take all frames
+            pose_3d = output[0].cpu().numpy()  # (81, 17, 3)
         else:
-            # Single frame output
-            pose_3d = output[0].cpu().numpy()
+            # Single frame output - expand to window size
+            pose_3d = np.tile(output[0].cpu().numpy()[np.newaxis, :, :], (self.TEMPORAL_WINDOW, 1, 1))
 
         return pose_3d
 
