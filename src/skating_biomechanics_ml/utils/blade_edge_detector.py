@@ -227,6 +227,125 @@ def calculate_vertical_acceleration(
         foot_idx = BKey.RIGHT_FOOT_INDEX
 
     # Calculate velocities
+    v_prev = -poses[frame_idx - 1, foot_idx, 1]  # Negate for up=positive
+    v_curr = -poses[frame_idx, foot_idx, 1]
+    v_next = -poses[frame_idx + 1, foot_idx, 1]
+
+    # Acceleration using central difference
+    accel = (v_next - 2 * v_curr + v_prev) * (fps ** 2)
+    return float(accel)
+
+
+def detect_supporting_foot(
+    poses: NormalizedPose,
+    frame_idx: int,
+) -> str | None:
+    """Detect which foot is supporting weight.
+
+    The supporting foot typically has:
+    - Lower hip position (more weight on it)
+    - Straighter knee (supporting vs swinging)
+
+    Args:
+        poses: Normalized poses (N, 33, 2).
+        frame_idx: Frame index.
+
+    Returns:
+        "left", "right", or None if unclear.
+    """
+    # Hip Y positions (higher value = lower in frame)
+    left_hip_y = poses[frame_idx, BKey.LEFT_HIP, 1]
+    right_hip_y = poses[frame_idx, BKey.RIGHT_HIP, 1]
+
+    # Calculate knee angles (straighter = more support)
+    from skating_biomechanics_ml.utils.geometry import angle_3pt
+
+    left_knee_angle = angle_3pt(
+        poses[frame_idx, BKey.LEFT_HIP],
+        poses[frame_idx, BKey.LEFT_KNEE],
+        poses[frame_idx, BKey.LEFT_ANKLE],
+    )
+    right_knee_angle = angle_3pt(
+        poses[frame_idx, BKey.RIGHT_HIP],
+        poses[frame_idx, BKey.RIGHT_KNEE],
+        poses[frame_idx, BKey.RIGHT_ANKLE],
+    )
+
+    # Supporting foot: lower hip AND straighter knee
+    # Lower hip means higher Y value in normalized coords
+    hip_diff = left_hip_y - right_hip_y  # Positive = left hip lower
+
+    # Knee angle: closer to 180° = straighter
+    knee_diff = left_knee_angle - right_knee_angle  # Positive = left knee straighter
+
+    # Combined score
+    # If both indicators agree, confident
+    if hip_diff > 0.02 and knee_diff > 10:
+        return "left"
+    elif hip_diff < -0.02 and knee_diff < -10:
+        return "right"
+
+    # If indicators disagree or difference is small, unclear
+    return None
+
+
+def calculate_path_curvature(
+    poses: NormalizedPose,
+    frame_idx: int,
+    window: int = 10,
+) -> float:
+    """Calculate path curvature from mid-hip trajectory.
+
+    Positive curvature = turning left (counter-clockwise)
+    Negative curvature = turning right (clockwise)
+
+    For edge detection:
+    - Turning left + inside edge = left foot inside edge
+    - Turning left + outside edge = right foot outside edge
+
+    Args:
+        poses: Normalized poses (N, 33, 2).
+        frame_idx: Center frame index.
+        window: Number of frames before/after to use.
+
+    Returns:
+        Curvature (1/radius of curvature).
+    """
+    start = max(0, frame_idx - window)
+    end = min(len(poses), frame_idx + window + 1)
+
+    if end - start < 3:
+        return 0.0
+
+    # Get mid-hip trajectory
+    mid_hips = []
+    for i in range(start, end):
+        mid_hip = (poses[i, BKey.LEFT_HIP] + poses[i, BKey.RIGHT_HIP]) / 2
+        mid_hips.append(mid_hip)
+
+    mid_hips = np.array(mid_hips)
+
+    # Calculate curvature using discrete approach
+    # Cross product of velocity vectors gives turning direction
+    if len(mid_hips) < 3:
+        return 0.0
+
+    # Velocity at start and end of window
+    v_start = mid_hips[1] - mid_hips[0]
+    v_end = mid_hips[-1] - mid_hips[-2]
+
+    # Cross product (2D): v1_x * v2_y - v1_y * v2_x
+    cross = v_start[0] * v_end[1] - v_start[1] * v_end[0]
+
+    # Normalize by magnitude
+    v_start_mag = np.linalg.norm(v_start)
+    v_end_mag = np.linalg.norm(v_end)
+
+    if v_start_mag < 1e-6 or v_end_mag < 1e-6:
+        return 0.0
+
+    curvature = cross / (v_start_mag * v_end_mag)
+    return float(curvature)
     y_positions = -poses[frame_idx - 2 : frame_idx + 3, foot_idx, 1]  # Negate for up=positive
     t = np.arange(len(y_positions)) / fps
 
@@ -307,6 +426,7 @@ class BladeEdgeDetector:
         frame_idx: int,
         fps: float,
         foot: str = "left",
+        check_supporting: bool = False,
     ) -> BladeState:
         """Classify blade state for a single frame.
 
@@ -315,10 +435,24 @@ class BladeEdgeDetector:
             frame_idx: Frame index.
             fps: Frame rate.
             foot: Either "left" or "right".
+            check_supporting: If True, return UNKNOWN if foot is not supporting weight.
 
         Returns:
             BladeState with classification and intermediate values.
         """
+        # Check if this foot is supporting weight
+        if check_supporting:
+            supporting = detect_supporting_foot(poses, frame_idx)
+            if supporting != foot:
+                # This foot is not supporting - return UNKNOWN with low confidence
+                return BladeState(
+                    blade_type=BladeType.UNKNOWN,
+                    foot_angle=0.0,
+                    ankle_angle=0.0,
+                    vertical_accel=0.0,
+                    confidence=0.0,
+                )
+
         foot_angle = calculate_foot_angle(poses, frame_idx, foot)
         ankle_angle = calculate_ankle_angle(poses, frame_idx, foot)
         vertical_accel = calculate_vertical_acceleration(poses, fps, frame_idx, foot)
@@ -358,6 +492,7 @@ class BladeEdgeDetector:
         poses: NormalizedPose,
         fps: float,
         foot: str = "left",
+        check_supporting: bool = False,
     ) -> list[BladeState]:
         """Classify blade state for entire pose sequence.
 
@@ -365,6 +500,8 @@ class BladeEdgeDetector:
             poses: Normalized poses (N, 33, 2).
             fps: Frame rate.
             foot: Either "left" or "right".
+            check_supporting: If True, only return blade states for frames where
+                this foot is supporting weight.
 
         Returns:
             List of BladeState for each frame.
@@ -373,7 +510,7 @@ class BladeEdgeDetector:
         states = []
 
         for frame_idx in range(num_frames):
-            state = self.classify_frame(poses, frame_idx, fps, foot)
+            state = self.classify_frame(poses, frame_idx, fps, foot, check_supporting=check_supporting)
             states.append(state)
 
         # Apply temporal smoothing
@@ -519,4 +656,6 @@ __all__ = [
     "calculate_vertical_acceleration",
     "calculate_motion_direction",
     "angle_with_horizontal",
+    "detect_supporting_foot",
+    "calculate_path_curvature",
 ]

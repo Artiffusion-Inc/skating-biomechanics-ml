@@ -71,6 +71,17 @@ def main() -> int:
         default=30,
         help="Font size for subtitles (default: 30)",
     )
+    parser.add_argument(
+        "--compress",
+        action="store_true",
+        help="Compress output with libx265 (smaller file, slower)",
+    )
+    parser.add_argument(
+        "--crf",
+        type=int,
+        default=30,
+        help="Compression quality for libx265 (lower=better, default: 30)",
+    )
     args = parser.parse_args()
 
     # Validate input
@@ -157,8 +168,8 @@ def main() -> int:
         # Detect blade edge states for both feet
         print("Detecting blade edge states...")
         blade_detector = BladeEdgeDetector(smoothing_window=3)
-        blade_states_left = blade_detector.detect_sequence(poses_viz, meta.fps, foot="left")
-        blade_states_right = blade_detector.detect_sequence(poses_viz, meta.fps, foot="right")
+        blade_states_left = blade_detector.detect_sequence(poses_viz, meta.fps, foot="left", check_supporting=True)
+        blade_states_right = blade_detector.detect_sequence(poses_viz, meta.fps, foot="right", check_supporting=True)
         print(f"Blade states detected: {len(blade_states_left)} left, {len(blade_states_right)} right")
 
     # Load segments
@@ -179,8 +190,20 @@ def main() -> int:
 
     # Setup output
     output_path = args.output or args.video.parent / f"{args.video.stem}_layer{args.layer}.mp4"
+
+    # If compression requested, write to temp file first
+    if args.compress:
+        import tempfile
+        temp_output = tempfile.NamedTemporaryFile(suffix=".mp4", delete=False)
+        temp_path = Path(temp_output.name)
+        temp_output.close()
+        write_path = temp_path
+        print(f"Writing to temp file: {temp_path}")
+    else:
+        write_path = output_path
+
     fourcc = cv2.VideoWriter_fourcc(*"mp4v")
-    writer = cv2.VideoWriter(str(output_path), fourcc, meta.fps, (meta.width, meta.height))
+    writer = cv2.VideoWriter(str(write_path), fourcc, meta.fps, (meta.width, meta.height))
 
     # Trail history (for layer 1+)
     trail_history = deque(maxlen=args.trail_length)
@@ -282,6 +305,36 @@ def main() -> int:
 
     cap.release()
     writer.release()
+
+    # Compress with ffmpeg if requested
+    if args.compress and write_path != output_path:
+        print(f"\nCompressing with libx265 (CRF={args.crf})...")
+        import subprocess
+
+        compress_cmd = [
+            "ffmpeg",
+            "-i", str(write_path),
+            "-c:v", "libx265",
+            "-crf", str(args.crf),
+            "-preset", "medium",
+            "-tune", "animation",
+            "-c:a", "copy",
+            "-y",
+            str(output_path),
+        ]
+
+        result = subprocess.run(compress_cmd, capture_output=True, text=True)
+        if result.returncode == 0:
+            # Remove temp file
+            write_path.unlink()
+            original_size = write_path.stat().st_size if write_path.exists() else 0
+            compressed_size = output_path.stat().st_size
+            ratio = (1 - compressed_size / original_size) * 100 if original_size > 0 else 0
+            print(f"Compression: {original_size // (1024*1024)}MB -> {compressed_size // (1024*1024)}MB ({ratio:.0f}% reduction)")
+        else:
+            print(f"FFmpeg error: {result.stderr}")
+            print(f"Temp file saved to: {write_path}")
+            return 1
 
     print(f"\nSaved to: {output_path}")
     return 0

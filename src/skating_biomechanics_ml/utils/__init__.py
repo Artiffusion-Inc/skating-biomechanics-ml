@@ -9,6 +9,8 @@ from skating_biomechanics_ml.utils.blade_edge_detector import (
     calculate_foot_vector,
     calculate_motion_direction,
     calculate_vertical_acceleration,
+    calculate_path_curvature,
+    detect_supporting_foot,
 )
 from skating_biomechanics_ml.utils.geometry import (
     angle_3pt,
@@ -82,6 +84,8 @@ __all__ = [
     "calculate_vertical_acceleration",
     "calculate_motion_direction",
     "angle_with_horizontal",
+    "calculate_path_curvature",
+    "detect_supporting_foot",
     # Subtitle utilities
     "SubtitleParser",
     "ElementEvent",
