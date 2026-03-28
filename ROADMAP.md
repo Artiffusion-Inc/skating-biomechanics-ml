@@ -324,67 +324,135 @@ summary = detector.get_blade_summary(states)
 
 ## Next Steps (Priority Order)
 
-1. **Fix Auto Phase Detection** ⚠️ HIGH
+### Phase A: Critical Fixes (Gemini Research)
+
+1. **Replace Flight Time with CoM Trajectory** ⚠️ CRITICAL (Gemini)
+   - **Issue:** Flight time has 60% error for low jumps!
+   - **Solution:** Use parabolic CoM trajectory (physically accurate)
+   - **Impact:** Eliminates landing pose bias in jump height
+   - **Estimated:** 2-3 hours
+   - **Reference:** `research/RESEARCH_SUMMARY_2026-03-28.md` Theme 4
+
+2. **Physics-Informed Pose Validator** ⚠️ HIGH (Gemini)
+   - **Paper:** Leuthold et al. (2025) -10.2% MPJPE
+   - **Method:** Kalman filter + bone length constraints
+   - **Impact:** Eliminates occlusion artifacts, minimal compute
+   - **Estimated:** 3-4 hours
+   - **Files:** `utils/physics_optimizer.py` (new)
+
+3. **Fix Auto Phase Detection** ⚠️ HIGH
    - Implement height threshold for takeoff
    - Find minimum hip y for peak
-   - Detect landing impact
+   - Detect landing impact (use CoM acceleration)
    - Estimated: 2-3 hours
 
-2. **Fix DTW Tests** ⚠️ MEDIUM
-   - Update test data for 33 keypoints
-   - Fix shape mismatches
-   - Estimated: 1 hour
+### Phase B: Tracking & Integration
 
-3. **Integrate Blade Detection into Analysis Pipeline** 🆕 MEDIUM
+4. **OC-SORT + Pose Biometrics** 🆕 MEDIUM (Gemini)
+   - Solve skeleton switching to background skaters
+   - Use anatomical ratios as biometric ID
+   - Works with identical black clothing
+   - **Estimated:** 4-5 hours
+   - **Files:** `detection/pose_tracker.py` (new)
+
+5. **Integrate Blade Detection into Pipeline** MEDIUM
    - Add blade state to MetricResult
    - Update rules to use edge information
    - Add edge visualization to HUD
-   - Estimated: 1-2 hours
+   - **Estimated:** 1-2 hours
 
-4. **Improve Segmentation** 📝 LOW
+6. **Fix DTW Tests** MEDIUM
+   - Update test data for 33 keypoints
+   - Fix shape mismatches
+   - **Estimated:** 1 hour
+
+### Phase C: Advanced Features
+
+7. **Pose3DM-S for Occlusion** 📝 LOW (Optional)
+   - 0.5M params, real-time on RTX 3050 Ti
+   - Evaluate vs BlazePose + Physics optimizer
+   - **Estimated:** 6-8 hours (includes evaluation)
+
+8. **Improve Segmentation** LOW
    - Trim segment boundaries
    - Remove preparation/recovery
-   - Estimated: 2-3 hours
+   - **Estimated:** 2-3 hours
+
+### Phase D: Future Enhancements
+
+9. **GCN Element Classifier** 📝 RESEARCH
+   - Collect YouTube dataset (BIOES-tagged)
+   - Train SAFSAR-style few-shot model
+   - Hierarchical rules for complex elements
+   - **Estimated:** 1-2 weeks (data collection + training)
+
+10. **Two-Stream Blade Detection** 📝 RESEARCH
+    - Train MobileNetV3 on 64x64 patches
+    - Merge with kinematic heuristics
+    - Target: 80% accuracy
+    - **Estimated:** 1-2 weeks (data + training)
 
 ---
 
 ## Future Enhancements (Research Findings)
 
-### Physics-Based Improvements
-1. **Physics-Informed Pose Validation**
-   - Bone length consistency checks (reduces MPJPE by 10%)
-   - Biomechanically realistic pose filtering
-   - Reference: "Physics Informed Human Posture Estimation" (2025)
+📚 **Comprehensive Summary:** See `research/RESEARCH_SUMMARY_2026-03-28.md` for Exa + Gemini Deep Research (41 papers)
 
-2. **3D Pose Estimation for Occlusion**
-   - **PoseMamba** - State Space Model with linear complexity
-   - **STRIDE** - Temporally continuous occlusion-robust 3D pose
-   - **Di²Pose** - Discrete diffusion for occluded poses
-   - **AthletePose3D** - Dataset with 1.3M frames including figure skating!
+### Physics-Based Improvements (Gemini Recommendations)
 
-3. **Physical Parameter Estimation**
-   - **A2B Model** - Anthropometric measurements → SMPL beta (MPJPE -30mm)
-   - **SMPLest-X** - SOTA pose + shape estimation (TPAMI 2025)
-   - Height/weight estimation from skeleton proportions
+1. **Physics-Informed Pose Validator** ⚠️ HIGH PRIORITY
+   - **Paper:** Leuthold et al. (December 2025) "Physics Informed Human Posture Estimation"
+   - **Results:** -10.2% MPJPE, -16.6% joint angle error
+   - **Method:** Kalman filter + bone length constraints (post-processing only)
+   - **Compute:** Minimal (NumPy + scipy)
+   - **Impact:** Eliminates occlusion artifacts without heavy models
 
-4. **Multi-Person Tracking**
-   - **Deep HM-SORT** - 80.1 HOTA on SportsMOT
-   - **Basketball-SORT** - Handles 3+ person occlusions
-   - Re-identification during brief occlusions
+2. **Replace Flight Time with CoM Trajectory** ⚠️ CRITICAL
+   - **Gemini Finding:** Flight time has 60% error for low jumps!
+   - **Solution:** CoM parabolic trajectory (physically accurate)
+   - **Formula:** `CoM(t) = (1/M) × Σ(mᵢ × pᵢ)`
+   - **Impact:** Eliminates landing pose bias
 
-5. **Hierarchical Element Classification**
-   - **FS-Jump3D** - Public 3D pose dataset for jumps
-   - **MMFS** - 11,672 clips, 256 categories with skeleton data
-   - **MCFS** - Motion-Centered Figure Skating dataset
-   - **VIFSS** - View-Invariant Figure Skating-Specific representation
+3. **3D Pose for Occlusion**
+   - **Pose3DM-S** (NEW!) - 0.5M params, 2.1G MACs, real-time on RTX 3050 Ti
+   - Mamba architecture (State Space Model) - linear O(N) complexity
+   - Handles 243-frame temporal windows
+   - Alternative: BlazePose + physics optimizer (above)
+
+4. **Physical Parameter Estimation**
+   - **User input approach:** Height/weight entered once at registration
+   - **Dempster/Zatsiorsky tables:** Segment masses from total weight
+   - **SMPLest-X** (TPAMI 2025) - SOTA pose + shape if needed
+   - **Sensitivity:** Moment of inertia I depends on r² (height critical!)
+
+5. **Multi-Person Tracking**
+   - **OC-SORT** - Handles nonlinear skating trajectories
+   - **Pose Biometrics** - Anatomical ratios as unique ID (solves black clothing!)
+   - **Alternative:** Deep HM-SORT (80.1 HOTA on SportsMOT)
+   - **MOTE** (ICML 2025) - Optical flow + splatting (too compute-heavy)
+
+6. **Hierarchical Element Classification**
+   - **FSBench** (CVPR 2025) - 783 videos, 76+ hours, 3D kinematics
+   - **YourSkatingCoach** (2024) - BIOES-tagging for precise boundaries
+   - **SAFSAR** - Few-shot learning for rare elements
+   - **GCN architectures** - SkelFormer, HI-GCN (work on skeleton data)
+
+### Blade Detection Enhancements
+- **Current:** BDA Algorithm (79-83% accuracy) ✅ Implemented
+- **Gemini Recommendation:** Two-stream hybrid
+  - Stream 1: Kinematic heuristics (already done)
+  - Stream 2: MobileNetV3-Small on 64x64 patches (critical frames only)
+  - Expected: 80% accuracy with minimal compute
+- **Future:** Audio-visual fusion (skate sound vs toe pick)
 
 ### Data Resources
-| Dataset | Content | Link |
-|---------|---------|------|
-| FS-Jump3D | 3D pose jumps with optical markerless mocap | github.com/ryota-skating/FS-Jump3D |
-| MMFS | 11,672 clips, 256 categories, skeleton | Multi-modality dataset |
-| MCFS | Temporal action segmentation | shenglanliu.github.io/mcfs-dataset |
-| AthletePose3D | 1.3M frames, 12 sports including skating | Nagoya University |
+| Dataset | Content | Link | Status |
+|---------|---------|------|--------|
+| FS-Jump3D | 3D pose jumps, markerless mocap | github.com/ryota-skating/FS-Jump3D | ✅ Public |
+| FSBench | 783 videos, 76h+, 3D+audio+text | arXiv:2504.19514 | ✅ CVPR 2025 |
+| YourSkatingCoach | BIOES-tagged elements | arXiv:2410.20427 | ✅ 2024 |
+| MMFS | 11,672 clips, 256 categories | Multi-modality | Request |
+| AthletePose3D | 1.3M frames, 12 sports | Nagoya University | New! |
 
 ---
 
@@ -399,7 +467,28 @@ summary = detector.get_blade_summary(states)
 
 ## Reference
 
+### Project Documentation
 - Original architecture: `research/RESEARCH.md`
 - Visualization research: `research/VISUALIZATION_RESEARCH_PROMPT.md`
-- **Physics/Blade detection research:** `research/PHYSICS_DETECTION_RESEARCH.md` 🆕
-- API documentation: See individual module docstrings
+- **Physics/Blade detection research:** `research/PHYSICS_DETECTION_RESEARCH.md`
+- **🆕 Comprehensive Research Summary:** `research/RESEARCH_SUMMARY_2026-03-28.md`
+  - Exa Web Search findings (5 themes)
+  - Gemini Deep Research (41 cited papers)
+  - Actionable recommendations with priorities
+
+### Key Papers (Gemini Research)
+1. **Leuthold et al. (2025)** - Physics Informed Human Posture Estimation
+   - arXiv:2512.06783
+   - Kalman filter, bone constraints, -10% MPJPE
+2. **Pose3DM (2025)** - Bidirectional Mamba-Enhanced 3D HPE
+   - MDPI 2504-3110/9/9/603
+   - Linear complexity, 0.5M params (Small)
+3. **FSBench (CVPR 2025)** - Figure Skating Benchmark
+   - arXiv:2504.19514
+   - 783 videos, FSBench/FSAnno datasets
+4. **YourSkatingCoach (2024)** - Fine-Grained Element Analysis
+   - arXiv:2410.20427
+   - BIOES-tagging, precise boundaries
+
+### API Documentation
+See individual module docstrings
