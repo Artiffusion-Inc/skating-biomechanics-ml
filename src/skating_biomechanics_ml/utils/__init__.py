@@ -5,11 +5,13 @@ from skating_biomechanics_ml.utils.blade_edge_detector import (
     BladeState,
     angle_with_horizontal,
     calculate_ankle_angle,
+    calculate_body_lean_angle,
     calculate_foot_angle,
     calculate_foot_vector,
     calculate_motion_direction,
-    calculate_vertical_acceleration,
     calculate_path_curvature,
+    calculate_vertical_acceleration,
+    classify_blade_from_lean_and_curvature,
     detect_supporting_foot,
 )
 from skating_biomechanics_ml.utils.geometry import (
@@ -81,10 +83,12 @@ __all__ = [
     "calculate_foot_vector",
     "calculate_foot_angle",
     "calculate_ankle_angle",
+    "calculate_body_lean_angle",
     "calculate_vertical_acceleration",
     "calculate_motion_direction",
     "angle_with_horizontal",
     "calculate_path_curvature",
+    "classify_blade_from_lean_and_curvature",
     "detect_supporting_foot",
     # Subtitle utilities
     "SubtitleParser",

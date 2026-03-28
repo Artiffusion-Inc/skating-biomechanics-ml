@@ -346,6 +346,124 @@ def calculate_path_curvature(
 
     curvature = cross / (v_start_mag * v_end_mag)
     return float(curvature)
+
+
+def calculate_body_lean_angle(
+    poses: NormalizedPose,
+    frame_idx: int,
+) -> float:
+    """Calculate body lean angle relative to vertical.
+
+    Positive = leaning right (right shoulder lower)
+    Negative = leaning left (left shoulder lower)
+
+    For blade detection:
+    - Turning left + leaning left = inside edge
+    - Turning left + leaning right = outside edge
+
+    Args:
+        poses: Normalized poses (N, 33, 2).
+        frame_idx: Frame index.
+
+    Returns:
+        Lean angle in degrees. Positive = right, Negative = left.
+    """
+    # Shoulder positions
+    left_shoulder = poses[frame_idx, BKey.LEFT_SHOULDER]
+    right_shoulder = poses[frame_idx, BKey.RIGHT_SHOULDER]
+
+    # Hip positions
+    left_hip = poses[frame_idx, BKey.LEFT_HIP]
+    right_hip = poses[frame_idx, BKey.RIGHT_HIP]
+
+    # Midpoints
+    mid_shoulder = (left_shoulder + right_shoulder) / 2
+    mid_hip = (left_hip + right_hip) / 2
+
+    # Torso vector (from hip to shoulder)
+    torso = mid_shoulder - mid_hip
+
+    # Vertical vector (pointing up, so negative Y)
+    vertical = np.array([0, -1])
+
+    # Angle between torso and vertical
+    # Use atan2 to get signed angle
+    torso_angle = np.arctan2(torso[1], torso[0])
+    vertical_angle = np.arctan2(vertical[1], vertical[0])
+
+    lean_angle = float(np.degrees(torso_angle - vertical_angle))
+
+    # Normalize to [-180, 180]
+    if lean_angle > 180:
+        lean_angle -= 360
+    elif lean_angle < -180:
+        lean_angle += 360
+
+    return lean_angle
+
+
+def classify_blade_from_lean_and_curvature(
+    poses: NormalizedPose,
+    frame_idx: int,
+    curvature_window: int = 10,
+) -> tuple[BladeType, float]:
+    """Classify blade edge using body lean and path curvature.
+
+    Key insight: During a turn, skater leans OPPOSITE to centrifugal force.
+    - Inside edge: body leans INTO the turn
+    - Outside edge: body leans OUT of the turn
+
+    Examples:
+    - Turning left (curvature > 0) + leaning left (lean < 0) = inside edge
+    - Turning left (curvature > 0) + leaning right (lean > 0) = outside edge
+    - Turning right (curvature < 0) + leaning right (lean > 0) = inside edge
+    - Turning right (curvature < 0) + leaning left (lean < 0) = outside edge
+
+    Args:
+        poses: Normalized poses (N, 33, 2).
+        frame_idx: Frame index.
+        curvature_window: Window for path curvature calculation.
+
+    Returns:
+        (blade_type, confidence) tuple.
+    """
+    curvature = calculate_path_curvature(poses, frame_idx, curvature_window)
+    lean_angle = calculate_body_lean_angle(poses, frame_idx)
+
+    # Thresholds
+    curvature_threshold = 0.01  # Minimum curvature to consider as turning
+    lean_threshold = 2.0  # Minimum lean angle (degrees)
+
+    # Check if we're actually turning
+    if abs(curvature) < curvature_threshold:
+        # Going straight - can't determine edge from lean
+        return BladeType.FLAT, 0.5
+
+    # Check if we have significant lean
+    if abs(lean_angle) < lean_threshold:
+        # Not leaning much - probably flat
+        return BladeType.FLAT, 0.6
+
+    # Determine edge from relationship between curvature and lean
+    # Inside edge: lean and curvature have OPPOSITE signs
+    # Outside edge: lean and curvature have SAME sign
+
+    # curvature > 0 = turning left
+    # lean_angle < 0 = leaning left (body goes left, torso points left)
+    # If turning left AND leaning left = inside edge (opposite signs)
+
+    if curvature * lean_angle < 0:
+        # Opposite signs = inside edge
+        blade_type = BladeType.INSIDE
+        # Confidence based on magnitudes
+        confidence = min(1.0, (abs(curvature) / 0.05) * (abs(lean_angle) / 10.0))
+    else:
+        # Same signs = outside edge
+        blade_type = BladeType.OUTSIDE
+        confidence = min(1.0, (abs(curvature) / 0.05) * (abs(lean_angle) / 10.0))
+
+    return blade_type, max(0.3, min(1.0, confidence))
+
     y_positions = -poses[frame_idx - 2 : frame_idx + 3, foot_idx, 1]  # Negate for up=positive
     t = np.arange(len(y_positions)) / fps
 
@@ -379,25 +497,24 @@ class BladeState:
 
 
 class BladeEdgeDetector:
-    """Blade edge detection using the BDA Algorithm.
+    """Blade edge detection using improved physics-based approach.
 
-    Based on research:
-    "Automated Blade Type Discrimination Algorithm for Figure Skating Based on MediaPipe"
+    Uses multiple signals for robust classification:
+    1. Body lean angle relative to turn direction (NEW - more accurate)
+    2. Path curvature analysis
+    3. Foot angle (original BDA algorithm - fallback)
+    4. Toe pick detection via vertical acceleration
 
-    Uses 4 angular thresholds for blade transitions:
-    - Strong inside: angle < -20°
-    - Weak inside: -20° <= angle < -10°
-    - Flat/vague: -10° <= angle < 10°
-    - Weak outside: 10° <= angle < 20°
-    - Strong outside: angle >= 20°
-
-    Toe pick is detected via vertical acceleration spike.
+    Key insight: During a turn, skater leans OPPOSITE to centrifugal force.
+    - Inside edge: body leans INTO the turn (lean opposite to curvature)
+    - Outside edge: body leans OUT of the turn (lean same direction as curvature)
 
     Attributes:
         inside_threshold: Angle threshold for inside edge (negative, degrees).
         outside_threshold: Angle threshold for outside edge (positive, degrees).
         toe_pick_accel_threshold: Vertical acceleration threshold for toe pick.
         smoothing_window: Frames to smooth results over.
+        use_lean_method: Use improved lean+curvature method (default: True).
     """
 
     def __init__(
@@ -406,6 +523,7 @@ class BladeEdgeDetector:
         outside_threshold: float = 15.0,
         toe_pick_accel_threshold: float = 5.0,
         smoothing_window: int = 3,
+        use_lean_method: bool = True,
     ):
         """Initialize blade edge detector.
 
@@ -414,11 +532,13 @@ class BladeEdgeDetector:
             outside_threshold: Foot angle threshold for outside edge (positive degrees).
             toe_pick_accel_threshold: Vertical acceleration threshold for toe pick detection.
             smoothing_window: Number of frames for temporal smoothing.
+            use_lean_method: Use improved lean+curvature classification (default: True).
         """
         self.inside_threshold = inside_threshold
         self.outside_threshold = outside_threshold
         self.toe_pick_accel_threshold = toe_pick_accel_threshold
         self.smoothing_window = smoothing_window
+        self.use_lean_method = use_lean_method
 
     def classify_frame(
         self,
@@ -467,7 +587,23 @@ class BladeEdgeDetector:
                 confidence=0.8,
             )
 
-        # Edge classification based on foot angle
+        # Try improved lean+curvature method first
+        if self.use_lean_method:
+            blade_type_lean, confidence_lean = classify_blade_from_lean_and_curvature(
+                poses, frame_idx, curvature_window=10
+            )
+
+            # If lean method is confident, use it
+            if confidence_lean > 0.5:
+                return BladeState(
+                    blade_type=blade_type_lean,
+                    foot_angle=foot_angle,
+                    ankle_angle=ankle_angle,
+                    vertical_accel=vertical_accel,
+                    confidence=confidence_lean,
+                )
+
+        # Fallback to foot angle method (original BDA)
         if foot_angle < self.inside_threshold:
             blade_type = BladeType.INSIDE
             confidence = min(1.0, abs(foot_angle) / 30.0)  # Higher confidence for stronger angles
@@ -658,4 +794,6 @@ __all__ = [
     "angle_with_horizontal",
     "detect_supporting_foot",
     "calculate_path_curvature",
+    "calculate_body_lean_angle",
+    "classify_blade_from_lean_and_curvature",
 ]
