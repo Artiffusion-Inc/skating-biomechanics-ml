@@ -25,6 +25,7 @@ from skating_biomechanics_ml.types import BKey
 from skating_biomechanics_ml.utils import get_skating_optimized_config
 from skating_biomechanics_ml.utils.smoothing import PoseSmoother
 from skating_biomechanics_ml.utils import (
+    BladeEdgeDetector,
     draw_debug_hud,
     draw_edge_indicators,
     draw_skeleton,
@@ -153,6 +154,13 @@ def main() -> int:
         smooth_jitter = np.abs(np.diff(poses_smoothed_norm[:, :, 0], axis=0)).mean()
         print(f"Jitter reduction: {(1 - smooth_jitter/raw_jitter)*100:.1f}%")
 
+        # Detect blade edge states for both feet
+        print("Detecting blade edge states...")
+        blade_detector = BladeEdgeDetector(smoothing_window=3)
+        blade_states_left = blade_detector.detect_sequence(poses_viz, meta.fps, foot="left")
+        blade_states_right = blade_detector.detect_sequence(poses_viz, meta.fps, foot="right")
+        print(f"Blade states detected: {len(blade_states_left)} left, {len(blade_states_right)} right")
+
     # Load segments
     segments = []
     if args.segments and args.segments.exists():
@@ -247,6 +255,11 @@ def main() -> int:
         # Draw HUD (all layers)
         active_segment = _get_active_segment(segments, frame_idx)
         kinematics = _compute_kinematics(poses_viz, current_pose_idx if current_pose_idx is not None else 0, meta.fps)
+
+        # Get blade states for current frame
+        blade_left = blade_states_left[current_pose_idx] if current_pose_idx is not None and current_pose_idx < len(blade_states_left) else None
+        blade_right = blade_states_right[current_pose_idx] if current_pose_idx is not None and current_pose_idx < len(blade_states_right) else None
+
         frame = draw_debug_hud(
             frame,
             active_segment,
@@ -256,6 +269,8 @@ def main() -> int:
             meta.fps,
             meta.height,
             meta.width,
+            blade_state_left=blade_left,
+            blade_state_right=blade_right,
         )
 
         writer.write(frame)

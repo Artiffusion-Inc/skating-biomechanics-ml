@@ -39,6 +39,7 @@ from skating_biomechanics_ml.utils.video import (
     select_person_crop,
 )
 from skating_biomechanics_ml.utils.visualization import (
+    draw_blade_indicator_hud,
     draw_debug_hud,
     draw_edge_indicators,
     draw_skeleton,
@@ -92,4 +93,5 @@ __all__ = [
     "draw_subtitle_cyrillic",
     "draw_debug_hud",
     "draw_text_box",
+    "draw_blade_indicator_hud",
 ]

@@ -491,6 +491,81 @@ def draw_text_box(
     cv2.putText(frame, text, (x, y), cv2.FONT_HERSHEY_SIMPLEX, font_scale, (255, 255, 255), thickness)
 
 
+def draw_blade_indicator_hud(
+    frame: np.ndarray,
+    blade_state_left: object | None,
+    blade_state_right: object | None,
+    x: int = 10,
+    y: int = 80,
+) -> np.ndarray:
+    """Draw blade edge state indicator on HUD.
+
+    Shows current blade edge (inside/outside/flat/toe_pick) with color coding:
+    - Green: Inside edge
+    - Red: Outside edge
+    - Yellow: Flat
+    - Blue: Toe pick
+
+    Args:
+        frame: Video frame (H, W, 3) BGR.
+        blade_state_left: Left foot BladeState.
+        blade_state_right: Right foot BladeState.
+        x: X position for HUD.
+        y: Y position for HUD.
+
+    Returns:
+        Frame with blade indicator overlay.
+    """
+    from skating_biomechanics_ml.types import BladeType
+
+    # Color mapping for blade types
+    blade_colors = {
+        BladeType.INSIDE: (0, 200, 0),      # Green
+        BladeType.OUTSIDE: (0, 0, 200),     # Red
+        BladeType.FLAT: (0, 200, 200),        # Yellow
+        BladeType.TOE_PICK: (200, 0, 0),     # Blue
+        BladeType.UNKNOWN: (128, 128, 128),  # Gray
+    }
+
+    blade_names = {
+        BladeType.INSIDE: "IN",
+        BladeType.OUTSIDE: "OUT",
+        BladeType.FLAT: "FLAT",
+        BladeType.TOE_PICK: "TOE",
+        BladeType.UNKNOWN: "???",
+    }
+
+    # Left foot
+    if blade_state_left is not None:
+        color = blade_colors.get(blade_state_left.blade_type, (128, 128, 128))
+        name = blade_names.get(blade_state_left.blade_type, "???")
+        conf = blade_state_left.confidence
+
+        # Draw colored indicator box
+        box_size = 20
+        cv2.rectangle(frame, (x, y), (x + box_size, y + 10), color, -1)
+        cv2.rectangle(frame, (x, y), (x + box_size, y + 10), (255, 255, 255), 1)
+
+        # Draw label
+        label = f"L: {name} ({conf:.0%})"
+        draw_text_box(frame, label, (x + box_size + 5, y), font_scale=0.5)
+
+    # Right foot (below left)
+    if blade_state_right is not None:
+        color = blade_colors.get(blade_state_right.blade_type, (128, 128, 128))
+        name = blade_names.get(blade_state_right.blade_type, "???")
+        conf = blade_state_right.confidence
+
+        box_size = 20
+        cv2.rectangle(frame, (x, y + 20), (x + box_size, y + 30), color, -1)
+        cv2.rectangle(frame, (x, y + 20), (x + box_size, y + 30), (255, 255, 255), 1)
+
+        label = f"R: {name} ({conf:.0%})"
+        draw_text_box(frame, label, (x + box_size + 5, y + 20), font_scale=0.5)
+
+    return frame
+
+
 def draw_debug_hud(
     frame: np.ndarray,
     element_info: dict,
@@ -500,11 +575,14 @@ def draw_debug_hud(
     fps: float,
     height: int,
     width: int,
+    blade_state_left: object | None = None,
+    blade_state_right: object | None = None,
 ) -> np.ndarray:
     """Draw comprehensive debug HUD.
 
     Layout:
     - Top-left: Element info (name, boundaries, confidence)
+    - Top-left (below element): Blade edge indicators
     - Top-right: Frame counter, timestamp
     - Bottom-left: Kinematics (velocities, angles)
 
@@ -517,6 +595,8 @@ def draw_debug_hud(
         fps: Frame rate.
         height: Frame height.
         width: Frame width.
+        blade_state_left: Left foot BladeState (optional).
+        blade_state_right: Right foot BladeState (optional).
 
     Returns:
         Frame with HUD overlay.
@@ -542,5 +622,9 @@ def draw_debug_hud(
         text = f"{key}: {value:.2f}" if isinstance(value, float) else f"{key}: {value}"
         draw_text_box(frame, text, (10, y_offset))
         y_offset -= 25
+
+    # Blade edge indicators (below element info)
+    if blade_state_left is not None or blade_state_right is not None:
+        frame = draw_blade_indicator_hud(frame, blade_state_left, blade_state_right, x=10, y=55)
 
     return frame
