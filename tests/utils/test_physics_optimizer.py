@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.types import BKey
-from skating_biomechanics_ml.utils.physics_optimizer import (
+from src.types import BKey
+from src.physics_optimizer import (
     BoneConstraints,
     PhysicsPoseOptimizer,
     optimize_poses_with_physics,

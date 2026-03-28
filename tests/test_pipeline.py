@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.pipeline import AnalysisPipeline
-from skating_biomechanics_ml.types import ElementPhase
+from src.pipeline import AnalysisPipeline
+from src.types import ElementPhase
 
 
 @pytest.mark.integration
@@ -45,7 +45,7 @@ class TestAnalysisPipeline:
         """Should format report correctly."""
         pipeline = AnalysisPipeline()
 
-        from skating_biomechanics_ml.types import AnalysisReport, MetricResult
+        from src.types import AnalysisReport, MetricResult
 
         # Create mock report
         phases = ElementPhase(
@@ -87,7 +87,7 @@ class TestAnalysisPipeline:
         """Should compute overall score correctly."""
         pipeline = AnalysisPipeline()
 
-        from skating_biomechanics_ml.types import MetricResult
+        from src.types import MetricResult
 
         # All good metrics
         metrics_good = [

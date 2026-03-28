@@ -5,10 +5,10 @@ import json
 import shutil
 from pathlib import Path
 
-from skating_biomechanics_ml.pipeline import AnalysisPipeline
-from skating_biomechanics_ml.pose_2d import PoseExtractor, PoseNormalizer
+from src.pipeline import AnalysisPipeline
+from src import blazepose_extractor, normalizer PoseExtractor, PoseNormalizer
 from skating_biomechanics_ml.references import ReferenceBuilder, ReferenceStore
-from skating_biomechanics_ml.utils.video import get_video_meta
+from src.video import get_video_meta
 
 
 # Dataset configuration

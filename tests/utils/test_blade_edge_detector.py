@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.types import BKey, BladeType, NormalizedPose
-from skating_biomechanics_ml.utils.blade_edge_detector import (
+from src.types import BKey, BladeType, NormalizedPose
+from src.blade_edge_detector import (
     BladeEdgeDetector,
     BladeState,
     calculate_ankle_angle,

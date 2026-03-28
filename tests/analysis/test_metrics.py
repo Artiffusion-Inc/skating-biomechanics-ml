@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.analysis.metrics import BiomechanicsAnalyzer
-from skating_biomechanics_ml.references.element_defs import ElementDef, get_element_def
-from skating_biomechanics_ml.types import BKey, ElementPhase, MetricResult
+from src.metrics import BiomechanicsAnalyzer
+from src.element_defs import ElementDef, get_element_def
+from src.types import BKey, ElementPhase, MetricResult
 
 
 class TestBiomechanicsAnalyzer:

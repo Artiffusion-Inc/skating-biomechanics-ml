@@ -20,9 +20,9 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from skating_biomechanics_ml.pose_2d import BlazePoseExtractor
-from skating_biomechanics_ml.types import BKey
-from skating_biomechanics_ml.utils import (
+from src import blazepose_extractor, normalizer BlazePoseExtractor
+from src.types import BKey
+from src import (
     BladeEdgeDetector,
     SpatialReferenceDetector,
     draw_debug_hud,
@@ -34,9 +34,9 @@ from skating_biomechanics_ml.utils import (
     draw_velocity_vectors,
     get_skating_optimized_config,
 )
-from skating_biomechanics_ml.utils.smoothing import PoseSmoother
-from skating_biomechanics_ml.utils.subtitles import SubtitleParser
-from skating_biomechanics_ml.utils.video import get_video_meta
+from src.smoothing import PoseSmoother
+from src.subtitles import SubtitleParser
+from src.video import get_video_meta
 
 
 def main() -> int:
@@ -117,7 +117,7 @@ def main() -> int:
 
         # Extract poses for ALL frames to maintain sync
         # Use extract_frames to iterate with frame indices
-        from skating_biomechanics_ml.utils.video import extract_frames
+        from src.video import extract_frames
 
         poses_list = []
         frame_indices = []
@@ -431,7 +431,7 @@ def _compute_kinematics(
     hip_v = np.linalg.norm(velocity[BKey.LEFT_HIP])
 
     # Knee angles
-    from skating_biomechanics_ml.utils.geometry import angle_3pt  # noqa: PLC0415
+    from src.geometry import angle_3pt  # noqa: PLC0415
 
     left_knee = angle_3pt(
         poses[frame_idx, BKey.LEFT_HIP],

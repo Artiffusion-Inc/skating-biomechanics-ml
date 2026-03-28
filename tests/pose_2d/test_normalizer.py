@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.pose_2d import PoseNormalizer
-from skating_biomechanics_ml.types import BKey
+from src.normalizer import PoseNormalizer
+from src.types import BKey
 
 
 class TestPoseNormalizer:

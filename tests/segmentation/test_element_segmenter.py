@@ -6,9 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.segmentation import ElementSegmenter
-from skating_biomechanics_ml.types import BKey, NormalizedPose, SegmentationResult
-from skating_biomechanics_ml.utils.video import VideoMeta
+from src.element_segmenter import ElementSegmenter
+from src.types import BKey, NormalizedPose, SegmentationResult
+from src.video import VideoMeta
 
 
 @pytest.fixture

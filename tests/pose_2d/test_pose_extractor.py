@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.pose_2d import PoseExtractor
-from skating_biomechanics_ml.types import BKey
+from src.pose_extractor import PoseExtractor
+from src.types import BKey
 
 
 @pytest.mark.slow

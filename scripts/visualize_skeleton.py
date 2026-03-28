@@ -5,8 +5,8 @@ import cv2
 import numpy as np
 from pathlib import Path
 
-from skating_biomechanics_ml.pose_2d import PoseExtractor
-from skating_biomechanics_ml.utils.video import extract_frames, get_video_meta
+from src import blazepose_extractor, normalizer PoseExtractor
+from src.video import extract_frames, get_video_meta
 
 # COCO 17 keypoints skeleton edges (pairs of indices)
 SKELETON_EDGES = [

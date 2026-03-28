@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skating_biomechanics_ml.types import BKey
-from skating_biomechanics_ml.utils import (
+from src.types import BKey
+from src.visualization import (
     draw_debug_hud,
     draw_edge_indicators,
     draw_skeleton,

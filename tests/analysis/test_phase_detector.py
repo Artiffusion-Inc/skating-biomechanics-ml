@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.analysis.phase_detector import PhaseDetector
-from skating_biomechanics_ml.analysis.metrics import PhaseDetectionResult
-from skating_biomechanics_ml.types import BKey, ElementPhase
+from src.phase_detector import PhaseDetector
+from src.metrics import PhaseDetectionResult
+from src.types import BKey, ElementPhase
 
 
 class TestPhaseDetector:

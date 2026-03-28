@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.alignment import MotionAligner
-from skating_biomechanics_ml.types import ElementPhase
+from src.aligner import MotionAligner
+from src.types import ElementPhase
 
 
 class TestMotionAligner:

@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.types import NormalizedPose
-from skating_biomechanics_ml.utils.smoothing import (
+from src.types import NormalizedPose
+from src.smoothing import (
     OneEuroFilter,
     OneEuroFilterConfig,
     PoseSmoother,
@@ -364,7 +364,7 @@ class TestIntegration:
 
     def test_smoothing_after_normalization(self):
         """Test that smoothing works after pose normalization."""
-        from skating_biomechanics_ml.types import BKey
+        from src.types import BKey
 
         # Create normalized poses (centered at origin)
         poses = np.zeros((30, 33, 2), dtype=np.float32)

@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.detection import PersonDetector
-from skating_biomechanics_ml.types import BoundingBox
+from src.person_detector import PersonDetector
+from src.types import BoundingBox
 
 
 @pytest.mark.slow

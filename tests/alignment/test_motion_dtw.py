@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.alignment import MotionDTWAligner
-from skating_biomechanics_ml.types import ElementPhase
+from src.motion_dtw import MotionDTWAligner
+from src.types import ElementPhase
 
 
 @pytest.fixture

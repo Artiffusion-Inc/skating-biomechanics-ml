@@ -10,10 +10,10 @@ import argparse
 import traceback
 from pathlib import Path
 
-from skating_biomechanics_ml.pose_2d import PoseExtractor, PoseNormalizer
+from src import blazepose_extractor, normalizer PoseExtractor, PoseNormalizer
 from skating_biomechanics_ml.references import ReferenceBuilder, ReferenceStore
-from skating_biomechanics_ml.types import ElementPhase
-from skating_biomechanics_ml.utils.video import get_video_meta
+from src.types import ElementPhase
+from src.video import get_video_meta
 
 
 def main() -> None:

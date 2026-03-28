@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_biomechanics_ml.types import BKey
-from skating_biomechanics_ml.utils.geometry import (
+from src.types import BKey
+from src.geometry import (
     calculate_center_of_mass,
     calculate_com_trajectory,
     get_mid_hip,

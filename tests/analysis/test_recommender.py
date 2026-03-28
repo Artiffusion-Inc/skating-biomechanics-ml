@@ -2,8 +2,8 @@
 
 import pytest
 
-from skating_biomechanics_ml.analysis import Recommender
-from skating_biomechanics_ml.types import MetricResult
+from src.recommender import Recommender
+from src.types import MetricResult
 
 
 class TestRecommender:
