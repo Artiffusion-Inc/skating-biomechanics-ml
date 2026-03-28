@@ -333,21 +333,10 @@ def main() -> int:
 
         # Layer 0: Skeleton (use pixel coords for direct overlay)
         if args.layer >= 0 and current_pose_idx is not None:
-            # Draw 3D skeleton if enabled (17 keypoints with depth color coding)
-            if args.use_3d and poses_3d is not None and current_pose_idx < len(poses_3d):
-                from src.pose_3d.blazepose_to_h36m import H36M_SKELETON_EDGES
-                from src.visualization import draw_skeleton_3d
-
-                frame = draw_skeleton_3d(
-                    frame,
-                    poses_3d[current_pose_idx],
-                    H36M_SKELETON_EDGES,
-                    meta.height,
-                    meta.width,
-                )
-            else:
-                # Draw 2D skeleton (33 keypoints) when 3D is disabled
-                frame = draw_skeleton(frame, poses[current_pose_idx], meta.height, meta.width)
+            # 3D skeleton disabled - biomechanics estimation not accurate enough for visualization
+            # TODO: Re-enable 3D skeleton only when using proper MotionAGFormer model
+            # For now, always use 2D skeleton which works well
+            frame = draw_skeleton(frame, poses[current_pose_idx], meta.height, meta.width)
 
         # Layer 1: Kinematics (use normalized coords)
         if args.layer >= 1 and current_pose_idx is not None:
@@ -381,34 +370,15 @@ def main() -> int:
                 frame, poses_viz, current_pose_idx, meta.height, meta.width
             )
 
-            # Draw 3D blade state HUD if enabled
-            if args.blade_3d and blade_states_3d_left and current_pose_idx < len(blade_states_3d_left):
-                # Left foot HUD (top-left)
-                frame = draw_blade_state_3d_hud(
-                    frame,
-                    blade_states_3d_left[current_pose_idx],
-                    position=(10, 50),
-                    font_scale=0.5,
-                )
+            # 3D blade HUD disabled - too many UNKNOWN states without proper 3D model
+            # TODO: Re-enable after MotionAGFormer model is integrated
 
-            if args.blade_3d and blade_states_3d_right and current_pose_idx < len(blade_states_3d_right):
-                # Right foot HUD (top-right)
-                frame = draw_blade_state_3d_hud(
-                    frame,
-                    blade_states_3d_right[current_pose_idx],
-                    position=(meta.width - 230, 50),
-                    font_scale=0.5,
-                )
-
-            # Draw ice trace for left foot (Layer 2+)
-            if args.blade_3d and blade_detector_3d and current_pose_idx > 10:
-                # Get ice trace for left foot (recent history)
-                left_trace = blade_detector_3d.get_ice_trace("left")
-                if len(left_trace.points) > 2:
-                    # Project and draw trace
-                    frame = draw_ice_trace(
-                        frame, left_trace, meta.height, meta.width
-                    )
+            # Ice trace disabled - projection doesn't work with meter-scale 3D positions
+            # TODO: Re-enable after fixing 3D-to-2D projection with proper scaling
+            # if args.blade_3d and blade_detector_3d and current_pose_idx > 10:
+            #     left_trace = blade_detector_3d.get_ice_trace("left")
+            #     if len(left_trace.points) > 2:
+            #         frame = draw_ice_trace(frame, left_trace, meta.height, meta.width)
 
         # Draw spatial axes (all layers >= 1)
         if args.layer >= 1:
@@ -419,13 +389,8 @@ def main() -> int:
             if frame_idx % 100 == 0 and camera_pose.confidence > 0:
                 print(f"  Frame {frame_idx}: Roll={camera_pose.roll:.2f}°, Conf={camera_pose.confidence:.2f}, Source={camera_pose.source}")
 
-            # Draw XYZ axes in bottom-right corner
-            frame = draw_spatial_axes(
-                frame,
-                camera_pose,
-                origin=(meta.width - 150, meta.height - 80),
-                length=40,
-            )
+            # XYZ axes disabled - not useful for skating analysis
+            # frame = draw_spatial_axes(frame, camera_pose)
 
         # Layer 3: Coaching (subtitles)
         if args.layer >= 3 and subtitle_events:

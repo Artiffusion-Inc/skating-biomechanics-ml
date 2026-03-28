@@ -574,8 +574,8 @@ def draw_spatial_axes(
     frame: np.ndarray,
     camera_pose: object,  # CameraPose from spatial_reference
     origin: tuple[int, int] | None = None,
-    length: int = 40,
-    font_scale: float = 0.4,
+    length: int = 60,
+    font_scale: float = 0.5,
 ) -> np.ndarray:
     """Draw XYZ axes on frame to visualize spatial reference.
 
@@ -591,7 +591,7 @@ def draw_spatial_axes(
     Args:
         frame: Video frame (H, W, 3) BGR.
         camera_pose: CameraPose object with roll, pitch, yaw attributes.
-        origin: Pixel position for axes origin (x, y). Defaults to bottom-left.
+        origin: Pixel position for axes origin (x, y). Defaults to bottom-right.
         length: Length of each axis in pixels.
         font_scale: Font scale for labels.
 
@@ -599,28 +599,9 @@ def draw_spatial_axes(
         Frame with axes drawn (modified in-place).
     """
     if origin is None:
-        origin = (50, frame.shape[0] - 80)
-    """Draw XYZ axes on frame to visualize spatial reference.
+        # Bottom-right corner (more visible)
+        origin = (frame.shape[1] - 100, frame.shape[0] - 100)
 
-    Shows the true vertical and horizontal directions relative to gravity,
-    compensating for camera tilt. This is essential for accurate angle
-    measurements in skating analysis.
-
-    Color coding (BGR):
-    - X axis (blue): parallel to ice, horizontal
-    - Y axis (green): forward direction (depth)
-    - Z axis (red): vertical (up, opposite to gravity)
-
-    Args:
-        frame: Video frame (H, W, 3) BGR.
-        camera_pose: CameraPose object with roll, pitch, yaw attributes.
-        origin: Pixel position for axes origin (x, y). Defaults to bottom-left.
-        length: Length of each axis in pixels.
-        font_scale: Font scale for labels.
-
-    Returns:
-        Frame with axes drawn (modified in-place).
-    """
     # Get rotation matrix from camera pose
     from scipy.spatial.transform import Rotation
 
@@ -636,9 +617,24 @@ def draw_spatial_axes(
     # Rotate axes by camera pose (to show how they appear from camera perspective)
     axes_camera = R @ axes_world.T
 
-    # Colors (BGR): X=blue, Y=green, Z=red
-    colors = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]  # BGR
+    # Colors (BGR): brighter colors for visibility
+    colors = [(255, 100, 100), (100, 255, 100), (100, 100, 255)]  # BGR - brighter
     labels = ["X", "Y", "Z"]
+
+    # Draw semi-transparent background for better visibility
+    bg_size = length + 20
+    overlay = frame.copy()
+    cv2.rectangle(
+        overlay,
+        (origin[0] - bg_size, origin[1] - bg_size),
+        (origin[0] + bg_size, origin[1] + bg_size),
+        (0, 0, 0),
+        -1,
+    )
+    cv2.addWeighted(overlay, 0.5, frame, 0.5, 0, frame)
+
+    # Draw origin circle to make it more visible
+    cv2.circle(frame, origin, 6, (255, 255, 255), -1, cv2.LINE_AA)
 
     for i, (axis, color, label) in enumerate(zip(axes_camera.T, colors, labels)):
         # Project 3D to 2D (simple orthographic)
@@ -651,18 +647,34 @@ def draw_spatial_axes(
             end_x = int(origin[0] + axis[0] * length)
             end_y = int(origin[1] - axis[2] * length)
 
-        # Draw axis line with anti-aliasing
-        cv2.line(frame, origin, (end_x, end_y), color, 2, cv2.LINE_AA)
+        # Draw axis line with anti-aliasing (thicker for visibility)
+        cv2.line(frame, origin, (end_x, end_y), color, 4, cv2.LINE_AA)
 
-        # Draw label
+        # Draw circle at end of axis
+        cv2.circle(frame, (end_x, end_y), 5, color, -1, cv2.LINE_AA)
+
+        # Draw label (larger, with outline for visibility)
+        label_pos = (end_x + 8, end_y + 5)
+        # Text outline (black)
         cv2.putText(
             frame,
             label,
-            (end_x + 5, end_y),
+            label_pos,
             cv2.FONT_HERSHEY_SIMPLEX,
-            font_scale,
+            font_scale * 1.2,
+            (0, 0, 0),
+            3,
+            cv2.LINE_AA,
+        )
+        # Text (colored)
+        cv2.putText(
+            frame,
+            label,
+            label_pos,
+            cv2.FONT_HERSHEY_SIMPLEX,
+            font_scale * 1.2,
             color,
-            1,
+            2,
             cv2.LINE_AA,
         )
 
@@ -823,50 +835,51 @@ def draw_skeleton_3d(
     width: int,
     focal_length: float = 500.0,
     camera_distance: float = 5.0,
+    reference_pose: np.ndarray | None = None,
 ) -> np.ndarray:
     """Draw 3D skeleton projected onto 2D frame.
 
+    NOTE: This function requires properly scaled 3D poses (e.g., from MotionAGFormer).
+    The biomechanics estimator produces meter-scale poses that don't project correctly.
+
     Args:
         frame: Input frame (H, W, 3)
-        pose_3d: (17, 3) array with x, y, z in meters
+        pose_3d: (17, 3) array with x, y, z coordinates
         skeleton_edges: List of (joint1, joint2) connections
         height: Frame height
         width: Frame width
         focal_length: Camera focal length
         camera_distance: Camera distance
+        reference_pose: Optional reference for alignment
 
     Returns:
         Frame with skeleton overlay
     """
     frame = frame.copy()
 
-    # Project 3D to 2D
-    pose_2d = project_3d_to_2d(
-        pose_3d[np.newaxis, ...],
-        focal_length,
-        camera_distance,
-    )[0]
+    # Simple projection - works for properly scaled 3D poses
+    pose_2d = project_3d_to_2d(pose_3d[np.newaxis, ...], focal_length, camera_distance)[0]
 
     # Draw edges
     for idx1, idx2 in skeleton_edges:
         pt1 = pose_2d[idx1]
         pt2 = pose_2d[idx2]
 
-        # Convert to pixel coordinates
-        x1, y1 = int(pt1[0] * width), int(pt1[1] * height)
-        x2, y2 = int(pt2[0] * width), int(pt2[1] * height)
+        x1 = int(pt1[0] * width)
+        y1 = int(pt1[1] * height)
+        x2 = int(pt2[0] * width)
+        y2 = int(pt2[1] * height)
 
-        # Check if points are valid (within frame)
         if 0 <= x1 < width and 0 <= y1 < height and 0 <= x2 < width and 0 <= y2 < height:
             cv2.line(frame, (x1, y1), (x2, y2), COLOR_CENTER, 2, cv2.LINE_AA)
 
     # Draw joints
     for joint_idx in range(pose_2d.shape[0]):
         pt = pose_2d[joint_idx]
-        x, y = int(pt[0] * width), int(pt[1] * height)
+        x = int(pt[0] * width)
+        y = int(pt[1] * height)
 
         if 0 <= x < width and 0 <= y < height:
-            # Use depth (Z) for color coding
             z = pose_3d[joint_idx, 2]
             depth_color = _get_depth_color(z)
             cv2.circle(frame, (x, y), 4, depth_color, -1, cv2.LINE_AA)
@@ -1056,9 +1069,9 @@ def draw_blade_state_3d_hud(
     frame: np.ndarray,
     blade_state: "BladeState3D",
     position: tuple[int, int],
-    font_scale: float = 0.5,
+    font_scale: float = 0.7,
 ) -> np.ndarray:
-    """Draw 3D blade state information on HUD.
+    """Draw 3D blade state information on HUD - compact version.
 
     Args:
         frame: Input frame (H, W, 3)
@@ -1073,72 +1086,64 @@ def draw_blade_state_3d_hud(
 
     frame = frame.copy()
     x, y = position
-    line_height = int(20 * font_scale)
+    line_height = int(25 * font_scale)
 
-    # Background box
-    box_width = 220
-    box_height = 140
-    cv2.rectangle(frame, (x - 5, y - 5), (x + box_width, y + box_height),
+    # Semi-transparent background
+    box_width = 180
+    box_height = int(line_height * 4.5)
+    overlay = frame.copy()
+    cv2.rectangle(overlay, (x, y), (x + box_width, y + box_height),
                  (0, 0, 0), -1, cv2.LINE_AA)
-    cv2.rectangle(frame, (x - 5, y - 5), (x + box_width, y + box_height),
+    cv2.addWeighted(overlay, 0.6, frame, 0.4, 0, frame)
+    cv2.rectangle(frame, (x, y), (x + box_width, y + box_height),
                  (255, 255, 255), 1, cv2.LINE_AA)
 
-    # Foot label
-    foot_label = f"Foot: {blade_state.foot.upper()}"
-    cv2.putText(frame, foot_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale * 0.6, (255, 255, 255), 1, cv2.LINE_AA)
-    y += line_height
-
-    # Blade type with color
+    # Foot + Blade (combined, color-coded)
     blade_color = {
-        BladeType.INSIDE: (255, 100, 100),
-        BladeType.OUTSIDE: (100, 100, 255),
-        BladeType.FLAT: (100, 255, 100),
-        BladeType.TOE_PICK: (255, 255, 0),
-        BladeType.ROCKER: (255, 150, 0),
-        BladeType.HEEL: (150, 0, 255),
-        BladeType.UNKNOWN: (128, 128, 128),
-    }.get(blade_state.blade_type, (255, 255, 255))
+        BladeType.INSIDE: (255, 80, 80),
+        BladeType.OUTSIDE: (80, 80, 255),
+        BladeType.FLAT: (80, 255, 80),
+        BladeType.TOE_PICK: (255, 200, 0),
+        BladeType.ROCKER: (255, 140, 0),
+        BladeType.HEEL: (140, 0, 255),
+        BladeType.UNKNOWN: (150, 150, 150),
+    }.get(blade_state.blade_type, (200, 200, 200))
 
-    blade_label = f"Blade: {blade_state.blade_type.value.upper()}"
-    cv2.putText(frame, blade_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale * 0.6, blade_color, 1, cv2.LINE_AA)
+    blade_short = {
+        BladeType.INSIDE: "IN",
+        BladeType.OUTSIDE: "OUT",
+        BladeType.FLAT: "FLAT",
+        BladeType.TOE_PICK: "TOE",
+        BladeType.ROCKER: "ROCK",
+        BladeType.HEEL: "HEEL",
+        BladeType.UNKNOWN: "???",
+    }.get(blade_state.blade_type, "???")
+
+    # Main info: Foot + Blade + Direction
+    main_label = f"{blade_state.foot.upper()[0]} {blade_short} {blade_state.motion_direction.value.upper()[:5]}"
+    cv2.putText(frame, main_label, (x + 5, y + int(line_height * 0.7)), cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale * 0.7, blade_color, 2, cv2.LINE_AA)
     y += line_height
 
-    # Motion direction
-    direction_label = f"Direction: {blade_state.motion_direction.value.upper()}"
-    cv2.putText(frame, direction_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale * 0.6, (200, 200, 200), 1, cv2.LINE_AA)
+    # Angles (combined)
+    angle_label = f"Foot:{blade_state.foot_angle:.0f}° Ankle:{blade_state.ankle_angle:.0f}°"
+    cv2.putText(frame, angle_label, (x + 5, y + int(line_height * 0.7)), cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale * 0.55, (220, 220, 220), 1, cv2.LINE_AA)
     y += line_height
 
-    # Angles
-    angle_label = f"Foot: {blade_state.foot_angle:.1f}°  Ankle: {blade_state.ankle_angle:.1f}°"
-    cv2.putText(frame, angle_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale * 0.5, (200, 200, 200), 1, cv2.LINE_AA)
+    # Velocity (simplified)
+    vx, vy, vz = np.clip(list(blade_state.velocity_3d), -100.0, 100.0)
+    vel_mag = min((vx**2 + vy**2 + vz**2)**0.5, 50.0)
+    vel_label = f"V:{vel_mag:.1f}m/s"
+    cv2.putText(frame, vel_label, (x + 5, y + int(line_height * 0.7)), cv2.FONT_HERSHEY_SIMPLEX,
+                font_scale * 0.55, (200, 200, 200), 1, cv2.LINE_AA)
     y += line_height
 
-    # Knee angle
-    knee_label = f"Knee: {blade_state.knee_angle:.1f}°"
-    cv2.putText(frame, knee_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale * 0.5, (200, 200, 200), 1, cv2.LINE_AA)
-    y += line_height
-
-    # Velocity
-    vx, vy, vz = blade_state.velocity_3d
-    # Clip to prevent overflow
-    vx, vy, vz = np.clip([vx, vy, vz], -1000.0, 1000.0)
-    vel_mag = (vx**2 + vy**2 + vz**2)**0.5
-    vel_mag = min(vel_mag, 99.99)  # Prevent overflow
-    vel_label = f"Velocity: {vel_mag:.2f} m/s"
-    cv2.putText(frame, vel_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale * 0.5, (200, 200, 200), 1, cv2.LINE_AA)
-    y += line_height
-
-    # Confidence
+    # Confidence bar (visual)
+    conf_width = int(box_width * blade_state.confidence)
     conf_color = (0, 255, 0) if blade_state.confidence > 0.7 else (0, 165, 255)
-    conf_label = f"Conf: {blade_state.confidence:.2f}"
-    cv2.putText(frame, conf_label, (x, y), cv2.FONT_HERSHEY_SIMPLEX,
-                font_scale * 0.5, conf_color, 1, cv2.LINE_AA)
+    cv2.rectangle(frame, (x + 5, y + int(line_height * 0.3)), (x + 5 + conf_width, y + int(line_height * 0.7)),
+                 conf_color, -1, cv2.LINE_AA)
 
     return frame
 
