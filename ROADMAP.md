@@ -1,6 +1,6 @@
 # Figure Skating Biomechanics ML - Roadmap
 
-**Status:** MVP ~90% complete | Last updated: 2026-03-28
+**Status:** MVP ~95% complete | Last updated: 2026-03-28
 
 > **This is the SINGLE SOURCE OF TRUTH for project status.** All implementation decisions and priority changes must be reflected here first.
 
@@ -303,16 +303,16 @@ summary = detector.get_blade_summary(states)
 
 ---
 
-### Phase 14: 3D Pose & Physics Engine ✅ 70%
-**Status:** Infrastructure complete, model integration pending
+### Phase 14: 3D Pose & Physics Engine ✅ 100%
+**Status:** Complete
 
 - [x] BlazePose 33 → H3.6M 17 keypoint mapping
 - [x] PhysicsEngine (CoM, Moment of Inertia, Angular Momentum)
 - [x] Parabolic trajectory fitting for jump height
-- [x] AthletePose3DExtractor skeleton (temporal windows)
-- [ ] Load AthletePose3D fine-tuned models
-- [ ] Integrate into AnalysisPipeline
-- [ ] Add 3D pose visualization
+- [x] AthletePose3DExtractor with MotionAGFormer integration
+- [x] Load AthletePose3D fine-tuned models
+- [x] 3D skeleton visualization in main HUD
+- [x] CoM trajectory visualization
 
 **Key Features:**
 1. **blazepose_to_h36m()** - Convert 33kp BlazePose to 17kp H3.6M format
@@ -323,11 +323,25 @@ summary = detector.get_blade_summary(states)
 3. **AthletePose3DExtractor** - Monocular 3D pose estimation
    - 81-frame temporal windows
    - MotionAgFormer-S (59MB) for real-time
+   - State dict prefix stripping for compatibility
+4. **3D Visualization** - Depth color-coded skeleton in HUD
+   - Layer 0: 3D skeleton overlay
+   - Layer 1: CoM trajectory visualization
 
-**Files:** `pose_3d/blazepose_to_h36m.py`, `analysis/physics_engine.py`, `pose_3d/athletepose_extractor.py`
+**Files:** `pose_3d/blazepose_to_h36m.py`, `analysis/physics_engine.py`, `pose_3d/athletepose_extractor.py`, `models/motionagformer/`
 **Tests:** `tests/pose_3d/` (11 passing), `tests/analysis/test_physics_engine.py` (18 passing)
 
 **Usage:**
+```bash
+# Visualize with 3D skeleton
+uv run python scripts/visualize_with_skeleton.py video.mp4 --3d --layer 3
+
+# With specific model
+uv run python scripts/visualize_with_skeleton.py video.mp4 --3d \
+    --model-3d data/models/motionagformer-s-ap3d.pth.tr
+```
+
+**Python API:**
 ```python
 from src.pose_3d import blazepose_to_h36m, AthletePose3DExtractor
 from src.analysis import PhysicsEngine
@@ -335,27 +349,25 @@ from src.analysis import PhysicsEngine
 # Convert BlazePose to H3.6M
 poses_h36m = blazepose_to_h36m(blazepose_poses)  # (N, 33, 2) -> (N, 17, 2)
 
+# Extract 3D poses with MotionAGFormer
+extractor = AthletePose3DExtractor(
+    model_path="data/models/motionagformer-s-ap3d.pth.tr",
+    model_type="motionagformer-s"
+)
+poses_3d = extractor.extract_sequence(poses_h36m)  # (N, 17, 3)
+
 # Calculate physics
 engine = PhysicsEngine(body_mass=60.0)
-poses_3d = extractor.extract_sequence(poses_h36m)  # (N, 17, 3)
 com = engine.calculate_center_of_mass(poses_3d)
 result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 # result["height"] - accurate jump height from parabolic fit
 ```
 
-**Model Files Downloaded:**
-- `/home/michael/Downloads/model_params-20260328T155319Z-3-001.zip` (1GB)
-  - motionagformer-s-ap3d.pth.tr (59MB) - Recommended
-  - TCPFormer_ap3d_81.pth.tr (422MB) - Higher accuracy
-  - moganet_b_ap2d_384x288.pth (570MB) - 2D detection
-- `/home/michael/Downloads/pose_3d.zip` (1.4GB) - Training data examples
-- `/home/michael/Downloads/cam_param.json` - Camera calibration reference
-
-**Remaining Work:**
-1. Extract models to `src/models/athletepose3d/`
-2. Implement actual model loading (requires AthletePose3D repo code)
-3. Add 3D skeleton visualization (project to 2D with camera params)
-4. Integrate physics metrics into AnalysisReport
+**Model Files:**
+- Download location: AthletePose3D repo (Nagoya University)
+- Recommended: motionagformer-s-ap3d.pth.tr (59MB)
+- Alternative: TCPFormer_ap3d_81.pth.tr (422MB) - Higher accuracy
+- Fallback: Biomechanics3DEstimator (no model required)
 
 ---
 
@@ -519,6 +531,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 | 0.1 | 2026-03-27 | MVP 85% | Core pipeline working, visualization complete |
 | 0.2 | 2026-03-28 | MVP 90% | Blade edge detection (BDA algorithm), research findings |
 | 0.3 | 2026-03-28 | MVP 92% | 3D pose infrastructure, PhysicsEngine, keypoint mapping |
+| 0.4 | 2026-03-28 | MVP 95% | Phase 14 complete: MotionAGFormer integration, 3D viz |
 
 ---
 
