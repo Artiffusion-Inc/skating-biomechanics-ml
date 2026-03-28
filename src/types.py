@@ -403,6 +403,7 @@ class AnalysisReport:
         overall_score: Overall score [0, 10].
         blade_summary_left: Left foot blade edge summary (optional).
         blade_summary_right: Right foot blade edge summary (optional).
+        physics: Physics metrics (CoM trajectory, jump height, inertia, etc.).
     """
 
     element_type: str
@@ -413,6 +414,7 @@ class AnalysisReport:
     overall_score: float
     blade_summary_left: dict[str, Any] = field(default_factory=dict)
     blade_summary_right: dict[str, Any] = field(default_factory=dict)
+    physics: dict[str, Any] = field(default_factory=dict)
 
     def format(self) -> str:
         """Format report as readable Russian text."""
@@ -467,6 +469,28 @@ class AnalysisReport:
                 if 'type_percentages' in self.blade_summary_right:
                     types_str = ", ".join(f"{k}: {v:.1f}%" for k, v in self.blade_summary_right['type_percentages'].items())
                     lines.append(f"    Распределение: {types_str}")
+
+        # Physics information
+        if self.physics:
+            lines.extend([
+                "",
+                "--- Физические метрики ---",
+            ])
+            if 'jump_height' in self.physics:
+                h = self.physics['jump_height']
+                lines.append(f"  Высота прыжка (CoM): {h:.2f} м")
+            if 'flight_time' in self.physics:
+                t = self.physics['flight_time']
+                lines.append(f"  Время полёта: {t:.2f} с")
+            if 'takeoff_velocity' in self.physics:
+                v = self.physics['takeoff_velocity']
+                lines.append(f"  Скорость отрыва: {v:.2f} м/с")
+            if 'avg_inertia' in self.physics:
+                i = self.physics['avg_inertia']
+                lines.append(f"  Средний момент инерции: {i:.3f} кг·м²")
+            if 'fit_quality' in self.physics:
+                q = self.physics['fit_quality']
+                lines.append(f"  Качество траектории (R²): {q:.2f}")
 
         lines.extend(
             [

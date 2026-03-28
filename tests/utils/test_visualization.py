@@ -238,3 +238,46 @@ class TestDrawTextBox:
         draw_text_box(frame, "Test", (50, 100), bg_alpha=0.8)
 
         assert not np.array_equal(frame, np.zeros((480, 640, 3), dtype=np.uint8))
+
+
+class Test3DVisualization:
+    """Tests for 3D pose visualization functions."""
+
+    def test_project_3d_to_2d(self):
+        """Test 3D to 2D projection."""
+        from src.visualization import project_3d_to_2d
+
+        # Use centered 3D coordinates (more realistic)
+        poses_3d = (np.random.rand(10, 17, 3).astype(np.float32) - 0.5) * 0.3
+        poses_2d = project_3d_to_2d(poses_3d)
+
+        assert poses_2d.shape == (10, 17, 2)
+        # Check coordinates are in reasonable range
+        assert np.all(poses_2d >= -0.5) and np.all(poses_2d <= 1.5)
+
+    def test_draw_skeleton_3d(self):
+        """Test drawing 3D skeleton."""
+        from src.pose_3d.blazepose_to_h36m import H36M_SKELETON_EDGES
+        from src.visualization import draw_skeleton_3d
+
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        # Use centered coordinates
+        pose_3d = (np.random.rand(17, 3).astype(np.float32) - 0.5) * 0.3
+
+        result = draw_skeleton_3d(
+            frame, pose_3d, H36M_SKELETON_EDGES, 480, 640
+        )
+
+        assert not np.array_equal(result, frame)
+
+    def test_draw_3d_trajectory(self):
+        """Test drawing 3D CoM trajectory."""
+        from src.visualization import draw_3d_trajectory
+
+        frame = np.zeros((480, 640, 3), dtype=np.uint8)
+        # Use centered coordinates
+        com_trajectory = (np.random.rand(50, 3).astype(np.float32) - 0.5) * 0.2
+
+        result = draw_3d_trajectory(frame, com_trajectory, 480, 640)
+
+        assert not np.array_equal(result, frame)

@@ -760,3 +760,208 @@ def draw_debug_hud(
         frame = draw_blade_indicator_hud(frame, blade_state_left, blade_state_right, x=10, y=55)
 
     return frame
+
+
+# ============================================================================
+# 3D Pose Visualization
+# ============================================================================
+
+def project_3d_to_2d(
+    poses_3d: np.ndarray,
+    focal_length: float = 500.0,
+    camera_distance: float = 5.0,
+) -> np.ndarray:
+    """Project 3D poses to 2D using simple perspective projection.
+
+    Args:
+        poses_3d: (N, 17, 3) array with x, y, z in meters
+        focal_length: Camera focal length in pixels
+        camera_distance: Distance from camera to subject in meters
+
+    Returns:
+        poses_2d: (N, 17, 2) array with normalized [0,1] coordinates
+    """
+    n_frames = poses_3d.shape[0]
+    poses_2d = np.zeros((n_frames, 17, 2), dtype=np.float32)
+
+    # Simple perspective projection
+    # x' = x * f / (z + D)
+    # y' = y * f / (z + D)
+
+    for frame_idx in range(n_frames):
+        pose_3d = poses_3d[frame_idx]
+
+        for joint_idx in range(17):
+            x, y, z = pose_3d[joint_idx]
+
+            # Avoid division by zero and extreme projections
+            z_safe = z + camera_distance
+            if abs(z_safe) < 0.1:
+                z_safe = 0.1 if z_safe >= 0 else -0.1
+
+            # Perspective projection
+            scale = focal_length / z_safe
+            x_proj = x * scale
+            y_proj = y * scale
+
+            # Normalize to [0, 1] with clipping
+            poses_2d[frame_idx, joint_idx] = [
+                np.clip(x_proj + 0.5, 0, 1),  # Center X
+                np.clip(0.5 - y_proj, 0, 1),  # Center Y (flip Y)
+            ]
+
+    return poses_2d
+
+
+def draw_skeleton_3d(
+    frame: np.ndarray,
+    pose_3d: np.ndarray,
+    skeleton_edges: list[tuple[int, int]],
+    height: int,
+    width: int,
+    focal_length: float = 500.0,
+    camera_distance: float = 5.0,
+) -> np.ndarray:
+    """Draw 3D skeleton projected onto 2D frame.
+
+    Args:
+        frame: Input frame (H, W, 3)
+        pose_3d: (17, 3) array with x, y, z in meters
+        skeleton_edges: List of (joint1, joint2) connections
+        height: Frame height
+        width: Frame width
+        focal_length: Camera focal length
+        camera_distance: Camera distance
+
+    Returns:
+        Frame with skeleton overlay
+    """
+    frame = frame.copy()
+
+    # Project 3D to 2D
+    pose_2d = project_3d_to_2d(
+        pose_3d[np.newaxis, ...],
+        focal_length,
+        camera_distance,
+    )[0]
+
+    # Draw edges
+    for idx1, idx2 in skeleton_edges:
+        pt1 = pose_2d[idx1]
+        pt2 = pose_2d[idx2]
+
+        # Convert to pixel coordinates
+        x1, y1 = int(pt1[0] * width), int(pt1[1] * height)
+        x2, y2 = int(pt2[0] * width), int(pt2[1] * height)
+
+        # Check if points are valid (within frame)
+        if 0 <= x1 < width and 0 <= y1 < height and 0 <= x2 < width and 0 <= y2 < height:
+            cv2.line(frame, (x1, y1), (x2, y2), COLOR_CENTER, 2, cv2.LINE_AA)
+
+    # Draw joints
+    for joint_idx in range(pose_2d.shape[0]):
+        pt = pose_2d[joint_idx]
+        x, y = int(pt[0] * width), int(pt[1] * height)
+
+        if 0 <= x < width and 0 <= y < height:
+            # Use depth (Z) for color coding
+            z = pose_3d[joint_idx, 2]
+            depth_color = _get_depth_color(z)
+            cv2.circle(frame, (x, y), 4, depth_color, -1, cv2.LINE_AA)
+
+    return frame
+
+
+def _get_depth_color(z: float, z_range: float = 1.0) -> tuple[int, int, int]:
+    """Get color based on depth (Z) value.
+
+    Args:
+        z: Depth value in meters
+        z_range: Range for color mapping
+
+    Returns:
+        BGR color tuple
+    """
+    # Normalize Z to [0, 1] for color mapping
+    z_norm = (z + z_range / 2) / z_range
+    z_norm = np.clip(z_norm, 0, 1)
+
+    # Color gradient: blue (far) -> green (mid) -> red (close)
+    if z_norm < 0.5:
+        # Blue to green
+        t = z_norm * 2
+        r = 0
+        g = int(255 * t)
+        b = int(255 * (1 - t))
+    else:
+        # Green to red
+        t = (z_norm - 0.5) * 2
+        r = int(255 * t)
+        g = int(255 * (1 - t))
+        b = 0
+
+    return (b, g, r)
+
+
+def draw_3d_trajectory(
+    frame: np.ndarray,
+    com_trajectory: np.ndarray,
+    height: int,
+    width: int,
+    focal_length: float = 500.0,
+    camera_distance: float = 5.0,
+) -> np.ndarray:
+    """Draw Center of Mass trajectory in 3D.
+
+    Args:
+        frame: Input frame (H, W, 3)
+        com_trajectory: (N, 3) CoM trajectory over time
+        height: Frame height
+        width: Frame width
+        focal_length: Camera focal length
+        camera_distance: Camera distance
+
+    Returns:
+        Frame with trajectory overlay
+    """
+    frame = frame.copy()
+    n_frames = com_trajectory.shape[0]
+
+    # Project CoM trajectory to 2D (handle (N, 3) input)
+    com_2d = np.zeros((n_frames, 2), dtype=np.float32)
+    for i in range(n_frames):
+        x, y, z = com_trajectory[i]
+
+        # Avoid division by zero
+        z_safe = z + camera_distance
+        if abs(z_safe) < 0.1:
+            z_safe = 0.1 if z_safe >= 0 else -0.1
+
+        # Perspective projection
+        scale = focal_length / z_safe
+        x_proj = x * scale
+        y_proj = y * scale
+
+        # Normalize to [0, 1] with clipping
+        com_2d[i] = [
+            np.clip(x_proj + 0.5, 0, 1),
+            np.clip(0.5 - y_proj, 0, 1),
+        ]
+
+    # Draw trajectory line
+    points = []
+    for i in range(len(com_2d)):
+        x, y = com_2d[i]
+        px, py = int(x * width), int(y * height)
+        if 0 <= px < width and 0 <= py < height:
+            points.append((px, py))
+
+    # Draw connected line
+    for i in range(len(points) - 1):
+        cv2.line(frame, points[i], points[i + 1], (0, 255, 255), 2, cv2.LINE_AA)
+
+    # Draw current CoM position
+    if points:
+        cv2.circle(frame, points[-1], 6, (0, 255, 255), -1, cv2.LINE_AA)
+
+    return frame

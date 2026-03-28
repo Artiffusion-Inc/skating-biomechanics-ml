@@ -19,6 +19,8 @@ import torch
 if TYPE_CHECKING:
     from .blazepose_to_h36m import blazepose_to_h36m
 
+from .biomechanics_estimator import Biomechanics3DEstimator
+
 
 class AthletePose3DExtractor:
     """Monocular 3D pose estimation using AthletePose3D.
@@ -32,19 +34,22 @@ class AthletePose3DExtractor:
 
     def __init__(
         self,
-        model_path: Path | str,
+        model_path: Path | str | None = None,
         device: str = "auto",
         model_type: str = "motionagformer-s",
+        use_simple: bool = False,
     ):
         """Initialize the 3D pose estimator.
 
         Args:
-            model_path: Path to model checkpoint (.pth.tr file)
+            model_path: Path to model checkpoint (.pth.tr file), or None for simple mode
             device: "cuda", "cpu", or "auto" (default)
             model_type: Model architecture type
+            use_simple: If True, use biomechanics estimator instead of ML model
         """
-        self.model_path = Path(model_path)
+        self.model_path = Path(model_path) if model_path else None
         self.model_type = model_type
+        self.use_simple = use_simple or (model_path is None)
 
         # Set device
         if device == "auto":
@@ -58,6 +63,9 @@ class AthletePose3DExtractor:
         # Load model (lazy loading on first use)
         self.model: torch.nn.Module | None = None
         self._model_loaded = False
+
+        # Simple biomechanics estimator (fallback)
+        self._simple_estimator = Biomechanics3DEstimator() if self.use_simple else None
 
     def _load_model(self) -> torch.nn.Module:
         """Load the AthletePose3D model."""
@@ -140,6 +148,10 @@ class AthletePose3DExtractor:
             poses_3d: (N, 17, 3) array with x, y, z coordinates
         """
         from .blazepose_to_h36m import blazepose_to_h36m  # noqa: F401
+
+        # Use simple estimator if enabled or no model
+        if self.use_simple or self._simple_estimator is not None:
+            return self._simple_estimator.estimate_3d(poses_2d)
 
         n_frames = poses_2d.shape[0]
 

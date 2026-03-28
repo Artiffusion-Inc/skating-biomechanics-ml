@@ -181,6 +181,41 @@ class AnalysisPipeline:
                     reference.poses[reference.phases.start : reference.phases.end],
                 )
 
+        # Stage 6.5: Physics calculations (3D pose + biomechanics)
+        physics_dict: dict = {}
+        try:
+            from .pose_3d import blazepose_to_h36m, Biomechanics3DEstimator
+            from .analysis import PhysicsEngine
+
+            # Convert to H3.6M format
+            poses_h36m = blazepose_to_h36m(normalized)
+
+            # Estimate 3D poses
+            estimator = Biomechanics3DEstimator()
+            poses_3d = estimator.estimate_3d(poses_h36m)
+
+            # Calculate physics metrics
+            physics_engine = PhysicsEngine(body_mass=60.0)
+
+            # If we have takeoff/landing, fit trajectory
+            if phases.takeoff > 0 and phases.landing > 0:
+                trajectory = physics_engine.fit_jump_trajectory(
+                    poses_3d, phases.takeoff, phases.landing
+                )
+                physics_dict['jump_height'] = trajectory['height']
+                physics_dict['flight_time'] = trajectory['flight_time']
+                physics_dict['takeoff_velocity'] = trajectory['takeoff_velocity']
+                physics_dict['fit_quality'] = trajectory['fit_quality']
+
+            # Calculate average moment of inertia during element
+            inertia = physics_engine.calculate_moment_of_inertia(
+                poses_3d[phases.start:phases.end]
+            )
+            physics_dict['avg_inertia'] = float(np.mean(inertia))
+        except Exception:
+            # Physics calculation is optional, don't fail if it errors
+            pass
+
         # Stage 7: Generate recommendations
         recommender = self._get_recommender()
         recommendations = recommender.recommend(metrics, element_type)
@@ -194,9 +229,10 @@ class AnalysisPipeline:
             metrics=metrics,
             recommendations=recommendations,
             overall_score=overall_score,
-            dtw_distance=dtw_distance,
+            dtw_distance=dtw_distance if dtw_distance else 0.0,
             blade_summary_left=blade_summary_left,
             blade_summary_right=blade_summary_right,
+            physics=physics_dict,
         )
 
     def segment_video(
