@@ -1,6 +1,10 @@
 #!/usr/bin/env python3
 """CLI for figure skating biomechanics analysis.
 
+H3.6M Migration:
+    Uses H3.6M 17-keypoint format as the primary format.
+    2D extraction: H36MExtractor (BlazePose backend with integrated conversion)
+
 Usage:
     python -m skating_biomechanics_ml.cli analyze video.mp4 --element waltz_jump
     python -m skating_biomechanics_ml.cli build-ref expert.mp4 --element waltz_jump --takeoff 1.0 --landing 1.5
@@ -14,9 +18,9 @@ import traceback
 from pathlib import Path
 
 from .pipeline import AnalysisPipeline
-from . import pose_extractor, normalizer
+from .pose_estimation import H36MExtractor
+from . import normalizer
 
-PoseExtractor = pose_extractor.PoseExtractor
 PoseNormalizer = normalizer.PoseNormalizer
 from . import element_defs, reference_builder, reference_store
 
@@ -37,10 +41,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     # Initialize pipeline
     reference_store = None
     if args.reference_dir:
-        builder = ReferenceBuilder(
-            PoseExtractor(model_size="s"),
-            PoseNormalizer(target_spine_length=0.4),
-        )
+        # Create builder with H3.6M extractor
+        extractor = H36MExtractor(output_format="normalized")
+        norm = PoseNormalizer(target_spine_length=0.4)
+        builder = ReferenceBuilder(extractor, norm)
         reference_store = ReferenceStore(args.reference_dir)
         reference_store.set_builder(builder)
 
@@ -103,8 +107,8 @@ def cmd_build_ref(args: argparse.Namespace) -> int:
         print(f"Error: Video file not found: {args.video}")
         return 1
 
-    # Initialize components
-    pose_extractor = PoseExtractor(model_size="s")
+    # Initialize components (H3.6M format)
+    pose_extractor = H36MExtractor(output_format="normalized")
     normalizer = PoseNormalizer(target_spine_length=0.4)
     builder = ReferenceBuilder(pose_extractor, normalizer)
 
@@ -190,22 +194,16 @@ def cmd_segment(args: argparse.Namespace) -> int:
 
         # Export segments as references if output-dir specified
         if args.export_dir:
-            # Get full poses for export
+            # Use H3.6M extractor
             from .person_detector import PersonDetector
-            from .blazepose_extractor import BlazePoseExtractor
-            from .normalizer import PoseNormalizer
 
             detector = PersonDetector(model_size="n", confidence=0.5)
-            bbox = detector.detect_first_frame(args.video)
-            extractor = BlazePoseExtractor(
-                min_detection_confidence=0.5,
-                min_presence_confidence=0.5,
-                num_poses=1,
-            )
-            normalizer = PoseNormalizer(target_spine_length=0.4)
+            extractor = H36MExtractor(output_format="normalized")
+            norm = PoseNormalizer(target_spine_length=0.4)
 
-            raw_poses = extractor.extract_video(args.video, crop=bbox)
-            normalized = normalizer.normalize(raw_poses)
+            # Extract poses in H3.6M format
+            poses_h36m, _ = extractor.extract_video(args.video)
+            normalized = norm.normalize(poses_h36m)
 
             export_dir = args.export_dir
             export_dir.mkdir(parents=True, exist_ok=True)

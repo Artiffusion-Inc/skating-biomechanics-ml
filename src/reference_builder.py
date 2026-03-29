@@ -1,5 +1,9 @@
 """Reference data builder from expert videos.
 
+H3.6M Migration:
+    Uses H3.6M 17-keypoint format as the primary format.
+    2D extraction: H36MExtractor (BlazePose backend with integrated conversion)
+
 This module provides tools to create reference datasets from
 expert skating videos for comparison with user performances.
 """
@@ -17,12 +21,17 @@ from .types import (
 from .video import get_video_meta
 
 if TYPE_CHECKING:
-    from .blazepose_extractor import BlazePoseExtractor as PoseExtractor
+    from .pose_estimation import H36MExtractor as PoseExtractor
     from .normalizer import PoseNormalizer
 
 
 class ReferenceBuilder:
-    """Build reference data from expert skating videos."""
+    """Build reference data from expert skating videos.
+
+    H3.6M Architecture:
+        - 2D poses: H36MExtractor (17 keypoints, normalized [0,1])
+        - No intermediate 33kp storage
+    """
 
     def __init__(
         self,
@@ -32,7 +41,7 @@ class ReferenceBuilder:
         """Initialize reference builder.
 
         Args:
-            pose_extractor: PoseExtractor instance.
+            pose_extractor: H36MExtractor instance.
             normalizer: PoseNormalizer instance.
         """
         self._pose_extractor = pose_extractor
@@ -52,14 +61,14 @@ class ReferenceBuilder:
             phases: Phase boundaries (manually annotated).
 
         Returns:
-            ReferenceData with normalized poses and metadata.
+            ReferenceData with normalized poses (H3.6M 17kp format) and metadata.
         """
         # Extract video metadata
         meta = get_video_meta(video_path)
 
-        # Extract poses
-        raw_poses = self._pose_extractor.extract_video(video_path)
-        normalized = self._normalizer.normalize(raw_poses)
+        # Extract poses in H3.6M format (normalized [0,1])
+        poses_h36m, _ = self._pose_extractor.extract_video(video_path)
+        normalized = self._normalizer.normalize(poses_h36m)
 
         return ReferenceData(
             element_type=element_type,

@@ -1,4 +1,9 @@
-"""Integration tests for the full analysis pipeline."""
+"""Integration tests for the full analysis pipeline.
+
+H3.6M Migration:
+    Pipeline now uses H3.6M 17-keypoint format as primary.
+    2D: H36MExtractor, 3D: AthletePose3DExtractor
+"""
 
 import numpy as np
 import pytest
@@ -162,7 +167,10 @@ class TestAnalysisPipeline:
 
 @pytest.mark.integration
 class TestPipelineLazyLoading:
-    """Test lazy loading of pipeline components."""
+    """Test lazy loading of pipeline components.
+
+    H3.6M Migration: Updated for new variable names.
+    """
 
     def test_detector_lazy_load(self):
         """Should lazy-load person detector."""
@@ -173,14 +181,23 @@ class TestPipelineLazyLoading:
         assert detector is not None
         assert pipeline._detector is not None
 
-    def test_pose_extractor_lazy_load(self):
-        """Should lazy-load pose extractor."""
+    def test_pose_2d_extractor_lazy_load(self):
+        """Should lazy-load 2D pose extractor (H3.6M format)."""
         pipeline = AnalysisPipeline()
 
-        assert pipeline._pose_extractor is None
-        extractor = pipeline._get_pose_extractor()
+        assert pipeline._pose_2d_extractor is None
+        extractor = pipeline._get_pose_2d_extractor()
         assert extractor is not None
-        assert pipeline._pose_extractor is not None
+        assert pipeline._pose_2d_extractor is not None
+
+    def test_pose_3d_extractor_lazy_load(self):
+        """Should lazy-load 3D pose lifter (MotionAGFormer)."""
+        pipeline = AnalysisPipeline()
+
+        assert pipeline._pose_3d_extractor is None
+        extractor = pipeline._get_pose_3d_extractor()
+        assert extractor is not None
+        assert pipeline._pose_3d_extractor is not None
 
     def test_normalizer_lazy_load(self):
         """Should lazy-load normalizer."""

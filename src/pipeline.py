@@ -1,7 +1,20 @@
 """Main analysis pipeline orchestrator.
 
-This module combines all pipeline stages into a unified system:
-detection -> 2D pose -> normalization -> analysis -> alignment -> recommendations.
+H3.6M Migration:
+    This pipeline now uses H3.6M 17-keypoint format as the primary format.
+    2D extraction: H36MExtractor (BlazePose backend with integrated conversion)
+    3D lifting: AthletePose3DExtractor (MotionAGFormer)
+
+Pipeline stages:
+    1. Person detection (YOLOv11)
+    2. 2D pose extraction (H3.6M 17kp via H36MExtractor)
+    3. Normalization
+    4. Temporal smoothing (One-Euro Filter)
+    5. Phase detection
+    6. Biomechanics metrics
+    7. 3D pose estimation (optional, for blade detection & physics)
+    8. Reference comparison (DTW)
+    9. Recommendations
 """
 
 from pathlib import Path
@@ -22,6 +35,7 @@ if TYPE_CHECKING:
     from . import person_detector
 
     PersonDetector = person_detector.PersonDetector
+    from .pose_estimation import H36MExtractor
     from .pose_3d import AthletePose3DExtractor
     from .pose_3d.normalizer_3d import PoseNormalizer3D
     from . import reference_store
@@ -33,15 +47,10 @@ if TYPE_CHECKING:
 class AnalysisPipeline:
     """Main pipeline for skating technique analysis.
 
-    Coordinates all stages:
-    1. Person detection (YOLOv11)
-    2. 2D pose extraction (BlazePose)
-    3. Normalization
-    4. Temporal smoothing (One-Euro Filter)
-    5. Phase detection
-    6. Biomechanics metrics
-    7. Reference comparison (DTW)
-    8. Recommendations
+    H3.6M Architecture:
+        - 2D poses: H36MExtractor (17 keypoints, normalized [0,1])
+        - 3D poses: AthletePose3DExtractor (MotionAGFormer)
+        - No intermediate 33kp storage
     """
 
     def __init__(
@@ -66,7 +75,8 @@ class AnalysisPipeline:
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
-        self._pose_extractor: "AthletePose3DExtractor | None" = None  # type: ignore[valid-type]
+        self._pose_2d_extractor: H36MExtractor | None = None  # type: ignore[valid-type]
+        self._pose_3d_extractor: "AthletePose3DExtractor | None" = None  # type: ignore[valid-type]
         self._normalizer: PoseNormalizer | None = None  # type: ignore[valid-type]
         self._smoother: PoseSmoother | None = None  # type: ignore[valid-type]
         self._phase_detector: PhaseDetector | None = None  # type: ignore[valid-type]
@@ -108,8 +118,8 @@ class AnalysisPipeline:
         # Stage 1: Detect person (optional if video has single person)
         bbox = self._get_detector().detect_first_frame(video_path)
 
-        # Stage 2: Extract 2D poses
-        raw_poses = self._get_pose_extractor().extract_video(video_path, crop=bbox)
+        # Stage 2: Extract 2D poses in H3.6M format (17 keypoints)
+        poses_h36m, frame_indices = self._get_pose_2d_extractor().extract_video(video_path)
 
         # Stage 2.5: Estimate camera pose (for spatial reference)
         import cv2
@@ -124,7 +134,7 @@ class AnalysisPipeline:
             hough_min_line_length=100,
             hough_max_line_gap=10,
         )
-        # Estimate from first frame (could sample multiple frames for robustness)
+        # Estimate from first frame
         cap = cv2.VideoCapture(str(video_path))
         ret, first_frame = cap.read()
         camera_pose = (
@@ -135,42 +145,47 @@ class AnalysisPipeline:
         cap.release()
 
         # Stage 2.6: Compensate poses for camera tilt
-        # Only compensate if confidence is above threshold
+        # Convert H3.6M normalized to pixels for compensation
+        poses_px = poses_h36m[:, :, :2] * np.array([meta.width, meta.height])
+        poses_with_conf = np.dstack([poses_px, poses_h36m[:, :, 2]])  # Add conf back
+
         if camera_pose.confidence > 0.1:
-            # Convert to pixel poses for compensation
-            compensated_poses = spatial_detector.compensate_poses(raw_poses, camera_pose)
+            compensated_poses = spatial_detector.compensate_poses(poses_with_conf, camera_pose)
         else:
-            compensated_poses = raw_poses
+            compensated_poses = poses_with_conf
+
+        # Convert back to normalized
+        compensated_h36m = compensated_poses[:, :, :2] / np.array([meta.width, meta.height])
+        compensated_h36m = np.dstack([compensated_h36m, compensated_poses[:, :, 2:3]])
 
         # Stage 3: Normalize poses
-        normalized = self._get_normalizer().normalize(compensated_poses)
+        from . import normalizer
+
+        PoseNormalizer = normalizer.PoseNormalizer
+        normalized = self._get_normalizer().normalize(compensated_h36m)
 
         # Stage 3.5: Smooth poses (temporal filtering)
         if self._enable_smoothing:
-            # Use phase-aware smoothing if manual phases are provided
             if manual_phases is not None:
                 boundaries = [manual_phases.takeoff, manual_phases.peak, manual_phases.landing]
-                boundaries = [b for b in boundaries if b > 0]  # Filter out zeros
+                boundaries = [b for b in boundaries if b > 0]
                 smoothed = self._get_smoother(meta.fps).smooth_phase_aware(normalized, boundaries)
             else:
                 smoothed = self._get_smoother(meta.fps).smooth(normalized)
         else:
             smoothed = normalized
 
-        # Stage 3.5: Convert to 3D for blade detection and physics
+        # Stage 3.6: 3D pose estimation (for blade detection & physics)
         poses_3d = None
         blade_summary_left = None
         blade_summary_right = None
         try:
-            from .pose_3d import blazepose_to_h36m, Biomechanics3DEstimator
+            # Use MotionAGFormer for 3D lifting (H3.6M format)
+            poses_3d = self._get_pose_3d_extractor().extract_sequence(smoothed)
+
             from .blade_edge_detector_3d import BladeEdgeDetector3D
 
-            # Convert to H3.6M format and estimate 3D
-            poses_h36m = blazepose_to_h36m(smoothed)
-            estimator = Biomechanics3DEstimator()
-            poses_3d = estimator.estimate_3d(poses_h36m)
-
-            # Stage 3.6: Detect blade edge states using 3D poses
+            # Detect blade edge states using 3D poses
             blade_detector_3d = BladeEdgeDetector3D(fps=meta.fps)
             blade_states_left = []
             blade_states_right = []
@@ -180,7 +195,6 @@ class AnalysisPipeline:
                 blade_states_left.append(left_state)
                 blade_states_right.append(right_state)
 
-            # Get summaries (using 3D detector's summary method)
             blade_summary_left = {
                 "inside": sum(1 for s in blade_states_left if s.blade_type.value == "inside"),
                 "outside": sum(1 for s in blade_states_left if s.blade_type.value == "outside"),
@@ -192,7 +206,7 @@ class AnalysisPipeline:
                 "flat": sum(1 for s in blade_states_right if s.blade_type.value == "flat"),
             }
         except Exception:
-            # Blade detection is optional, don't fail if it errors
+            # 3D lifting is optional, don't fail if it errors
             pass
 
         # Stage 4: Detect phases (or use manual)
@@ -225,10 +239,8 @@ class AnalysisPipeline:
             try:
                 from .analysis import PhysicsEngine
 
-                # Calculate physics metrics using 3D poses from Stage 3.5
                 physics_engine = PhysicsEngine(body_mass=60.0)
 
-                # If we have takeoff/landing, fit trajectory
                 if phases.takeoff > 0 and phases.landing > 0:
                     trajectory = physics_engine.fit_jump_trajectory(
                         poses_3d, phases.takeoff, phases.landing
@@ -238,13 +250,11 @@ class AnalysisPipeline:
                     physics_dict["takeoff_velocity"] = trajectory["takeoff_velocity"]
                     physics_dict["fit_quality"] = trajectory["fit_quality"]
 
-                # Calculate average moment of inertia during element
                 inertia = physics_engine.calculate_moment_of_inertia(
                     poses_3d[phases.start : phases.end]
                 )
                 physics_dict["avg_inertia"] = float(np.mean(inertia))
             except Exception:
-                # Physics calculation is optional, don't fail if it errors
                 pass
 
         # Stage 7: Generate recommendations
@@ -277,11 +287,6 @@ class AnalysisPipeline:
 
         Returns:
             SegmentationResult with detected elements.
-
-        Usage:
-            result = pipeline.segment_video(Path("coach_tutorial.mp4"))
-            # Result contains list of ElementSegment objects
-            # Can export each segment as reference .npz file
         """
         from . import element_segmenter
 
@@ -290,47 +295,16 @@ class AnalysisPipeline:
         # Get video metadata
         meta = get_video_meta(video_path)
 
-        # Stage 1: Detect person (optional if video has single person)
-        bbox = self._get_detector().detect_first_frame(video_path)
+        # Stage 1: Extract 2D poses in H3.6M format
+        poses_h36m, _ = self._get_pose_2d_extractor().extract_video(video_path)
 
-        # Stage 2: Extract 2D poses
-        raw_poses = self._get_pose_extractor().extract_video(video_path, crop=bbox)
+        # Stage 2: Normalize poses
+        from . import normalizer
 
-        # Stage 2.5: Estimate camera pose (for spatial reference)
-        import cv2
-        import numpy as np
+        PoseNormalizer = normalizer.PoseNormalizer
+        normalized = self._get_normalizer().normalize(poses_h36m)
 
-        from . import spatial_reference
-
-        SpatialReferenceDetector = spatial_reference.SpatialReferenceDetector
-
-        spatial_detector = SpatialReferenceDetector(
-            hough_threshold=80,
-            hough_min_line_length=100,
-            hough_max_line_gap=10,
-        )
-        # Estimate from first frame (could sample multiple frames for robustness)
-        cap = cv2.VideoCapture(str(video_path))
-        ret, first_frame = cap.read()
-        camera_pose = (
-            spatial_detector.estimate_pose(first_frame)
-            if ret
-            else spatial_detector.estimate_pose(np.zeros((100, 100, 3), dtype=np.uint8))
-        )
-        cap.release()
-
-        # Stage 2.6: Compensate poses for camera tilt
-        # Only compensate if confidence is above threshold
-        if camera_pose.confidence > 0.1:
-            # Convert to pixel poses for compensation
-            compensated_poses = spatial_detector.compensate_poses(raw_poses, camera_pose)
-        else:
-            compensated_poses = raw_poses
-
-        # Stage 3: Normalize poses
-        normalized = self._get_normalizer().normalize(compensated_poses)
-
-        # Stage 3.5: Smooth poses (temporal filtering)
+        # Stage 3: Smooth poses
         if self._enable_smoothing:
             smoothed = self._get_smoother(meta.fps).smooth(normalized)
         else:
@@ -352,19 +326,27 @@ class AnalysisPipeline:
             self._detector = PersonDetector(model_size="n", confidence=0.5)
         return self._detector
 
-    def _get_pose_extractor(self) -> "PoseExtractor":  # type: ignore[valid-type]
-        """Lazy-load pose extractor (AthletePose3D with H3.6M 17 keypoints 3D)."""
-        if self._pose_extractor is None:
+    def _get_pose_2d_extractor(self) -> "H36MExtractor":  # type: ignore[valid-type]
+        """Lazy-load 2D pose extractor (H3.6M 17kp format)."""
+        if self._pose_2d_extractor is None:
+            from .pose_estimation import H36MExtractor
+
+            self._pose_2d_extractor = H36MExtractor(
+                output_format="normalized",  # [0,1] coordinates
+            )
+        return self._pose_2d_extractor
+
+    def _get_pose_3d_extractor(self) -> "AthletePose3DExtractor":  # type: ignore[valid-type]
+        """Lazy-load 3D pose lifter (MotionAGFormer)."""
+        if self._pose_3d_extractor is None:
             from .pose_3d import AthletePose3DExtractor
 
-            # Use AthletePose3D for 3D pose estimation (H3.6M 17kp format)
-            # Fallback to simple biomechanics estimator if model not available
             model_path = "data/models/motionagformer-s-ap3d.pth.tr"
-            self._pose_extractor = AthletePose3DExtractor(
+            self._pose_3d_extractor = AthletePose3DExtractor(
                 model_path=Path(model_path) if Path(model_path).exists() else None,
-                use_simple=True,  # Use biomechanics estimator for now
+                use_simple=True,  # Fallback to biomechanics estimator
             )
-        return self._pose_extractor
+        return self._pose_3d_extractor
 
     def _get_normalizer(self) -> "PoseNormalizer":  # type: ignore[valid-type]
         """Lazy-load pose normalizer."""
@@ -379,8 +361,6 @@ class AnalysisPipeline:
     def _get_smoother(self, fps: float = 30.0) -> "PoseSmoother":  # type: ignore[valid-type]
         """Lazy-load pose smoother with One-Euro Filter."""
         if not self._enable_smoothing:
-            # Return a no-op smoother that just returns input unchanged
-            # Create a minimal config that doesn't smooth (high cutoff)
             from .smoothing import OneEuroFilterConfig, PoseSmoother
 
             config = OneEuroFilterConfig(min_cutoff=100.0, beta=0.0, freq=fps)
@@ -446,16 +426,14 @@ class AnalysisPipeline:
             Overall score 0-10.
         """
         if not metrics:
-            return 5.0  # Neutral score
+            return 5.0
 
-        # Count good vs bad metrics
         good_count = sum(1 for m in metrics if m.is_good)
         total_count = len(metrics)
 
         if total_count == 0:
             return 5.0
 
-        # Base score from ratio of good metrics
         ratio = good_count / total_count
         score = ratio * 10
 
