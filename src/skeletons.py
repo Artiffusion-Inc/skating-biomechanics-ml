@@ -1,4 +1,4 @@
-"""BlazePose 33-keypoint skeleton hierarchy tree.
+"""H3.6M 17-keypoint skeleton hierarchy tree.
 
 Provides hierarchical structure for skeleton operations:
 - Bone pair extraction for angle calculations
@@ -6,15 +6,16 @@ Provides hierarchical structure for skeleton operations:
 - Tree traversal for biomechanics analysis
 
 Based on:
-- BlazePose 33kp topology
+- H3.6M 17kp topology (standard for 3D pose estimation)
 - Pose2Sim skeleton structure
+- AthletePose3D dataset format
 """
 
 from dataclasses import dataclass
 
 from anytree import Node, RenderTree
 
-from .types import BKey
+from .types import H36Key, BKey  # BKey is alias for H36Key during migration
 
 
 @dataclass
@@ -23,7 +24,7 @@ class BoneNode:
 
     Attributes:
         name: Joint/bone name.
-        keypoint_idx: BlazePose keypoint index (None for intermediate nodes).
+        keypoint_idx: H3.6M keypoint index (None for intermediate nodes).
         children: Child bones/joints.
     """
 
@@ -47,118 +48,55 @@ class BoneNode:
         return node
 
 
-# Define BlazePose 33kp hierarchy
-# Based on: https://google.github.io/mediapipe/solutions/pose.html
-BLAZEPOSE_HIERARCHY = BoneNode(
+# Define H3.6M 17kp hierarchy
+# Standard format for 3D human pose estimation
+H36M_HIERARCHY = BoneNode(
     name="root",
     children=[
-        # Body center (spine)
-        BoneNode(name="nose", keypoint_idx=BKey.NOSE),
-        BoneNode(name="left_eye_inner", keypoint_idx=BKey.LEFT_EYE_INNER),
-        BoneNode(name="left_eye", keypoint_idx=BKey.LEFT_EYE),
-        BoneNode(name="left_eye_outer", keypoint_idx=BKey.LEFT_EYE_OUTER),
-        BoneNode(name="right_eye_inner", keypoint_idx=BKey.RIGHT_EYE_INNER),
-        BoneNode(name="right_eye", keypoint_idx=BKey.RIGHT_EYE),
-        BoneNode(name="right_eye_outer", keypoint_idx=BKey.RIGHT_EYE_OUTER),
-        BoneNode(name="left_ear", keypoint_idx=BKey.LEFT_EAR),
-        BoneNode(name="right_ear", keypoint_idx=BKey.RIGHT_EAR),
-        BoneNode(name="mouth_left", keypoint_idx=BKey.MOUTH_LEFT),
-        BoneNode(name="mouth_right", keypoint_idx=BKey.MOUTH_RIGHT),
-        # Left shoulder and arm
-        BoneNode(
-            name="left_shoulder",
-            keypoint_idx=BKey.LEFT_SHOULDER,
-            children=[
-                BoneNode(
-                    name="left_elbow",
-                    keypoint_idx=BKey.LEFT_ELBOW,
-                    children=[
-                        BoneNode(
-                            name="left_wrist",
-                            keypoint_idx=BKey.LEFT_WRIST,
-                            children=[
-                                BoneNode(name="left_pinky", keypoint_idx=BKey.LEFT_PINKY),
-                                BoneNode(name="left_index", keypoint_idx=BKey.LEFT_INDEX),
-                                BoneNode(name="left_thumb", keypoint_idx=BKey.LEFT_THUMB),
-                            ],
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        # Right shoulder and arm
-        BoneNode(
-            name="right_shoulder",
-            keypoint_idx=BKey.RIGHT_SHOULDER,
-            children=[
-                BoneNode(
-                    name="right_elbow",
-                    keypoint_idx=BKey.RIGHT_ELBOW,
-                    children=[
-                        BoneNode(
-                            name="right_wrist",
-                            keypoint_idx=BKey.RIGHT_WRIST,
-                            children=[
-                                BoneNode(name="right_pinky", keypoint_idx=BKey.RIGHT_PINKY),
-                                BoneNode(name="right_index", keypoint_idx=BKey.RIGHT_INDEX),
-                                BoneNode(name="right_thumb", keypoint_idx=BKey.RIGHT_THUMB),
-                            ],
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        # Left hip and leg
-        BoneNode(
-            name="left_hip",
-            keypoint_idx=BKey.LEFT_HIP,
-            children=[
-                BoneNode(
-                    name="left_knee",
-                    keypoint_idx=BKey.LEFT_KNEE,
-                    children=[
-                        BoneNode(
-                            name="left_ankle",
-                            keypoint_idx=BKey.LEFT_ANKLE,
-                            children=[
-                                BoneNode(name="left_heel", keypoint_idx=BKey.LEFT_HEEL),
-                                BoneNode(name="left_foot_index", keypoint_idx=BKey.LEFT_FOOT_INDEX),
-                            ],
-                        ),
-                    ],
-                ),
-            ],
-        ),
-        # Right hip and leg
-        BoneNode(
-            name="right_hip",
-            keypoint_idx=BKey.RIGHT_HIP,
-            children=[
-                BoneNode(
-                    name="right_knee",
-                    keypoint_idx=BKey.RIGHT_KNEE,
-                    children=[
-                        BoneNode(
-                            name="right_ankle",
-                            keypoint_idx=BKey.RIGHT_ANKLE,
-                            children=[
-                                BoneNode(name="right_heel", keypoint_idx=BKey.RIGHT_HEEL),
-                                BoneNode(name="right_foot_index", keypoint_idx=BKey.RIGHT_FOOT_INDEX),
-                            ],
-                        ),
-                    ],
-                ),
-            ],
-        ),
+        # Root/Hips
+        BoneNode(name="hip_center", keypoint_idx=H36Key.HIP_CENTER, children=[
+            # Right leg
+            BoneNode(name="right_hip", keypoint_idx=H36Key.RHIP, children=[
+                BoneNode(name="right_knee", keypoint_idx=H36Key.RKNEE, children=[
+                    BoneNode(name="right_foot", keypoint_idx=H36Key.RFOOT),
+                ]),
+            ]),
+            # Left leg
+            BoneNode(name="left_hip", keypoint_idx=H36Key.LHIP, children=[
+                BoneNode(name="left_knee", keypoint_idx=H36Key.LKNEE, children=[
+                    BoneNode(name="left_foot", keypoint_idx=H36Key.LFOOT),
+                ]),
+            ]),
+            # Spine/Torso
+            BoneNode(name="spine", keypoint_idx=H36Key.SPINE, children=[
+                BoneNode(name="thorax", keypoint_idx=H36Key.THORAX, children=[
+                    BoneNode(name="neck", keypoint_idx=H36Key.NECK, children=[
+                        BoneNode(name="head", keypoint_idx=H36Key.HEAD),
+                    ]),
+                    # Right arm (from thorax in H3.6M)
+                    BoneNode(name="right_shoulder", keypoint_idx=H36Key.RSHOULDER, children=[
+                        BoneNode(name="right_elbow", keypoint_idx=H36Key.RELBOW, children=[
+                            BoneNode(name="right_wrist", keypoint_idx=H36Key.RWRIST),
+                        ]),
+                    ]),
+                    # Left arm (from thorax in H3.6M)
+                    BoneNode(name="left_shoulder", keypoint_idx=H36Key.LSHOULDER, children=[
+                        BoneNode(name="left_elbow", keypoint_idx=H36Key.LELBOW, children=[
+                            BoneNode(name="left_wrist", keypoint_idx=H36Key.LWRIST),
+                        ]),
+                    ]),
+                ]),
+            ]),
+        ]),
     ],
 )
 
 # Build the tree once at import time
-_ROOT_NODE = BLAZEPOSE_HIERARCHY.to_anytree()
+_ROOT_NODE = H36M_HIERARCHY.to_anytree()
 
 
 def get_skeleton_tree() -> Node:
-    """Get the BlazePose skeleton hierarchy tree.
+    """Get the H3.6M skeleton hierarchy tree.
 
     Returns:
         Root node of the skeleton tree (anytree Node).
@@ -175,7 +113,7 @@ def get_bone_pairs(tree: Node | None = None) -> list[tuple[int, int]]:
     - Applying kinematic constraints
 
     Args:
-        tree: Skeleton tree (uses default BlazePose tree if None).
+        tree: Skeleton tree (uses default H3.6M tree if None).
 
     Returns:
         List of (parent_idx, child_idx) tuples for all bones.
@@ -196,10 +134,10 @@ def get_bone_pairs(tree: Node | None = None) -> list[tuple[int, int]]:
 
 
 def get_bone_names(tree: Node | None = None) -> dict[int, str]:
-    """Get mapping from BlazePose keypoint indices to joint names.
+    """Get mapping from H3.6M keypoint indices to joint names.
 
     Args:
-        tree: Skeleton tree (uses default BlazePose tree if None).
+        tree: Skeleton tree (uses default H3.6M tree if None).
 
     Returns:
         Dictionary mapping keypoint_idx -> joint_name.
@@ -218,8 +156,8 @@ def get_children_of(parent_idx: int, tree: Node | None = None) -> list[int]:
     """Get child keypoint indices for a given parent joint.
 
     Args:
-        parent_idx: BlazePose keypoint index.
-        tree: Skeleton tree (uses default BlazePose tree if None).
+        parent_idx: H3.6M keypoint index.
+        tree: Skeleton tree (uses default H3.6M tree if None).
 
     Returns:
         List of child keypoint indices.
@@ -244,7 +182,7 @@ def render_tree(tree: Node | None = None) -> str:
     Useful for debugging and documentation.
 
     Args:
-        tree: Skeleton tree (uses default BlazePose tree if None).
+        tree: Skeleton tree (uses default H3.6M tree if None).
 
     Returns:
         ASCII representation of the tree.
@@ -260,33 +198,47 @@ def render_tree(tree: Node | None = None) -> str:
     return "\n".join(lines)
 
 
-# Standard bone pairs for drawing (BlazePose topology)
-# These match MediaPipe's recommended skeleton connections
-BLAZEPOSE_BONE_PAIRS = [
-    # Face
-    (0, 1), (1, 2), (2, 3), (3, 7),  # Left eye/ear
-    (0, 4), (4, 5), (5, 6), (6, 8),  # Right eye/ear
-    (9, 10),  # Mouth
-    # Torso
-    (11, 12),  # Shoulders
-    (11, 23), (12, 24),  # Shoulders to hips
-    (23, 24),  # Hips
-    # Left arm
-    (11, 13), (13, 15), (15, 17), (15, 19), (15, 21),  # Shoulder-elbow-wrist-fingers
-    # Right arm
-    (12, 14), (14, 16), (16, 18), (16, 20), (16, 22),  # Shoulder-elbow-wrist-fingers
-    # Left leg
-    (23, 25), (25, 27), (27, 29), (27, 31),  # Hip-knee-ankle-foot
+# H3.6M bone pairs for drawing (17-keypoint topology)
+# These match the standard H3.6M skeleton connections
+H36M_BONE_PAIRS = [
+    # Torso/Spine
+    (0, 7),   # hip_center -> spine
+    (7, 8),   # spine -> thorax
+    (8, 9),   # thorax -> neck
+    (9, 10),  # neck -> head
     # Right leg
-    (24, 26), (26, 28), (28, 30), (28, 32),  # Hip-knee-ankle-foot
+    (0, 1),   # hip_center -> right_hip
+    (1, 2),   # right_hip -> right_knee
+    (2, 3),   # right_knee -> right_foot
+    # Left leg
+    (0, 4),   # hip_center -> left_hip
+    (4, 5),   # left_hip -> left_knee
+    (5, 6),   # left_knee -> left_foot
+    # Right arm (from thorax)
+    (8, 14),  # thorax -> right_shoulder
+    (14, 15), # right_shoulder -> right_elbow
+    (15, 16), # right_elbow -> right_wrist
+    # Left arm (from thorax)
+    (8, 11),  # thorax -> left_shoulder
+    (11, 12), # left_shoulder -> left_elbow
+    (12, 13), # left_elbow -> left_wrist
 ]
 
-# Subset for biomechanics analysis (major joints only)
+# Legacy alias for backward compatibility
+BLAZEPOSE_BONE_PAIRS = H36M_BONE_PAIRS
+
+# Subset for biomechanics analysis (major limb segments)
 BIOMECHANICS_BONE_PAIRS = [
-    (11, 13), (13, 15),  # Left arm
-    (12, 14), (14, 16),  # Right arm
-    (23, 25), (25, 27), (27, 29),  # Left leg
-    (24, 26), (26, 28), (28, 30),  # Right leg
-    (11, 23), (12, 24),  # Sides
-    (11, 12), (23, 24),  # Across
+    # Arms (detailed, including elbow)
+    (11, 12),  # left_shoulder -> left_elbow
+    (12, 13),  # left_elbow -> left_wrist
+    (14, 15),  # right_shoulder -> right_elbow
+    (15, 16),  # right_elbow -> right_wrist
+    # Legs
+    (4, 5),    # left_hip -> left_knee
+    (5, 6),    # left_knee -> left_foot
+    (1, 2),    # right_hip -> right_knee
+    (2, 3),    # right_knee -> right_foot
+    # Torso
+    (0, 8),    # hip_center -> thorax (simplified)
 ]

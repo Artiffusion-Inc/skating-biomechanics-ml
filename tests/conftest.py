@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from pathlib import Path
 
-from src.types import BKey
+from src.types import H36Key, BKey, Pose3D
 
 
 @pytest.fixture
@@ -19,42 +19,32 @@ def sample_frame():
 
 @pytest.fixture
 def sample_keypoints():
-    """Create sample BlazePose 33-keypoint pose for testing."""
-    # 33 keypoints in simple T-pose configuration
-    keypoints = np.zeros((1, 33, 3), dtype=np.float32)
+    """Create sample H3.6M 17-keypoint 3D pose for testing."""
+    # 17 keypoints in simple T-pose configuration (x, y, z in meters)
+    keypoints = np.zeros((1, 17, 3), dtype=np.float32)
 
-    # Face (nose)
-    keypoints[0, BKey.NOSE, :] = [320, 100, 0.9]
+    # Root/Hips
+    keypoints[0, H36Key.HIP_CENTER, :] = [0.0, 0.0, 0.0]  # Origin
+    keypoints[0, H36Key.RHIP, :] = [-0.1, 0.0, 0.0]
+    keypoints[0, H36Key.LHIP, :] = [0.1, 0.0, 0.0]
+    keypoints[0, H36Key.RKNEE, :] = [-0.1, -0.4, 0.0]
+    keypoints[0, H36Key.LKNEE, :] = [0.1, -0.4, 0.0]
+    keypoints[0, H36Key.RFOOT, :] = [-0.1, -0.8, 0.0]
+    keypoints[0, H36Key.LFOOT, :] = [0.1, -0.8, 0.0]
 
-    # Shoulders
-    keypoints[0, BKey.LEFT_SHOULDER, :] = [280, 200, 0.9]
-    keypoints[0, BKey.RIGHT_SHOULDER, :] = [360, 200, 0.9]
+    # Torso/Spine
+    keypoints[0, H36Key.SPINE, :] = [0.0, 0.2, 0.0]
+    keypoints[0, H36Key.THORAX, :] = [0.0, 0.3, 0.0]
+    keypoints[0, H36Key.NECK, :] = [0.0, 0.4, 0.0]
+    keypoints[0, H36Key.HEAD, :] = [0.0, 0.5, 0.0]
 
-    # Elbows
-    keypoints[0, BKey.LEFT_ELBOW, :] = [260, 280, 0.8]
-    keypoints[0, BKey.RIGHT_ELBOW, :] = [380, 280, 0.8]
-
-    # Wrists
-    keypoints[0, BKey.LEFT_WRIST, :] = [250, 350, 0.7]
-    keypoints[0, BKey.RIGHT_WRIST, :] = [390, 350, 0.7]
-
-    # Hips
-    keypoints[0, BKey.LEFT_HIP, :] = [290, 350, 0.9]
-    keypoints[0, BKey.RIGHT_HIP, :] = [350, 350, 0.9]
-
-    # Knees
-    keypoints[0, BKey.LEFT_KNEE, :] = [290, 420, 0.8]
-    keypoints[0, BKey.RIGHT_KNEE, :] = [350, 420, 0.8]
-
-    # Ankles
-    keypoints[0, BKey.LEFT_ANKLE, :] = [290, 470, 0.7]
-    keypoints[0, BKey.RIGHT_ANKLE, :] = [350, 470, 0.7]
-
-    # Heels and foot index (for edge detection)
-    keypoints[0, BKey.LEFT_HEEL, :] = [280, 470, 0.7]
-    keypoints[0, BKey.RIGHT_HEEL, :] = [360, 470, 0.7]
-    keypoints[0, BKey.LEFT_FOOT_INDEX, :] = [300, 480, 0.7]
-    keypoints[0, BKey.RIGHT_FOOT_INDEX, :] = [340, 480, 0.7]
+    # Arms (from thorax in H3.6M)
+    keypoints[0, H36Key.RSHOULDER, :] = [-0.15, 0.3, 0.0]
+    keypoints[0, H36Key.RELBOW, :] = [-0.2, 0.15, 0.0]
+    keypoints[0, H36Key.RWRIST, :] = [-0.22, 0.0, 0.0]
+    keypoints[0, H36Key.LSHOULDER, :] = [0.15, 0.3, 0.0]
+    keypoints[0, H36Key.LELBOW, :] = [0.2, 0.15, 0.0]
+    keypoints[0, H36Key.LWRIST, :] = [0.22, 0.0, 0.0]
 
     return keypoints
 

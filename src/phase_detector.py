@@ -10,10 +10,16 @@ from scipy.signal import find_peaks
 from .metrics import BiomechanicsAnalyzer, PhaseDetectionResult
 from .element_defs import ElementDef
 from .types import ElementPhase, NormalizedPose
-from . import geometry, video, smoothing, blade_edge_detector, spatial_reference, subtitles, visualization
+from . import spatial_reference
 from .geometry import calculate_com_trajectory, get_mid_hip
 
-BladeEdgeDetector = blade_edge_detector.BladeEdgeDetector
+# BladeEdgeDetector is optional (requires 3D poses)
+try:
+    from . import blade_edge_detector
+    BladeEdgeDetector = blade_edge_detector.BladeEdgeDetector
+    BLADE_DETECTOR_AVAILABLE = True
+except Exception:
+    BLADE_DETECTOR_AVAILABLE = False
 
 
 class PhaseDetector:
@@ -61,7 +67,7 @@ class PhaseDetector:
         video qualities and jump types. Falls back to blade detection if CoM fails.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             fps: Frame rate.
 
         Returns:
@@ -70,8 +76,8 @@ class PhaseDetector:
         # Try improved CoM-based detection first (adaptive thresholds)
         com_result = self._detect_jump_phases_com_improved(poses, fps)
 
-        # If low confidence, try blade detection as backup
-        if com_result.confidence < 0.5:
+        # If low confidence and blade detector is available, try blade detection as backup
+        if com_result.confidence < 0.5 and BLADE_DETECTOR_AVAILABLE:
             blade_result = self._detect_jump_phases_blade(poses, fps)
             # Use the result with higher confidence
             if blade_result.confidence > com_result.confidence:

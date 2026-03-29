@@ -53,14 +53,16 @@ class TestPoseExtractorKeypoints:
     """Test extracted keypoint structure."""
 
     def test_keypoint_indices(self):
-        """Should have exactly 17 keypoints."""
+        """Should have exactly 17 keypoints (H3.6M format)."""
         # This tests the constant definition
         assert len(list(BKey)) == 17
 
     def test_keypoint_names(self):
-        """Should have expected keypoint names."""
-        assert BKey.NOSE == 0
-        assert BKey.LEFT_SHOULDER == 5
-        assert BKey.RIGHT_SHOULDER == 6
-        assert BKey.LEFT_HIP == 11
-        assert BKey.RIGHT_HIP == 12
+        """Should have expected keypoint names (H3.6M format)."""
+        # H3.6M 17kp indices
+        assert BKey.HIP_CENTER == 0
+        assert BKey.HEAD == 10  # NOSE maps to HEAD in backward compat
+        assert BKey.LSHOULDER == 11
+        assert BKey.RSHOULDER == 14
+        assert BKey.LHIP == 4
+        assert BKey.RHIP == 1

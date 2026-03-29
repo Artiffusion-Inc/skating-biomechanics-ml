@@ -256,15 +256,15 @@ class PoseSmoother:
         """Smooth pose sequence using One-Euro Filter.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
 
         Returns:
-            Smoothed poses (num_frames, 33, 2).
+            Smoothed poses (num_frames, 17, 2).
         """
         _num_frames, num_joints, num_coords = poses.shape
 
-        if num_joints != 33 or num_coords != 2:
-            msg = f"Expected shape (N, 33, 2), got {poses.shape}"
+        if num_joints != 17 or num_coords != 2:
+            msg = f"Expected shape (N, 17, 2), got {poses.shape}"
             raise ValueError(msg)
 
         # Create output array
@@ -275,6 +275,38 @@ class PoseSmoother:
             for coord_idx in range(num_coords):
                 # Extract time series for this joint/coordinate
                 series = poses[:, joint_idx, coord_idx]
+
+                # Get filter and apply
+                filter_obj = self._get_filter(joint_idx, coord_idx)
+                smoothed[:, joint_idx, coord_idx] = filter_obj.reset_and_filter(series)
+
+        return smoothed
+
+    def smooth_3d(self, poses_3d: NDArray[np.float32]) -> NDArray[np.float32]:
+        """Smooth 3D pose sequence using One-Euro Filter.
+
+        Processes x, y, z coordinates independently for each joint.
+
+        Args:
+            poses_3d: 3D poses (num_frames, 17, 3) with x, y, z in meters.
+
+        Returns:
+            Smoothed 3D poses (num_frames, 17, 3).
+        """
+        _num_frames, num_joints, num_coords = poses_3d.shape
+
+        if num_joints != 17 or num_coords != 3:
+            msg = f"Expected shape (N, 17, 3), got {poses_3d.shape}"
+            raise ValueError(msg)
+
+        # Create output array
+        smoothed = np.zeros_like(poses_3d)
+
+        # Filter each joint and coordinate independently
+        for joint_idx in range(num_joints):
+            for coord_idx in range(num_coords):  # x, y, z
+                # Extract time series for this joint/coordinate
+                series = poses_3d[:, joint_idx, coord_idx]
 
                 # Get filter and apply
                 filter_obj = self._get_filter(joint_idx, coord_idx)
@@ -293,12 +325,12 @@ class PoseSmoother:
         rapid transitions (e.g., takeoff, landing).
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             phase_boundaries: List of frame indices where phases change.
                 E.g., [takeoff, peak, landing] for jumps.
 
         Returns:
-            Smoothed poses (num_frames, 33, 2).
+            Smoothed poses (num_frames, 17, 2).
         """
         if not phase_boundaries:
             return self.smooth(poses)

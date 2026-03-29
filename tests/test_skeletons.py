@@ -10,7 +10,7 @@ from src.skeletons import (
     get_skeleton_tree,
     render_tree,
 )
-from src.types import BKey
+from src.types import H36Key, BKey  # BKey is alias for H36Key
 
 
 class TestSkeletonTree:
@@ -24,8 +24,8 @@ class TestSkeletonTree:
         assert tree.children is not None
         assert len(tree.children) > 0
 
-    def test_tree_has_all_blazepose_keypoints(self):
-        """Test that all BlazePose keypoints are in the tree."""
+    def test_tree_has_all_h36m_keypoints(self):
+        """Test that all H3.6M keypoints are in the tree."""
         tree = get_skeleton_tree()
         keypoint_indices = set()
 
@@ -33,8 +33,8 @@ class TestSkeletonTree:
             if hasattr(node, "id") and node.id is not None:
                 keypoint_indices.add(int(node.id))
 
-        # Should have all 33 BlazePose keypoints (0-32)
-        expected_indices = set(range(33))
+        # Should have all 17 H3.6M keypoints (0-16)
+        expected_indices = set(range(17))
         assert keypoint_indices == expected_indices
 
     def test_get_bone_pairs(self):
@@ -48,9 +48,9 @@ class TestSkeletonTree:
             assert len(pair) == 2
             assert isinstance(pair[0], int)
             assert isinstance(pair[1], int)
-            # Indices should be valid BlazePose keypoints
-            assert 0 <= pair[0] < 33
-            assert 0 <= pair[1] < 33
+            # Indices should be valid H3.6M keypoints
+            assert 0 <= pair[0] < 17
+            assert 0 <= pair[1] < 17
 
     def test_bone_pairs_are_unique(self):
         """Test that bone pairs are unique."""
@@ -61,32 +61,31 @@ class TestSkeletonTree:
         """Test bone name mapping."""
         names = get_bone_names()
 
-        assert len(names) == 33  # All BlazePose keypoints
+        # H3.6M has 17 keypoints
+        assert len(names) == 17
         assert all(isinstance(k, int) for k in names)
         assert all(isinstance(v, str) for v in names.values())
 
-        # Check specific keypoints
-        assert names[BKey.NOSE] == "nose"
-        assert names[BKey.LEFT_SHOULDER] == "left_shoulder"
-        assert names[BKey.RIGHT_SHOULDER] == "right_shoulder"
-        assert names[BKey.LEFT_HIP] == "left_hip"
-        assert names[BKey.RIGHT_HIP] == "right_hip"
+        # Check specific keypoints (H3.6M naming)
+        assert names[H36Key.HIP_CENTER] == "hip_center"
+        assert names[H36Key.LSHOULDER] == "left_shoulder"
+        assert names[H36Key.RSHOULDER] == "right_shoulder"
+        assert names[H36Key.LHIP] == "left_hip"
+        assert names[H36Key.RHIP] == "right_hip"
 
     def test_get_children_of(self):
         """Test getting children of a joint."""
         # Left shoulder should have left elbow as child
-        left_shoulder_children = get_children_of(BKey.LEFT_SHOULDER)
-        assert BKey.LEFT_ELBOW in left_shoulder_children
+        left_shoulder_children = get_children_of(H36Key.LSHOULDER)
+        assert H36Key.LELBOW in left_shoulder_children
 
         # Left elbow should have left wrist as child
-        left_elbow_children = get_children_of(BKey.LEFT_ELBOW)
-        assert BKey.LEFT_WRIST in left_elbow_children
+        left_elbow_children = get_children_of(H36Key.LELBOW)
+        assert H36Key.LWRIST in left_elbow_children
 
-        # Left wrist should have fingers as children
-        left_wrist_children = get_children_of(BKey.LEFT_WRIST)
-        assert BKey.LEFT_PINKY in left_wrist_children
-        assert BKey.LEFT_INDEX in left_wrist_children
-        assert BKey.LEFT_THUMB in left_wrist_children
+        # H3.6M doesn't have finger keypoints, so wrist has no children
+        left_wrist_children = get_children_of(H36Key.LWRIST)
+        # In H3.6M, wrist is a leaf node (no fingers)
 
     def test_get_children_of_invalid_joint(self):
         """Test getting children of invalid joint returns empty list."""
@@ -99,7 +98,7 @@ class TestSkeletonTree:
         assert isinstance(tree_str, str)
         assert len(tree_str) > 0
         assert "root" in tree_str
-        assert "nose" in tree_str
+        assert "hip_center" in tree_str
         assert "left_shoulder" in tree_str
         assert "right_shoulder" in tree_str
 
@@ -115,27 +114,27 @@ class TestSkeletonTree:
         assert lines[0].startswith("root")
 
     def test_blazepose_bone_pairs_constant(self):
-        """Test BLAZEPOSE_BONE_PAIRS constant."""
+        """Test BLAZEPOSE_BONE_PAIRS constant (legacy alias)."""
         assert len(BLAZEPOSE_BONE_PAIRS) > 0
 
-        # All should be valid keypoint pairs
+        # All should be valid keypoint pairs (H3.6M 17kp)
         for pair in BLAZEPOSE_BONE_PAIRS:
             assert isinstance(pair, tuple)
             assert len(pair) == 2
-            assert 0 <= pair[0] < 33
-            assert 0 <= pair[1] < 33
+            assert 0 <= pair[0] < 17
+            assert 0 <= pair[1] < 17
 
     def test_biomechanics_bone_pairs_constant(self):
         """Test BIOMECHANICS_BONE_PAIRS constant."""
         assert len(BIOMECHANICS_BONE_PAIRS) > 0
-        assert len(BIOMECHANICS_BONE_PAIRS) < len(BLAZEPOSE_BONE_PAIRS)  # Subset
+        assert len(BIOMECHANICS_BONE_PAIRS) <= len(BLAZEPOSE_BONE_PAIRS)  # Subset
 
-        # Should contain major limb segments
+        # Should contain major limb segments (H3.6M indices)
         expected_pairs = [
-            (BKey.LEFT_SHOULDER, BKey.LEFT_ELBOW),
-            (BKey.LEFT_ELBOW, BKey.LEFT_WRIST),
-            (BKey.RIGHT_SHOULDER, BKey.RIGHT_ELBOW),
-            (BKey.RIGHT_ELBOW, BKey.RIGHT_WRIST),
+            (H36Key.LSHOULDER, H36Key.LELBOW),
+            (H36Key.LELBOW, H36Key.LWRIST),
+            (H36Key.RSHOULDER, H36Key.RELBOW),
+            (H36Key.RELBOW, H36Key.RWRIST),
         ]
 
         for pair in expected_pairs:
@@ -148,7 +147,7 @@ class TestSkeletonTree:
         # Find left shoulder node
         left_shoulder = None
         for node in tree.descendants:
-            if hasattr(node, "id") and node.id == BKey.LEFT_SHOULDER:
+            if hasattr(node, "id") and node.id == H36Key.LSHOULDER:
                 left_shoulder = node
                 break
 
@@ -158,15 +157,25 @@ class TestSkeletonTree:
         # Should have left elbow as child
         left_elbow = None
         for child in left_shoulder.children:
-            if hasattr(child, "id") and child.id == BKey.LEFT_ELBOW:
+            if hasattr(child, "id") and child.id == H36Key.LELBOW:
                 left_elbow = child
                 break
 
         assert left_elbow is not None
         assert left_elbow.name == "left_elbow"
 
-    def test_finger_keypoints_in_tree(self):
-        """Test that all finger keypoints are in the tree."""
+    def test_backward_compatibility_aliases(self):
+        """Test that BKey aliases work for H3.6M keypoints."""
+        # BKey should be an alias for H36Key
+        assert BKey.LSHOULDER == H36Key.LSHOULDER
+        assert BKey.LEFT_SHOULDER == H36Key.LSHOULDER  # Alias
+
+        # These should map to H3.6M equivalents
+        assert BKey.LEFT_ELBOW == H36Key.LELBOW
+        assert BKey.RIGHT_ELBOW == H36Key.RELBOW
+
+    def test_legacy_finger_keypoints_map_to_wrist(self):
+        """Test that legacy finger keypoints map to wrist (backward compat)."""
         tree = get_skeleton_tree()
         keypoint_indices = set()
 
@@ -174,21 +183,14 @@ class TestSkeletonTree:
             if hasattr(node, "id") and node.id is not None:
                 keypoint_indices.add(int(node.id))
 
-        # Check specific finger keypoints
-        finger_keypoints = [
-            BKey.LEFT_PINKY,
-            BKey.LEFT_INDEX,
-            BKey.LEFT_THUMB,
-            BKey.RIGHT_PINKY,
-            BKey.RIGHT_INDEX,
-            BKey.RIGHT_THUMB,
-        ]
+        # Legacy finger keypoints should map to wrist in H3.6M
+        # They are in the enum as aliases pointing to wrist
+        assert H36Key.LEFT_PINKY == H36Key.LWRIST
+        assert H36Key.LEFT_INDEX == H36Key.LWRIST
+        assert H36Key.LEFT_THUMB == H36Key.LWRIST
 
-        for kp in finger_keypoints:
-            assert kp in keypoint_indices
-
-    def test_foot_keypoints_in_tree(self):
-        """Test that all foot keypoints are in the tree."""
+    def test_legacy_foot_keypoints_map_to_foot(self):
+        """Test that legacy detailed foot keypoints map to foot."""
         tree = get_skeleton_tree()
         keypoint_indices = set()
 
@@ -196,13 +198,7 @@ class TestSkeletonTree:
             if hasattr(node, "id") and node.id is not None:
                 keypoint_indices.add(int(node.id))
 
-        # Check specific foot keypoints
-        foot_keypoints = [
-            BKey.LEFT_HEEL,
-            BKey.LEFT_FOOT_INDEX,
-            BKey.RIGHT_HEEL,
-            BKey.RIGHT_FOOT_INDEX,
-        ]
-
-        for kp in foot_keypoints:
-            assert kp in keypoint_indices
+        # Legacy foot keypoints should map to LFOOT/RFOOT in H3.6M
+        assert H36Key.LEFT_HEEL == H36Key.LFOOT
+        assert H36Key.LEFT_FOOT_INDEX == H36Key.LFOOT
+        assert H36Key.LEFT_ANKLE == H36Key.LFOOT

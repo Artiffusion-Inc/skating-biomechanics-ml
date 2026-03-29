@@ -6,7 +6,7 @@ including their biomechanical characteristics and ideal performance ranges.
 
 from dataclasses import dataclass
 
-from .types import BKey
+from .types import H36Key
 
 
 @dataclass(frozen=True)
@@ -18,7 +18,7 @@ class ElementDef:
         name_ru: Russian name for display.
         rotations: Number of rotations (0 for steps, 1+ for jumps).
         has_toe_pick: True if takeoff uses toe pick (toe loop, flip, lutz).
-        key_joints: List of BKey indices relevant for analysis.
+        key_joints: List of H36Key indices relevant for analysis.
         ideal_metrics: Dict of metric_name -> (min_good, max_good) ranges.
     """
 
@@ -38,14 +38,14 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
         rotations=0,
         has_toe_pick=False,
         key_joints=[
-            BKey.LEFT_HIP,
-            BKey.RIGHT_HIP,
-            BKey.LEFT_KNEE,
-            BKey.RIGHT_KNEE,
-            BKey.LEFT_ANKLE,
-            BKey.RIGHT_ANKLE,
-            BKey.LEFT_SHOULDER,
-            BKey.RIGHT_SHOULDER,
+            H36Key.LHIP,
+            H36Key.RHIP,
+            H36Key.LKNEE,
+            H36Key.RKNEE,
+            H36Key.LFOOT,
+            H36Key.RFOOT,
+            H36Key.LSHOULDER,
+            H36Key.RSHOULDER,
         ],
         ideal_metrics={
             "knee_angle": (100, 140),  # Knee bend during entry (flexed knees)
@@ -60,16 +60,16 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
         rotations=1,  # Half jump, but treated as jump for analysis
         has_toe_pick=False,
         key_joints=[
-            BKey.LEFT_HIP,
-            BKey.RIGHT_HIP,
-            BKey.LEFT_KNEE,
-            BKey.RIGHT_KNEE,
-            BKey.LEFT_ANKLE,
-            BKey.RIGHT_ANKLE,
-            BKey.LEFT_SHOULDER,
-            BKey.RIGHT_SHOULDER,
-            BKey.LEFT_WRIST,
-            BKey.RIGHT_WRIST,
+            H36Key.LHIP,
+            H36Key.RHIP,
+            H36Key.LKNEE,
+            H36Key.RKNEE,
+            H36Key.LFOOT,
+            H36Key.RFOOT,
+            H36Key.LSHOULDER,
+            H36Key.RSHOULDER,
+            H36Key.LWRIST,
+            H36Key.RWRIST,
         ],
         ideal_metrics={
             "airtime": (0.3, 0.7),  # Seconds in flight
@@ -85,14 +85,14 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
         rotations=1,
         has_toe_pick=True,
         key_joints=[
-            BKey.LEFT_HIP,
-            BKey.RIGHT_HIP,
-            BKey.LEFT_KNEE,
-            BKey.RIGHT_KNEE,
-            BKey.LEFT_ANKLE,
-            BKey.RIGHT_ANKLE,
-            BKey.LEFT_SHOULDER,
-            BKey.RIGHT_SHOULDER,
+            H36Key.LHIP,
+            H36Key.RHIP,
+            H36Key.LKNEE,
+            H36Key.RKNEE,
+            H36Key.LFOOT,
+            H36Key.RFOOT,
+            H36Key.LSHOULDER,
+            H36Key.RSHOULDER,
         ],
         ideal_metrics={
             "airtime": (0.35, 0.6),  # Seconds for single rotation
@@ -108,14 +108,14 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
         rotations=1,
         has_toe_pick=True,
         key_joints=[
-            BKey.LEFT_HIP,
-            BKey.RIGHT_HIP,
-            BKey.LEFT_KNEE,
-            BKey.RIGHT_KNEE,
-            BKey.LEFT_ANKLE,
-            BKey.RIGHT_ANKLE,
-            BKey.LEFT_SHOULDER,
-            BKey.RIGHT_SHOULDER,
+            H36Key.LHIP,
+            H36Key.RHIP,
+            H36Key.LKNEE,
+            H36Key.RKNEE,
+            H36Key.LFOOT,
+            H36Key.RFOOT,
+            H36Key.LSHOULDER,
+            H36Key.RSHOULDER,
         ],
         ideal_metrics={
             "airtime": (0.35, 0.6),  # Seconds for single rotation

@@ -1,10 +1,13 @@
-"""Tests for pose normalization."""
+"""Tests for pose normalization.
+
+Updated for H3.6M 17-keypoint 3D format.
+"""
 
 import numpy as np
 import pytest
 
 from src.normalizer import PoseNormalizer
-from src.types import BKey
+from src.types import H36Key, BKey
 
 
 class TestPoseNormalizer:
@@ -28,19 +31,20 @@ class TestPoseNormalizer:
 
         normalized = normalizer.normalize(sample_keypoints)
 
-        assert normalized.shape == (1, 33, 2)
+        # Returns 2D normalized poses (N, 17, 2)
+        assert normalized.shape == (1, 17, 2)
         assert normalized.dtype == np.float32
 
     def test_normalize_centers_at_origin(self, sample_keypoints):
-        """Should center mid-hip at origin."""
+        """Should center hip_center at origin."""
         normalizer = PoseNormalizer()
 
         normalized = normalizer.normalize(sample_keypoints)
 
-        # Mid-hip should be at origin
-        mid_hip = (normalized[0, BKey.LEFT_HIP] + normalized[0, BKey.RIGHT_HIP]) / 2
+        # Hip_center should be at origin after normalization
+        hip_center = normalized[0, H36Key.HIP_CENTER]
 
-        assert np.allclose(mid_hip, [0, 0], atol=1e-5)
+        assert np.allclose(hip_center, [0, 0], atol=1e-5)
 
     def test_normalize_scales_spine(self, sample_keypoints):
         """Should scale spine to target length."""
@@ -50,30 +54,30 @@ class TestPoseNormalizer:
         normalized = normalizer.normalize(sample_keypoints)
 
         # Calculate spine length in normalized pose
-        mid_shoulder = (normalized[0, BKey.LEFT_SHOULDER] + normalized[0, BKey.RIGHT_SHOULDER]) / 2
-        mid_hip = (normalized[0, BKey.LEFT_HIP] + normalized[0, BKey.RIGHT_HIP]) / 2
+        thorax = normalized[0, H36Key.THORAX]
+        hip_center = normalized[0, H36Key.HIP_CENTER]
 
-        spine_length = np.linalg.norm(mid_shoulder - mid_hip)
+        spine_length = np.linalg.norm(thorax - hip_center)
 
         assert np.isclose(spine_length, target_spine, rtol=0.01)
 
     def test_is_valid_frame_good_confidence(self, sample_keypoints):
-        """Should accept frame with good confidence."""
+        """Should accept frame with good keypoints."""
         normalizer = PoseNormalizer()
 
-        # All keypoints have confidence >= 0.7
+        # Sample keypoints have valid positions
         is_valid = normalizer.is_valid_frame(sample_keypoints[0], min_visible=0.7)
 
-        # Depends on sample_keypoints confidence values
+        # Should be valid
         assert isinstance(is_valid, bool)
 
     def test_is_valid_frame_low_confidence(self):
-        """Should reject frame with low confidence."""
+        """Should reject frame with low valid keypoints."""
         normalizer = PoseNormalizer()
 
-        # Create frame with low confidence (33 keypoints for BlazePose)
-        low_conf_frame = np.zeros((33, 3), dtype=np.float32)
-        low_conf_frame[:, 2] = 0.1  # All low confidence
+        # Create frame with all zeros (17 keypoints for H3.6M)
+        low_conf_frame = np.zeros((17, 3), dtype=np.float32)
+        # All at origin - invalid
 
         is_valid = normalizer.is_valid_frame(low_conf_frame, min_visible=0.7)
 
@@ -83,8 +87,8 @@ class TestPoseNormalizer:
         """Should reject frame with wrong shape."""
         normalizer = PoseNormalizer()
 
-        # Wrong shape - missing confidence channel
-        wrong_shape = np.zeros((33, 2), dtype=np.float32)
+        # Wrong shape - 2D instead of 3D
+        wrong_shape = np.zeros((17, 2), dtype=np.float32)
 
         is_valid = normalizer.is_valid_frame(wrong_shape)
 
@@ -107,22 +111,19 @@ class TestNormalizeMultipleFrames:
         """Should normalize three frames correctly."""
         normalizer = PoseNormalizer()
 
-        # Create three identical frames (33 keypoints for BlazePose)
-        frames = np.tile(np.zeros((1, 33, 3), dtype=np.float32), (3, 1, 1))
+        # Create three identical frames (17 keypoints for H3.6M)
+        frames = np.tile(np.zeros((1, 17, 3), dtype=np.float32), (3, 1, 1))
 
-        # Set some positions (BlazePose 33 format)
+        # Set some positions (H3.6M 17 format)
         for i in range(3):
-            frames[i, BKey.LEFT_SHOULDER, :2] = [280, 200]
-            frames[i, BKey.RIGHT_SHOULDER, :2] = [360, 200]
-            frames[i, BKey.LEFT_HIP, :2] = [290, 350]
-            frames[i, BKey.RIGHT_HIP, :2] = [350, 350]
-            frames[i, :, 2] = 0.9  # confidence
+            frames[i, H36Key.THORAX] = [0.0, 0.3, 0.0]
+            frames[i, H36Key.HIP_CENTER] = [0.0, 0.0, 0.0]
 
         normalized = normalizer.normalize(frames)
 
-        assert normalized.shape == (3, 33, 2)
+        assert normalized.shape == (3, 17, 2)
 
-        # Each frame should be centered
+        # Each frame should be centered at hip_center
         for i in range(3):
-            mid_hip = (normalized[i, BKey.LEFT_HIP] + normalized[i, BKey.RIGHT_HIP]) / 2
-            assert np.allclose(mid_hip, [0, 0], atol=1e-5)
+            hip_center = normalized[i, H36Key.HIP_CENTER]
+            assert np.allclose(hip_center, [0, 0], atol=1e-5)

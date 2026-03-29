@@ -10,10 +10,11 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from .types import (
-    BKey,
     ElementPhase,
+    H36Key,
     MetricResult,
     NormalizedPose,
+    Pose3D,
     TimeSeries,
 )
 from .geometry import (
@@ -47,7 +48,7 @@ class BiomechanicsAnalyzer:
         """Compute all relevant metrics for the element.
 
         Args:
-            poses: Normalized pose sequence (num_frames, 33, 2).
+            poses: Normalized pose sequence (num_frames, 17, 2).
             phases: Element phase boundaries.
             fps: Video frame rate.
 
@@ -157,7 +158,7 @@ class BiomechanicsAnalyzer:
         """Analyze step/edge-specific metrics.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries (used for duration calc).
             fps: Frame rate (used for duration calc).
         """
@@ -215,7 +216,7 @@ class BiomechanicsAnalyzer:
         """Analyze metrics common to all elements.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries.
             fps: Frame rate (reserved for future use).
         """
@@ -245,7 +246,7 @@ class BiomechanicsAnalyzer:
         """Compute angle ABC for each frame.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             joint_a: Index of first joint.
             joint_b: Index of vertex joint.
             joint_c: Index of third joint.
@@ -339,7 +340,7 @@ class BiomechanicsAnalyzer:
         "flight time" and therefore the computed height.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries.
 
         Returns:
@@ -368,7 +369,7 @@ class BiomechanicsAnalyzer:
         """Compute landing knee angle.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries.
 
         Returns:
@@ -377,25 +378,25 @@ class BiomechanicsAnalyzer:
         # Use left knee angle at landing frame
         landing_frame = min(phases.landing, len(poses) - 1)
 
-        hip = poses[landing_frame, BKey.LEFT_HIP]
-        knee = poses[landing_frame, BKey.LEFT_KNEE]
-        ankle = poses[landing_frame, BKey.LEFT_ANKLE]
+        hip = poses[landing_frame, H36Key.LHIP]
+        knee = poses[landing_frame, H36Key.LKNEE]
+        foot = poses[landing_frame, H36Key.LFOOT]
 
-        return angle_3pt(hip, knee, ankle)
+        return angle_3pt(hip, knee, foot)
 
     def compute_arm_position(self, poses: NormalizedPose) -> float:
         """Compute arm position score.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
 
         Returns:
             Score [0, 1] where 1 = arms close to body (good for jumps).
         """
         # Calculate average wrist-to-shoulder distance
-        left_dist = np.linalg.norm(poses[:, BKey.LEFT_WRIST] - poses[:, BKey.LEFT_SHOULDER], axis=1)
+        left_dist = np.linalg.norm(poses[:, H36Key.LWRIST] - poses[:, H36Key.LSHOULDER], axis=1)
         right_dist = np.linalg.norm(
-            poses[:, BKey.RIGHT_WRIST] - poses[:, BKey.RIGHT_SHOULDER], axis=1
+            poses[:, H36Key.RWRIST] - poses[:, H36Key.RSHOULDER], axis=1
         )
 
         avg_dist = float(np.mean(left_dist + right_dist) / 2)
@@ -406,7 +407,7 @@ class BiomechanicsAnalyzer:
         """Compute trunk lean angle.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
 
         Returns:
             Trunk angle in degrees (positive = forward lean).
@@ -415,8 +416,8 @@ class BiomechanicsAnalyzer:
 
         for i, pose in enumerate(poses):
             # Compute mid-shoulder and mid-hip for this frame
-            mid_shoulder = (pose[BKey.LEFT_SHOULDER] + pose[BKey.RIGHT_SHOULDER]) / 2
-            mid_hip = (pose[BKey.LEFT_HIP] + pose[BKey.RIGHT_HIP]) / 2
+            mid_shoulder = (pose[H36Key.LSHOULDER] + pose[H36Key.RSHOULDER]) / 2
+            mid_hip = (pose[H36Key.LHIP] + pose[H36Key.RHIP]) / 2
 
             # Vector from hip to shoulder
             spine_vector = mid_shoulder - mid_hip
@@ -434,20 +435,20 @@ class BiomechanicsAnalyzer:
         """Compute knee angle series for step elements.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             side: "left" or "right" knee.
 
         Returns:
             Knee angle in degrees (num_frames,).
         """
         if side == "left":
-            hip_idx, knee_idx, ankle_idx = BKey.LEFT_HIP, BKey.LEFT_KNEE, BKey.LEFT_ANKLE
+            hip_idx, knee_idx, foot_idx = H36Key.LHIP, H36Key.LKNEE, H36Key.LFOOT
         else:
-            hip_idx, knee_idx, ankle_idx = BKey.RIGHT_HIP, BKey.RIGHT_KNEE, BKey.RIGHT_ANKLE
+            hip_idx, knee_idx, foot_idx = H36Key.RHIP, H36Key.RKNEE, H36Key.RFOOT
 
         angles = np.zeros(len(poses), dtype=np.float32)
         for i, pose in enumerate(poses):
-            angles[i] = angle_3pt(pose[hip_idx], pose[knee_idx], pose[ankle_idx])
+            angles[i] = angle_3pt(pose[hip_idx], pose[knee_idx], pose[foot_idx])
         return angles
 
     def compute_edge_indicator(
@@ -455,46 +456,47 @@ class BiomechanicsAnalyzer:
         poses: NormalizedPose,
         side: str = "left",
     ) -> TimeSeries:
-        """Compute edge indicator from foot geometry using BlazePose 33 keypoints.
+        """Compute edge indicator using H3.6M 17-keypoint format.
 
-        Uses heel and foot_index points to determine which edge is on the ice.
-        - Inside edge: foot tilted toward center of turn (positive)
-        - Outside edge: foot tilted away from center (negative)
-        - Flat edge: foot level with ice (near zero)
+        Uses body lean angle and foot velocity to infer blade edge.
+        - Inside edge: body leaning into turn (positive)
+        - Outside edge: body leaning away from turn (negative)
+        - Flat edge: body upright (near zero)
+
+        Note: This is a simplified inference since H3.6M lacks detailed foot keypoints.
+        For accurate blade detection, use BladeEdgeDetector3D with full 3D poses.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             side: "left" or "right" foot.
 
         Returns:
             Edge indicator: +1 = inside edge, -1 = outside edge, 0 = flat.
         """
-        if side == "left":
-            heel_idx, toe_idx = BKey.LEFT_HEEL, BKey.LEFT_FOOT_INDEX
-        else:
-            heel_idx, toe_idx = BKey.RIGHT_HEEL, BKey.RIGHT_FOOT_INDEX
-
         edge_indicator = np.zeros(len(poses), dtype=np.float32)
 
         for i, pose in enumerate(poses):
-            heel = pose[heel_idx]
-            toe = pose[toe_idx]
+            # Use trunk lean as proxy for edge (simplified approach)
+            if side == "left":
+                # For left foot, use left hip-shoulder line
+                hip = pose[H36Key.LHIP]
+                shoulder = pose[H36Key.LSHOULDER]
+            else:
+                # For right foot, use right hip-shoulder line
+                hip = pose[H36Key.RHIP]
+                shoulder = pose[H36Key.RSHOULDER]
 
-            # Vector from heel to toe
-            foot_vector = toe - heel
+            # Vector from hip to shoulder
+            spine_vector = shoulder - hip
 
-            # In normalized coordinates, Y points down (image coordinates)
-            # A positive Y component means toe is below heel (toe pointing down)
-            # This corresponds to being on an inside edge
-            # The X component shows direction of push
-
-            # Use atan2 to get foot angle relative to horizontal
-            # Negative angle = toe up (outside edge or toe pick)
-            # Positive angle = toe down (inside edge)
-            angle = np.arctan2(-foot_vector[1], foot_vector[0])
+            # Angle from vertical indicates lean direction
+            # In normalized coords: atan2(x, -y) gives angle from vertical
+            angle = np.arctan2(spine_vector[0], -spine_vector[1])
 
             # Normalize to [-1, 1] range
-            edge_indicator[i] = float(np.clip(angle / (np.pi / 4), -1, 1))
+            # Positive = leaning left (inside edge for left foot)
+            # Negative = leaning right (outside edge for left foot)
+            edge_indicator[i] = float(np.clip(angle / (np.pi / 6), -1, 1))
 
         return edge_indicator
 
@@ -507,7 +509,7 @@ class BiomechanicsAnalyzer:
         """Compute peak rotation speed during jump.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries.
             fps: Frame rate.
 
@@ -518,8 +520,8 @@ class BiomechanicsAnalyzer:
         angles = np.zeros(len(poses), dtype=np.float32)
 
         for i, pose in enumerate(poses):
-            left_shoulder = pose[BKey.LEFT_SHOULDER]
-            right_shoulder = pose[BKey.RIGHT_SHOULDER]
+            left_shoulder = pose[H36Key.LSHOULDER]
+            right_shoulder = pose[H36Key.RSHOULDER]
 
             # Vector from left to right shoulder
             shoulder_vector = right_shoulder - left_shoulder
@@ -544,7 +546,7 @@ class BiomechanicsAnalyzer:
         """Compute body symmetry score.
 
         Args:
-            poses: NormalizedPose (num_frames, 33, 2).
+            poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries.
 
         Returns:
@@ -557,10 +559,10 @@ class BiomechanicsAnalyzer:
 
         # Calculate left-right asymmetry for key joints
         joint_pairs = [
-            (BKey.LEFT_SHOULDER, BKey.RIGHT_SHOULDER),
-            (BKey.LEFT_ELBOW, BKey.RIGHT_ELBOW),
-            (BKey.LEFT_HIP, BKey.RIGHT_HIP),
-            (BKey.LEFT_KNEE, BKey.RIGHT_KNEE),
+            (H36Key.LSHOULDER, H36Key.RSHOULDER),
+            (H36Key.LELBOW, H36Key.RELBOW),
+            (H36Key.LHIP, H36Key.RHIP),
+            (H36Key.LKNEE, H36Key.RKNEE),
         ]
 
         asymmetries: list[float] = []

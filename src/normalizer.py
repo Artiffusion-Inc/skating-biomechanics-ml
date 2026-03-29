@@ -1,15 +1,16 @@
 """Pose normalization for camera-invariant analysis.
 
 This module provides normalization utilities to make poses invariant to:
-- Root position (centering at mid-hip)
+- Root position (centering at hip_center)
 - Scale (spine length normalization)
 - Anthropometry (body proportions)
+
+Updated for H3.6M 17-keypoint format (3D-only pipeline).
 """
 
 import numpy as np
 
-from .types import BKey, FrameKeypoints, NormalizedPose
-from .geometry import get_mid_hip, get_mid_shoulder
+from .types import H36Key, Pose3D, NormalizedPose
 
 
 class PoseNormalizer:
@@ -24,52 +25,48 @@ class PoseNormalizer:
 
         Args:
             target_spine_length: Target spine length after normalization.
-                Spine is measured from mid-shoulder to mid-hip.
+                Spine is measured from thorax to hip_center.
                 Default 0.4 is typical for adult athletes.
         """
         self._target_spine_length = target_spine_length
 
-    def normalize(self, keypoints: FrameKeypoints) -> NormalizedPose:
-        """Normalize poses via root-centering and scale normalization.
+    def normalize(self, poses: Pose3D) -> NormalizedPose:
+        """Normalize 3D poses via root-centering and scale normalization.
 
         Normalization steps:
-        1. Center each frame at mid-hip (root) -> origin (0, 0)
+        1. Center each frame at hip_center (root) -> origin (0, 0, 0)
         2. Scale so spine length equals target_spine_length
-        3. Drop confidence channel (33, 3) -> (33, 2)
+        3. Project to 2D (x, y) for normalized 2D poses
 
         Args:
-            keypoints: Raw keypoints (num_frames, 33, 3) with x, y, confidence.
+            poses: 3D poses (num_frames, 17, 3) with x, y, z in meters.
 
         Returns:
-            NormalizedPose (num_frames, 33, 2) with centered, scaled coordinates.
+            NormalizedPose (num_frames, 17, 2) with centered, scaled coordinates.
 
         Raises:
-            ValueError: If keypoints shape is invalid.
+            ValueError: If poses shape is invalid.
         """
-        if keypoints.ndim != 3 or keypoints.shape[1] != 33 or keypoints.shape[2] != 3:
-            raise ValueError(f"Expected keypoints shape (N, 33, 3), got {keypoints.shape}")
+        if poses.ndim != 3 or poses.shape[1] != 17 or poses.shape[2] != 3:
+            raise ValueError(f"Expected poses shape (N, 17, 3), got {poses.shape}")
 
-        num_frames = keypoints.shape[0]
-        normalized = np.zeros((num_frames, 33, 2), dtype=np.float32)
+        num_frames = poses.shape[0]
+        normalized = np.zeros((num_frames, 17, 2), dtype=np.float32)
 
         # Process each frame
         for frame_idx in range(num_frames):
-            frame_kp = keypoints[frame_idx]
+            frame = poses[frame_idx]
 
-            # Get mid-hip position
-            left_hip = frame_kp[BKey.LEFT_HIP, :2]
-            right_hip = frame_kp[BKey.RIGHT_HIP, :2]
-            mid_hip = (left_hip + right_hip) / 2
+            # Get hip_center position (root joint in H3.6M)
+            hip_center = frame[H36Key.HIP_CENTER]
 
-            # 1. Root-centering: shift mid-hip to origin
-            centered = frame_kp[:, :2] - mid_hip
+            # 1. Root-centering: shift hip_center to origin
+            centered = frame - hip_center
 
             # 2. Scale normalization
-            left_shoulder = frame_kp[BKey.LEFT_SHOULDER, :2]
-            right_shoulder = frame_kp[BKey.RIGHT_SHOULDER, :2]
-            mid_shoulder = (left_shoulder + right_shoulder) / 2
+            thorax = frame[H36Key.THORAX]
 
-            spine_vector = mid_shoulder - mid_hip
+            spine_vector = thorax - hip_center
             spine_length = np.linalg.norm(spine_vector)
 
             if spine_length < 1e-6:
@@ -78,72 +75,74 @@ class PoseNormalizer:
             else:
                 scale = self._target_spine_length / spine_length
 
-            normalized[frame_idx] = centered * scale
+            # 3. Project to 2D (x, y) - drop z coordinate
+            normalized[frame_idx] = centered[:, :2] * scale
 
         return normalized
 
-    def get_spine_length(self, keypoints: FrameKeypoints) -> float:
+    def get_spine_length(self, poses: Pose3D) -> float:
         """Calculate average spine length across frames.
 
         Args:
-            keypoints: Raw keypoints (num_frames, 17, 3).
+            poses: 3D poses (num_frames, 17, 3).
 
         Returns:
-            Average spine length in original coordinate units.
+            Average spine length in original coordinate units (meters).
         """
-        mid_hip = get_mid_hypot(keypoints)
-        mid_shoulder = get_mid_shoulder_raw(keypoints)
+        hip_center = poses[:, H36Key.HIP_CENTER]
+        thorax = poses[:, H36Key.THORAX]
 
-        spine_lengths = np.linalg.norm(mid_shoulder - mid_hip, axis=1)
+        spine_lengths = np.linalg.norm(thorax - hip_center, axis=1)
         return float(np.mean(spine_lengths))
 
     def is_valid_frame(
         self,
-        frame_kp: np.ndarray,
+        frame: np.ndarray,
         min_visible: float = 0.7,
     ) -> bool:
         """Check if frame has enough visible keypoints.
 
         Args:
-            frame_kp: Single frame keypoints (33, 3) with x, y, confidence.
+            frame: Single frame keypoints (17, 3) with x, y, z.
             min_visible: Minimum ratio of visible keypoints [0, 1].
 
         Returns:
             True if frame is valid for analysis.
         """
-        if frame_kp.shape != (33, 3):
+        if frame.shape != (17, 3):
             return False
 
-        # Count keypoints with confidence > 0.5
-        visible = np.sum(frame_kp[:, 2] > 0.5)
-        ratio = visible / 33
+        # Count keypoints with non-zero position (valid)
+        visible = np.sum(np.abs(frame).max(axis=1) > 0.01)
+        ratio = visible / 17
 
         return bool(ratio >= min_visible)
 
 
-def get_mid_hypot(keypoints: FrameKeypoints) -> np.ndarray:
-    """Calculate mid-hip point for each frame (raw keypoints).
+def get_hip_center(poses: Pose3D) -> np.ndarray:
+    """Get hip_center position for each frame.
 
     Args:
-        keypoints: Raw FrameKeypoints (num_frames, 33, 3).
+        poses: 3D poses (num_frames, 17, 3).
 
     Returns:
-        Mid-hip coordinates (num_frames, 2).
+        Hip_center coordinates (num_frames, 3).
     """
-    left_hip = keypoints[:, BKey.LEFT_HIP, :2]
-    right_hip = keypoints[:, BKey.RIGHT_HIP, :2]
-    return (left_hip + right_hip) / 2
+    return poses[:, H36Key.HIP_CENTER]
 
 
-def get_mid_shoulder_raw(keypoints: FrameKeypoints) -> np.ndarray:
-    """Calculate mid-shoulder point for each frame (raw keypoints).
+def get_thorax(poses: Pose3D) -> np.ndarray:
+    """Get thorax position for each frame.
 
     Args:
-        keypoints: Raw FrameKeypoints (num_frames, 33, 3).
+        poses: 3D poses (num_frames, 17, 3).
 
     Returns:
-        Mid-shoulder coordinates (num_frames, 2).
+        Thorax coordinates (num_frames, 3).
     """
-    left_shoulder = keypoints[:, BKey.LEFT_SHOULDER, :2]
-    right_shoulder = keypoints[:, BKey.RIGHT_SHOULDER, :2]
-    return (left_shoulder + right_shoulder) / 2
+    return poses[:, H36Key.THORAX]
+
+
+# Legacy aliases for backward compatibility
+get_mid_hypot = get_hip_center
+get_mid_shoulder_raw = get_thorax

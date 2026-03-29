@@ -18,50 +18,123 @@ if TYPE_CHECKING:
 
 
 class BKey(IntEnum):
-    """BlazePose 33 keypoint indices.
+    """H3.6M 17 keypoint indices for 3D-only pipeline.
 
-    Based on Google MediaPipe BlazePose topology.
-    https://google.github.io/mediapipe/solutions/pose.html
+    Note: Previously BlazePose 33kp, now migrated to H3.6M 17kp format.
+    This enum is now an alias for H36Key for backward compatibility.
+
+    H3.6M format is the standard for 3D human pose estimation.
+    """
+    # H3.6M 17 keypoints - using H36Key enum for 3D-only
+    HIP_CENTER = 0
+    RHIP = 1
+    RKNEE = 2
+    RFOOT = 3
+    LHIP = 4
+    LKNEE = 5
+    LFOOT = 6
+    SPINE = 7
+    THORAX = 8
+    NECK = 9
+    HEAD = 10
+    LSHOULDER = 11
+    LELBOW = 12
+    LWRIST = 13
+    RSHOULDER = 14
+    RELBOW = 15
+    RWRIST = 16
+
+
+# The original BKey enum has been replaced with H36Key
+# This class is now an alias for backward compatibility during migration
+_BKey_ORIGINAL = BKey
+
+
+class H36Key(IntEnum):
+    """H3.6M 17-keypoint indices (primary 3D format).
+
+    Standard format for 3D human pose estimation.
+    Used by AthletePose3D, Pose3DM, and most 3D pose estimators.
+
+    References:
+        - H3.6M dataset: Human3.6M (illion actions in 3.6 million frames)
+        - Used by: Pose2Sim, OpenSim, Sports2D
     """
 
-    # Face
-    NOSE = 0
-    LEFT_EYE_INNER = 1
-    LEFT_EYE = 2
-    LEFT_EYE_OUTER = 3
-    RIGHT_EYE_INNER = 4
-    RIGHT_EYE = 5
-    RIGHT_EYE_OUTER = 6
-    LEFT_EAR = 7
-    RIGHT_EAR = 8
-    MOUTH_LEFT = 9
-    MOUTH_RIGHT = 10
+    # Root/Hips
+    HIP_CENTER = 0  # Midpoint of hips (H3.6M convention)
+    RHIP = 1
+    RKNEE = 2
+    RFOOT = 3
+    LHIP = 4
+    LKNEE = 5
+    LFOOT = 6
 
-    # Upper body
-    LEFT_SHOULDER = 11
-    RIGHT_SHOULDER = 12
-    LEFT_ELBOW = 13
-    RIGHT_ELBOW = 14
-    LEFT_WRIST = 15
-    RIGHT_WRIST = 16
-    LEFT_PINKY = 17
-    LEFT_INDEX = 18
-    LEFT_THUMB = 19
-    RIGHT_INDEX = 20
-    RIGHT_PINKY = 21
-    RIGHT_THUMB = 22
+    # Torso/Spine
+    SPINE = 7
+    THORAX = 8
+    NECK = 9
+    HEAD = 10
 
-    # Lower body
-    LEFT_HIP = 23
-    RIGHT_HIP = 24
-    LEFT_KNEE = 25
-    RIGHT_KNEE = 26
-    LEFT_ANKLE = 27
-    RIGHT_ANKLE = 28
-    LEFT_HEEL = 29
-    RIGHT_HEEL = 30
-    LEFT_FOOT_INDEX = 31
-    RIGHT_FOOT_INDEX = 32
+    # Arms
+    LSHOULDER = 11
+    LELBOW = 12
+    LWRIST = 13
+    RSHOULDER = 14
+    RELBOW = 15
+    RWRIST = 16
+
+    # Backward compatibility aliases for BlazePose naming convention
+    # These map H3.6M names to BlazePose-style names for gradual migration
+    LEFT_HIP = LHIP
+    RIGHT_HIP = RHIP
+    LEFT_KNEE = LKNEE
+    RIGHT_KNEE = RKNEE
+    LEFT_FOOT = LFOOT  # Maps to foot (ankle in H3.6M)
+    RIGHT_FOOT = RFOOT
+    LEFT_SHOULDER = LSHOULDER
+    RIGHT_SHOULDER = RSHOULDER
+    LEFT_ELBOW = LELBOW
+    RIGHT_ELBOW = RELBOW
+    LEFT_WRIST = LWRIST
+    RIGHT_WRIST = RWRIST
+
+    # Additional BlazePose-specific keypoints (not in H3.6M 17kp)
+    # These are marked as deprecated and map to nearest available keypoint
+    # Eyes/Ears/Mouth - map to HEAD
+    LEFT_EYE = HEAD
+    RIGHT_EYE = HEAD
+    LEFT_EYE_INNER = HEAD
+    LEFT_EYE_OUTER = HEAD
+    RIGHT_EYE_INNER = HEAD
+    RIGHT_EYE_OUTER = HEAD
+    LEFT_EAR = HEAD
+    RIGHT_EAR = HEAD
+    MOUTH_LEFT = HEAD
+    MOUTH_RIGHT = HEAD
+
+    # Hands (fingers) - map to wrist
+    LEFT_THUMB = LWRIST
+    LEFT_INDEX = LWRIST
+    LEFT_PINKY = LWRIST
+    RIGHT_THUMB = RWRIST
+    RIGHT_INDEX = RWRIST
+    RIGHT_PINKY = RWRIST
+
+    # Detailed foot keypoints - map to foot
+    LEFT_ANKLE = LFOOT
+    LEFT_HEEL = LFOOT
+    LEFT_FOOT_INDEX = LFOOT
+    RIGHT_ANKLE = RFOOT
+    RIGHT_HEEL = RFOOT
+    RIGHT_FOOT_INDEX = RFOOT
+
+    # Nose - map to HEAD
+    NOSE = HEAD
+
+
+# For backward compatibility during migration
+BKey = H36Key
 
 
 class BladeType(Enum):
@@ -150,55 +223,52 @@ class IceTrace:
     blade_types: list[BladeType]  # blade state at each point
 
 
-# All 33 BlazePose keypoints
-BLAZEPOSE_INDICES = list(BKey)
+# All 17 H3.6M keypoints
+H36M_INDICES = list(H36Key)
 
-# Skeleton edges for visualization
-BLAZEPOSE_SKELETON_EDGES = [
-    # Face
-    (BKey.LEFT_EYE_INNER, BKey.LEFT_EYE),
-    (BKey.LEFT_EYE, BKey.LEFT_EYE_OUTER),
-    (BKey.RIGHT_EYE_INNER, BKey.RIGHT_EYE),
-    (BKey.RIGHT_EYE, BKey.RIGHT_EYE_OUTER),
-    (BKey.LEFT_EYE_OUTER, BKey.LEFT_EAR),
-    (BKey.RIGHT_EYE_OUTER, BKey.RIGHT_EAR),
-    (BKey.MOUTH_LEFT, BKey.MOUTH_RIGHT),
-    # Upper body
-    (BKey.LEFT_SHOULDER, BKey.RIGHT_SHOULDER),
-    (BKey.LEFT_SHOULDER, BKey.LEFT_ELBOW),
-    (BKey.LEFT_ELBOW, BKey.LEFT_WRIST),
-    (BKey.LEFT_WRIST, BKey.LEFT_THUMB),
-    (BKey.LEFT_WRIST, BKey.LEFT_INDEX),
-    (BKey.LEFT_WRIST, BKey.LEFT_PINKY),
-    (BKey.RIGHT_SHOULDER, BKey.RIGHT_ELBOW),
-    (BKey.RIGHT_ELBOW, BKey.RIGHT_WRIST),
-    (BKey.RIGHT_WRIST, BKey.RIGHT_THUMB),
-    (BKey.RIGHT_WRIST, BKey.RIGHT_INDEX),
-    (BKey.RIGHT_WRIST, BKey.RIGHT_PINKY),
-    # Lower body
-    (BKey.LEFT_SHOULDER, BKey.LEFT_HIP),
-    (BKey.RIGHT_SHOULDER, BKey.RIGHT_HIP),
-    (BKey.LEFT_HIP, BKey.RIGHT_HIP),
-    (BKey.LEFT_HIP, BKey.LEFT_KNEE),
-    (BKey.LEFT_KNEE, BKey.LEFT_ANKLE),
-    (BKey.LEFT_ANKLE, BKey.LEFT_HEEL),
-    (BKey.LEFT_ANKLE, BKey.LEFT_FOOT_INDEX),
-    (BKey.RIGHT_HIP, BKey.RIGHT_KNEE),
-    (BKey.RIGHT_KNEE, BKey.RIGHT_ANKLE),
-    (BKey.RIGHT_ANKLE, BKey.RIGHT_HEEL),
-    (BKey.RIGHT_ANKLE, BKey.RIGHT_FOOT_INDEX),
+# Legacy alias for backward compatibility during migration
+BLAZEPOSE_INDICES = H36M_INDICES
+
+
+# Skeleton edges for H3.6M 17-keypoint format (3D-only pipeline)
+H36M_SKELETON_EDGES = [
+    # Torso/Spine (root → head)
+    (H36Key.HIP_CENTER, H36Key.SPINE),
+    (H36Key.SPINE, H36Key.THORAX),
+    (H36Key.THORAX, H36Key.NECK),
+    (H36Key.NECK, H36Key.HEAD),
+    # Right leg
+    (H36Key.HIP_CENTER, H36Key.RHIP),
+    (H36Key.RHIP, H36Key.RKNEE),
+    (H36Key.RKNEE, H36Key.RFOOT),
+    # Left leg
+    (H36Key.HIP_CENTER, H36Key.LHIP),
+    (H36Key.LHIP, H36Key.LKNEE),
+    (H36Key.LKNEE, H36Key.LFOOT),
+    # Right arm
+    (H36Key.THORAX, H36Key.RSHOULDER),
+    (H36Key.RSHOULDER, H36Key.RELBOW),
+    (H36Key.RELBOW, H36Key.RWRIST),
+    # Left arm
+    (H36Key.THORAX, H36Key.LSHOULDER),
+    (H36Key.LSHOULDER, H36Key.LELBOW),
+    (H36Key.LELBOW, H36Key.LWRIST),
 ]
 
+# Legacy alias for backward compatibility during migration
+BLAZEPOSE_SKELETON_EDGES = H36M_SKELETON_EDGES
 
-FrameKeypoints = NDArray[np.float32]  # (num_frames, 33, 3) with x, y, confidence
-NormalizedPose = NDArray[np.float32]  # (num_frames, 33, 2) with x, y in [0,1]
-PixelPose = NDArray[np.float32]  # (num_frames, 33, 2) with x, y in pixels
-TimeSeries = NDArray[np.float32]  # (num_frames,) time series data
 
-# 3D Pose types (H3.6M 17-keypoint format)
+# H3.6M 17-keypoint pose types (primary format for 3D-only pipeline)
 Pose3D = NDArray[np.float32]  # (num_frames, 17, 3) with x, y, z in meters
 H36MPose2D = NDArray[np.float32]  # (num_frames, 17, 2) with x, y normalized
 H36MPose3D = NDArray[np.float32]  # (num_frames, 17, 3) with x, y, z in meters
+
+# Legacy type aliases for backward compatibility (now use 17 keypoints)
+FrameKeypoints = Pose3D  # (num_frames, 17, 3) with x, y, confidence
+NormalizedPose = H36MPose2D  # (num_frames, 17, 2) with x, y in [0,1]
+PixelPose = NDArray[np.float32]  # (num_frames, 17, 2) with x, y in pixels
+TimeSeries = NDArray[np.float32]  # (num_frames,) time series data
 
 __all__ = [
     "FrameKeypoints",
@@ -208,10 +278,13 @@ __all__ = [
     "Pose3D",
     "H36MPose2D",
     "H36MPose3D",
-    "BKey",
+    "H36Key",
+    "BKey",  # Alias for H36Key during migration
+    "H36M_INDICES",
+    "H36M_SKELETON_EDGES",
+    "BLAZEPOSE_INDICES",  # Alias for H36M_INDICES during migration
+    "BLAZEPOSE_SKELETON_EDGES",  # Alias for H36M_SKELETON_EDGES during migration
     "BladeType",
-    "BLAZEPOSE_INDICES",
-    "BLAZEPOSE_SKELETON_EDGES",
     "BoundingBox",
     "VideoMeta",
     "ElementPhase",
@@ -254,9 +327,9 @@ def assert_pose_format(
         >>> assert_pose_format(poses, "normalized", context="draw_velocity_vectors")
         >>> assert_pose_format(poses_px, "pixel", width=1920, height=1080, context="draw_skeleton")
     """
-    if poses.ndim != 3 or poses.shape[1] != 33 or poses.shape[2] not in (2, 3):
+    if poses.ndim != 3 or poses.shape[1] != 17 or poses.shape[2] not in (2, 3):
         raise AssertionError(
-            f"{context}: Invalid pose shape {poses.shape}. Expected (N, 33, 2) or (N, 33, 3)"
+            f"{context}: Invalid pose shape {poses.shape}. Expected (N, 17, 2) or (N, 17, 3)"
         )
 
     xy = poses[:, :, :2]  # Get x, y coordinates (drop confidence if present)
@@ -299,12 +372,12 @@ def normalize_pixel_poses(poses_px: PixelPose, width: int, height: int) -> Norma
     """Convert pixel coordinates to normalized [0,1].
 
     Args:
-        poses_px: Poses in pixel coordinates (N, 33, 2) or (N, 33, 3).
+        poses_px: Poses in pixel coordinates (N, 17, 2) or (N, 17, 3).
         width: Frame width in pixels.
         height: Frame height in pixels.
 
     Returns:
-        Normalized poses (N, 33, 2) with coords in [0,1].
+        Normalized poses (N, 17, 2) with coords in [0,1].
 
     Example:
         >>> poses_norm = normalize_pixel_poses(poses_px, width=1920, height=1080)
@@ -319,12 +392,12 @@ def pixelize_normalized_poses(poses_norm: NormalizedPose, width: int, height: in
     """Convert normalized [0,1] coordinates to pixel coordinates.
 
     Args:
-        poses_norm: Normalized poses (N, 33, 2) with coords in [0,1].
+        poses_norm: Normalized poses (N, 17, 2) with coords in [0,1].
         width: Frame width in pixels.
         height: Frame height in pixels.
 
     Returns:
-        Poses in pixel coordinates (N, 33, 2).
+        Poses in pixel coordinates (N, 17, 2).
 
     Example:
         >>> poses_px = pixelize_normalized_poses(poses_norm, width=1920, height=1080)

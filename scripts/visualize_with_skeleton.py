@@ -21,7 +21,8 @@ import cv2
 import numpy as np
 
 from src.blazepose_extractor import BlazePoseExtractor
-from src.blade_edge_detector import BladeEdgeDetector
+# 2D BladeEdgeDetector deprecated - use BladeEdgeDetector3D for H3.6M format
+# from src.blade_edge_detector import BladeEdgeDetector
 from src.blade_edge_detector_3d import BladeEdgeDetector3D, DetectionConfig
 from src.smoothing import PoseSmoother, get_skating_optimized_config
 from src.spatial_reference import SpatialReferenceDetector
@@ -210,19 +211,20 @@ def main() -> int:
         smooth_jitter = np.abs(np.diff(poses_smoothed_norm[:, :, 0], axis=0)).mean()
         print(f"Jitter reduction: {(1 - smooth_jitter/raw_jitter)*100:.1f}%")
 
-        # Detect blade edge states for both feet (skip in floor mode)
-        if args.floor_mode:
-            print("Floor mode: skipping blade edge detection")
+        # Blade edge detection now requires 3D poses (--blade-3d flag)
+        # Skip for floor mode or when 3D not enabled
+        if args.floor_mode or not args.blade_3d:
+            if not args.floor_mode and not args.blade_3d:
+                print("Note: Blade edge detection requires --blade-3d flag for H3.6M format")
             blade_states_left = [None] * len(poses_viz)
             blade_states_right = [None] * len(poses_viz)
         else:
-            print("Detecting blade edge states...")
-            blade_detector = BladeEdgeDetector(smoothing_window=3)
-            blade_states_left = blade_detector.detect_sequence(poses_viz, meta.fps, foot="left", check_supporting=True)
-            blade_states_right = blade_detector.detect_sequence(poses_viz, meta.fps, foot="right", check_supporting=True)
+            # Will be handled after 3D pose extraction below
+            blade_states_left = None
+            blade_states_right = None
 
-        # Show breakdown (only if not floor mode)
-        if not args.floor_mode:
+        # Show breakdown (only if blade states were computed)
+        if not args.floor_mode and blade_states_left and blade_states_left[0] is not None:
             from collections import Counter
             left_breakdown = Counter(s.blade_type.name for s in blade_states_left)
             right_breakdown = Counter(s.blade_type.name for s in blade_states_right)
@@ -232,19 +234,23 @@ def main() -> int:
 
     # Initialize blade states for loaded poses
     if args.poses and args.poses.exists():
-        if args.floor_mode:
-            print("Floor mode: skipping blade edge detection")
+        if args.floor_mode or not args.blade_3d:
+            if not args.floor_mode and not args.blade_3d:
+                print("Note: Blade edge detection requires --blade-3d flag for H3.6M format")
             blade_states_left = [None] * len(poses_viz)
             blade_states_right = [None] * len(poses_viz)
         else:
-            print("Detecting blade edge states from loaded poses...")
-            blade_detector = BladeEdgeDetector(smoothing_window=3)
-            blade_states_left = blade_detector.detect_sequence(poses_viz, meta.fps, foot="left", check_supporting=True)
-            blade_states_right = blade_detector.detect_sequence(poses_viz, meta.fps, foot="right", check_supporting=True)
-            print(f"Blade states detected: {len(blade_states_left)} left, {len(blade_states_right)} right")
+            # Will be handled after 3D pose extraction below
+            blade_states_left = None
+            blade_states_right = None
 
     # Initialize 3D pose extraction if requested
     poses_3d = None
+    # --blade-3d requires 3D poses, so auto-enable --3d if not set
+    if args.blade_3d and not args.use_3d:
+        print("Note: --blade-3d requires 3D poses, auto-enabling --3d")
+        args.use_3d = True
+
     if args.use_3d:
         if args.model_3d and args.model_3d.exists():
             print(f"Loading 3D model: {args.model_3d}")
@@ -328,10 +334,6 @@ def main() -> int:
         blade_detector_3d = BladeEdgeDetector3D(fps=meta.fps)
 
         # Process 3D poses to detect blade states
-        from src.pose_3d.blazepose_to_h36m import h36m_to_blazepose
-
-        # Convert H3.6M 3D poses back to BlazePose format for foot detection
-        # For now, use direct H3.6M indices
         for i, pose_3d in enumerate(poses_3d):
             # Detect left foot blade state
             state_left = blade_detector_3d.detect_frame(pose_3d, i, foot="left")
@@ -342,6 +344,17 @@ def main() -> int:
             blade_states_3d_right.append(state_right)
 
         print(f"3D blade states: {len(blade_states_3d_left)} left, {len(blade_states_3d_right)} right")
+
+        # Update blade_states_left/right for use in visualization
+        blade_states_left = blade_states_3d_left
+        blade_states_right = blade_states_3d_right
+
+        # Show breakdown
+        from collections import Counter
+        left_breakdown = Counter(s.blade_type.name for s in blade_states_3d_left)
+        right_breakdown = Counter(s.blade_type.name for s in blade_states_3d_right)
+        print(f"  Left breakdown: {dict(left_breakdown)}")
+        print(f"  Right breakdown: {dict(right_breakdown)}")
 
     # Initialize spatial reference detector (always)
     print("Initializing spatial reference detector...")

@@ -5,56 +5,85 @@ import pytest
 from pathlib import Path
 
 from src.types import (
-    BKey,
+    H36Key,
+    BKey,  # Alias for H36Key during migration
     BoundingBox,
     VideoMeta,
     ElementPhase,
     MetricResult,
     AnalysisReport,
     ReferenceData,
-    BLAZEPOSE_INDICES,
-    BLAZEPOSE_SKELETON_EDGES,
+    H36M_INDICES,
+    H36M_SKELETON_EDGES,
+    BLAZEPOSE_INDICES,  # Alias for H36M_INDICES
+    BLAZEPOSE_SKELETON_EDGES,  # Alias for H36M_SKELETON_EDGES
 )
 
 
-class TestBKey:
-    """Test BlazePose keypoint enum."""
+class TestH36Key:
+    """Test H3.6M 17-keypoint enum."""
 
     def test_keypoint_indices(self):
         """Expected indices for key landmarks."""
-        assert BKey.NOSE == 0
-        assert BKey.LEFT_SHOULDER == 11
-        assert BKey.RIGHT_SHOULDER == 12
-        assert BKey.LEFT_HIP == 23
-        assert BKey.RIGHT_HIP == 24
+        assert H36Key.HIP_CENTER == 0
+        assert H36Key.LSHOULDER == 11
+        assert H36Key.RSHOULDER == 14
+        assert H36Key.LHIP == 4
+        assert H36Key.RHIP == 1
+        assert H36Key.HEAD == 10
 
-    def test_all_33_keypoints(self):
-        """Should have exactly 33 keypoints."""
-        assert len(list(BKey)) == 33
+    def test_all_17_keypoints(self):
+        """Should have exactly 17 keypoints (H3.6M format)."""
+        assert len(list(H36Key)) == 17
 
     def test_foot_keypoints(self):
         """Foot keypoints for edge detection."""
-        assert BKey.LEFT_HEEL == 29
-        assert BKey.RIGHT_HEEL == 30
-        assert BKey.LEFT_FOOT_INDEX == 31
-        assert BKey.RIGHT_FOOT_INDEX == 32
+        assert H36Key.LFOOT == 6
+        assert H36Key.RFOOT == 3
+        # Backward compatibility aliases
+        assert H36Key.LEFT_ANKLE == H36Key.LFOOT
+        assert H36Key.RIGHT_ANKLE == H36Key.RFOOT
+
+    def test_backward_compatibility_aliases(self):
+        """BlazePose-style aliases should work."""
+        # These should map to H3.6M equivalents
+        assert H36Key.LEFT_SHOULDER == H36Key.LSHOULDER
+        assert H36Key.RIGHT_SHOULDER == H36Key.RSHOULDER
+        assert H36Key.LEFT_HIP == H36Key.LHIP
+        assert H36Key.RIGHT_HIP == H36Key.RHIP
+        # Deprecated keypoints map to nearest available
+        assert H36Key.NOSE == H36Key.HEAD
+        assert H36Key.LEFT_EAR == H36Key.HEAD
 
 
-class TestBlazePoseIndices:
-    """Test BlazePose indices."""
+class TestBKeyAlias:
+    """Test BKey alias for backward compatibility."""
 
-    def test_blazepose_size(self):
-        """BlazePose should have 33 keypoints."""
-        assert len(BLAZEPOSE_INDICES) == 33
+    def test_bkey_is_h36key(self):
+        """BKey should be an alias for H36Key."""
+        assert BKey is H36Key
+        assert BKey.HIP_CENTER == H36Key.HIP_CENTER
 
-    def test_blazepose_contains_key_joints(self):
+
+class TestH36MIndices:
+    """Test H3.6M indices."""
+
+    def test_h36m_size(self):
+        """H3.6M should have 17 keypoints."""
+        assert len(H36M_INDICES) == 17
+
+    def test_h36m_contains_key_joints(self):
         """Should include major joints."""
-        assert BKey.NOSE in BLAZEPOSE_INDICES
-        assert BKey.LEFT_SHOULDER in BLAZEPOSE_INDICES
-        assert BKey.RIGHT_SHOULDER in BLAZEPOSE_INDICES
-        assert BKey.LEFT_HIP in BLAZEPOSE_INDICES
-        assert BKey.RIGHT_HIP in BLAZEPOSE_INDICES
-        assert BKey.LEFT_FOOT_INDEX in BLAZEPOSE_INDICES
+        assert H36Key.HIP_CENTER in H36M_INDICES
+        assert H36Key.LSHOULDER in H36M_INDICES
+        assert H36Key.RSHOULDER in H36M_INDICES
+        assert H36Key.LHIP in H36M_INDICES
+        assert H36Key.RHIP in H36M_INDICES
+        assert H36Key.LFOOT in H36M_INDICES
+
+    def test_legacy_blazepose_indices_alias(self):
+        """BLAZEPOSE_INDICES should alias H36M_INDICES."""
+        assert BLAZEPOSE_INDICES is H36M_INDICES
 
 
 class TestSkeletonEdges:
@@ -62,33 +91,37 @@ class TestSkeletonEdges:
 
     def test_edges_are_tuples(self):
         """All edges should be (joint_a, joint_b) tuples."""
-        for edge in BLAZEPOSE_SKELETON_EDGES:
+        for edge in H36M_SKELETON_EDGES:
             assert isinstance(edge, tuple)
             assert len(edge) == 2
-            assert isinstance(edge[0], (int, BKey))
-            assert isinstance(edge[1], (int, BKey))
+            assert isinstance(edge[0], (int, H36Key))
+            assert isinstance(edge[1], (int, H36Key))
 
     def test_upper_body_edges(self):
         """Should have upper body connections."""
-        # Shoulder to shoulder
-        assert (BKey.LEFT_SHOULDER, BKey.RIGHT_SHOULDER) in BLAZEPOSE_SKELETON_EDGES
+        # Torso connections
+        assert (H36Key.SPINE, H36Key.THORAX) in H36M_SKELETON_EDGES
+        assert (H36Key.THORAX, H36Key.NECK) in H36M_SKELETON_EDGES
+        assert (H36Key.NECK, H36Key.HEAD) in H36M_SKELETON_EDGES
 
-        # Arm connections
-        assert (BKey.LEFT_SHOULDER, BKey.LEFT_ELBOW) in BLAZEPOSE_SKELETON_EDGES
-        assert (BKey.LEFT_ELBOW, BKey.LEFT_WRIST) in BLAZEPOSE_SKELETON_EDGES
+        # Arm connections (from thorax in H3.6M)
+        assert (H36Key.THORAX, H36Key.LSHOULDER) in H36M_SKELETON_EDGES
+        assert (H36Key.LSHOULDER, H36Key.LELBOW) in H36M_SKELETON_EDGES
+        assert (H36Key.LELBOW, H36Key.LWRIST) in H36M_SKELETON_EDGES
 
     def test_lower_body_edges(self):
         """Should have lower body connections."""
-        # Hip to hip
-        assert (BKey.LEFT_HIP, BKey.RIGHT_HIP) in BLAZEPOSE_SKELETON_EDGES
+        # Hip connections (from hip_center in H3.6M)
+        assert (H36Key.HIP_CENTER, H36Key.LHIP) in H36M_SKELETON_EDGES
+        assert (H36Key.HIP_CENTER, H36Key.RHIP) in H36M_SKELETON_EDGES
 
         # Leg connections
-        assert (BKey.LEFT_HIP, BKey.LEFT_KNEE) in BLAZEPOSE_SKELETON_EDGES
-        assert (BKey.LEFT_KNEE, BKey.LEFT_ANKLE) in BLAZEPOSE_SKELETON_EDGES
+        assert (H36Key.LHIP, H36Key.LKNEE) in H36M_SKELETON_EDGES
+        assert (H36Key.LKNEE, H36Key.LFOOT) in H36M_SKELETON_EDGES
 
-        # Foot edges for edge detection
-        assert (BKey.LEFT_ANKLE, BKey.LEFT_HEEL) in BLAZEPOSE_SKELETON_EDGES
-        assert (BKey.LEFT_ANKLE, BKey.LEFT_FOOT_INDEX) in BLAZEPOSE_SKELETON_EDGES
+    def test_legacy_blazepose_edges_alias(self):
+        """BLAZEPOSE_SKELETON_EDGES should alias H36M_SKELETON_EDGES."""
+        assert BLAZEPOSE_SKELETON_EDGES is H36M_SKELETON_EDGES
 
 
 class TestBoundingBox:
@@ -249,7 +282,8 @@ class TestReferenceData:
 
     def test_reference_data_creation(self, tmp_path: Path):
         """Should create reference data."""
-        poses = np.zeros((100, 33, 2), dtype=np.float32)
+        # H3.6M 17-keypoint format
+        poses = np.zeros((100, 17, 2), dtype=np.float32)
 
         meta = VideoMeta(
             path=tmp_path / "ref.mp4",
@@ -279,5 +313,5 @@ class TestReferenceData:
         )
 
         assert ref.element_type == "three_turn"
-        assert ref.poses.shape == (100, 33, 2)
+        assert ref.poses.shape == (100, 17, 2)  # H3.6M format
         assert ref.source == "YouTube: Expert Skater"

@@ -22,8 +22,8 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from .types import (
-    BLAZEPOSE_SKELETON_EDGES,
-    BKey,
+    H36Key,
+    H36M_SKELETON_EDGES,
     BladeType,
     MotionDirection,
     assert_pose_format,
@@ -81,14 +81,14 @@ def draw_skeleton(
     width: int,
     confidence_threshold: float = 0.5,
 ) -> np.ndarray:
-    """Draw BlazePose skeleton with anti-aliased lines.
+    """Draw H3.6M 17-keypoint skeleton with anti-aliased lines.
 
     Uses cv2.LINE_AA for smooth rendering and color-codes by body region.
     Based on Gemini research: left=blue, right=red, center=green.
 
     Args:
         frame: Video frame (H, W, 3) BGR.
-        keypoints: (33, 2) normalized [0,1] or (33, 3) pixel coordinates.
+        keypoints: (17, 2) normalized [0,1] or (17, 3) pixel coordinates.
         height: Frame height for coordinate conversion.
         width: Frame width for coordinate conversion.
         confidence_threshold: Skip keypoints below this confidence (if 3rd dim exists).
@@ -104,46 +104,40 @@ def draw_skeleton(
         keypoints_px = keypoints[:, :2]
         conf_values = keypoints[:, 2] if keypoints.shape[1] == 3 else None
 
-    # Categorize edges by body region
+    # Categorize edges by body region for H3.6M 17kp format
     torso_edges = {
-        (BKey.LEFT_SHOULDER, BKey.RIGHT_SHOULDER),
-        (BKey.LEFT_SHOULDER, BKey.LEFT_HIP),
-        (BKey.RIGHT_SHOULDER, BKey.RIGHT_HIP),
-        (BKey.LEFT_HIP, BKey.RIGHT_HIP),
+        (H36Key.LSHOULDER, H36Key.RSHOULDER),
+        (H36Key.LSHOULDER, H36Key.LHIP),
+        (H36Key.RSHOULDER, H36Key.RHIP),
+        (H36Key.LHIP, H36Key.RHIP),
+        (H36Key.HIP_CENTER, H36Key.SPINE),
+        (H36Key.SPINE, H36Key.THORAX),
+        (H36Key.THORAX, H36Key.NECK),
+        (H36Key.NECK, H36Key.HEAD),
     }
 
     left_arm_edges = {
-        (BKey.LEFT_SHOULDER, BKey.LEFT_ELBOW),
-        (BKey.LEFT_ELBOW, BKey.LEFT_WRIST),
-        (BKey.LEFT_WRIST, BKey.LEFT_THUMB),
-        (BKey.LEFT_WRIST, BKey.LEFT_INDEX),
-        (BKey.LEFT_WRIST, BKey.LEFT_PINKY),
+        (H36Key.LSHOULDER, H36Key.LELBOW),
+        (H36Key.LELBOW, H36Key.LWRIST),
     }
 
     right_arm_edges = {
-        (BKey.RIGHT_SHOULDER, BKey.RIGHT_ELBOW),
-        (BKey.RIGHT_ELBOW, BKey.RIGHT_WRIST),
-        (BKey.RIGHT_WRIST, BKey.RIGHT_THUMB),
-        (BKey.RIGHT_WRIST, BKey.RIGHT_INDEX),
-        (BKey.RIGHT_WRIST, BKey.RIGHT_PINKY),
+        (H36Key.RSHOULDER, H36Key.RELBOW),
+        (H36Key.RELBOW, H36Key.RWRIST),
     }
 
     left_leg_edges = {
-        (BKey.LEFT_HIP, BKey.LEFT_KNEE),
-        (BKey.LEFT_KNEE, BKey.LEFT_ANKLE),
-        (BKey.LEFT_ANKLE, BKey.LEFT_HEEL),
-        (BKey.LEFT_ANKLE, BKey.LEFT_FOOT_INDEX),
+        (H36Key.LHIP, H36Key.LKNEE),
+        (H36Key.LKNEE, H36Key.LFOOT),
     }
 
     right_leg_edges = {
-        (BKey.RIGHT_HIP, BKey.RIGHT_KNEE),
-        (BKey.RIGHT_KNEE, BKey.RIGHT_ANKLE),
-        (BKey.RIGHT_ANKLE, BKey.RIGHT_HEEL),
-        (BKey.RIGHT_ANKLE, BKey.RIGHT_FOOT_INDEX),
+        (H36Key.RHIP, H36Key.RKNEE),
+        (H36Key.RKNEE, H36Key.RFOOT),
     }
 
     # Draw connections first (lines)
-    for idx1, idx2 in BLAZEPOSE_SKELETON_EDGES:
+    for idx1, idx2 in H36M_SKELETON_EDGES:
         pt1 = keypoints_px[idx1].astype(int)
         pt2 = keypoints_px[idx2].astype(int)
 
@@ -199,12 +193,12 @@ def draw_velocity_vectors(
 
     Args:
         frame: Video frame (H, W, 3) BGR.
-        poses: Full pose sequence (num_frames, 33, 2 or 3) NORMALIZED [0,1].
+        poses: Full pose sequence (num_frames, 17, 2 or 3) NORMALIZED [0,1].
         frame_idx: Current frame index.
         fps: Frame rate for velocity scaling.
         height: Frame height.
         width: Frame width.
-        joint_indices: Joints to visualize (default: wrists, ankles).
+        joint_indices: Joints to visualize (default: wrists, feet).
 
     Returns:
         Frame with velocity vectors overlay.
@@ -216,13 +210,13 @@ def draw_velocity_vectors(
     assert_pose_format(poses, "normalized", context="draw_velocity_vectors")
     if joint_indices is None:
         joint_indices = [
-            BKey.LEFT_WRIST,
-            BKey.RIGHT_WRIST,
-            BKey.LEFT_ANKLE,
-            BKey.RIGHT_ANKLE,
+            H36Key.LWRIST,
+            H36Key.RWRIST,
+            H36Key.LFOOT,
+            H36Key.RFOOT,
         ]
 
-    # Handle both (33, 2) and (33, 3) pose formats
+    # Handle both (17, 2) and (17, 3) pose formats
     poses_xy = poses[:, :, :2] if poses.shape[2] == 3 else poses
 
     # Compute velocity using central difference
@@ -276,7 +270,7 @@ def draw_velocity_vectors(
 def draw_trails(
     frame: np.ndarray,
     pose_history: deque,
-    joint_idx: int = BKey.LEFT_ANKLE,
+    joint_idx: int = H36Key.LFOOT,
     height: int = 1080,
     width: int = 1920,
 ) -> np.ndarray:
@@ -300,7 +294,7 @@ def draw_trails(
 
     points = []
     for pose in pose_history:
-        # Handle both (33, 2) and (33, 3) formats
+        # Handle both (17, 2) and (17, 3) formats
         pos_xy = pose[joint_idx, :2] if pose.shape[1] == 3 else pose[joint_idx]
         pos = pos_xy * [width, height]
         points.append(pos.astype(int))
@@ -337,72 +331,31 @@ def draw_edge_indicators(
     """Draw skating edge indicators for both feet.
 
     .. DEPRECATED::
-        This function uses simplified edge detection (sign of foot_vector.x).
-        Use `draw_blade_indicator_hud()` with `BladeEdgeDetector` results instead.
+        This function is NOT compatible with H3.6M 17kp format (lacks heel/foot_index).
+        Use `BladeEdgeDetector3D` and `draw_blade_indicator_hud()` instead.
 
-    Uses the edge detection logic from element_segmenter.py:
-    heel-to-foot vector angle determines edge (+1=inside, -1=outside, 0=flat).
-
-    For proper blade edge visualization:
-    1. Run `BladeEdgeDetector.detect_sequence()` to get BladeState objects
+    For proper blade edge visualization with H3.6M:
+    1. Run `BladeEdgeDetector3D.detect_frame()` to get BladeState3D objects
     2. Call `draw_blade_indicator_hud()` with the blade states
     3. States appear in HUD with confidence values
 
     Args:
         frame: Video frame (H, W, 3) BGR.
-        poses: Full pose sequence (num_frames, 33, 2 or 3) normalized.
+        poses: Full pose sequence (num_frames, 17, 2 or 3) normalized.
         frame_idx: Current frame index.
         height: Frame height.
         width: Frame width.
 
     Returns:
-        Frame with edge indicators overlay.
+        Frame unchanged (function deprecated for H3.6M format).
+
+    Note:
+        This function is kept for backward compatibility but does nothing
+        when using H3.6M 17-keypoint format since heel/toe keypoints are not available.
     """
-    # Handle both (33, 2) and (33, 3) formats
-    poses_xy = poses[:, :, :2] if poses.shape[2] == 3 else poses
-
-    # Compute edge indicator (same as element_segmenter.py)
-    left_heel = poses_xy[frame_idx, BKey.LEFT_HEEL]
-    left_foot = poses_xy[frame_idx, BKey.LEFT_FOOT_INDEX]
-    right_heel = poses_xy[frame_idx, BKey.RIGHT_HEEL]
-    right_foot = poses_xy[frame_idx, BKey.RIGHT_FOOT_INDEX]
-
-    left_vector = left_foot - left_heel
-    right_vector = right_foot - right_heel
-
-    # Edge: x-component sign (+1=inside, -1=outside, 0=flat)
-    left_edge = np.sign(left_vector[0])
-    right_edge = np.sign(right_vector[0])
-
-    # Convert to pixel positions
-    left_pos = (poses_xy[frame_idx, BKey.LEFT_FOOT_INDEX] * [width, height]).astype(int)
-    right_pos = (poses_xy[frame_idx, BKey.RIGHT_FOOT_INDEX] * [width, height]).astype(int)
-
-    for pos, edge, label in [(left_pos, left_edge, "L"), (right_pos, right_edge, "R")]:
-        if edge > 0.3:
-            color = COLOR_EDGE_INSIDE  # Blue = inside
-            text = f"{label}: IN"
-        elif edge < -0.3:
-            color = COLOR_EDGE_OUTSIDE  # Red = outside
-            text = f"{label}: OUT"
-        else:
-            color = COLOR_EDGE_FLAT  # Yellow = flat
-            text = f"{label}: FLT"
-
-        # Draw circle around foot
-        cv2.circle(frame, tuple(pos), 20, color, 2, lineType=cv2.LINE_AA)
-
-        # Draw text label
-        text_pos = (int(pos[0]) + 25, int(pos[1]))
-        cv2.putText(
-            frame,
-            text,
-            text_pos,
-            cv2.FONT_HERSHEY_SIMPLEX,
-            0.5,
-            color,
-            2,
-        )
+    # No-op for H3.6M format (no heel/foot_index keypoints)
+    # Use BladeEdgeDetector3D + draw_blade_indicator_hud instead
+    return frame
 
     return frame
 
@@ -411,14 +364,14 @@ def calculate_trunk_angle(pose: np.ndarray) -> float:
     """Calculate trunk tilt angle from vertical.
 
     Args:
-        pose: Single pose (33, 2) or (33, 3) normalized.
+        pose: Single pose (17, 2) or (17, 3) normalized.
 
     Returns:
         Angle in degrees (0 = upright, positive = forward lean).
     """
     # Compute mid-shoulder and mid-hip
-    mid_shoulder = (pose[BKey.LEFT_SHOULDER] + pose[BKey.RIGHT_SHOULDER]) / 2
-    mid_hip = (pose[BKey.LEFT_HIP] + pose[BKey.RIGHT_HIP]) / 2
+    mid_shoulder = (pose[H36Key.LSHOULDER] + pose[H36Key.RSHOULDER]) / 2
+    mid_hip = (pose[H36Key.LHIP] + pose[H36Key.RHIP]) / 2
 
     # Vector from hip to shoulder
     spine_vector = mid_shoulder - mid_hip
@@ -446,7 +399,7 @@ def draw_axis_indicator(
 
     Args:
         frame: Video frame (H, W, 3) BGR.
-        pose: Single pose (33, 2) or (33, 3) normalized.
+        pose: Single pose (17, 2) or (17, 3) normalized.
         height: Frame height.
         width: Frame width.
         threshold_warning: Warning threshold in degrees.
@@ -473,8 +426,8 @@ def draw_axis_indicator(
 
     # Get keypoint positions in pixels
     poses_xy = pose[:, :2] if pose.shape[1] == 3 else pose
-    mid_shoulder = ((poses_xy[BKey.LEFT_SHOULDER] + poses_xy[BKey.RIGHT_SHOULDER]) / 2) * [width, height]
-    mid_hip = ((poses_xy[BKey.LEFT_HIP] + poses_xy[BKey.RIGHT_HIP]) / 2) * [width, height]
+    mid_shoulder = ((poses_xy[H36Key.LSHOULDER] + poses_xy[H36Key.RSHOULDER]) / 2) * [width, height]
+    mid_hip = ((poses_xy[H36Key.LHIP] + poses_xy[H36Key.RHIP]) / 2) * [width, height]
 
     # Draw vertical reference line (from hip upward)
     hip_pos = mid_hip.astype(int)

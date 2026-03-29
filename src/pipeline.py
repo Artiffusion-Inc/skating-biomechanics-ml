@@ -19,9 +19,9 @@ if TYPE_CHECKING:
     Recommender = recommender.Recommender
     from . import person_detector
     PersonDetector = person_detector.PersonDetector
-    from . import blazepose_extractor, pose_extractor, normalizer
+    from . import blazepose_extractor, normalizer
     PoseNormalizer = normalizer.PoseNormalizer
-    from . import element_defs, reference_builder, reference_store
+    from . import element_defs, reference_store
     ReferenceStore = reference_store.ReferenceStore
     from .smoothing import OneEuroFilterConfig, PoseSmoother
 
@@ -147,15 +147,39 @@ class AnalysisPipeline:
         else:
             smoothed = normalized
 
-        # Stage 3.6: Detect blade edge states (both feet)
-        from . import blade_edge_detector
-        BladeEdgeDetector = blade_edge_detector.BladeEdgeDetector
+        # Stage 3.5: Convert to 3D for blade detection and physics
+        poses_3d = None
+        blade_summary_left = None
+        blade_summary_right = None
+        try:
+            from .pose_3d import blazepose_to_h36m, Biomechanics3DEstimator
+            from .blade_edge_detector_3d import BladeEdgeDetector3D
 
-        blade_detector = BladeEdgeDetector(smoothing_window=3)
-        blade_states_left = blade_detector.detect_sequence(smoothed, meta.fps, foot="left")
-        blade_states_right = blade_detector.detect_sequence(smoothed, meta.fps, foot="right")
-        blade_summary_left = blade_detector.get_blade_summary(blade_states_left)
-        blade_summary_right = blade_detector.get_blade_summary(blade_states_right)
+            # Convert to H3.6M format and estimate 3D
+            poses_h36m = blazepose_to_h36m(smoothed)
+            estimator = Biomechanics3DEstimator()
+            poses_3d = estimator.estimate_3d(poses_h36m)
+
+            # Stage 3.6: Detect blade edge states using 3D poses
+            blade_detector_3d = BladeEdgeDetector3D(fps=meta.fps)
+            blade_states_left = []
+            blade_states_right = []
+            for i, pose_3d in enumerate(poses_3d):
+                left_state = blade_detector_3d.detect_frame(pose_3d, i, foot="left")
+                right_state = blade_detector_3d.detect_frame(pose_3d, i, foot="right")
+                blade_states_left.append(left_state)
+                blade_states_right.append(right_state)
+
+            # Get summaries (using 3D detector's summary method)
+            blade_summary_left = {"inside": sum(1 for s in blade_states_left if s.blade_type.value == "inside"),
+                                  "outside": sum(1 for s in blade_states_left if s.blade_type.value == "outside"),
+                                  "flat": sum(1 for s in blade_states_left if s.blade_type.value == "flat")}
+            blade_summary_right = {"inside": sum(1 for s in blade_states_right if s.blade_type.value == "inside"),
+                                   "outside": sum(1 for s in blade_states_right if s.blade_type.value == "outside"),
+                                   "flat": sum(1 for s in blade_states_right if s.blade_type.value == "flat")}
+        except Exception:
+            # Blade detection is optional, don't fail if it errors
+            pass
 
         # Stage 4: Detect phases (or use manual)
         if manual_phases is not None:
@@ -183,38 +207,31 @@ class AnalysisPipeline:
 
         # Stage 6.5: Physics calculations (3D pose + biomechanics)
         physics_dict: dict = {}
-        try:
-            from .pose_3d import blazepose_to_h36m, Biomechanics3DEstimator
-            from .analysis import PhysicsEngine
+        if poses_3d is not None:
+            try:
+                from .analysis import PhysicsEngine
 
-            # Convert to H3.6M format
-            poses_h36m = blazepose_to_h36m(normalized)
+                # Calculate physics metrics using 3D poses from Stage 3.5
+                physics_engine = PhysicsEngine(body_mass=60.0)
 
-            # Estimate 3D poses
-            estimator = Biomechanics3DEstimator()
-            poses_3d = estimator.estimate_3d(poses_h36m)
+                # If we have takeoff/landing, fit trajectory
+                if phases.takeoff > 0 and phases.landing > 0:
+                    trajectory = physics_engine.fit_jump_trajectory(
+                        poses_3d, phases.takeoff, phases.landing
+                    )
+                    physics_dict['jump_height'] = trajectory['height']
+                    physics_dict['flight_time'] = trajectory['flight_time']
+                    physics_dict['takeoff_velocity'] = trajectory['takeoff_velocity']
+                    physics_dict['fit_quality'] = trajectory['fit_quality']
 
-            # Calculate physics metrics
-            physics_engine = PhysicsEngine(body_mass=60.0)
-
-            # If we have takeoff/landing, fit trajectory
-            if phases.takeoff > 0 and phases.landing > 0:
-                trajectory = physics_engine.fit_jump_trajectory(
-                    poses_3d, phases.takeoff, phases.landing
+                # Calculate average moment of inertia during element
+                inertia = physics_engine.calculate_moment_of_inertia(
+                    poses_3d[phases.start:phases.end]
                 )
-                physics_dict['jump_height'] = trajectory['height']
-                physics_dict['flight_time'] = trajectory['flight_time']
-                physics_dict['takeoff_velocity'] = trajectory['takeoff_velocity']
-                physics_dict['fit_quality'] = trajectory['fit_quality']
-
-            # Calculate average moment of inertia during element
-            inertia = physics_engine.calculate_moment_of_inertia(
-                poses_3d[phases.start:phases.end]
-            )
-            physics_dict['avg_inertia'] = float(np.mean(inertia))
-        except Exception:
-            # Physics calculation is optional, don't fail if it errors
-            pass
+                physics_dict['avg_inertia'] = float(np.mean(inertia))
+            except Exception:
+                # Physics calculation is optional, don't fail if it errors
+                pass
 
         # Stage 7: Generate recommendations
         recommender = self._get_recommender()

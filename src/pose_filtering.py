@@ -16,7 +16,7 @@ Dependencies:
 from dataclasses import dataclass
 
 import numpy as np
-from filterpy.kalman import KalmanFilter, RTS_smoother
+from filterpy.kalman import KalmanFilter, rts_smoother
 from scipy.ndimage import median_filter
 
 

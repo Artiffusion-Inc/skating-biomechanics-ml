@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from .types import BKey, FrameKeypoints, NormalizedPose, TimeSeries
+from .types import H36Key, FrameKeypoints, NormalizedPose, Pose3D, TimeSeries
 
 
 def angle_3pt(a: NDArray[np.float64], b: NDArray[np.float64], c: NDArray[np.float64]) -> float:
@@ -50,7 +50,7 @@ def distance(a: NDArray[np.float64], b: NDArray[np.float64]) -> float:
 
 def normalize_poses(
     raw: FrameKeypoints,
-    spine_indices: tuple[int, int] = (BKey.LEFT_SHOULDER, BKey.LEFT_HIP),
+    spine_indices: tuple[int, int] = (H36Key.LSHOULDER, H36Key.LHIP),
     target_spine_length: float = 0.4,
 ) -> NormalizedPose:
     """Normalize poses via root-centering and scale normalization.
@@ -59,21 +59,21 @@ def normalize_poses(
     2. Scale so spine length equals target_spine_length
 
     Args:
-        raw: Raw keypoints (num_frames, 33, 3) with x, y, confidence.
+        raw: Raw keypoints (num_frames, 17, 3) with x, y, confidence.
         spine_indices: (shoulder_idx, hip_idx) for spine length calculation.
         target_spine_length: Target spine length after normalization.
 
     Returns:
-        NormalizedPose (num_frames, 33, 2) with centered, scaled coordinates.
+        NormalizedPose (num_frames, 17, 2) with centered, scaled coordinates.
     """
-    if raw.shape[1] != 33:
-        raise ValueError(f"Expected 33 keypoints, got {raw.shape[1]}")
+    if raw.shape[1] != 17:
+        raise ValueError(f"Expected 17 keypoints (H3.6M format), got {raw.shape[1]}")
 
     num_frames = raw.shape[0]
-    normalized = np.zeros((num_frames, 33, 2), dtype=np.float32)
+    normalized = np.zeros((num_frames, 17, 2), dtype=np.float32)
 
     # Mid-hip point (between left and right hip)
-    mid_hip_raw = (raw[:, BKey.LEFT_HIP, :2] + raw[:, BKey.RIGHT_HIP, :2]) / 2
+    mid_hip_raw = (raw[:, H36Key.LHIP, :2] + raw[:, H36Key.RHIP, :2]) / 2
 
     for frame_idx in range(num_frames):
         frame_raw = raw[frame_idx]
@@ -128,24 +128,24 @@ def get_mid_hip(poses: NormalizedPose) -> NDArray[np.float32]:
     """Calculate mid-hip point for each frame.
 
     Args:
-        poses: NormalizedPose (num_frames, 33, 2).
+        poses: NormalizedPose (num_frames, 17, 2).
 
     Returns:
         Mid-hip coordinates (num_frames, 2).
     """
-    return (poses[:, BKey.LEFT_HIP, :] + poses[:, BKey.RIGHT_HIP, :]) / 2
+    return (poses[:, H36Key.LHIP, :] + poses[:, H36Key.RHIP, :]) / 2
 
 
 def get_mid_shoulder(poses: NormalizedPose) -> NDArray[np.float32]:
     """Calculate mid-shoulder point for each frame.
 
     Args:
-        poses: NormalizedPose (num_frames, 33, 2).
+        poses: NormalizedPose (num_frames, 17, 2).
 
     Returns:
         Mid-shoulder coordinates (num_frames, 2).
     """
-    return (poses[:, BKey.LEFT_SHOULDER, :] + poses[:, BKey.RIGHT_SHOULDER, :]) / 2
+    return (poses[:, H36Key.LSHOULDER, :] + poses[:, H36Key.RSHOULDER, :]) / 2
 
 
 def calculate_center_of_mass(poses: NormalizedPose, frame_idx: int) -> float:
@@ -160,7 +160,7 @@ def calculate_center_of_mass(poses: NormalizedPose, frame_idx: int) -> float:
     to bent-knee landings artificially increasing flight time.
 
     Args:
-        poses: NormalizedPose (num_frames, 33, 2).
+        poses: NormalizedPose (num_frames, 17, 2).
         frame_idx: Frame index to calculate CoM for.
 
     Returns:
@@ -176,30 +176,30 @@ def calculate_center_of_mass(poses: NormalizedPose, frame_idx: int) -> float:
     """
     pose = poses[frame_idx]
 
-    # Head (nose as proxy for head center)
-    head = pose[BKey.NOSE]
+    # Head (HEAD keypoint in H3.6M format)
+    head = pose[H36Key.HEAD]
     head_mass = 0.081
 
     # Torso (mid-shoulder to mid-hip midpoint)
-    torso = (pose[BKey.LEFT_SHOULDER] + pose[BKey.RIGHT_SHOULDER] +
-             pose[BKey.LEFT_HIP] + pose[BKey.RIGHT_HIP]) / 4
+    torso = (pose[H36Key.LSHOULDER] + pose[H36Key.RSHOULDER] +
+             pose[H36Key.LHIP] + pose[H36Key.RHIP]) / 4
     torso_mass = 0.497
 
-    # Arms (elbow-wrist midpoint for upper arm, wrist-pinky for forearm)
-    l_upper_arm = (pose[BKey.LEFT_SHOULDER] + pose[BKey.LEFT_ELBOW]) / 2
-    r_upper_arm = (pose[BKey.RIGHT_SHOULDER] + pose[BKey.RIGHT_ELBOW]) / 2
-    l_forearm = (pose[BKey.LEFT_ELBOW] + pose[BKey.LEFT_WRIST]) / 2
-    r_forearm = (pose[BKey.RIGHT_ELBOW] + pose[BKey.RIGHT_WRIST]) / 2
+    # Arms (elbow-wrist midpoint for upper arm, wrist for forearm)
+    l_upper_arm = (pose[H36Key.LSHOULDER] + pose[H36Key.LELBOW]) / 2
+    r_upper_arm = (pose[H36Key.RSHOULDER] + pose[H36Key.RELBOW]) / 2
+    l_forearm = (pose[H36Key.LELBOW] + pose[H36Key.LWRIST]) / 2
+    r_forearm = (pose[H36Key.RELBOW] + pose[H36Key.RWRIST]) / 2
     arm_mass_each = 0.050
 
     # Thighs (hip-knee midpoint)
-    l_thigh = (pose[BKey.LEFT_HIP] + pose[BKey.LEFT_KNEE]) / 2
-    r_thigh = (pose[BKey.RIGHT_HIP] + pose[BKey.RIGHT_KNEE]) / 2
+    l_thigh = (pose[H36Key.LHIP] + pose[H36Key.LKNEE]) / 2
+    r_thigh = (pose[H36Key.RHIP] + pose[H36Key.RKNEE]) / 2
     thigh_mass_each = 0.100
 
-    # Shins+feet (knee-ankle midpoint)
-    l_leg = (pose[BKey.LEFT_KNEE] + pose[BKey.LEFT_ANKLE]) / 2
-    r_leg = (pose[BKey.RIGHT_KNEE] + pose[BKey.RIGHT_ANKLE]) / 2
+    # Shins+feet (knee-foot midpoint)
+    l_leg = (pose[H36Key.LKNEE] + pose[H36Key.LFOOT]) / 2
+    r_leg = (pose[H36Key.RKNEE] + pose[H36Key.RFOOT]) / 2
     leg_mass_each = 0.161
 
     # Weighted sum of Y-coordinates only (for height)
@@ -218,7 +218,7 @@ def calculate_com_trajectory(poses: NormalizedPose) -> NDArray[np.float32]:
     """Calculate Center of Mass trajectory for entire pose sequence.
 
     Args:
-        poses: NormalizedPose (num_frames, 33, 2).
+        poses: NormalizedPose (num_frames, 17, 2).
 
     Returns:
         CoM Y-coordinates (num_frames,) in normalized units.

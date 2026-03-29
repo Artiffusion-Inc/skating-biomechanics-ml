@@ -159,20 +159,22 @@ class TestPoseSmoother:
 
     @pytest.fixture
     def sample_poses(self):
-        """Create sample pose sequence with 33 joints."""
-        # 30 frames, 33 joints, 2 coords
-        poses = np.zeros((30, 33, 2), dtype=np.float32)
+        """Create sample pose sequence with 17 joints (H3.6M format)."""
+        from src.types import H36Key
+
+        # 30 frames, 17 joints, 2 coords
+        poses = np.zeros((30, 17, 2), dtype=np.float32)
 
         # Add sinusoidal motion to some joints
         t = np.arange(30) / 30.0
         for i in range(30):
-            # Left wrist moves
-            poses[i, 15, 0] = 0.5 * np.sin(2 * np.pi * t[i])
-            poses[i, 15, 1] = 0.3 * np.cos(2 * np.pi * t[i])
+            # Left wrist moves (index 13 in H3.6M)
+            poses[i, H36Key.LWRIST, 0] = 0.5 * np.sin(2 * np.pi * t[i])
+            poses[i, H36Key.LWRIST, 1] = 0.3 * np.cos(2 * np.pi * t[i])
 
-            # Right wrist moves
-            poses[i, 16, 0] = -0.5 * np.sin(2 * np.pi * t[i])
-            poses[i, 16, 1] = 0.3 * np.cos(2 * np.pi * t[i])
+            # Right wrist moves (index 16 in H3.6M)
+            poses[i, H36Key.RWRIST, 0] = -0.5 * np.sin(2 * np.pi * t[i])
+            poses[i, H36Key.RWRIST, 1] = 0.3 * np.cos(2 * np.pi * t[i])
 
         return poses
 
@@ -197,7 +199,7 @@ class TestPoseSmoother:
         # Create poses with noise
         np.random.seed(42)
         num_frames = 60
-        poses = np.random.normal(0, 0.1, (num_frames, 33, 2)).astype(np.float32)
+        poses = np.random.normal(0, 0.1, (num_frames, 17, 2)).astype(np.float32)
 
         # Add underlying signal
         t = np.arange(num_frames) / 30.0
@@ -217,11 +219,11 @@ class TestPoseSmoother:
         # Smoothed should be smoother than original
         original_smoothness = np.mean([
             smoothness(poses[:, j, c])
-            for j in range(33) for c in range(2)
+            for j in range(17) for c in range(2)
         ])
         smoothed_smoothness = np.mean([
             smoothness(smoothed[:, j, c])
-            for j in range(33) for c in range(2)
+            for j in range(17) for c in range(2)
         ])
 
         assert smoothed_smoothness < original_smoothness
@@ -251,7 +253,7 @@ class TestPoseSmoother:
 
         # Noisy signal
         np.random.seed(42)
-        poses = np.random.normal(0, 0.1, (30, 33, 2)).astype(np.float32)
+        poses = np.random.normal(0, 0.1, (30, 17, 2)).astype(np.float32)
 
         smoothed_low = smoother_low.smooth(poses)
         smoothed_high = smoother_high.smooth(poses)
@@ -286,8 +288,8 @@ class TestPoseSmoother:
         """Test that invalid shape raises error."""
         smoother = PoseSmoother(freq=30.0)
 
-        # Wrong shape
-        poses = np.zeros((30, 17, 2), dtype=np.float32)
+        # Wrong shape - 3D instead of 2D (smooth() expects 2D)
+        poses = np.zeros((30, 17, 3), dtype=np.float32)
 
         with pytest.raises(ValueError, match="Expected shape"):
             smoother.smooth(poses)
@@ -367,7 +369,7 @@ class TestIntegration:
         from src.types import BKey
 
         # Create normalized poses (centered at origin)
-        poses = np.zeros((30, 33, 2), dtype=np.float32)
+        poses = np.zeros((30, 17, 2), dtype=np.float32)
         t = np.arange(30) / 30.0
         for i in range(30):
             poses[i, BKey.LEFT_HIP, 0] = -0.05
@@ -390,7 +392,7 @@ class TestIntegration:
     def test_smoothing_preserves_phase_boundaries(self):
         """Test that phase-aware smoothing preserves rapid transitions."""
         # Create poses with sudden jump at frame 15
-        poses = np.zeros((30, 33, 2), dtype=np.float32)
+        poses = np.zeros((30, 17, 2), dtype=np.float32)
         poses[:15, :, 0] = -0.5  # Left side
         poses[15:, :, 0] = 0.5  # Right side
 

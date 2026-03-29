@@ -1,4 +1,12 @@
-"""Blade edge detection for figure skating analysis.
+"""Blade edge detection for figure skating analysis (2D/BlazePose 33kp format).
+
+.. DEPRECATED::
+    This module is deprecated for H3.6M 17kp 3D format.
+    Use `blade_edge_detector_3d.py` with `BladeEdgeDetector3D` class instead.
+
+    The 2D detector relies on heel and foot_index keypoints that don't exist
+    in H3.6M format. For 3D poses, use BladeEdgeDetector3D which uses 3D
+    foot velocity and body lean angles for edge detection.
 
 Based on the BDA (Blade Discrimination Algorithm) research:
 "Automated Blade Type Discrimination Algorithm for Figure Skating Based on MediaPipe"
@@ -504,7 +512,11 @@ class BladeState:
 
 
 class BladeEdgeDetector:
-    """Blade edge detection using improved physics-based approach.
+    """Blade edge detection using improved physics-based approach (2D/BlazePose 33kp).
+
+    .. DEPRECATED::
+        Use `BladeEdgeDetector3D` from `blade_edge_detector_3d.py` for H3.6M 17kp format.
+        This class requires heel and foot_index keypoints that don't exist in H3.6M.
 
     Uses multiple signals for robust classification:
     1. Body lean angle relative to turn direction (NEW - more accurate)
@@ -534,6 +546,9 @@ class BladeEdgeDetector:
     ):
         """Initialize blade edge detector.
 
+        .. DEPRECATED::
+            Use `BladeEdgeDetector3D` from `blade_edge_detector_3d.py` for H3.6M 17kp format.
+
         Args:
             inside_threshold: Foot angle threshold for inside edge (negative degrees).
             outside_threshold: Foot angle threshold for outside edge (positive degrees).
@@ -541,6 +556,14 @@ class BladeEdgeDetector:
             smoothing_window: Number of frames for temporal smoothing.
             use_lean_method: Use improved lean+curvature classification (default: True).
         """
+        import warnings
+        warnings.warn(
+            "BladeEdgeDetector is deprecated for H3.6M 17kp format. "
+            "Use BladeEdgeDetector3D from blade_edge_detector_3d.py instead.",
+            DeprecationWarning,
+            stacklevel=2
+        )
+
         self.inside_threshold = inside_threshold
         self.outside_threshold = outside_threshold
         self.toe_pick_accel_threshold = toe_pick_accel_threshold
