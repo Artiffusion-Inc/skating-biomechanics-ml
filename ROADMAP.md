@@ -233,7 +233,7 @@ uv run python -m skating_biomechanics_ml.cli build-ref expert.mp4 \
 ### Phase 11: Visualization ✅ 100%
 **Status:** Complete
 
-- [x] draw_skeleton() - 33-keypoint overlay
+- [x] draw_skeleton() - H3.6M 17-keypoint overlay (supports 2D and 3D)
 - [x] draw_velocity_vectors() - speed visualization
 - [x] draw_trails() - motion history
 - [x] draw_edge_indicators() - inside/outside/flat
@@ -323,29 +323,30 @@ summary = detector.get_blade_summary(states)
 ### Phase 14: 3D Pose & Physics Engine ✅ 100%
 **Status:** Complete
 
-- [x] BlazePose 33 → H3.6M 17 keypoint mapping
+- [x] H36MExtractor (H3.6M 17-keypoint format, MediaPipe backend)
 - [x] PhysicsEngine (CoM, Moment of Inertia, Angular Momentum)
 - [x] Parabolic trajectory fitting for jump height
-- [x] AthletePose3DExtractor with MotionAGFormer integration
+- [x] AthletePose3DExtractor with MotionAGFormer/TCPFormer integration
 - [x] Load AthletePose3D fine-tuned models
 - [x] 3D skeleton visualization in main HUD
 - [x] CoM trajectory visualization
 
 **Key Features:**
-1. **blazepose_to_h36m()** - Convert 33kp BlazePose to 17kp H3.6M format
+1. **H36MExtractor** - Direct H3.6M 17kp extraction (integrated BlazePose→H3.6M conversion)
 2. **PhysicsEngine** - Calculate CoM, I, L from 3D poses
    - Dempster anthropometric tables (segment masses)
    - Parabolic trajectory fit for accurate jump height
    - Solves the 60% flight time error problem!
 3. **AthletePose3DExtractor** - Monocular 3D pose estimation
    - 81-frame temporal windows
-   - MotionAgFormer-S (59MB) for real-time
+   - MotionAGFormer-S (59MB) for real-time
+   - TCPFormer (422MB) for high accuracy
    - State dict prefix stripping for compatibility
 4. **3D Visualization** - Depth color-coded skeleton in HUD
    - Layer 0: 3D skeleton overlay
    - Layer 1: CoM trajectory visualization
 
-**Files:** `pose_3d/blazepose_to_h36m.py`, `analysis/physics_engine.py`, `pose_3d/athletepose_extractor.py`, `models/motionagformer/`
+**Files:** `src/pose_estimation/h36m_extractor.py`, `src/analysis/physics_engine.py`, `src/pose_3d/athletepose_extractor.py`, `src/models/motionagformer/`, `src/models/tcpformer/`
 **Tests:** `tests/pose_3d/` (11 passing), `tests/analysis/test_physics_engine.py` (18 passing)
 
 **Usage:**
@@ -390,18 +391,8 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 
 ## Current Blockers
 
-### HIGH Priority
-1. **Auto phase detection** - Manual specification required
-   - Impact: Cannot fully automate analysis
-   - Solution: Implement height-based takeoff, peak, landing detection
-
-### MEDIUM Priority
-2. **DTW alignment tests** - Test suite outdated
-   - Impact: Cannot verify alignment correctness
-   - Solution: Update tests for 33-keypoint format
-
 ### LOW Priority
-3. **Segment boundaries** - Too broad, includes preparation
+1. **Segment boundaries** - Too broad, includes preparation
    - Impact: Segments not precise
    - Solution: Trim to element core motion
 

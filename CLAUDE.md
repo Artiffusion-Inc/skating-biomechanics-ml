@@ -22,24 +22,27 @@ ML-based personal AI coach for figure skating using computer vision. Analyzes sk
 | **Language**        | Python 3.11+                             |
 | **Package Manager** | `uv`                                     |
 | **Detection**       | YOLOv11n (Ultralytics)                   |
-| **2D Pose**         | MediaPipe BlazePose (33 keypoints)       |
+| **2D Pose**         | H3.6M 17-keypoint (MediaPipe backend)    |
+| **3D Pose**         | MotionAGFormer / TCPFormer (AthletePose3D) |
 | **Normalization**   | Root-centering + scale normalization     |
 | **Alignment**       | DTW (dtw-python) with Sakoe-Chiba window |
 | **Analysis**        | Custom biomechanics metrics              |
 | **Recommendations** | Rule-based engine (Russian output)       |
 | **Testing**         | Pytest + pytest-cov                      |
 
-## MVP Architecture (2D-only)
+## MVP Architecture (3D-First)
 
 ```
-Video Input → YOLOv11n (detect) → BlazePose (2D keypoints) → Normalization
+Video Input → YOLOv11n (detect) → H36MExtractor (H3.6M 17kp) → Normalization
+    ↓
+3D Lifting (MotionAGFormer/TCPFormer) → 3D Poses
     ↓
 Phase Detection → Biomechanics Metrics → DTW (vs reference)
     ↓
 Rule-based Recommender → Text Report (Russian)
 ```
 
-**Key Decision:** MVP uses 2D normalized poses instead of 3D lifting. This simplifies the pipeline while providing sufficient information for basic biomechanics analysis. 3D lifting can be added later as an enhancement.
+**Key Decision:** System uses H3.6M 17-keypoint format as primary pose representation. 3D lifting via AthletePose3D models (MotionAGFormer-S or TCPFormer) provides physics-accurate analysis.
 
 ---
 
@@ -107,19 +110,24 @@ Before committing:
 ## Project Structure
 
 ```
-src/skating_biomechanics_ml/
-├── types.py              # Shared data types (BKey, FrameKeypoints, BladeType, etc.)
+src/
+├── types.py              # Shared data types (H36Key, FrameKeypoints, BladeType, etc.)
 ├── pipeline.py           # Main AnalysisPipeline orchestrator
 ├── cli.py                # argparse CLI (analyze, build-ref, segment commands)
 ├── detection/
 │   └── person_detector.py    # YOLOv11n wrapper
-├── pose_2d/
-│   ├── blazepose_extractor.py  # BlazePose wrapper (33 keypoints)
-│   ├── pose_extractor.py       # Abstract pose extractor interface
-│   └── normalizer.py            # Root-centering, scale normalization
+├── pose_estimation/
+│   ├── h36m_extractor.py     # H3.6M 17-keypoint extractor (MediaPipe backend)
+│   └── __init__.py           # Exports H36MExtractor, H36Key, H36M_SKELETON_EDGES
+├── pose_3d/
+│   ├── athletepose_extractor.py  # AthletePose3D wrapper (MotionAGFormer/TCPFormer)
+│   ├── biomechanics_estimator.py # Simple 3D estimation (no ML model)
+│   ├── normalizer_3d.py          # 3D pose normalization
+│   └── blazepose_extractor.py     # Legacy BlazePose 33kp extractor (scripts only)
 ├── analysis/
 │   ├── metrics.py             # BiomechanicsAnalyzer (airtime, angles, etc.)
-│   ├── phase_detector.py      # Auto-detect takeoff/peak/landing (⚠️ 50% working)
+│   ├── phase_detector.py      # Auto-detect takeoff/peak/landing
+│   ├── physics_engine.py      # CoM calculation, jump height, angular momentum
 │   ├── recommender.py         # Rule-based recommendation engine
 │   └── rules/
 │       ├── jump_rules.py      # Rules for all jump types
@@ -133,8 +141,11 @@ src/skating_biomechanics_ml/
 │   └── reference_store.py     # Store/load .npz reference files
 ├── segmentation/
 │   └── element_segmenter.py   # Automatic motion segmentation
+├── models/
+│   ├── motionagformer/        # MotionAGFormer 3D lifter
+│   └── tcpformer/             # TCPFormer 3D lifter
 └── utils/
-    ├── blade_edge_detector.py # BDA algorithm for blade edge detection ✨ NEW!
+    ├── blade_edge_detector.py # BDA algorithm for blade edge detection
     ├── video.py               # cv2 video utilities
     ├── geometry.py            # Angles, distances, smoothing
     ├── smoothing.py           # One-Euro Filter for pose smoothing
@@ -154,9 +165,9 @@ tests/
 ├── test_types.py          # Type tests
 ├── test_pipeline.py       # Integration tests
 ├── detection/             # PersonDetector tests
-├── pose_2d/               # BlazePose tests
-├── analysis/              # Metrics, phase detector, recommender tests
-├── alignment/             # DTW aligner tests
+├── pose_3d/               # 3D pose lifting tests
+├── analysis/              # Metrics, phase detector, recommender, physics tests
+├── alignment/             # DTW aligner tests (H3.6M 17kp format)
 ├── segmentation/          # Element segmenter tests
 └── utils/                 # Utility tests (blade, geometry, smoothing, viz)
 
@@ -381,27 +392,28 @@ See @research/RESEARCH_SUMMARY_2026-03-28.md for comprehensive findings from Exa
 
 ## Implementation Status
 
-✅ **Overall: MVP ~90% complete**
+✅ **Overall: MVP ~98% complete**
 
 **See @ROADMAP.md for detailed phase-by-phase status**
 
 **Complete (100%):**
 - Phase 0: Foundation (types, utils)
 - Phase 1: Person Detection (YOLOv11n)
-- Phase 2: Pose Estimation (BlazePose 33kp)
-- Phase 3: Normalization (root-centering + scale)
-- Phase 4: Smoothing (One-Euro Filter, 29% jitter reduction)
-- Phase 5: Metrics (airtime, height, angles, edge)
-- Phase 8: Recommender (rule-based, Russian output)
+- Phase 2: 3D Pose Estimation (H3.6M 17kp + MotionAGFormer/TCPFormer)
+- Phase 3: Pose Normalization (root-centering + scale)
+- Phase 4: Temporal Smoothing (One-Euro Filter, 29% jitter reduction)
+- Phase 5: Biomechanics Metrics (airtime, height, angles, edge)
+- Phase 6: Phase Detection (CoM-based auto-detection)
+- Phase 7: DTW Alignment (H3.6M 17kp format, all tests passing)
+- Phase 8: Rule-Based Recommender (Russian output)
 - Phase 9: Reference System (save/load .npz)
 - Phase 11: Visualization (layered HUD, skeleton, kinematics)
 - Phase 12: CLI & Pipeline (analyze, build-ref, segment)
-- **Phase 13: Blade Edge Detection** ✨ (BDA algorithm, 19 tests passing)
+- Phase 13: Blade Edge Detection (BDA algorithm, 19 tests passing)
+- Phase 14: 3D Pose & Physics Engine (CoM, trajectory, TCPFormer)
 
-**Partial (50-90%):**
-- Phase 6: Phase Detection ⚠️ 50% - MANUAL ONLY, auto-detection NOT working
-- Phase 7: DTW Alignment ⚠️ 70% - code exists, tests failing (17 vs 33 keypoints)
-- Phase 10: Segmentation ✅ 90% - working, but boundaries too broad
+**Partial (90%):**
+- Phase 10: Segmentation - working, but boundaries include preparation/recovery
 
 ---
 
