@@ -35,9 +35,8 @@ class PoseProcessor:
         # Create H36MExtractor with YOLOv11-Pose backend
         from src.pose_estimation import H36MExtractor
         self._extractor = H36MExtractor(
-            min_detection_confidence=0.5,
-            min_presence_confidence=0.5,
-            num_poses=1,
+            model_size="n",  # YOLOv11n-Pose (nano)
+            conf_threshold=0.5,
             output_format="normalized",  # Normalized [0,1] for smoothing
         )
 
