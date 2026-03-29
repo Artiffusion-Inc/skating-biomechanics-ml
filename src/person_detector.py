@@ -5,16 +5,12 @@ Uses Ultralytics library for model loading and inference.
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
 from ultralytics import YOLO
 
 from .types import BoundingBox
 from .video import extract_frames
-
-if TYPE_CHECKING:
-    pass
 
 
 class PersonDetector:

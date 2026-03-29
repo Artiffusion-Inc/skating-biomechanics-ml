@@ -6,10 +6,7 @@ import shutil
 from pathlib import Path
 
 from src.pipeline import AnalysisPipeline
-from src import blazepose_extractor, normalizer PoseExtractor, PoseNormalizer
-from skating_biomechanics_ml.references import ReferenceBuilder, ReferenceStore
 from src.video import get_video_meta
-
 
 # Dataset configuration
 DATASET_DIR = Path("data/dataset")
@@ -139,7 +136,7 @@ def main():
         video_meta = create_video_metadata(video_info, dest_video)
 
         # Run analysis
-        print(f"  Running analysis...")
+        print("  Running analysis...")
         try:
             analysis_results = analyze_video(dest_video, video_info["id"])
             video_meta["analysis"] = analysis_results
@@ -173,7 +170,7 @@ def main():
     with open(index_file, "w") as f:
         json.dump(dataset_metadata, f, indent=2, ensure_ascii=False)
 
-    print(f"\nDataset organized successfully!")
+    print("\nDataset organized successfully!")
     print(f"  Location: {DATASET_DIR}")
     print(f"  Videos: {len(dataset_metadata['videos'])}")
     print(f"  Index: {index_file}")

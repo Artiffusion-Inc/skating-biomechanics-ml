@@ -79,9 +79,7 @@ If migration fails:
 
 ## Remaining BKey References (Intentional)
 
-- `src/pose_3d/blazepose_to_h36m.py` - Converts FROM BlazePose 33kp TO H3.6M 17kp (must reference BKey)
 - `src/blade_edge_detector.py` - Legacy 2D version (deprecated, use blade_edge_detector_3d.py instead)
-- `src/blazepose_extractor.py` - 2D BlazePose wrapper (used only for initial extraction before conversion)
 
 ## Migration Complete!
 
@@ -115,5 +113,5 @@ The core analysis pipeline now uses H3.6M 17kp 3D format throughout:
 ### Legacy Code Status:
 - **src/blade_edge_detector.py** - DEPRECATED but kept for backward compatibility
 - **tests/utils/test_blade_edge_detector.py** - Tests pass with deprecation warnings
-- **src/blazepose_extractor.py** - Still used for initial 2D→3D conversion
-- **src/pose_3d/blazepose_to_h36m.py** - Converter module (intentionally references BKey)
+- **src/blazepose_extractor.py** - DEPRECATED (raises NotImplementedError, use H36MExtractor instead)
+- **src/pose_estimation/h36m_extractor.py** - Contains deprecated blazepose_to_h36m() function (raises NotImplementedError)

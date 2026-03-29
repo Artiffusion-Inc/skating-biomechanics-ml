@@ -13,14 +13,9 @@ References:
 """
 
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.optimize import curve_fit
-
-if TYPE_CHECKING:
-    pass
-
 
 # Anthropometric data (segment mass ratios)
 # Based on Dempster (1955) - normalized to total body mass

@@ -27,6 +27,15 @@ Example:
 # =============================================================================
 
 # Config
+# =============================================================================
+# LEGACY API (for backward compatibility)
+# =============================================================================
+# Import legacy functions from old visualization.py module
+# These are maintained for backward compatibility with existing tests
+# Import using importlib to avoid circular import
+import importlib.util
+import sys
+
 from src.visualization.config import (
     LayerConfig,
     LayerConfigs,
@@ -56,16 +65,6 @@ from src.visualization.core.text import (
     render_cyrillic_text,
 )
 
-# Skeleton
-from src.visualization.skeleton import (
-    draw_skeleton,
-    draw_skeleton_3d,
-    draw_skeleton_3d_pip,
-    get_joint_color,
-    get_joint_radius,
-    get_skeleton_color,
-)
-
 # HUD
 from src.visualization.hud import (
     HUDLayout,
@@ -91,15 +90,15 @@ from src.visualization.layers import (
     render_layers,
 )
 
-# =============================================================================
-# LEGACY API (for backward compatibility)
-# =============================================================================
-
-# Import legacy functions from old visualization.py module
-# These are maintained for backward compatibility with existing tests
-# Import using importlib to avoid circular import
-import importlib.util
-import sys
+# Skeleton
+from src.visualization.skeleton import (
+    draw_skeleton,
+    draw_skeleton_3d,
+    draw_skeleton_3d_pip,
+    get_joint_color,
+    get_joint_radius,
+    get_skeleton_color,
+)
 
 try:
     # Load the old visualization.py as a separate module

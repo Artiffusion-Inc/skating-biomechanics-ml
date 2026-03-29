@@ -46,7 +46,7 @@ def bn_init(bn, scale):
 
 class CTRGC(nn.Module):
     def __init__(self, in_channels, out_channels, rel_reduction=8):
-        super(CTRGC, self).__init__()
+        super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
         if in_channels == 3 or in_channels == 9:
@@ -76,7 +76,7 @@ class CTRGC(nn.Module):
 
 class CTRGCBlock(nn.Module):
     def __init__(self, in_channels, out_channels, adaptive=True):
-        super(CTRGCBlock, self).__init__()
+        super().__init__()
         self.out_c = out_channels
         self.in_c = in_channels
         self.adaptive = adaptive

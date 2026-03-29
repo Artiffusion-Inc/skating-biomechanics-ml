@@ -17,9 +17,9 @@ import sys
 import traceback
 from pathlib import Path
 
+from . import normalizer
 from .pipeline import AnalysisPipeline
 from .pose_estimation import H36MExtractor
-from . import normalizer
 
 PoseNormalizer = normalizer.PoseNormalizer
 from . import element_defs, reference_builder, reference_store

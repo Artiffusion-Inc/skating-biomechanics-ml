@@ -4,7 +4,6 @@ Updated for H3.6M 17-keypoint 3D format.
 """
 
 import numpy as np
-import pytest
 
 from src.normalizer import PoseNormalizer
 from src.types import H36Key

@@ -5,7 +5,6 @@ H3.6M Migration:
     2D: H36MExtractor, 3D: AthletePose3DExtractor
 """
 
-import numpy as np
 import pytest
 
 from src.pipeline import AnalysisPipeline
@@ -183,6 +182,13 @@ class TestPipelineLazyLoading:
 
     def test_pose_2d_extractor_lazy_load(self):
         """Should lazy-load 2D pose extractor (H3.6M format)."""
+        from pathlib import Path
+
+        # Skip if YOLO model not available
+        model_file = Path("yolov11n-pose.pt")
+        if not model_file.exists():
+            pytest.skip("YOLO model not available")
+
         pipeline = AnalysisPipeline()
 
         assert pipeline._pose_2d_extractor is None

@@ -2,9 +2,9 @@
 """Visualize segmentation results on video."""
 
 import argparse
-import cv2
-import numpy as np
 from pathlib import Path
+
+import cv2
 
 
 def main():
@@ -30,35 +30,34 @@ def main():
             (s["start"], s["end"], s["element_type"])
             for s in data["segments"]
         ]
+    # Default segments for the test videos
+    elif "video1" in args.video.name:
+        segments = [(8, 159, "three_turn"), (451, 500, "three_turn")]
+    elif "video2" in args.video.name:
+        segments = [
+            (40, 133, "three_turn"),
+            (162, 565, "three_turn"),
+            (597, 669, "three_turn"),
+            (701, 763, "three_turn"),
+            (791, 1019, "three_turn"),
+            (1121, 1246, "three_turn"),
+            (1308, 1411, "three_turn"),
+        ]
+    elif "video3" in args.video.name:
+        segments = [
+            (47, 145, "three_turn"),
+            (157, 585, "three_turn"),
+            (607, 636, "three_turn"),
+            (740, 785, "unknown"),
+            (818, 936, "three_turn"),
+            (960, 1209, "three_turn"),
+            (1226, 1279, "unknown"),
+            (1292, 1334, "unknown"),
+            (1356, 1375, "unknown"),
+            (1400, 1423, "three_turn"),
+        ]
     else:
-        # Default segments for the test videos
-        if "video1" in args.video.name:
-            segments = [(8, 159, "three_turn"), (451, 500, "three_turn")]
-        elif "video2" in args.video.name:
-            segments = [
-                (40, 133, "three_turn"),
-                (162, 565, "three_turn"),
-                (597, 669, "three_turn"),
-                (701, 763, "three_turn"),
-                (791, 1019, "three_turn"),
-                (1121, 1246, "three_turn"),
-                (1308, 1411, "three_turn"),
-            ]
-        elif "video3" in args.video.name:
-            segments = [
-                (47, 145, "three_turn"),
-                (157, 585, "three_turn"),
-                (607, 636, "three_turn"),
-                (740, 785, "unknown"),
-                (818, 936, "three_turn"),
-                (960, 1209, "three_turn"),
-                (1226, 1279, "unknown"),
-                (1292, 1334, "unknown"),
-                (1356, 1375, "unknown"),
-                (1400, 1423, "three_turn"),
-            ]
-        else:
-            segments = []
+        segments = []
 
     # Colors for different element types
     colors = {
@@ -141,6 +140,5 @@ def main():
 
 
 if __name__ == "__main__":
-    import json
 
     main()

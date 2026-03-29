@@ -10,7 +10,7 @@ Updated for H3.6M 17-keypoint format (3D-only pipeline).
 
 import numpy as np
 
-from .types import H36Key, Pose3D, NormalizedPose
+from .types import H36Key, NormalizedPose, Pose3D
 
 
 class PoseNormalizer:

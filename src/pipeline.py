@@ -35,10 +35,9 @@ if TYPE_CHECKING:
     from . import person_detector
 
     PersonDetector = person_detector.PersonDetector
-    from .pose_estimation import H36MExtractor
-    from .pose_3d import AthletePose3DExtractor
-    from .pose_3d.normalizer_3d import PoseNormalizer3D
     from . import reference_store
+    from .pose_3d import AthletePose3DExtractor
+    from .pose_estimation import H36MExtractor
 
     ReferenceStore = reference_store.ReferenceStore
     from .smoothing import OneEuroFilterConfig, PoseSmoother
@@ -79,7 +78,7 @@ class AnalysisPipeline:
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
         self._pose_2d_extractor: H36MExtractor | None = None  # type: ignore[valid-type]
-        self._pose_3d_extractor: "AthletePose3DExtractor | None" = None  # type: ignore[valid-type]
+        self._pose_3d_extractor: AthletePose3DExtractor | None = None  # type: ignore[valid-type]
         self._normalizer: PoseNormalizer | None = None  # type: ignore[valid-type]
         self._smoother: PoseSmoother | None = None  # type: ignore[valid-type]
         self._phase_detector: PhaseDetector | None = None  # type: ignore[valid-type]

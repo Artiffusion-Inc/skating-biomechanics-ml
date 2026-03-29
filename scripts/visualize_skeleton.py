@@ -1,11 +1,12 @@
 #!/usr/bin/env python3
 """Create skeleton overlay visualizations for dataset videos."""
 
-import cv2
-import numpy as np
 from pathlib import Path
 
-from src import blazepose_extractor, normalizer PoseExtractor
+import cv2
+import numpy as np
+
+from src.pose_estimation import H36MExtractor
 from src.video import extract_frames, get_video_meta
 
 # COCO 17 keypoints skeleton edges (pairs of indices)
@@ -104,7 +105,7 @@ def create_skeleton_video(
     """
     print(f"Processing {video_path.name}...")
 
-    extractor = PoseExtractor(model_size="s")
+    extractor = H36MExtractor(model_size="s")
     meta = get_video_meta(video_path)
 
     # Get video properties
@@ -157,7 +158,7 @@ def save_sample_frames(video_path: Path, output_dir: Path, num_samples: int = 5)
     """
     print(f"Saving sample frames from {video_path.name}...")
 
-    extractor = PoseExtractor(model_size="s")
+    extractor = H36MExtractor(model_size="s")
     output_dir.mkdir(parents=True, exist_ok=True)
 
     total_frames = get_video_meta(video_path).num_frames
@@ -201,7 +202,7 @@ def main():
         video_output = output_dir / "frames" / video_path.stem
         save_sample_frames(video_path, video_output, num_samples=5)
 
-    print(f"\n=== Visualizations complete ===")
+    print("\n=== Visualizations complete ===")
     print(f"Location: {output_dir}")
 
 

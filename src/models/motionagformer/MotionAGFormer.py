@@ -1,8 +1,8 @@
 from collections import OrderedDict
 
 import torch
-from torch import nn
 from timm.models.layers import DropPath
+from torch import nn
 
 from .modules.attention import Attention
 from .modules.graph import GCN
@@ -420,8 +420,9 @@ class MotionAGFormer(nn.Module):
 
 
 def _test():
-    from torchprofile import profile_macs
     import warnings
+
+    from torchprofile import profile_macs
 
     warnings.filterwarnings("ignore")
     b, c, t, j = 1, 3, 27, 17

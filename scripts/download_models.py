@@ -9,7 +9,6 @@ Run this script once before using the system.
 """
 
 import sys
-from pathlib import Path
 
 
 def main() -> int:
@@ -23,8 +22,8 @@ def main() -> int:
         from ultralytics import YOLO
 
         model = YOLO("yolov11n.pt")
-        print(f"   ✓ YOLOv11n downloaded successfully")
-        print(f"   Model size: ~6MB")
+        print("   ✓ YOLOv11n downloaded successfully")
+        print("   Model size: ~6MB")
         print(f"   Params: {sum(p.numel() for p in model.model.parameters()) / 1e6:.1f}M")
     except Exception as e:
         print(f"   ✗ Failed to download YOLOv11n: {e}")

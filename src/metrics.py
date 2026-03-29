@@ -9,16 +9,16 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from .geometry import (
+    angle_3pt,
+    calculate_com_trajectory,
+)
 from .types import (
     ElementPhase,
     H36Key,
     MetricResult,
     NormalizedPose,
     TimeSeries,
-)
-from .geometry import (
-    angle_3pt,
-    calculate_com_trajectory,
 )
 
 if TYPE_CHECKING:

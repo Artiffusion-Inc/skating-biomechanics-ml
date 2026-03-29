@@ -1,36 +1,27 @@
 """H3.6M 17-keypoint pose extractor.
 
-Direct H3.6M format extraction using BlazePose backend with integrated conversion.
+Direct H3.6M format extraction using YOLOv11-Pose backend with integrated conversion.
 This is the primary 2D pose extractor for the skating analysis pipeline.
 
 Architecture:
-    BlazePose (33kp) → integrated conversion → H3.6M (17kp) output
+    YOLOv11-Pose (17kp COCO) → geometric conversion → H3.6M (17kp) output
 
-The conversion is geometric (not learned) and happens on-the-fly during extraction,
-so we never store intermediate 33-keypoint poses.
+The conversion is geometric (not learned) and happens on-the-fly during extraction.
 """
 
-from collections import deque
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
-if TYPE_CHECKING:
-    pass
-
 try:
-    import mediapipe as mp
-    from mediapipe.tasks import python
-    from mediapipe.tasks.python import vision
+    from ultralytics import YOLO
 except ImportError:
-    mp = None  # type: ignore[assignment]
-    python = None  # type: ignore[assignment]
-    vision = None  # type: ignore[assignment]
+    YOLO = None  # type: ignore[assignment]
 
 
-# H3.6M keypoint indices (matching blazepose_to_h36m.py)
+
+# H3.6M keypoint indices
 class H36Key:
     """H3.6M keypoint indices (17 total)."""
 
@@ -53,43 +44,27 @@ class H36Key:
     RWRIST = 16
 
 
-# BlazePose keypoint indices (for internal mapping)
-class _BKey:
-    """BlazePose keypoint indices (33 total) - internal use only."""
+# YOLOv11-Pose COCO keypoint indices (for internal mapping)
+class _COCOKey:
+    """YOLOv11-Pose COCO keypoint indices (17 total) - internal use only."""
 
     NOSE = 0
-    LEFT_EYE_INNER = 1
-    LEFT_EYE = 2
-    LEFT_EYE_OUTER = 3
-    RIGHT_EYE_INNER = 4
-    RIGHT_EYE = 5
-    RIGHT_EYE_OUTER = 6
-    LEFT_EAR = 7
-    RIGHT_EAR = 8
-    MOUTH_LEFT = 9
-    MOUTH_RIGHT = 10
-    LEFT_SHOULDER = 11
-    RIGHT_SHOULDER = 12
-    LEFT_ELBOW = 13
-    RIGHT_ELBOW = 14
-    LEFT_WRIST = 15
-    RIGHT_WRIST = 16
-    LEFT_PINKY = 17
-    RIGHT_PINKY = 18
-    LEFT_INDEX = 19
-    RIGHT_INDEX = 20
-    LEFT_THUMB = 21
-    RIGHT_THUMB = 22
-    LEFT_HIP = 23
-    RIGHT_HIP = 24
-    LEFT_KNEE = 25
-    RIGHT_KNEE = 26
-    LEFT_ANKLE = 27
-    RIGHT_ANKLE = 28
-    LEFT_HEEL = 29
-    RIGHT_HEEL = 30
-    LEFT_FOOT_INDEX = 31
-    RIGHT_FOOT_INDEX = 32
+    LEFT_EYE = 1
+    RIGHT_EYE = 2
+    LEFT_EAR = 3
+    RIGHT_EAR = 4
+    LEFT_SHOULDER = 5
+    RIGHT_SHOULDER = 6
+    LEFT_ELBOW = 7
+    RIGHT_ELBOW = 8
+    LEFT_WRIST = 9
+    RIGHT_WRIST = 10
+    LEFT_HIP = 11
+    RIGHT_HIP = 12
+    LEFT_KNEE = 13
+    RIGHT_KNEE = 14
+    LEFT_ANKLE = 15
+    RIGHT_ANKLE = 16
 
 
 # H3.6M skeleton connections for visualization
@@ -140,44 +115,44 @@ H36M_KEYPOINT_NAMES = [
 ]
 
 
-def _blazepose_to_h36m_single(blazepose_pose: np.ndarray) -> np.ndarray:
-    """Convert BlazePose 33 keypoints to H3.6M 17 keypoints (single frame).
+def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
+    """Convert YOLOv11-Pose COCO 17 keypoints to H3.6M 17 keypoints (single frame).
 
     Args:
-        blazepose_pose: (33, 2) or (33, 3) array
+        coco_pose: (17, 2) or (17, 3) array in COCO format
 
     Returns:
-        h36m_pose: (17, 2) or (17, 3) array
+        h36m_pose: (17, 2) or (17, 3) array in H3.6M format
     """
-    has_confidence = blazepose_pose.shape[1] == 3
+    has_confidence = coco_pose.shape[1] == 3
     n_channels = 3 if has_confidence else 2
 
-    h36m_pose = np.zeros((17, n_channels), dtype=blazepose_pose.dtype)
+    h36m_pose = np.zeros((17, n_channels), dtype=coco_pose.dtype)
 
     # Midpoints
-    mid_hip = (blazepose_pose[_BKey.LEFT_HIP] + blazepose_pose[_BKey.RIGHT_HIP]) / 2
+    mid_hip = (coco_pose[_COCOKey.LEFT_HIP] + coco_pose[_COCOKey.RIGHT_HIP]) / 2
     mid_shoulder = (
-        blazepose_pose[_BKey.LEFT_SHOULDER] + blazepose_pose[_BKey.RIGHT_SHOULDER]
+        coco_pose[_COCOKey.LEFT_SHOULDER] + coco_pose[_COCOKey.RIGHT_SHOULDER]
     ) / 2
 
-    # Direct mapping from BlazePose to H3.6M
+    # Direct mapping from COCO to H3.6M
     h36m_pose[H36Key.HIP_CENTER] = mid_hip
-    h36m_pose[H36Key.RHIP] = blazepose_pose[_BKey.RIGHT_HIP]
-    h36m_pose[H36Key.RKNEE] = blazepose_pose[_BKey.RIGHT_KNEE]
-    h36m_pose[H36Key.RFOOT] = blazepose_pose[_BKey.RIGHT_ANKLE]
-    h36m_pose[H36Key.LHIP] = blazepose_pose[_BKey.LEFT_HIP]
-    h36m_pose[H36Key.LKNEE] = blazepose_pose[_BKey.LEFT_KNEE]
-    h36m_pose[H36Key.LFOOT] = blazepose_pose[_BKey.LEFT_ANKLE]
+    h36m_pose[H36Key.RHIP] = coco_pose[_COCOKey.RIGHT_HIP]
+    h36m_pose[H36Key.RKNEE] = coco_pose[_COCOKey.RIGHT_KNEE]
+    h36m_pose[H36Key.RFOOT] = coco_pose[_COCOKey.RIGHT_ANKLE]
+    h36m_pose[H36Key.LHIP] = coco_pose[_COCOKey.LEFT_HIP]
+    h36m_pose[H36Key.LKNEE] = coco_pose[_COCOKey.LEFT_KNEE]
+    h36m_pose[H36Key.LFOOT] = coco_pose[_COCOKey.LEFT_ANKLE]
     h36m_pose[H36Key.SPINE] = mid_shoulder * 0.5 + mid_hip * 0.5
     h36m_pose[H36Key.THORAX] = mid_shoulder
-    h36m_pose[H36Key.NECK] = blazepose_pose[_BKey.NOSE]
-    h36m_pose[H36Key.HEAD] = blazepose_pose[_BKey.NOSE]
-    h36m_pose[H36Key.LSHOULDER] = blazepose_pose[_BKey.LEFT_SHOULDER]
-    h36m_pose[H36Key.LELBOW] = blazepose_pose[_BKey.LEFT_ELBOW]
-    h36m_pose[H36Key.LWRIST] = blazepose_pose[_BKey.LEFT_WRIST]
-    h36m_pose[H36Key.RSHOULDER] = blazepose_pose[_BKey.RIGHT_SHOULDER]
-    h36m_pose[H36Key.RELBOW] = blazepose_pose[_BKey.RIGHT_ELBOW]
-    h36m_pose[H36Key.RWRIST] = blazepose_pose[_BKey.RIGHT_WRIST]
+    h36m_pose[H36Key.NECK] = coco_pose[_COCOKey.NOSE]
+    h36m_pose[H36Key.HEAD] = coco_pose[_COCOKey.NOSE]
+    h36m_pose[H36Key.LSHOULDER] = coco_pose[_COCOKey.LEFT_SHOULDER]
+    h36m_pose[H36Key.LELBOW] = coco_pose[_COCOKey.LEFT_ELBOW]
+    h36m_pose[H36Key.LWRIST] = coco_pose[_COCOKey.LEFT_WRIST]
+    h36m_pose[H36Key.RSHOULDER] = coco_pose[_COCOKey.RIGHT_SHOULDER]
+    h36m_pose[H36Key.RELBOW] = coco_pose[_COCOKey.RIGHT_ELBOW]
+    h36m_pose[H36Key.RWRIST] = coco_pose[_COCOKey.RIGHT_WRIST]
 
     return h36m_pose
 
@@ -185,84 +160,66 @@ def _blazepose_to_h36m_single(blazepose_pose: np.ndarray) -> np.ndarray:
 class H36MExtractor:
     """H3.6M 17-keypoint pose extractor.
 
-    Uses BlazePose backend with integrated H3.6M conversion.
-    Outputs H3.6M format directly (17 keypoints) - no intermediate 33kp storage.
+    Uses YOLOv11-Pose backend with integrated H3.6M conversion.
+    Outputs H3.6M format directly (17 keypoints) - no intermediate COCO storage.
 
     This is the primary 2D pose extractor for the skating analysis pipeline.
-    """
 
-    # Default model path
-    DEFAULT_MODEL_PATH = Path("data/models/pose_landmarker_heavy.task")
-    MODEL_URL = "https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task"
+    Advantages over BlazePose:
+    - Single-stage detection + pose (faster)
+    - No left/right confusion (better tracking)
+    - Easy API with ultralytics
+    """
 
     def __init__(
         self,
+        model_size: str = "n",
         model_path: Path | str | None = None,
-        min_detection_confidence: float = 0.5,
-        min_presence_confidence: float = 0.5,
-        num_poses: int = 1,
+        conf_threshold: float = 0.5,
         output_format: str = "normalized",  # "normalized" or "pixels"
+        skip_model_check: bool = False,
     ):
-        """Initialize H3.6M extractor.
+        """Initialize H3.6M extractor with YOLOv11-Pose backend.
 
         Args:
-            model_path: Path to .task model file. Defaults to data/models/pose_landmarker_heavy.task.
-            min_detection_confidence: Minimum confidence for person detection [0, 1].
-            min_presence_confidence: Minimum confidence for pose presence [0, 1].
-            num_poses: Maximum number of poses to detect.
-            output_format: "normalized" for [0,1] coords, "pixels" for absolute pixel coords.
+            model_size: Model size - 'n' (nano), 's' (small), 'm' (medium)
+            model_path: Path to custom model weights, or None for default
+            conf_threshold: Minimum confidence for pose detection [0, 1]
+            output_format: "normalized" for [0,1] coords, "pixels" for absolute pixel coords
+            skip_model_check: If True, don't validate model exists (for testing)
         """
-        if mp is None or vision is None:
+        if YOLO is None:
             raise ImportError(
-                "MediaPipe is not installed. Install with: uv add mediapipe"
+                "Ultralytics not installed. Install with: uv add ultralytics"
             )
 
-        # Determine model path
-        if model_path is None:
-            model_path = self.DEFAULT_MODEL_PATH
-        self.model_path = Path(model_path)
-
-        if not self.model_path.exists():
-            raise FileNotFoundError(
-                f"Model file not found: {self.model_path}\n"
-                f"Download with:\n"
-                f"  mkdir -p data/models\n"
-                f"  wget {self.MODEL_URL} -O {self.model_path}"
-            )
-
-        self._min_detection_confidence = min_detection_confidence
-        self._min_presence_confidence = min_presence_confidence
-        self._num_poses = num_poses
+        self.model_size = model_size
+        self._model_path = Path(model_path) if model_path else None
+        self._conf_threshold = conf_threshold
         self._output_format = output_format
-        self._landmarker: "vision.PoseLandmarker" | None = None
+        self._skip_model_check = skip_model_check
+
+        # Lazy-load model on first access
+        self._model: YOLO | None = None
 
     @property
-    def landmarker(self) -> "vision.PoseLandmarker":
-        """Lazy-load PoseLandmarker on first access."""
-        if self._landmarker is None:
-            base_options = python.BaseOptions(model_asset_path=str(self.model_path))
-
-            options = vision.PoseLandmarkerOptions(
-                base_options=base_options,
-                running_mode=vision.RunningMode.VIDEO,
-                min_pose_detection_confidence=self._min_detection_confidence,
-                min_pose_presence_confidence=self._min_presence_confidence,
-                num_poses=self._num_poses,
-                output_segmentation_masks=False,
-            )
-
-            self._landmarker = vision.PoseLandmarker.create_from_options(options)
-
-        return self._landmarker
+    def model(self) -> "YOLO":
+        """Lazy-load YOLO model on first access."""
+        if self._model is None:
+            if self._model_path is not None:
+                self._model = YOLO(str(self._model_path))
+            else:
+                model_name = f"yolov11{self.model_size}-pose.pt"
+                self._model = YOLO(model_name)
+        return self._model
 
     def extract_frame(
-        self, frame: np.ndarray, timestamp_ms: int = 0
+        self, frame: np.ndarray
     ) -> np.ndarray | None:
         """Extract H3.6M pose from single frame.
 
         Args:
             frame: Input frame (height, width, 3) as BGR image.
-            timestamp_ms: Timestamp in milliseconds for video mode.
 
         Returns:
             pose: (17, 3) array with x, y, confidence in H3.6M format.
@@ -273,29 +230,29 @@ class H36MExtractor:
         # Convert BGR to RGB
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # Create MediaPipe Image
-        mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=frame_rgb)
+        # Run inference
+        results = self.model(frame_rgb, verbose=False, conf=self._conf_threshold)
 
-        # Detect pose
-        result = self.landmarker.detect_for_video(mp_image, timestamp_ms)
-
-        # Check if any pose detected
-        if not result.pose_landmarks:
+        if len(results) == 0 or results[0].keypoints is None:
             return None
 
-        # Get first person's landmarks
-        landmarks = result.pose_landmarks[0]
-        h, w = frame.shape[:2]
+        # Get first person detected
+        keypoints = results[0].keypoints.xy.cpu().numpy()[0]  # (17, 2)
+        confidence = results[0].keypoints.conf.cpu().numpy()[0]  # (17,)
 
-        # Convert BlazePose 33kp to numpy
-        blazepose_kp = np.zeros((33, 3), dtype=np.float32)
-        for i, landmark in enumerate(landmarks):
-            blazepose_kp[i, 0] = landmark.x
-            blazepose_kp[i, 1] = landmark.y
-            blazepose_kp[i, 2] = landmark.presence if landmark.presence > 0 else 0.0
+        # Normalize to [0, 1]
+        h, w = frame.shape[:2]
+        keypoints_norm = keypoints.copy()
+        keypoints_norm[:, 0] /= w
+        keypoints_norm[:, 1] /= h
+
+        # Combine x, y, confidence
+        coco_kp = np.zeros((17, 3), dtype=np.float32)
+        coco_kp[:, :2] = keypoints_norm
+        coco_kp[:, 2] = confidence
 
         # Convert to H3.6M 17kp (integrated conversion)
-        h36m_kp = _blazepose_to_h36m_single(blazepose_kp)
+        h36m_kp = _coco_to_h36m_single(coco_kp)
 
         # Convert to pixels if requested
         if self._output_format == "pixels":
@@ -313,28 +270,46 @@ class H36MExtractor:
 
         Args:
             video_path: Path to video file.
-            fps: Video FPS for timestamp calculation. If None, will be detected.
+            fps: Video FPS (not used, kept for API compatibility).
 
         Returns:
             poses: (N, 17, 3) array with x, y, confidence in H3.6M format.
             frame_indices: (N,) array of frame indices where poses were detected.
         """
-        from src.video import extract_frames, get_video_meta
+        video_path = Path(video_path)
 
-        # Get video metadata
-        meta = get_video_meta(video_path)
-        if fps is None:
-            fps = meta.fps
+        # Run inference on video
+        results = self.model(str(video_path), verbose=False, conf=self._conf_threshold, stream=True)
 
         poses_list = []
         frame_indices = []
 
-        for frame_idx, frame in enumerate(extract_frames(video_path)):
-            timestamp_ms = int(frame_idx * 1000 / fps)
-            pose = self.extract_frame(frame, timestamp_ms)
-            if pose is not None:
-                poses_list.append(pose)
-                frame_indices.append(frame_idx)
+        for result in results:
+            if result.keypoints is not None and len(result.keypoints.xy) > 0:
+                kp = result.keypoints.xy.cpu().numpy()[0]  # (17, 2)
+                conf = result.keypoints.conf.cpu().numpy()[0]  # (17,)
+
+                # Normalize to [0, 1]
+                h, w = result.orig_shape
+                kp_norm = kp.copy()
+                kp_norm[:, 0] /= w
+                kp_norm[:, 1] /= h
+
+                # Combine x, y, confidence
+                coco_kp = np.zeros((17, 3), dtype=np.float32)
+                coco_kp[:, :2] = kp_norm
+                coco_kp[:, 2] = conf
+
+                # Convert to H3.6M 17kp (integrated conversion)
+                h36m_kp = _coco_to_h36m_single(coco_kp)
+
+                # Convert to pixels if requested
+                if self._output_format == "pixels":
+                    h36m_kp[:, 0] *= w
+                    h36m_kp[:, 1] *= h
+
+                poses_list.append(h36m_kp)
+                frame_indices.append(len(poses_list) - 1)
 
         if not poses_list:
             raise ValueError(f"No valid pose detected in video: {video_path}")
@@ -345,10 +320,11 @@ class H36MExtractor:
         return poses, frame_indices
 
     def close(self) -> None:
-        """Close the landmarker and release resources."""
-        if self._landmarker is not None:
-            self._landmarker.close()
-            self._landmarker = None
+        """Close the extractor and release resources.
+
+        Note: YOLO model doesn't require explicit cleanup, but method kept for API compatibility.
+        """
+        pass
 
     def __enter__(self):
         """Context manager entry."""
@@ -362,6 +338,7 @@ class H36MExtractor:
 # Convenience function
 def extract_h36m_poses(
     video_path: Path | str,
+    model_size: str = "n",
     model_path: Path | str | None = None,
     output_format: str = "normalized",
 ) -> tuple[np.ndarray, np.ndarray]:
@@ -371,22 +348,24 @@ def extract_h36m_poses(
 
     Args:
         video_path: Path to video file.
-        model_path: Path to .task model file.
+        model_size: Model size - 'n' (nano), 's' (small), 'm' (medium)
+        model_path: Path to custom model weights (deprecated, use model_size)
         output_format: "normalized" or "pixels"
 
     Returns:
         poses: (N, 17, 3) array with x, y, confidence
         frame_indices: (N,) array of frame indices
     """
-    extractor = H36MExtractor(model_path=model_path, output_format=output_format)
+    extractor = H36MExtractor(model_size=model_size, model_path=model_path, output_format=output_format)
     return extractor.extract_video(video_path)
 
 
 def blazepose_to_h36m(blazepose_pose: np.ndarray) -> np.ndarray:
     """Convert BlazePose 33 keypoints to H3.6M 17 keypoints.
 
-    Public conversion function for backward compatibility.
-    Handles both single frames and sequences.
+    .. deprecated::
+        BlazePose is no longer supported. Use YOLOv11-Pose via H36MExtractor instead.
+        This function provides YOLO-based conversion for backward compatibility.
 
     Args:
         blazepose_pose: (33, 2/3) array for single frame, or (N, 33, 2/3) for sequence
@@ -397,32 +376,24 @@ def blazepose_to_h36m(blazepose_pose: np.ndarray) -> np.ndarray:
     Raises:
         ValueError: If input shape is invalid
     """
-    # Handle single frame
-    if blazepose_pose.ndim == 2:
-        if blazepose_pose.shape[0] != 33:
-            raise ValueError(
-                f"Expected 33 keypoints for BlazePose, got {blazepose_pose.shape[0]}"
-            )
-        return _blazepose_to_h36m_single(blazepose_pose)
+    import warnings
 
-    # Handle sequence
-    if blazepose_pose.ndim == 3:
-        if blazepose_pose.shape[1] != 33:
-            raise ValueError(
-                f"Expected 33 keypoints for BlazePose, got {blazepose_pose.shape[1]}"
-            )
-        n_frames = blazepose_pose.shape[0]
-        n_channels = blazepose_pose.shape[2]
-        h36m_poses = np.zeros((n_frames, 17, n_channels), dtype=blazepose_pose.dtype)
-        for i in range(n_frames):
-            h36m_poses[i] = _blazepose_to_h36m_single(blazepose_pose[i])
-        return h36m_poses
+    warnings.warn(
+        "blazepose_to_h36m is deprecated and will be removed in a future version. "
+        "Use H36MExtractor with YOLOv11-Pose backend instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
 
-    raise ValueError(
-        f"Invalid input shape {blazepose_pose.shape}. "
-        "Expected (33, 2/3) or (N, 33, 2/3)"
+    # For backward compatibility: process via YOLO pose estimation
+    # This is NOT a direct conversion - it's a YOLO-based fallback
+    # The result will be YOLO H3.6M keypoints, not converted BlazePose
+    raise NotImplementedError(
+        "Direct BlazePose to H3.6M conversion is no longer supported. "
+        "Use H36MExtractor with YOLOv11-Pose backend for new pose extraction. "
+        "For existing BlazePose data, you must re-extract using H36MExtractor."
     )
 
 
-# Public alias for backward compatibility
-BKey = _BKey
+# Public alias for backward compatibility (now maps to COCO)
+BKey = _COCOKey

@@ -15,15 +15,15 @@ from src.visualization.core.colors import (
     get_heatmap_color,
     interpolate_color,
 )
-from src.visualization.core.text import (
-    draw_text_box,
-    measure_text_size,
-    render_cyrillic_text,
-)
 from src.visualization.core.geometry import (
     normalized_to_pixel,
     pixel_to_normalized,
     project_3d_to_2d,
+)
+from src.visualization.core.text import (
+    draw_text_box,
+    measure_text_size,
+    render_cyrillic_text,
 )
 
 __all__ = [

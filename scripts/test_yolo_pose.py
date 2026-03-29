@@ -93,8 +93,8 @@ def test_with_video(video_path: str):
         print(f"✗ Video file not found: {video_path}")
         return False
 
-    from ultralytics import YOLO
     import cv2
+    from ultralytics import YOLO
 
     # Load model
     model = YOLO('yolov11n-pose.pt')
@@ -124,17 +124,17 @@ def test_with_video(video_path: str):
     total_time = time.time() - start
 
     if len(poses) > 0:
-        print(f"\n✓ Successfully processed video")
+        print("\n✓ Successfully processed video")
         print(f"  Frames with poses: {len(poses)}/{frame_count}")
         print(f"  Processing time: {total_time:.1f}s ({total_time/frame_count*1000:.1f} ms/frame)")
         print(f"  Pose shape: {poses[0].shape} (should be (17, 2))")
 
         # Show sample pose
-        print(f"\n  Sample pose (first 5 keypoints):")
+        print("\n  Sample pose (first 5 keypoints):")
         for i, (x, y) in enumerate(poses[0][:5]):
             print(f"    KP {i}: ({x:.1f}, {y:.1f})")
     else:
-        print(f"\n✗ No poses detected in video")
+        print("\n✗ No poses detected in video")
         return False
 
     return True

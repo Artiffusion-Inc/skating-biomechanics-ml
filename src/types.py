@@ -5,7 +5,6 @@ Types are annotated for mypy strict mode compatibility.
 """
 
 from dataclasses import dataclass, field
-from dataclasses import dataclass
 from enum import Enum, IntEnum
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
@@ -226,29 +225,29 @@ PixelPose = NDArray[np.float32]  # (num_frames, 17, 2) with x, y in pixels
 TimeSeries = NDArray[np.float32]  # (num_frames,) time series data
 
 __all__ = [
-    "FrameKeypoints",
-    "NormalizedPose",
-    "PixelPose",
-    "TimeSeries",
-    "Pose3D",
-    "H36MPose2D",
-    "H36MPose3D",
-    "H36Key",
     "H36M_INDICES",
     "H36M_SKELETON_EDGES",
+    "AnalysisReport",
     "BladeType",
     "BoundingBox",
-    "VideoMeta",
     "ElementPhase",
-    "MetricResult",
-    "AnalysisReport",
-    "ReferenceData",
     "ElementSegment",
+    "FrameKeypoints",
+    "H36Key",
+    "H36MPose2D",
+    "H36MPose3D",
+    "MetricResult",
+    "NormalizedPose",
+    "PixelPose",
+    "Pose3D",
+    "RecommendationRule",
+    "ReferenceData",
     "SegmentationResult",
+    "TimeSeries",
+    "VideoMeta",
     "assert_pose_format",
     "normalize_pixel_poses",
     "pixelize_normalized_poses",
-    "RecommendationRule",
 ]
 
 

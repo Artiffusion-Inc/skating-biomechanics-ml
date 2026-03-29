@@ -11,13 +11,13 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.ndimage import binary_opening
 
+from .geometry import get_mid_hip, smooth_signal
 from .types import (
     ElementPhase,
     ElementSegment,
     NormalizedPose,
     SegmentationResult,
 )
-from .geometry import get_mid_hip, smooth_signal
 
 if TYPE_CHECKING:
     from .video import VideoMeta
@@ -414,7 +414,7 @@ class ElementSegmenter:
         try:
             from . import phase_detector
 
-            PhaseDetector = phase_detector.PhaseDetector  # noqa: PLC0415
+            PhaseDetector = phase_detector.PhaseDetector
 
             detector = PhaseDetector()
             result = detector.detect_phases(poses, fps, element_type)

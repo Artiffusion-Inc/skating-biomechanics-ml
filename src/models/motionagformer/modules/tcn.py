@@ -1,10 +1,10 @@
 import torch
-import torch.nn as nn
+from torch import nn
 
 
 class TemporalConv(nn.Module):
     def __init__(self, in_channels, out_channels, kernel_size, stride=1, dilation=1):
-        super(TemporalConv, self).__init__()
+        super().__init__()
         pad = (kernel_size + (kernel_size - 1) * (dilation - 1) - 1) // 2
         self.conv = nn.Conv2d(
             in_channels,

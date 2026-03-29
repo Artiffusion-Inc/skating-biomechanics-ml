@@ -1,11 +1,10 @@
 """Tests for automatic phase detection."""
 
 import numpy as np
-import pytest
 
-from src.phase_detector import PhaseDetector
 from src.metrics import PhaseDetectionResult
-from src.types import H36Key, ElementPhase
+from src.phase_detector import PhaseDetector
+from src.types import ElementPhase, H36Key
 
 
 class TestPhaseDetector:

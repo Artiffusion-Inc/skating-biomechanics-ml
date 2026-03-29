@@ -1,7 +1,9 @@
 # AthletePose3D Integration Plan
 
 **Date:** 2026-03-28
-**Status:** Planning
+**Status:** ✅ COMPLETE (Implemented 2026-03-28)
+
+> **Note:** This document describes the original integration plan. The implementation is now complete and uses H3.6M 17-keypoint format directly via H36MExtractor. The `blazepose_to_h36m` conversion function mentioned below is deprecated (see `src/pose_estimation/h36m_extractor.py`).
 
 ---
 
@@ -253,10 +255,12 @@ uv run python scripts/visualize_3d_trajectory.py test_video.mp4 \
 ## Next Steps
 
 1. ✅ Data format analyzed
-2. ⏳ Create blazepose_to_h36m mapping
-3. ⏳ Implement AthletePose3DExtractor
-4. ⏳ Implement PhysicsEngine
-5. ⏳ Update AnalysisPipeline
+2. ✅ H36MExtractor implemented (YOLOv11-Pose backend, direct H3.6M output)
+3. ✅ AthletePose3DExtractor implemented
+4. ✅ PhysicsEngine implemented
+5. ✅ AnalysisPipeline updated
+
+**Implementation Status:** Complete - See Phase 14 in ROADMAP.md
 6. ⏳ Add tests
 7. ⏳ Verify with real video
 

@@ -7,9 +7,9 @@ Provides reusable panel components with:
 - Automatic sizing
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Callable
 
 import cv2
 import numpy as np

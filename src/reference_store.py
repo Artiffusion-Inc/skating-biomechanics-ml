@@ -32,7 +32,7 @@ class ReferenceStore:
             store_dir: Directory containing reference .npz files.
         """
         self._store_dir = store_dir
-        self._builder: "ReferenceBuilder | None" = None
+        self._builder: ReferenceBuilder | None = None
 
     def set_builder(self, builder: "ReferenceBuilder") -> None:  # type: ignore[valid-type]
         """Set reference builder for loading .npz files.
@@ -80,7 +80,7 @@ class ReferenceStore:
         if not element_dir.exists():
             return []
 
-        references: list["ReferenceData"] = []  # type: ignore[valid-type]
+        references: list[ReferenceData] = []  # type: ignore[valid-type]
 
         for npz_file in element_dir.glob("*.npz"):
             try:

@@ -18,7 +18,7 @@ from enum import Enum
 import numpy as np
 from numpy.typing import NDArray
 
-from .types import BladeType, BladeState3D, IceTrace, MotionDirection
+from .types import BladeState3D, BladeType, IceTrace, MotionDirection
 
 
 class BladeZone(Enum):

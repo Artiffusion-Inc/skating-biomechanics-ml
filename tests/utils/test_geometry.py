@@ -1,15 +1,14 @@
 """Tests for geometry utility functions."""
 
 import numpy as np
-import pytest
 
-from src.types import H36Key
 from src.geometry import (
     calculate_center_of_mass,
     calculate_com_trajectory,
     get_mid_hip,
     get_mid_shoulder,
 )
+from src.types import H36Key
 
 
 class TestCalculateCenterOfMass:

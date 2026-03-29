@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
+from src.element_defs import get_element_def
 from src.metrics import BiomechanicsAnalyzer
-from src.element_defs import ElementDef, get_element_def
-from src.types import H36Key, ElementPhase, MetricResult
+from src.types import ElementPhase, H36Key, MetricResult
 
 
 class TestBiomechanicsAnalyzer:

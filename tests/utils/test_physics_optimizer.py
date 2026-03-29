@@ -3,12 +3,12 @@
 import numpy as np
 import pytest
 
-from src.types import H36Key
 from src.physics_optimizer import (
     BoneConstraints,
     PhysicsPoseOptimizer,
     optimize_poses_with_physics,
 )
+from src.types import H36Key
 
 
 @pytest.fixture

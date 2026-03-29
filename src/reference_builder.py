@@ -21,8 +21,8 @@ from .types import (
 from .video import get_video_meta
 
 if TYPE_CHECKING:
-    from .pose_estimation import H36MExtractor as PoseExtractor
     from .normalizer import PoseNormalizer
+    from .pose_estimation import H36MExtractor as PoseExtractor
 
 
 class ReferenceBuilder:

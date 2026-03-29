@@ -361,18 +361,20 @@ uv run python scripts/visualize_with_skeleton.py video.mp4 --3d \
 
 **Python API:**
 ```python
-from src.pose_3d import blazepose_to_h36m, AthletePose3DExtractor
+from src.pose_estimation import H36MExtractor
+from src.pose_3d import AthletePose3DExtractor
 from src.analysis import PhysicsEngine
 
-# Convert BlazePose to H3.6M
-poses_h36m = blazepose_to_h36m(blazepose_poses)  # (N, 33, 2) -> (N, 17, 2)
+# Extract H3.6M 17-keypoint poses (YOLOv11-Pose backend)
+extractor_2d = H36MExtractor(conf_threshold=0.5, output_format="normalized")
+poses_2d = extractor_2d.extract_video(video_path)  # (N, 17, 2)
 
 # Extract 3D poses with MotionAGFormer
-extractor = AthletePose3DExtractor(
+extractor_3d = AthletePose3DExtractor(
     model_path="data/models/motionagformer-s-ap3d.pth.tr",
     model_type="motionagformer-s"
 )
-poses_3d = extractor.extract_sequence(poses_h36m)  # (N, 17, 3)
+poses_3d = extractor_3d.extract_sequence(poses_2d)  # (N, 17, 3)
 
 # Calculate physics
 engine = PhysicsEngine(body_mass=60.0)

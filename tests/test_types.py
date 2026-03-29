@@ -1,19 +1,20 @@
 """Tests for core data types."""
 
-import numpy as np
-import pytest
 from pathlib import Path
 
+import numpy as np
+import pytest
+
 from src.types import (
-    H36Key,
-    BoundingBox,
-    VideoMeta,
-    ElementPhase,
-    MetricResult,
-    AnalysisReport,
-    ReferenceData,
     H36M_INDICES,
     H36M_SKELETON_EDGES,
+    AnalysisReport,
+    BoundingBox,
+    ElementPhase,
+    H36Key,
+    MetricResult,
+    ReferenceData,
+    VideoMeta,
 )
 
 

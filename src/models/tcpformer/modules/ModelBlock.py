@@ -1,14 +1,12 @@
-from collections import OrderedDict
 
 import torch
-from torch import nn
 from timm.models.layers import DropPath
+from torch import nn
 
 from .attention import Attention
-from .mlp import MLP
 from .crossattention import CrossAttention
+from .mlp import MLP
 from .sum_attention import Sum_Attention
-
 
 
 class MIBlock(nn.Module):
@@ -51,7 +49,7 @@ class MIBlock(nn.Module):
         self.norm_sa_2 = nn.LayerNorm(dim)
         self.mlp_sa = MLP(in_features=dim,hidden_features=mlp_hidden_dim,act_layer=act_layer,drop=drop)
 
-        
+
         self.sg = nn.Sigmoid()
         self.att_weight = nn.Parameter(torch.rand(1))
 
@@ -80,7 +78,7 @@ class MIBlock(nn.Module):
             x = x + self.drop_path(self.layer_scale_6.unsqueeze(0).unsqueeze(1)*self.mlp_sa(self.norm_sa_2(x)))
 
         return x,pose_query
-    
+
 
 
 

@@ -11,8 +11,10 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.visualization.config import (
-    focal_length as default_focal_length,
     camera_distance as default_camera_distance,
+)
+from src.visualization.config import (
+    focal_length as default_focal_length,
 )
 
 # =============================================================================
@@ -187,8 +189,7 @@ def project_3d_to_2d(
         depth = camera_distance - z
 
         # Avoid division by zero
-        if depth <= 0.1:
-            depth = 0.1
+        depth = max(0.1, depth)
 
         scale = focal_length / depth
         x_2d = width // 2 + int(x * scale)
@@ -231,8 +232,7 @@ def project_3d_to_normalized(
         depth = camera_distance - pos_3d[2]
 
         # Avoid division by zero
-        if depth <= 0.1:
-            depth = 0.1
+        depth = max(0.1, depth)
 
         scale = focal_length / depth
 

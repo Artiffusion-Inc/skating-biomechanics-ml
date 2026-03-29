@@ -116,17 +116,16 @@ class SubtitleParser:
                 current_start = self._parse_time(timestamp_match.group(1))
                 current_end = self._parse_time(timestamp_match.group(2))
                 current_text = ""
-            else:
-                # Accumulate text (skip WEBVTT headers)
-                if (
-                    not line.startswith("WEBVTT")
-                    and not line.startswith("Kind:")
-                    and not line.startswith("Language:")
-                ):
-                    # Remove VTT formatting tags
-                    clean_line = re.sub(r"<\d{2}:\d{2}\.\d{3}>", "", line)  # timestamp tags
-                    clean_line = re.sub(r"<c>|</c>", "", clean_line)  # style tags
-                    current_text += clean_line + " "
+            # Accumulate text (skip WEBVTT headers)
+            elif (
+                not line.startswith("WEBVTT")
+                and not line.startswith("Kind:")
+                and not line.startswith("Language:")
+            ):
+                # Remove VTT formatting tags
+                clean_line = re.sub(r"<\d{2}:\d{2}\.\d{3}>", "", line)  # timestamp tags
+                clean_line = re.sub(r"<c>|</c>", "", clean_line)  # style tags
+                current_text += clean_line + " "
 
         # Process last caption
         if current_text.strip():

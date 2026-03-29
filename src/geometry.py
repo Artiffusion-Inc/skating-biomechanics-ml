@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from .types import H36Key, FrameKeypoints, NormalizedPose, TimeSeries
+from .types import FrameKeypoints, H36Key, NormalizedPose, TimeSeries
 
 
 def angle_3pt(a: NDArray[np.float64], b: NDArray[np.float64], c: NDArray[np.float64]) -> float:

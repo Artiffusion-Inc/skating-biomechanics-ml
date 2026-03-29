@@ -3,7 +3,6 @@
 import numpy as np
 import pytest
 
-from src.types import NormalizedPose
 from src.smoothing import (
     OneEuroFilter,
     OneEuroFilterConfig,

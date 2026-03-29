@@ -10,13 +10,11 @@ import numpy as np
 import streamlit as st
 
 from src.blade_edge_detector_3d import BladeEdgeDetector3D
-from src.pose_3d.biomechanics_estimator import Biomechanics3DEstimator
 from src.pose_3d.athletepose_extractor import AthletePose3DExtractor
-from src.pose_estimation import H36MExtractor
 from src.smoothing import PoseSmoother, get_skating_optimized_config
 from src.ui.core.events import EventBus
 from src.ui.types import ProcessedPoses
-from src.video import extract_frames, get_video_meta
+from src.video import get_video_meta
 
 
 class PoseProcessor:

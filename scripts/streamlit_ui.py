@@ -5,7 +5,6 @@ Interactive web UI for figure skating analysis.
 Based on modular architecture with Streamlit.
 """
 
-import streamlit as st
 
 from src.ui.core.config import UIConfig
 from src.ui.core.events import EventBus

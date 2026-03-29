@@ -1,6 +1,5 @@
 """Tests for recommendation engine."""
 
-import pytest
 
 from src.recommender import Recommender
 from src.types import MetricResult

@@ -10,8 +10,10 @@ import argparse
 import traceback
 from pathlib import Path
 
-from src import blazepose_extractor, normalizer PoseExtractor, PoseNormalizer
 from skating_biomechanics_ml.references import ReferenceBuilder, ReferenceStore
+
+from src.normalizer import PoseNormalizer
+from src.pose_estimation import H36MExtractor
 from src.types import ElementPhase
 from src.video import get_video_meta
 
@@ -83,7 +85,7 @@ def main() -> None:
         return 1
 
     # Initialize components
-    pose_extractor = PoseExtractor(model_complexity=2)
+    pose_extractor = H36MExtractor(model_size="m")
     normalizer = PoseNormalizer(target_spine_length=0.4)
     builder = ReferenceBuilder(pose_extractor, normalizer)
 

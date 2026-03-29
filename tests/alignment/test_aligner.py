@@ -1,7 +1,6 @@
 """Tests for DTW motion alignment."""
 
 import numpy as np
-import pytest
 
 from src.aligner import MotionAligner
 from src.types import ElementPhase

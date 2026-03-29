@@ -8,7 +8,6 @@ Provides functions for:
 
 from typing import Final
 
-
 from src.types import H36Key
 from src.visualization.config import (
     color_center,

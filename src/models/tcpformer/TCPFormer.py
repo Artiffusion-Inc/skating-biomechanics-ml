@@ -1,13 +1,13 @@
 from collections import OrderedDict
 
 import torch
-from torch import nn
 from timm.models.layers import DropPath
+from torch import nn
 
 from .modules.attention import Attention
-from .modules.mlp import MLP
 from .modules.crossattention import CrossAttention
-from .modules.ModelBlock import MIBlock 
+from .modules.mlp import MLP
+from .modules.ModelBlock import MIBlock
 
 
 class TransBlock(nn.Module):
@@ -20,7 +20,7 @@ class TransBlock(nn.Module):
         super().__init__()
         self.norm1 = nn.LayerNorm(dim)
         self.mixer_type = mixer_type
-        if mixer_type == 'crossattention': 
+        if mixer_type == 'crossattention':
             self.local_attention_list = nn.ModuleList([
                 Attention(dim,dim,num_heads,qkv_bias,qk_scale,attn_drop,proj_drop=drop,mode=mode) for i in range(3)
             ])
@@ -65,7 +65,7 @@ class TransBlock(nn.Module):
             self.layer_scale_2 = nn.Parameter(layer_scale_init_value * torch.ones(dim), requires_grad=True)
 
 
-        
+
 
 
     def forward(self, x):
@@ -89,7 +89,7 @@ class TransBlock(nn.Module):
             x = x + self.drop_path(self.mixer(self.norm1(x)))
             x = x + self.drop_path(self.mlp(self.norm2(x)))
         return x
-    
+
     def forward_cross(self,x,len):
         part_size = len
         first_part = x[:,:part_size]
@@ -253,7 +253,7 @@ class MemoryInducedBlock(nn.Module):
                                           mode='temporal', mixer_type="attention",
                                           use_temporal_similarity=use_temporal_similarity,
                                           neighbour_num=neighbour_num,
-                                          n_frames=n_frames)      
+                                          n_frames=n_frames)
 
     def forward(self, x,pose_query):
         """
@@ -395,7 +395,7 @@ class MemoryInducedTransformer(nn.Module):
                                     neighbour_num=neighbour_num,
                                     n_frames=n_frames,
                                     type='temporal')
-        
+
 
         self.center_pose = nn.Parameter(torch.randn(int(n_frames/3),num_joints,dim_feat))
         self.center_pos_embed = nn.Parameter(torch.zeros(1, num_joints, dim_feat))
@@ -407,7 +407,7 @@ class MemoryInducedTransformer(nn.Module):
         b,t,j,c = x.shape
         pose_query = self.center_pose.unsqueeze(0).repeat(b,1,1,1)
         pose_query = pose_query + self.center_pos_embed
-        x = self.joints_embed(x)  #
+        x = self.joints_embed(x)
         x = x + self.pos_embed
 
         for layer,temporal_layer in zip(self.layers,self.temporal_layers):
@@ -427,7 +427,6 @@ class MemoryInducedTransformer(nn.Module):
 
 def _test():
     torch.cuda.set_device(0)
-    from torchprofile import profile_macs
     import warnings
     warnings.filterwarnings('ignore')
     b, c, t, j = 1, 3, 243, 17
@@ -448,7 +447,7 @@ def _test():
     #     _ = model(random_x)
 
     # import time
-    # num_iterations = 100 
+    # num_iterations = 100
     # # Measure the inference time for 'num_iterations' iterations
     # start_time = time.time()
     # for _ in range(num_iterations):
@@ -463,7 +462,7 @@ def _test():
     # fps = 1.0 / average_inference_time
 
     # print(f"FPS: {fps}")
-    
+
 
     out = model(random_x)
 

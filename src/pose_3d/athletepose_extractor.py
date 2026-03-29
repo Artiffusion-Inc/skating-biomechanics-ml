@@ -11,13 +11,9 @@ Reference: AthletePose3D: A Large-Scale 3D Sports Pose Dataset
 
 from collections import deque
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
-
-if TYPE_CHECKING:
-    pass
 
 from .biomechanics_estimator import Biomechanics3DEstimator
 
@@ -287,21 +283,23 @@ def extract_3d_poses(
     Convenience function that creates extractor and runs inference.
 
     Args:
-        poses_2d: (N, 17, 2) or (N, 33, 2) array
-            - If 33 keypoints: BlazePose format (auto-converted)
-            - If 17 keypoints: H3.6M format (direct)
+        poses_2d: (N, 17, 2) array in H3.6M format
         model_path: Path to model checkpoint
         model_type: Model architecture type ("motionagformer-s", "tcpformer")
         device: "cuda", "cpu", or "auto"
 
     Returns:
         poses_3d: (N, 17, 3) array with x, y, z coordinates
-    """
-    # Convert BlazePose to H3.6M if needed
-    if poses_2d.shape[1] == 33:
-        from src.pose_estimation import blazepose_to_h36m
 
-        poses_2d = blazepose_to_h36m(poses_2d)
+    Raises:
+        ValueError: If poses_2d is not in H3.6M 17-keypoint format
+    """
+    # Validate input format - must be H3.6M 17 keypoints
+    if poses_2d.shape[1] != 17:
+        raise ValueError(
+            f"poses_2d must have 17 keypoints in H3.6M format, got {poses_2d.shape[1]}. "
+            f"Use H36MExtractor for new pose extraction."
+        )
 
     # Create extractor and run
     extractor = AthletePose3DExtractor(model_path, device, model_type)

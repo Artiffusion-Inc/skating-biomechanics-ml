@@ -20,25 +20,19 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from src.blazepose_extractor import BlazePoseExtractor
 # 2D BladeEdgeDetector deprecated - use BladeEdgeDetector3D for H3.6M format
 # from src.blade_edge_detector import BladeEdgeDetector
-from src.blade_edge_detector_3d import BladeEdgeDetector3D, DetectionConfig
-from src.pose_estimation import BKey, H36M_SKELETON_EDGES
+from src.blade_edge_detector_3d import BladeEdgeDetector3D
+from src.pose_estimation import H36Key, H36MExtractor
 from src.smoothing import PoseSmoother, get_skating_optimized_config
 from src.spatial_reference import SpatialReferenceDetector
 from src.subtitles import SubtitleParser
 from src.video import get_video_meta
 from src.visualization import (
-    draw_3d_trajectory,
     draw_axis_indicator,
-    draw_blade_state_3d_hud,
     draw_debug_hud,
-    draw_ice_trace,
-    draw_motion_direction_arrow,
     draw_skeleton,
     draw_skeleton_3d_pip,
-    draw_spatial_axes,
     draw_subtitle_cyrillic,
     draw_trails,
     draw_velocity_vectors,
@@ -153,10 +147,9 @@ def main() -> int:
         poses_viz = poses[:, :, :2] if poses.shape[2] == 3 else poses
     else:
         print("Extracting poses frame-by-frame for perfect sync...")
-        extractor = BlazePoseExtractor(
-            min_detection_confidence=0.5,
-            min_presence_confidence=0.5,
-            num_poses=1,
+        extractor = H36MExtractor(
+            conf_threshold=0.5,
+            output_format="normalized",
         )
 
         # Extract poses for ALL frames to maintain sync
@@ -200,7 +193,8 @@ def main() -> int:
         poses_smoothed_px[:, :, 1] *= meta.height
 
         # Add back confidence (keep original)
-        poses = np.zeros((len(poses_smoothed_px), 33, 3), dtype=np.float32)
+        # H36MExtractor returns 17 keypoints in H3.6M format
+        poses = np.zeros((len(poses_smoothed_px), 17, 3), dtype=np.float32)
         poses[:, :, :2] = poses_smoothed_px
         poses[:, :, 2] = poses_raw[:, :, 2]
 
@@ -255,29 +249,23 @@ def main() -> int:
         if args.model_3d and args.model_3d.exists():
             print(f"Loading 3D model: {args.model_3d}")
             from src.pose_3d import AthletePose3DExtractor
-            from src.pose_estimation import blazepose_to_h36m
 
-            # Convert BlazePose to H3.6M format
-            poses_h36m = blazepose_to_h36m(poses_viz)
-
-            # Extract 3D poses
+            # poses_viz is already in H3.6M 17-keypoint format from H36MExtractor
+            # No conversion needed - extract 3D poses directly
             extractor = AthletePose3DExtractor(
                 model_path=args.model_3d,
                 model_type="motionagformer-s"
             )
-            poses_3d = extractor.extract_sequence(poses_h36m)
+            poses_3d = extractor.extract_sequence(poses_viz)
             print(f"3D poses extracted: {poses_3d.shape}")
         else:
             print("Using biomechanics-based 3D estimation...")
-            from src.pose_estimation import blazepose_to_h36m
             from src.pose_3d.biomechanics_estimator import Biomechanics3DEstimator
 
-            # Convert BlazePose to H3.6M format
-            poses_h36m = blazepose_to_h36m(poses_viz)
-
-            # Use simple biomechanics estimator
+            # poses_viz is already in H3.6M 17-keypoint format from H36MExtractor
+            # No conversion needed - estimate 3D poses directly
             estimator = Biomechanics3DEstimator()
-            poses_3d = estimator.estimate_3d(poses_h36m)
+            poses_3d = estimator.estimate_3d(poses_viz)
             print(f"3D poses estimated: {poses_3d.shape}")
 
     # Calculate fixed auto-scale parameters from reference frame (median frame)
@@ -433,32 +421,28 @@ def main() -> int:
                     meta.height,
                 )
             else:
-                # Draw 2D skeleton (33 keypoints) when 3D is disabled
+                # Draw 2D skeleton (H3.6M 17 keypoints) when 3D is disabled
                 frame = draw_skeleton(frame, poses[current_pose_idx], meta.height, meta.width)
 
         # Layer 1: Kinematics (use normalized coords)
         if args.layer >= 1 and current_pose_idx is not None:
             # Note: Velocity vectors and trails require H3.6M 17kp format
-            # Skip for BlazePose 33kp format (which we're using here)
             if poses_viz.shape[1] == 17:  # H3.6M format
                 frame = draw_velocity_vectors(
                     frame, poses_viz, current_pose_idx, meta.fps, meta.height, meta.width
                 )
             trail_history.append(poses_viz[current_pose_idx].copy())
             # Draw trail for left ankle (free leg in jumps)
-            if poses_viz.shape[1] == 33:  # BlazePose format
-                trail_key = BKey.LEFT_ANKLE
-            else:  # H3.6M format
-                from src.types import H36Key
-                trail_key = H36Key.LFOOT
+            from src.types import H36Key
+            trail_key = H36Key.LFOOT
             frame = draw_trails(
                 frame, trail_history, trail_key, meta.height, meta.width
             )
 
             # Draw 3D CoM trajectory if enabled
             if args.use_3d and poses_3d is not None and current_pose_idx < len(poses_3d) and args.com_trajectory:
-                from src.visualization import draw_3d_trajectory
                 from src.analysis import PhysicsEngine
+                from src.visualization import draw_3d_trajectory
 
                 # Calculate CoM for the trajectory up to current frame
                 engine = PhysicsEngine(body_mass=60.0)
@@ -623,7 +607,7 @@ def _compute_kinematics(
     """Compute kinematics for this frame.
 
     Args:
-        poses: Full pose sequence (num_frames, 33, 2).
+        poses: Full pose sequence (num_frames, 17, 2) in H3.6M format.
         frame_idx: Current frame index.
         fps: Frame rate.
 
@@ -636,22 +620,22 @@ def _compute_kinematics(
     # Compute velocity using central difference
     velocity = (poses[frame_idx + 1] - poses[frame_idx - 1]) * fps / 2
 
-    # Hip velocity (center of mass)
-    hip_v = np.linalg.norm(velocity[BKey.LEFT_HIP])
+    # Hip velocity (center of mass) - using left hip as reference
+    hip_v = np.linalg.norm(velocity[H36Key.LHIP])
 
     # Knee angles
     from src.geometry import angle_3pt  # noqa: PLC0415
 
     left_knee = angle_3pt(
-        poses[frame_idx, BKey.LEFT_HIP],
-        poses[frame_idx, BKey.LEFT_KNEE],
-        poses[frame_idx, BKey.LEFT_ANKLE],
+        poses[frame_idx, H36Key.LHIP],
+        poses[frame_idx, H36Key.LKNEE],
+        poses[frame_idx, H36Key.LFOOT],
     )
 
     right_knee = angle_3pt(
-        poses[frame_idx, BKey.RIGHT_HIP],
-        poses[frame_idx, BKey.RIGHT_KNEE],
-        poses[frame_idx, BKey.RIGHT_ANKLE],
+        poses[frame_idx, H36Key.RHIP],
+        poses[frame_idx, H36Key.RKNEE],
+        poses[frame_idx, H36Key.RFOOT],
     )
 
     return {

@@ -7,10 +7,10 @@ from pose sequences using biomechanical cues.
 import numpy as np
 from scipy.signal import find_peaks
 
-from .metrics import BiomechanicsAnalyzer, PhaseDetectionResult
 from .element_defs import ElementDef
-from .types import ElementPhase, NormalizedPose
 from .geometry import calculate_com_trajectory
+from .metrics import BiomechanicsAnalyzer, PhaseDetectionResult
+from .types import ElementPhase, NormalizedPose
 
 # NOTE: 2D blade detector removed in 3D-only migration
 # Phase detection now uses CoM-based method only

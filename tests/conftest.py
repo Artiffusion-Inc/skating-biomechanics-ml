@@ -1,10 +1,11 @@
 """Shared pytest fixtures and configuration."""
 
-import numpy as np
-import pytest
 from pathlib import Path
 
-from src.types import H36Key, Pose3D
+import numpy as np
+import pytest
+
+from src.types import H36Key
 
 
 @pytest.fixture

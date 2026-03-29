@@ -22,8 +22,8 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFont
 
 from .types import (
-    H36Key,
     H36M_SKELETON_EDGES,
+    H36Key,
     MotionDirection,
     assert_pose_format,
 )

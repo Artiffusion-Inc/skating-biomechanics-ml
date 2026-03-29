@@ -8,7 +8,6 @@ Advantages over BlazePose:
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
@@ -18,8 +17,6 @@ try:
 except ImportError:
     YOLO = None  # type: ignore[assignment]
 
-if TYPE_CHECKING:
-    pass
 
 
 class YOLOPoseExtractor:

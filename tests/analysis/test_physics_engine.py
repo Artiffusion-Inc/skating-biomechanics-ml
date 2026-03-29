@@ -1,13 +1,12 @@
 """Tests for physics engine calculations."""
 
 import numpy as np
-import pytest
 
 from src.analysis.physics_engine import (
     DEFAULT_BODY_MASS,
+    SEGMENT_MASS_RATIOS,
     PhysicsEngine,
     PhysicsResult,
-    SEGMENT_MASS_RATIOS,
 )
 
 

@@ -5,13 +5,9 @@ Uses 81-frame temporal window with adaptive fusion of attention and graph branch
 """
 
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
-
-if TYPE_CHECKING:
-    pass
 
 from .biomechanics_estimator import Biomechanics3DEstimator
 
