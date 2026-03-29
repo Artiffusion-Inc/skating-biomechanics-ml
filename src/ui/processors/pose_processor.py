@@ -1,7 +1,7 @@
 """Процессор извлечения поз из видео.
 
 Pose extraction processor with H3.6M 17-keypoint format as primary output.
-Uses H36MExtractor with integrated BlazePose-to-H3.6M conversion.
+Uses H36MExtractor with YOLOv11-Pose backend.
 """
 
 from pathlib import Path
@@ -21,30 +21,25 @@ class PoseProcessor:
     """Извлечение поз из видео с H3.6M формат.
 
     Extract poses from video with H3.6M 17-keypoint format as primary output.
+    Uses YOLOv11-Pose backend via H36MExtractor.
     """
 
-    def __init__(self, events: EventBus | None = None, pose_extractor_type: str = "blazepose") -> None:
+    def __init__(self, events: EventBus | None = None) -> None:
         """Инициализация процессора поз.
 
         Args:
             events: Шина событий для оповещений.
-            pose_extractor_type: "blazepose" или "yolo"
         """
         self._events = events
-        self._pose_extractor_type = pose_extractor_type
 
-        # Create appropriate extractor based on type
-        if pose_extractor_type == "yolo":
-            from src.pose_estimation import YOLOPoseExtractor
-            self._extractor = YOLOPoseExtractor(model_size="n")
-        else:  # Default to BlazePose backend (H3.6M format)
-            from src.pose_estimation import H36MExtractor
-            self._extractor = H36MExtractor(
-                min_detection_confidence=0.5,
-                min_presence_confidence=0.5,
-                num_poses=1,
-                output_format="normalized",  # Normalized [0,1] for smoothing
-            )
+        # Create H36MExtractor with YOLOv11-Pose backend
+        from src.pose_estimation import H36MExtractor
+        self._extractor = H36MExtractor(
+            min_detection_confidence=0.5,
+            min_presence_confidence=0.5,
+            num_poses=1,
+            output_format="normalized",  # Normalized [0,1] for smoothing
+        )
 
     def process(
         self,

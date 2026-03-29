@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """CLI for figure skating biomechanics analysis.
 
-H3.6M Migration:
+H3.6M Architecture:
     Uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: H36MExtractor (BlazePose backend with integrated conversion)
+    2D extraction: H36MExtractor (YOLOv11-Pose backend)
 
 Usage:
     python -m skating_biomechanics_ml.cli analyze video.mp4 --element waltz_jump
@@ -50,7 +50,6 @@ def cmd_analyze(args: argparse.Namespace) -> int:
 
     pipeline = AnalysisPipeline(
         reference_store=reference_store,
-        pose_extractor_type=args.pose_extractor,
     )
 
     print(f"Analyzing: {args.video}")
@@ -282,6 +281,10 @@ def main() -> None:
 
   # Разбить обучающее видео на элементы и экспортировать
   %(prog)s segment coach_tutorial.mp4 --export-dir data/references
+
+Архитектура:
+  2D Pose: YOLOv11-Pose → H3.6M 17-keypoint format
+  3D Pose: MotionAGFormer-S (59MB) or TCPFormer (422MB)
         """,
     )
 
@@ -320,13 +323,6 @@ def main() -> None:
         "--no-detect",
         action="store_true",
         help="Пропустить детекцию (для видео с одним человеком)",
-    )
-    analyze_parser.add_argument(
-        "--pose-extractor",
-        type=str,
-        default="blazepose",
-        choices=["blazepose", "yolo"],
-        help="2D детектор позы: blazepose (33→17kp), yolo (17kp COCO, быстрее)",
     )
     analyze_parser.add_argument(
         "--output",

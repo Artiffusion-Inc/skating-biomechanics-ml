@@ -15,6 +15,7 @@ class LayerSettings:
     """Настройки слоёв визуализации.
 
     Visualization layer settings for rendering.
+    Uses H3.6M 17-keypoint format with YOLOv11-Pose backend.
     """
 
     # Basic layers
@@ -25,7 +26,6 @@ class LayerSettings:
     subtitles: bool = True
 
     # Advanced options
-    pose_extractor: str = "blazepose"  # "blazepose" or "yolo"
     enable_3d: bool = False
     model_3d_type: str = "motionagformer-s"  # "motionagformer-s" or "tcpformer"
     blade_3d: bool = False

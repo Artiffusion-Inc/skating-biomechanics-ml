@@ -45,19 +45,6 @@ def render_sidebar(config: UIConfig, events: EventBus | None = None) -> LayerSet
         st.subheader("🎚️ Дополнительно")
         advanced = config.get_advanced_settings()
 
-        # 2D pose extractor selection
-        pose_extractor = st.selectbox(
-            "2D детектор позы",
-            options=["blazepose", "yolo"],
-            index=0,
-            format_func=lambda x: {
-                "blazepose": "BlazePose (33→17kp, детально)",
-                "yolo": "YOLOv11-Pose (17kp, быстрее, стабильнее)"
-            }.get(x, x),
-            key="adv_pose_extractor",
-            help="BlazePose: 33 keypoints с конвертацией, YOLOv11: 17 keypoints COCO"
-        )
-
         enable_3d = st.checkbox("3D поза", value=advanced.get("enable_3d", False), key="adv_3d")
 
         # 3D model selection (only show if 3D is enabled)
@@ -139,7 +126,6 @@ def render_sidebar(config: UIConfig, events: EventBus | None = None) -> LayerSet
             trails=True,
             edge_indicators=True,
             subtitles=True,
-            pose_extractor=pose_extractor,
             enable_3d=enable_3d,
             model_3d_type=model_3d_type if enable_3d else "motionagformer-s",
             blade_3d=blade_3d and enable_3d,  # Only if 3d enabled
