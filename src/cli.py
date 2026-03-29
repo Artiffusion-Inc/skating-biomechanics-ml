@@ -48,7 +48,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         reference_store = ReferenceStore(args.reference_dir)
         reference_store.set_builder(builder)
 
-    pipeline = AnalysisPipeline(reference_store=reference_store)
+    pipeline = AnalysisPipeline(
+        reference_store=reference_store,
+        pose_extractor_type=args.pose_extractor,
+    )
 
     print(f"Analyzing: {args.video}")
     print(f"Element: {args.element}")
@@ -317,6 +320,13 @@ def main() -> None:
         "--no-detect",
         action="store_true",
         help="Пропустить детекцию (для видео с одним человеком)",
+    )
+    analyze_parser.add_argument(
+        "--pose-extractor",
+        type=str,
+        default="blazepose",
+        choices=["blazepose", "yolo"],
+        help="2D детектор позы: blazepose (33→17kp), yolo (17kp COCO, быстрее)",
     )
     analyze_parser.add_argument(
         "--output",

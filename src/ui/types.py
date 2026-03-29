@@ -25,6 +25,7 @@ class LayerSettings:
     subtitles: bool = True
 
     # Advanced options
+    pose_extractor: str = "blazepose"  # "blazepose" or "yolo"
     enable_3d: bool = False
     model_3d_type: str = "motionagformer-s"  # "motionagformer-s" or "tcpformer"
     blade_3d: bool = False

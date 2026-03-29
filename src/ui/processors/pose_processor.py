@@ -25,20 +25,28 @@ class PoseProcessor:
     Extract poses from video with H3.6M 17-keypoint format as primary output.
     """
 
-    def __init__(self, events: EventBus | None = None) -> None:
+    def __init__(self, events: EventBus | None = None, pose_extractor_type: str = "blazepose") -> None:
         """Инициализация процессора поз.
 
         Args:
             events: Шина событий для оповещений.
+            pose_extractor_type: "blazepose" или "yolo"
         """
         self._events = events
-        # H3.6M format extractor (17 keypoints directly)
-        self._extractor = H36MExtractor(
-            min_detection_confidence=0.5,
-            min_presence_confidence=0.5,
-            num_poses=1,
-            output_format="normalized",  # Normalized [0,1] for smoothing
-        )
+        self._pose_extractor_type = pose_extractor_type
+
+        # Create appropriate extractor based on type
+        if pose_extractor_type == "yolo":
+            from ..pose_estimation import YOLOPoseExtractor
+            self._extractor = YOLOPoseExtractor(model_size="n")
+        else:  # Default to BlazePose backend (H3.6M format)
+            from ..pose_estimation import H36MExtractor
+            self._extractor = H36MExtractor(
+                min_detection_confidence=0.5,
+                min_presence_confidence=0.5,
+                num_poses=1,
+                output_format="normalized",  # Normalized [0,1] for smoothing
+            )
 
     def process(
         self,

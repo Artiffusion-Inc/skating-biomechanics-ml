@@ -59,6 +59,7 @@ class AnalysisPipeline:
         use_gpu: bool = True,
         enable_smoothing: bool = True,
         smoothing_config: "OneEuroFilterConfig | None" = None,  # type: ignore[valid-type]
+        pose_extractor_type: str = "blazepose",
     ) -> None:
         """Initialize analysis pipeline.
 
@@ -67,11 +68,13 @@ class AnalysisPipeline:
             use_gpu: Whether to use GPU acceleration (when available).
             enable_smoothing: Whether to apply One-Euro Filter temporal smoothing.
             smoothing_config: Optional custom smoothing configuration.
+            pose_extractor_type: 2D pose estimator - "blazepose" (H36MExtractor) or "yolo" (YOLOPoseExtractor).
         """
         self._reference_store = reference_store
         self._use_gpu = use_gpu
         self._enable_smoothing = enable_smoothing
         self._smoothing_config = smoothing_config
+        self._pose_extractor_type = pose_extractor_type
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
@@ -326,14 +329,17 @@ class AnalysisPipeline:
             self._detector = PersonDetector(model_size="n", confidence=0.5)
         return self._detector
 
-    def _get_pose_2d_extractor(self) -> "H36MExtractor":  # type: ignore[valid-type]
+    def _get_pose_2d_extractor(self) -> "H36MExtractor | YOLOPoseExtractor":  # type: ignore[valid-type]
         """Lazy-load 2D pose extractor (H3.6M 17kp format)."""
         if self._pose_2d_extractor is None:
-            from .pose_estimation import H36MExtractor
+            from .pose_estimation import H36MExtractor, YOLOPoseExtractor
 
-            self._pose_2d_extractor = H36MExtractor(
-                output_format="normalized",  # [0,1] coordinates
-            )
+            if self._pose_extractor_type == "yolo":
+                self._pose_2d_extractor = YOLOPoseExtractor(model_size="n")
+            else:  # Default to BlazePose backend
+                self._pose_2d_extractor = H36MExtractor(
+                    output_format="normalized",  # [0,1] coordinates
+                )
         return self._pose_2d_extractor
 
     def _get_pose_3d_extractor(self) -> "AthletePose3DExtractor":  # type: ignore[valid-type]
