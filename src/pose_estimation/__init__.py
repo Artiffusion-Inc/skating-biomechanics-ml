@@ -13,17 +13,21 @@ Migration Note:
 """
 
 from src.pose_estimation.h36m_extractor import (
+    BKey,
     H36MExtractor,
     H36Key,
     H36M_KEYPOINT_NAMES,
     H36M_SKELETON_EDGES,
+    blazepose_to_h36m,
     extract_h36m_poses,
 )
 
 __all__ = [
+    "BKey",
     "H36MExtractor",
     "H36Key",
     "H36M_KEYPOINT_NAMES",
     "H36M_SKELETON_EDGES",
+    "blazepose_to_h36m",
     "extract_h36m_poses",
 ]

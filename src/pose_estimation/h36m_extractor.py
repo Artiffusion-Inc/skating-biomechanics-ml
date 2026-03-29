@@ -380,3 +380,49 @@ def extract_h36m_poses(
     """
     extractor = H36MExtractor(model_path=model_path, output_format=output_format)
     return extractor.extract_video(video_path)
+
+
+def blazepose_to_h36m(blazepose_pose: np.ndarray) -> np.ndarray:
+    """Convert BlazePose 33 keypoints to H3.6M 17 keypoints.
+
+    Public conversion function for backward compatibility.
+    Handles both single frames and sequences.
+
+    Args:
+        blazepose_pose: (33, 2/3) array for single frame, or (N, 33, 2/3) for sequence
+
+    Returns:
+        h36m_pose: (17, 2/3) array for single frame, or (N, 17, 2/3) for sequence
+
+    Raises:
+        ValueError: If input shape is invalid
+    """
+    # Handle single frame
+    if blazepose_pose.ndim == 2:
+        if blazepose_pose.shape[0] != 33:
+            raise ValueError(
+                f"Expected 33 keypoints for BlazePose, got {blazepose_pose.shape[0]}"
+            )
+        return _blazepose_to_h36m_single(blazepose_pose)
+
+    # Handle sequence
+    if blazepose_pose.ndim == 3:
+        if blazepose_pose.shape[1] != 33:
+            raise ValueError(
+                f"Expected 33 keypoints for BlazePose, got {blazepose_pose.shape[1]}"
+            )
+        n_frames = blazepose_pose.shape[0]
+        n_channels = blazepose_pose.shape[2]
+        h36m_poses = np.zeros((n_frames, 17, n_channels), dtype=blazepose_pose.dtype)
+        for i in range(n_frames):
+            h36m_poses[i] = _blazepose_to_h36m_single(blazepose_pose[i])
+        return h36m_poses
+
+    raise ValueError(
+        f"Invalid input shape {blazepose_pose.shape}. "
+        "Expected (33, 2/3) or (N, 33, 2/3)"
+    )
+
+
+# Public alias for backward compatibility
+BKey = _BKey
