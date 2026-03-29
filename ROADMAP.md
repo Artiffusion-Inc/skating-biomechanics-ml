@@ -1,6 +1,6 @@
 # Figure Skating Biomechanics ML - Roadmap
 
-**Status:** MVP ~97% complete | Last updated: 2026-03-29
+**Status:** MVP ~98% complete | Last updated: 2026-03-29
 
 > **This is the SINGLE SOURCE OF TRUTH for project status.** All implementation decisions and priority changes must be reflected here first.
 
@@ -164,21 +164,18 @@ The system has been migrated to use H3.6M 17-keypoint 3D format as the primary p
 
 ---
 
-### Phase 7: DTW Motion Alignment ⚠️ 70%
-**Status:** Code exists, tests need update for 17kp format
+### Phase 7: DTW Motion Alignment ✅ 100%
+**Status:** Complete (Updated 2026-03-29)
 
 - [x] DTW implementation (dtw-python)
 - [x] Sakoe-Chiba window
 - [x] MotionAligner class
-- [ ] **Fix tests** - update from old 17-keypoint to new H3.6M 17-keypoint
-- [ ] Multi-segment alignment
-- [ ] Alignment quality metrics
-
-**Issue:** Test suite uses old 17-keypoint format, needs update for H3.6M
-**Priority:** MEDIUM - manual analysis works without this
+- [x] All tests passing (21/21) for H3.6M 17-keypoint format
+- [ ] Multi-segment alignment (future enhancement)
+- [ ] Alignment quality metrics (future enhancement)
 
 **Files:** `alignment/aligner.py`, `alignment/motion_dtw.py`
-**Tests:** `tests/alignment/test_aligner.py`
+**Tests:** `tests/alignment/test_aligner.py`, `tests/alignment/test_motion_dtw.py`
 
 ---
 
