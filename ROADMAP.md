@@ -31,21 +31,6 @@ The system has been migrated to use H3.6M 17-keypoint 3D format as the primary p
 
 ---
 
-## 🎉 Major Milestone: 3D-Only Migration Complete (2026-03-29)
-
-**Migration:** BlazePose 2D (33 keypoints) → H3.6M 3D (17 keypoints)
-
-The system has been migrated to use H3.6M 17-keypoint 3D format as the primary pose representation:
-- ✅ Type system: H36Key enum with backward compatibility
-- ✅ Metrics: All biomechanics calculations updated for 17kp
-- ✅ Visualization: Skeleton, velocity, trails all updated
-- ✅ Pipeline: 3D-first architecture
-- ✅ Tests: 263 passing, 59% coverage
-
-**See `MIGRATION_NOTES.md` for full migration details.**
-
----
-
 ## Architecture Overview
 
 ```
