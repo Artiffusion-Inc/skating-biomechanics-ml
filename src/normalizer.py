@@ -143,6 +143,6 @@ def get_thorax(poses: Pose3D) -> np.ndarray:
     return poses[:, H36Key.THORAX]
 
 
-# Legacy aliases for backward compatibility
+# Convenience aliases
 get_mid_hypot = get_hip_center
 get_mid_shoulder_raw = get_thorax

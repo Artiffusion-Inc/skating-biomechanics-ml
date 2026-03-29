@@ -430,21 +430,21 @@ class MotionDTWAligner:
         reference: NormalizedPose,
         joints: list[int] | None = None,
     ) -> float:
-        """Compute DTW distance between sequences (compatibility method).
+        """Compute DTW distance between sequences.
 
-        This method provides backward compatibility with the old MotionAligner API.
+        Computes the DTW distance between two pose sequences.
         For phase-aware analysis, use align_with_keyframes instead.
 
         Args:
-            user: User pose sequence (num_frames, 33, 2).
-            reference: Reference pose sequence (num_frames, 33, 2).
-            joints: Joint indices to use (None = all 33).
+            user: User pose sequence (num_frames, 17, 2) - H3.6M format.
+            reference: Reference pose sequence (num_frames, 17, 2) - H3.6M format.
+            joints: Joint indices to use (None = all 17).
 
         Returns:
             Normalized DTW distance.
         """
         if joints is None:
-            joints = list(range(33))
+            joints = list(range(17))
 
         # Create default phases (full sequence)
         user_phases = ElementPhase(

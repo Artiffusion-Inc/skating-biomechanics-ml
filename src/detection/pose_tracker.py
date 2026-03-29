@@ -232,14 +232,16 @@ class PoseTracker:
         """Calculate mid-hip position for each pose.
 
         Args:
-            poses: (N, 33, 2) pose array.
+            poses: (N, 17, 2) pose array - H3.6M format.
 
         Returns:
             (N, 2) mid-hip positions.
         """
-        # BlazePose: LEFT_HIP=23, RIGHT_HIP=24
-        left_hip = poses[:, 23, :]
-        right_hip = poses[:, 24, :]
+        from ..types import H36Key  # noqa: PLC0415
+
+        # H3.6M: LHIP=4, RHIP=1
+        left_hip = poses[:, H36Key.LHIP, :]
+        right_hip = poses[:, H36Key.RHIP, :]
         return (left_hip + right_hip) / 2
 
     def _associate(
@@ -309,27 +311,29 @@ class PoseTracker:
         Based on Pose2Sim personAssociation.py biometric extraction.
 
         Args:
-            pose: (33, 2) single pose array.
+            pose: (17, 2) single pose array - H3.6M format.
 
         Returns:
             Dictionary of anatomical ratios.
         """
-        # BlazePose 33kp indices
-        # Shoulder: 11 (left), 12 (right)
-        # Hip: 23 (left), 24 (right)
-        # Knee: 25 (left), 26 (right)
-        # Ankle: 27 (left), 28 (right)
-        # Wrist: 15 (left), 16 (right)
+        from ..types import H36Key  # noqa: PLC0415
+
+        # H3.6M 17kp indices
+        # Shoulder: 11 (left), 14 (right)
+        # Hip: 4 (left), 1 (right)
+        # Knee: 5 (left), 2 (right)
+        # Foot: 6 (left), 3 (right)
+        # Wrist: 13 (left), 16 (right)
 
         # Calculate bone lengths
-        shoulder_width = np.linalg.norm(pose[11] - pose[12])
-        mid_hip = (pose[23] + pose[24]) / 2
-        mid_shoulder = (pose[11] + pose[12]) / 2
+        shoulder_width = np.linalg.norm(pose[H36Key.LSHOULDER] - pose[H36Key.RSHOULDER])
+        mid_hip = (pose[H36Key.LHIP] + pose[H36Key.RHIP]) / 2
+        mid_shoulder = (pose[H36Key.LSHOULDER] + pose[H36Key.RSHOULDER]) / 2
         torso_length = np.linalg.norm(mid_shoulder - mid_hip)
 
-        femur_length = np.linalg.norm(pose[23] - pose[25])  # Left hip-knee
-        tibia_length = np.linalg.norm(pose[25] - pose[27])  # Left knee-ankle
-        arm_span = np.linalg.norm(pose[15] - pose[16])  # Left-right wrist
+        femur_length = np.linalg.norm(pose[H36Key.LHIP] - pose[H36Key.LKNEE])  # Left hip-knee
+        tibia_length = np.linalg.norm(pose[H36Key.LKNEE] - pose[H36Key.LFOOT])  # Left knee-foot
+        arm_span = np.linalg.norm(pose[H36Key.LWRIST] - pose[H36Key.RWRIST])  # Left-right wrist
 
         # Total height estimate (from visible joints)
         height = torso_length + femur_length + tibia_length

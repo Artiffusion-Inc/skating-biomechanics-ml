@@ -112,8 +112,8 @@ class EnhancedPoseFilter:
         config: Filter configuration parameters.
         kf: KalmanFilter instance from filterpy.
         dt: Time step (1/fps).
-        state_dim: Total state dimension (33 keypoints * 6 states = 198).
-        meas_dim: Measurement dimension (33 keypoints * 2 coords = 66).
+        state_dim: Total state dimension (17 keypoints * 6 states = 102).
+        meas_dim: Measurement dimension (17 keypoints * 2 coords = 34).
     """
 
     def __init__(self, config: EnhancedKalmanConfig | None = None):
@@ -125,9 +125,9 @@ class EnhancedPoseFilter:
         self.config = config or EnhancedKalmanConfig()
         self.dt = 1.0 / self.config.fps
 
-        # State dimension: [x, vx, ax, y, vy, ay] for each of 33 keypoints
-        self.state_dim = 33 * 6  # 198 dimensions total
-        self.meas_dim = 33 * 2  # 66 dimensions (x, y for each keypoint)
+        # State dimension: [x, vx, ax, y, vy, ay] for each of 17 keypoints (H3.6M format)
+        self.state_dim = 17 * 6  # 102 dimensions total
+        self.meas_dim = 17 * 2  # 34 dimensions (x, y for each keypoint)
 
         # Initialize Kalman filter
         self.kf = KalmanFilter(dim_x=self.state_dim, dim_z=self.meas_dim)

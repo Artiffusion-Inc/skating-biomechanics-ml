@@ -66,7 +66,7 @@ class AnalysisPipeline:
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
-        self._pose_extractor: BlazePoseExtractor | None = None  # type: ignore[valid-type]
+        self._pose_extractor: "AthletePose3DExtractor | None" = None  # type: ignore[valid-type]
         self._normalizer: PoseNormalizer | None = None  # type: ignore[valid-type]
         self._smoother: PoseSmoother | None = None  # type: ignore[valid-type]
         self._phase_detector: PhaseDetector | None = None  # type: ignore[valid-type]

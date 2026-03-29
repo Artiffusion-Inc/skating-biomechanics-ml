@@ -51,13 +51,12 @@ class H36Key(IntEnum):
     RELBOW = 15
     RWRIST = 16
 
-    # Backward compatibility aliases for BlazePose naming convention
-    # These map H3.6M names to BlazePose-style names for gradual migration
+    # Convenience aliases using full names (LEFT_x, RIGHT_x)
     LEFT_HIP = LHIP
     RIGHT_HIP = RHIP
     LEFT_KNEE = LKNEE
     RIGHT_KNEE = RKNEE
-    LEFT_FOOT = LFOOT  # Maps to foot (ankle in H3.6M)
+    LEFT_FOOT = LFOOT
     RIGHT_FOOT = RFOOT
     LEFT_SHOULDER = LSHOULDER
     RIGHT_SHOULDER = RSHOULDER
@@ -66,8 +65,7 @@ class H36Key(IntEnum):
     LEFT_WRIST = LWRIST
     RIGHT_WRIST = RWRIST
 
-    # Additional BlazePose-specific keypoints (not in H3.6M 17kp)
-    # These are marked as deprecated and map to nearest available keypoint
+    # Additional facial/hand keypoints (not in H3.6M 17kp, map to nearest)
     # Eyes/Ears/Mouth - map to HEAD
     LEFT_EYE = HEAD
     RIGHT_EYE = HEAD
@@ -221,8 +219,8 @@ Pose3D = NDArray[np.float32]  # (num_frames, 17, 3) with x, y, z in meters
 H36MPose2D = NDArray[np.float32]  # (num_frames, 17, 2) with x, y normalized
 H36MPose3D = NDArray[np.float32]  # (num_frames, 17, 3) with x, y, z in meters
 
-# Legacy type aliases for backward compatibility (now use 17 keypoints)
-FrameKeypoints = Pose3D  # (num_frames, 17, 3) with x, y, confidence
+# Type aliases for convenience
+FrameKeypoints = Pose3D  # (num_frames, 17, 3) with x, y, z
 NormalizedPose = H36MPose2D  # (num_frames, 17, 2) with x, y in [0,1]
 PixelPose = NDArray[np.float32]  # (num_frames, 17, 2) with x, y in pixels
 TimeSeries = NDArray[np.float32]  # (num_frames,) time series data

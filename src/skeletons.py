@@ -276,8 +276,9 @@ H36M_BONE_PAIRS = [
     (12, 13),  # left_elbow -> left_wrist
 ]
 
-# Legacy alias for backward compatibility
-BLAZEPOSE_BONE_PAIRS = H36M_BONE_PAIRS
+# Export the bone pairs constant
+BLAZEPOSE_BONE_PAIRS = H36M_BONE_PAIRS  # For backward compatibility with tests
+
 
 # Subset for biomechanics analysis (major limb segments)
 BIOMECHANICS_BONE_PAIRS = [

@@ -349,8 +349,8 @@ def draw_edge_indicators(
         Frame unchanged (function deprecated for H3.6M format).
 
     Note:
-        This function is kept for backward compatibility but does nothing
-        when using H3.6M 17-keypoint format since heel/toe keypoints are not available.
+        This function is a no-op for H3.6M 17-keypoint format since heel/toe
+        keypoints are not available. Use BladeEdgeDetector3D + draw_blade_indicator_hud instead.
     """
     # No-op for H3.6M format (no heel/foot_index keypoints)
     # Use BladeEdgeDetector3D + draw_blade_indicator_hud instead

@@ -451,9 +451,7 @@ class ElementSegmenter:
     def _compute_edge_indicator(self, poses: NormalizedPose) -> NDArray[np.float32]:
         """Compute edge indicator for step/turn detection.
 
-        Note: Simplified for H3.6M 17kp format (3D-only pipeline).
-        The original BlazePose 33kp version used heel-to-foot vectors,
-        but H3.6M only has single foot point per side.
+        Uses foot velocity direction to estimate edge (inside/outside/flat).
 
         Args:
             poses: NormalizedPose sequence (H3.6M 17kp format).

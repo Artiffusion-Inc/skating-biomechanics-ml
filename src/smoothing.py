@@ -202,13 +202,15 @@ class OneEuroFilter:
 class PoseSmoother:
     """Smooth pose sequences using One-Euro Filter.
 
-    Applies One-Euro Filter to all 33 BlazePose keypoints independently.
+    Applies One-Euro Filter to all pose keypoints independently.
     Each joint's x and y coordinates are filtered as separate time series.
 
+    Supports H3.6M 17-keypoint format for 3D-only pipeline.
+
     Integration point in pipeline:
-        BlazePoseExtractor → PoseNormalizer → PoseSmoother → PhaseDetector
-                                                         ↓
-                                                    BiomechanicsAnalyzer
+        AthletePose3DExtractor → PoseNormalizer → PoseSmoother → PhaseDetector
+                                                                     ↓
+                                                                BiomechanicsAnalyzer
     """
 
     def __init__(

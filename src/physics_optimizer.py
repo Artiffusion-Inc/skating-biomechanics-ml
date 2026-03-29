@@ -82,9 +82,9 @@ class PhysicsPoseOptimizer:
         # Learned parameters
         self._spine_length: float | None = None
         self._bone_lengths: dict[tuple[int, int], float] = {}
-        self._trust: NDArray[np.float64] = np.ones(33)  # Trust per keypoint
+        self._trust: NDArray[np.float64] = np.ones(17)  # Trust per keypoint (H3.6M 17kp)
 
-        # Kalman filter state (33 keypoints x 2 coordinates)
+        # Kalman filter state (17 keypoints x 2 coordinates for H3.6M format)
         self._state: NDArray[np.float64] | None = None  # Current estimate
         self._covariance: NDArray[np.float64] | None = None  # Covariance matrix
 
