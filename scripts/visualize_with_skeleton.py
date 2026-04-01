@@ -26,7 +26,7 @@ from src.detection.spatial_reference import SpatialReferenceDetector
 from src.pose_estimation import H36Key, H36MExtractor
 from src.types import BladeState3D
 from src.utils.geometry import angle_3pt
-from src.utils.smoothing import PoseSmoother, get_skating_optimized_config
+
 from src.utils.subtitles import SubtitleParser
 from src.utils.video import get_video_meta
 from src.visualization import (
@@ -40,6 +40,7 @@ from src.visualization import (
     render_layers,
 )
 from src.visualization.core.text import draw_text_box
+
 
 
 def main() -> int:
@@ -173,10 +174,9 @@ def main() -> int:
 
             extractor = RTMPoseExtractor(
                 output_format="normalized",
-                conf_threshold=0.1,
-                det_frequency=8,  # detect every 8 frames, track in between
-                frame_skip=8,  # only run pose estimation every 8th frame (8x faster)
-                device="cuda",  # GPU acceleration (7x faster than CPU)
+                conf_threshold=0.3,
+                det_frequency=1,        # detect every frame — GPU is fast enough
+                device="cuda",
             )
         else:
             extractor = H36MExtractor(
@@ -232,60 +232,20 @@ def main() -> int:
 
         extraction = extractor.extract_video_tracked(args.video, person_click=person_click)
 
-        # Gap filling: linear interpolation for ALL gaps (no split!)
-        # Visualization requires 1:1 frame correspondence — splitting
-        # the array at long gaps breaks frame sync.
-        raw_poses = extraction.poses.copy()
-        valid_mask = extraction.valid_mask()
-        valid_indices = np.where(valid_mask)[0]
-        print(
-            f"Raw: {len(valid_indices)}/{len(raw_poses)} valid frames, "
-            f"first detection at frame {extraction.first_detection_frame}"
-        )
+        raw_poses = extraction.poses  # (N, 17, 3) — 1:1 with video frames
+        n_valid = int(extraction.valid_mask().sum())
+        print(f"Raw: {n_valid}/{len(raw_poses)} valid frames")
 
-        for kp in range(17):
-            for ch in range(2):  # x, y only (not confidence)
-                vals = raw_poses[:, kp, ch]
-                if len(valid_indices) >= 2:
-                    raw_poses[:, kp, ch] = np.interp(
-                        np.arange(len(vals)), valid_indices, vals[valid_indices]
-                    )
-                elif len(valid_indices) == 1:
-                    raw_poses[:, kp, ch] = vals[valid_indices[0]]
+        poses_norm = raw_poses[:, :, :2].copy()
+        confs = raw_poses[:, :, 2].copy()
 
-        # Zero confidence for interpolated frames
-        interp_mask = ~valid_mask
-        raw_poses[interp_mask, :, 2] = 0.0
-
-        poses_norm_raw = raw_poses[:, :, :2]
-        confs = raw_poses[:, :, 2]
-
-        print("Smoothing poses (in normalized space)...")
-        config = get_skating_optimized_config(fps=meta.fps)
-        smoother = PoseSmoother(config=config, freq=meta.fps)
-        poses_smoothed_norm = smoother.smooth(poses_norm_raw)
-        poses_smoothed_norm = np.clip(poses_smoothed_norm, 0.0, 1.0)
-
-        poses_smoothed_px = poses_smoothed_norm.copy()
-        poses_smoothed_px[:, :, 0] *= meta.width
-        poses_smoothed_px[:, :, 1] *= meta.height
-
-        poses = np.zeros((len(poses_smoothed_px), 17, 3), dtype=np.float32)
-        poses[:, :, :2] = poses_smoothed_px
-        poses[:, :, 2] = confs
+        poses_viz = poses_norm
+        poses = raw_poses.copy()
+        poses[:, :, 0] *= meta.width
+        poses[:, :, 1] *= meta.height
 
         pose_frame_indices = np.arange(len(poses))
-        poses_viz = poses_smoothed_norm
-
-        n_valid = int(np.sum(~np.isnan(extraction.poses[:, 0, 0])))
-        print(f"Extracted {n_valid}/{len(poses)} valid poses (tracked, gap-filled)")
-
-        valid_raw = ~np.isnan(poses_norm_raw[:, 0, 0])
-        if np.sum(valid_raw) > 2:
-            raw_jitter = np.abs(np.diff(poses_norm_raw[valid_raw][:, :, 0], axis=0)).mean()
-            smooth_jitter = np.abs(np.diff(poses_smoothed_norm[:, :, 0], axis=0)).mean()
-            if raw_jitter > 0:
-                print(f"Jitter reduction: {(1 - smooth_jitter / raw_jitter) * 100:.1f}%")
+        print(f"Poses ready: {len(poses)} frames")
 
     # Initialize blade states
     blade_states_left = [None] * len(poses_viz)
