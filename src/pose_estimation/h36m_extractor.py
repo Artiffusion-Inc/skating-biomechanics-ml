@@ -149,7 +149,38 @@ def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
     h36m_pose[H36Key.SPINE] = mid_shoulder * 0.5 + mid_hip * 0.5
     h36m_pose[H36Key.THORAX] = mid_shoulder
     h36m_pose[H36Key.NECK] = coco_pose[_COCOKey.NOSE]
-    h36m_pose[H36Key.HEAD] = coco_pose[_COCOKey.NOSE]
+
+    # HEAD: use midpoint of eyes (indices 1, 2) for better head position
+    left_eye = coco_pose[_COCOKey.LEFT_EYE]   # index 1
+    right_eye = coco_pose[_COCOKey.RIGHT_EYE]  # index 2
+    if has_confidence:
+        eye_conf_ok = left_eye[2] >= 0.3 and right_eye[2] >= 0.3
+    else:
+        eye_conf_ok = True  # no confidence channel, assume ok
+
+    if eye_conf_ok:
+        # Midpoint of eyes for position, average confidence
+        head_pos = (left_eye[:2] + right_eye[:2]) / 2
+        if has_confidence:
+            head_conf = (left_eye[2] + right_eye[2]) / 2
+            h36m_pose[H36Key.HEAD, :2] = head_pos
+            h36m_pose[H36Key.HEAD, 2] = head_conf
+        else:
+            h36m_pose[H36Key.HEAD] = head_pos
+    else:
+        # Fallback: nose position offset upward by 10% of shoulder-to-nose distance
+        nose_pos = coco_pose[_COCOKey.NOSE, :2]
+        shoulder_to_nose = nose_pos - mid_shoulder[:2]
+        offset_dist = np.linalg.norm(shoulder_to_nose) * 0.1
+        # Offset in direction from mid-shoulder to nose (upward)
+        direction = shoulder_to_nose / (np.linalg.norm(shoulder_to_nose) + 1e-8)
+        head_pos = nose_pos + direction * offset_dist
+        if has_confidence:
+            h36m_pose[H36Key.HEAD, :2] = head_pos
+            h36m_pose[H36Key.HEAD, 2] = coco_pose[_COCOKey.NOSE, 2]
+        else:
+            h36m_pose[H36Key.HEAD] = head_pos
+
     h36m_pose[H36Key.LSHOULDER] = coco_pose[_COCOKey.LEFT_SHOULDER]
     h36m_pose[H36Key.LELBOW] = coco_pose[_COCOKey.LEFT_ELBOW]
     h36m_pose[H36Key.LWRIST] = coco_pose[_COCOKey.LEFT_WRIST]
@@ -201,10 +232,8 @@ def _biometric_distance(pose_a: np.ndarray, pose_b: np.ndarray) -> float:
         ratios_b.append(len_b)
 
     if len(ratios_a) < 3:
-        # Not enough confident joints — use position distance as fallback
-        center_a = pose_a[H36Key.HIP_CENTER, :2]
-        center_b = pose_b[H36Key.HIP_CENTER, :2]
-        return float(np.linalg.norm(center_a - center_b))
+        # Not enough confident joints — reject rather than match on position alone
+        return float("inf")
 
     ratios_a = np.array(ratios_a)
     ratios_b = np.array(ratios_b)
@@ -540,30 +569,38 @@ class H36MExtractor:
                     if tid == target_track_id:
                         all_poses[frame_idx] = h36m_poses[p]
                         last_target_pose = h36m_poses[p].copy()
+                        target_lost_frame = None  # target found, reset lost counter
                         found = True
                         break
 
                 # Track migration: target lost, find matching new track
                 if not found and last_target_pose is not None:
-                    best_dist = float("inf")
-                    best_new_tid: int | None = None
-                    best_new_pose: np.ndarray | None = None
-                    for p, tid in enumerate(track_ids):
-                        dist = _biometric_distance(h36m_poses[p], last_target_pose)
-                        if dist < best_dist:
-                            best_dist = dist
-                            best_new_tid = tid
-                            best_new_pose = h36m_poses[p]
+                    # Record when target was lost
+                    if target_lost_frame is None:
+                        target_lost_frame = frame_idx
 
-                    # Accept migration if biometric distance is small enough
-                    if best_new_tid is not None and best_dist < 0.15:
-                        target_track_id = best_new_tid
-                        all_poses[frame_idx] = best_new_pose
-                        last_target_pose = best_new_pose.copy()
-                        # Retroactively fill from stored frames for new track
-                        for fidx, tmap in frame_track_poses.items():
-                            if target_track_id in tmap:
-                                all_poses[fidx] = tmap[target_track_id]
+                    # Only attempt migration if target was lost for <= 60 frames (~2.4s at 25fps)
+                    if frame_idx - target_lost_frame <= 60:
+                        best_dist = float("inf")
+                        best_new_tid: int | None = None
+                        best_new_pose: np.ndarray | None = None
+                        for p, tid in enumerate(track_ids):
+                            dist = _biometric_distance(h36m_poses[p], last_target_pose)
+                            if dist < best_dist:
+                                best_dist = dist
+                                best_new_tid = tid
+                                best_new_pose = h36m_poses[p]
+
+                        # Accept migration if biometric distance is tight enough
+                        if best_new_tid is not None and best_dist < 0.08:
+                            target_track_id = best_new_tid
+                            all_poses[frame_idx] = best_new_pose
+                            last_target_pose = best_new_pose.copy()
+                            target_lost_frame = None  # target found again
+                            # Retroactively fill from stored frames — only NaN frames
+                            for fidx, tmap in frame_track_poses.items():
+                                if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
+                                    all_poses[fidx] = tmap[target_track_id]
 
         # Phase 2 (deferred): Auto-select by most hits — after full loop
         # This ensures we pick the track with the most total detections across
@@ -573,9 +610,9 @@ class H36MExtractor:
                 track_hit_counts,
                 key=lambda k: track_hit_counts[k],  # type: ignore[arg-type]
             )
-            # Retroactive fill: all frames where this track appeared
+            # Retroactive fill: only frames where this track appeared and no data yet
             for fidx, tmap in frame_track_poses.items():
-                if target_track_id in tmap:
+                if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
                     all_poses[fidx] = tmap[target_track_id]
 
         # Determine first_detection_frame
