@@ -7,7 +7,7 @@ requires-python = ">=3.11"
 dependencies = [
     "ultralytics>=0.3.0",       # deprecated: H36MExtractor (YOLO26-Pose backend)
     "rtmlib>=0.0.7",            # NEW: RTMPose pose estimation (HALPE26, 26kp with feet)
-    "onnxruntime>=1.17.0",      # NEW: ONNX backend for rtmlib (CPU-friendly)
+    "onnxruntime-gpu>=1.24.4",      # ONNX Runtime with CUDA backend for rtmlib
     "opencv-python>=4.10.0",
     "numpy>=2.0.0",
     "torch>=2.5.0",

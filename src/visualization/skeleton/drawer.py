@@ -279,6 +279,11 @@ def draw_skeleton_3d_pip(
 ) -> Frame:
     """Draw 3D skeleton in picture-in-picture mode.
 
+    .. deprecated:: 0.5
+        Replaced by 3D-corrected 2D overlay via ``CorrectiveLens``.
+        The PIP window has been removed from the visualization pipeline.
+        Kept for backward compatibility only.
+
     Creates a small inset view showing the 3D skeleton from a side angle,
     useful for visualizing depth that's hard to see in the main view.
 
