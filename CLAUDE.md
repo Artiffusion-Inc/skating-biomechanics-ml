@@ -1,109 +1,61 @@
 # CLAUDE.md
 
-> **⚠️ PROJECT ROADMAP:** See @ROADMAP.md for the SINGLE SOURCE OF TRUTH on implementation status, phases, and blockers.
-> **📚 RESEARCH SUMMARY:** See @research/RESEARCH_SUMMARY_2026-03-28.md for comprehensive Exa + Gemini findings (41 papers)
-
-> This file provides project context, development conventions, and workflow guidelines.
+> **PROJECT ROADMAP:** @ROADMAP.md — SINGLE SOURCE OF TRUTH for implementation status
+> **RESEARCH:** @research/RESEARCH_SUMMARY_2026-03-28.md — Exa + Gemini findings (41 papers)
 
 ---
 
 ## Project Overview
 
-ML-based personal AI coach for figure skating using computer vision. Analyzes skating technique from video and provides specific recommendations in Russian.
+ML-based AI coach for figure skating. Analyzes video, compares attempts to professional references, provides biomechanical feedback in Russian.
 
-**Vision:** AI-тренер по фигурному катанию который анализирует видео и даёт рекомендации на русском языке.
+**Vision:** AI-тренер по фигурному катанию — анализ видео и рекомендации на русском.
 
-**Target Users:** Figure skaters and coaches looking for technical feedback
+## Tech Stack
 
-## Tech Stack (MVP)
+| Component | Technology |
+|-----------|-----------|
+| **Language** | Python 3.11+ (`uv`) |
+| **2D Pose** | RTMPose via rtmlib (HALPE26, 26kp with feet) **default** |
+| **2D Pose (alt)** | YOLO26-Pose (H3.6M, 17kp) |
+| **3D Lifting** | MotionAGFormer-S / Biomechanics3DEstimator |
+| **3D Correction** | CorrectiveLens (kinematic constraints + anchor projection) |
+| **Tracking** | PoseTracker (OC-SORT + anatomical biometrics) |
+| **Alignment** | DTW (dtw-python) with Sakoe-Chiba window |
+| **Analysis** | CoM trajectory, physics engine (Dempster tables) |
+| **GPU** | CUDA via onnxruntime-gpu (7.1x speedup) |
+| **Testing** | pytest + pytest-cov (279+ tests) |
 
-| Component           | Technology                               |
-| ------------------- | ---------------------------------------- |
-| **Language**        | Python 3.11+                             |
-| **Package Manager** | `uv`                                     |
-| **Detection**       | YOLO26n (Ultralytics, NMS-free)          |
-| **2D Pose**         | H3.6M 17-keypoint (YOLO26-Pose backend)  |
-| **3D Pose**         | MotionAGFormer / TCPFormer (AthletePose3D) |
-| **Normalization**   | Root-centering + scale normalization     |
-| **Alignment**       | DTW (dtw-python) with Sakoe-Chiba window |
-| **Analysis**        | Custom biomechanics metrics              |
-| **Recommendations** | Rule-based engine (Russian output)       |
-| **Testing**         | Pytest + pytest-cov                      |
-
-## MVP Architecture (3D-First)
+## Architecture
 
 ```
-Video Input → YOLO26n (detect) → H36MExtractor (H3.6M 17kp) → Normalization
-    ↓
-3D Lifting (MotionAGFormer/TCPFormer) → 3D Poses
-    ↓
-Phase Detection → Biomechanics Metrics → DTW (vs reference)
-    ↓
-Rule-based Recommender → Text Report (Russian)
+Video → RTMPose (rtmlib, CUDA) → HALPE26 (26kp)
+  → H3.6M (17kp) conversion → GapFiller → Smoothing
+  → [Optional] CorrectiveLens (3D lift → kinematic constraints → project back to 2D)
+  → Phase Detection → Biomechanics Metrics → DTW (vs reference)
+  → Rule-based Recommender → Russian Text Report
 ```
 
-**Key Decision:** System uses H3.6M 17-keypoint format as primary pose representation. 3D lifting via AthletePose3D models (MotionAGFormer-S or TCPFormer) provides physics-accurate analysis.
+**Key decisions:**
+- **rtmlib > YOLO-Pose** for 2D: better tracking, foot keypoints, ONNX (fast on CPU, CUDA on GPU)
+- **HALPE26 (26kp)** as intermediate format, converted to H3.6M (17kp) for downstream
+- **CorrectiveLens**: uses 3D lifting as corrective layer for 2D skeleton (Kinovea-style angles)
+- **PoseTracker**: anatomical biometric Re-ID instead of color (solves black clothing on ice)
+- **CoM trajectory** instead of flight time (eliminates 60% error for low jumps)
 
 ---
 
-## 🔄 Git Workflow (CRITICAL)
+## Git Workflow
 
-### Commit Discipline
-
-**MANDATORY:** Commit frequently after completing logical units of work. Never leave uncommitted changes overnight.
-
-```bash
-# Check status before starting work
-git status
-
-# After completing a feature/unit:
-git add <files>
-git commit -m "<type>: <description>"
-
-# Logical commit types:
-feat:     New feature
-fix:      Bug fix
-docs:     Documentation changes
-refactor: Code refactoring (no behavior change)
-test:     Adding/updating tests
-chore:    Maintenance, tooling, dependencies
-```
-
-### Commit Message Format
+Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
 
 ```
-<type>: <short description>
-
-<detailed explanation if needed>
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+feat(pose): add RTMPoseExtractor with HALPE26 foot keypoints
+fix(tracking): give each track its own Kalman state
+perf(viz): add frame_skip, render-scale for 3x speedup
 ```
 
-**Examples:**
-```
-feat(blade-detection): add BDA algorithm for skate blade edge detection
-
-- BladeType enum (INSIDE, OUTSIDE, FLAT, TOE_PICK, UNKNOWN)
-- BladeEdgeDetector class with 4 angular thresholds
-- 19 unit tests (all passing)
-
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
-```
-
-### Branch Strategy
-
-- `master` - Main development branch
-- Feature branches for larger work (optional for this project)
-- Always pull before starting work
-- Push after significant commits
-
-### Pre-Commit Checklist
-
-Before committing:
-1. [ ] Tests pass: `uv run pytest tests/ -v -m "not slow"`
-2. [ ] Code formatted: `uv run ruff format .`
-3. [ ] No lint errors: `uv run ruff check .`
-4. [ ] Type check passes: `uv run mypy src/`
+Pre-commit: `uv run pytest tests/ -v -m "not slow"` + `uv run ruff check .`
 
 ---
 
@@ -111,405 +63,162 @@ Before committing:
 
 ```
 src/
-├── __init__.py
-├── types.py              # Shared data types (H36Key, FrameKeypoints, BladeType, etc.)
-├── pipeline.py           # Main AnalysisPipeline orchestrator
-├── cli.py                # argparse CLI (analyze, build-ref, segment commands)
-├── alignment/
-│   ├── aligner.py             # DTW motion alignment
-│   └── motion_dtw.py          # DTW utilities
-├── analysis/
-│   ├── element_defs.py        # Element definitions & ideal metrics
-│   ├── element_segmenter.py   # Automatic motion segmentation
-│   ├── metrics.py             # BiomechanicsAnalyzer (airtime, angles, etc.)
-│   ├── phase_detector.py      # Auto-detect takeoff/peak/landing
-│   ├── physics_engine.py      # CoM calculation, jump height, angular momentum
-│   ├── recommender.py         # Rule-based recommendation engine
-│   └── rules/
-│       ├── jump_rules.py      # Rules for all jump types
-│       └── three_turn_rules.py # Rules for three_turn
-├── detection/
-│   ├── blade_edge_detector_3d.py  # 3D blade edge detection (BDA algorithm)
-│   ├── person_detector.py         # YOLOv11n wrapper
-│   ├── pose_tracker.py            # Multi-person tracking (OC-SORT + biometrics)
-│   └── spatial_reference.py       # Camera pose estimation
-├── models/
-│   ├── motionagformer/        # MotionAGFormer 3D lifter
-│   └── tcpformer/             # TCPFormer 3D lifter
+├── types.py                          # H36Key, BladeType, PersonClick, TrackedExtraction
+├── pipeline.py                       # AnalysisPipeline orchestrator
+├── cli.py                            # argparse CLI (analyze, build-ref, segment, compare)
 ├── pose_estimation/
-│   ├── h36m_extractor.py     # H3.6M 17-keypoint extractor (YOLOv11-Pose)
-│   ├── normalizer.py         # Pose normalization (root-centering + scale)
-│   └── yolo_extractor.py     # Raw YOLOv11-Pose (17kp COCO format)
+│   ├── rtmlib_extractor.py           # RTMPose via rtmlib (HALPE26, tracking, CUDA)
+│   ├── h36m_extractor.py             # YOLO26-Pose (H3.6M, tracked extraction)
+│   ├── halpe26.py                    # HALPE26 constants + H3.6M mapping + foot angles
+│   └── normalizer.py                 # Root-centering + scale normalization
 ├── pose_3d/
-│   ├── athletepose_extractor.py  # AthletePose3D wrapper (MotionAGFormer/TCPFormer)
-│   ├── biomechanics_estimator.py # Simple 3D estimation (no ML model)
-│   └── normalizer_3d.py          # 3D pose normalization
-├── references/
-│   ├── reference_builder.py   # Build reference from expert video
-│   └── reference_store.py     # Store/load .npz reference files
+│   ├── corrective_pipeline.py        # CorrectiveLens: 3D→2D corrective overlay
+│   ├── kinematic_constraints.py      # Bone length + joint angle limits (3D)
+│   ├── anchor_projection.py          # 3D→2D projection + confidence blending
+│   ├── athletepose_extractor.py      # MotionAGFormer / TCPFormer wrapper
+│   └── biomechanics_estimator.py     # Simple 3D estimation (no model)
+├── detection/
+│   ├── pose_tracker.py               # OC-SORT + anatomical biometric Re-ID
+│   ├── spatial_reference.py          # Per-frame camera pose estimation
+│   └── blade_edge_detector_3d.py     # 3D blade edge detection (BDA)
+├── analysis/
+│   ├── physics_engine.py             # CoM, parabolic trajectory, Dempster tables
+│   ├── phase_detector.py             # CoM-based auto takeoff/peak/landing
+│   ├── metrics.py                    # BiomechanicsAnalyzer
+│   └── recommender.py                # Rule-based Russian recommendations
+├── visualization/
+│   ├── comparison.py                 # ComparisonRenderer (side-by-side, overlay)
+│   ├── layers/                       # skeleton, velocity, trail, blade, joint_angle, timer, vertical_axis
+│   ├── hud/                          # HUD elements, layout, panel
+│   └── skeleton/                     # Skeleton drawing (2D/3D, joints)
 ├── utils/
-│   ├── geometry.py            # Angles, distances, smoothing
-│   ├── smoothing.py           # One-Euro Filter for pose smoothing
-│   ├── subtitles.py           # VTT subtitle parser for coach commentary
-│   └── video.py               # cv2 video utilities
-└── visualization/
-    ├── config.py              # Layer configuration & constants
-    ├── core/                  # Color, geometry, text utilities
-    ├── hud/                   # HUD elements, layout, panel
-    ├── layers/                # Layer-based rendering (skeleton, velocity, trail, HUD, blade)
-    └── skeleton/              # Skeleton drawing (2D/3D, joints)
+│   ├── gap_filling.py                # GapFiller (linear interp + velocity extrapolation)
+│   ├── geometry.py                   # Angles, distances, foot angles
+│   └── smoothing.py                  # One-Euro Filter, PoseSmoother
+└── references/
+    ├── reference_builder.py          # Build reference from expert video
+    └── reference_store.py            # Save/load .npz
 
 scripts/
-├── check_all.py               # Run all quality checks
-├── build_references.py        # CLI to build references from video
-├── download_models.py         # Download YOLOv11n weights
-├── visualize_with_skeleton.py # Enhanced debug visualization with layered HUD
-├── visualize_segmentation.py  # Visualize automatic segmentation
-└── organize_dataset.py        # Dataset organization utilities
+├── visualize_with_skeleton.py        # Main viz script (layered HUD, --3d, --pose-backend)
+├── setup_cuda_compat.sh              # CUDA 12 compat for onnxruntime on CUDA 13.x
+├── check_all.py                      # Quality checks
+└── download_models.py                # Download model weights
 
 tests/
-├── conftest.py            # Shared fixtures
-├── test_types.py          # Type tests
-├── test_pipeline.py       # Integration tests
-├── detection/             # PersonDetector tests
-├── pose_3d/               # 3D pose lifting tests
-├── analysis/              # Metrics, phase detector, recommender, physics tests
-├── alignment/             # DTW aligner tests (H3.6M 17kp format)
-├── segmentation/          # Element segmenter tests
-└── utils/                 # Utility tests (blade, geometry, smoothing, viz)
-
-research/
-├── RESEARCH.md                        # Original architecture research
-├── VISUALIZATION_RESEARCH_PROMPT.md   # Visualization design research
-├── PHYSICS_DETECTION_RESEARCH.md      # Exa web search research prompt
-└── RESEARCH_SUMMARY_2026-03-28.md     # 📚 Comprehensive Exa + Gemini findings (41 papers)
-
-data/
-└── references/            # Expert reference .npz files (not in git)
-    ├── three_turn/
-    ├── waltz_jump/
-    ├── toe_loop/
-    └── flip/
+├── pose_3d/                          # 37 tests (corrective pipeline)
+├── detection/                        # Tracker tests
+├── analysis/                         # Metrics, physics, recommender
+└── alignment/                        # DTW aligner
 ```
 
 ---
 
-## Development Workflow
-
-### Quality Checks
+## CLI Usage
 
 ```bash
-# Run all checks
-uv run python scripts/check_all.py
-
-# Individual checks
-uv run ruff check .          # Lint
-uv run ruff format .         # Format
-uv run mypy src/             # Type check
-uv run vulture src/ tests/   # Dead code
-uv run pytest tests/ -v -m "not slow"  # Tests (exclude slow ML tests)
-```
-
-### CLI Usage
-
-```bash
-# Analyze a skating video
-uv run python -m skating_biomechanics_ml.cli analyze video.mp4 --element three_turn
+# Analyze video (full pipeline)
+uv run python -m src.cli analyze video.mp4 --element waltz_jump --pose-backend rtmlib
 
 # Build reference from expert video
-uv run python -m skating_biomechanics_ml.cli build-ref expert.mp4 --element waltz_jump \
-    --takeoff 1.0 --peak 1.2 --landing 1.4
+uv run python -m src.cli build-ref expert.mp4 --element waltz_jump
 
-# Segment video automatically
-uv run python -m skating_biomechanics_ml.cli segment video.mp4
+# Compare two videos (training mode)
+uv run python -m src.cli compare attempt.mp4 reference.mp4 --overlays skeleton,angles,timer
 
-# With reference directory
-uv run python -m skating_biomechanics_ml.cli analyze video.mp4 --element waltz_jump \
-    --reference-dir data/references --output report.txt
+# Visualize with 3D-corrected skeleton
+uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 2 --3d --output out.mp4
 
-# Visualize with debug overlay
-uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 3 --output video_debug.mp4
+# Interactive person selection
+uv run python -m src.cli analyze video.mp4 --element three_turn --select-person
 ```
 
-### Supported Elements
-
-| Element      | Type | Key Metrics                                           |
-| ------------ | ---- | ----------------------------------------------------- |
-| `three_turn` | Step | trunk_lean, edge_change_smoothness, knee_angle        |
-| `waltz_jump` | Jump | airtime, max_height, landing_knee_angle, arm_position |
-| `toe_loop`   | Jump | airtime, rotation_speed, toe_pick_timing              |
-| `flip`       | Jump | airtime, pick_quality, air_position                   |
-| `salchow`    | Jump | airtime, rotation_speed, edge_quality                 |
-| `loop`       | Jump | airtime, rotation_speed, height                       |
-| `lutz`       | Jump | airtime, toe_pick_quality, rotation                  |
-| `axel`       | Jump | airtime, height, rotation                            |
-
----
-
-## Key Concepts
-
-### Data Types
-
-- **FrameKeypoints**: `(N, 33, 3)` — x, y, confidence from BlazePose (pixel coords)
-- **NormalizedPose**: `(N, 33, 2)` — x, y in [0,1] normalized coordinates
-- **PixelPose**: `(N, 33, 2)` — x, y in pixel coordinates
-- **BladeType**: Enum (INSIDE, OUTSIDE, FLAT, TOE_PICK, UNKNOWN)
-- **ElementPhase**: start, takeoff, peak, landing, end frame indices
-- **MetricResult**: name, value, unit, is_good, reference_range
-- **BladeState**: blade_type, foot_angle, ankle_angle, vertical_accel, confidence
-
-### Coordinate System Convention (CRITICAL)
-
-**Always clarify coordinate system in variable names and function signatures:**
-
-```python
-# Naming convention
-poses_norm = ...  # Normalized [0,1]
-poses_px = ...    # Pixel coordinates
-
-# Use validation from types.py
-from skating_biomechanics_ml.types import assert_pose_format
-assert_pose_format(poses, "normalized", context="my_function")
-
-# Convert between formats
-from skating_biomechanics_ml.types import normalize_pixel_poses, pixelize_normalized_poses
-poses_norm = normalize_pixel_poses(poses_px, width=1920, height=1080)
-poses_px = pixelize_normalized_poses(poses_norm, width=1920, height=1080)
-```
-
-**Visualization functions expect NORMALIZED coordinates:**
-
-- `draw_velocity_vectors()` → normalized [0,1]
-- `draw_trails()` → normalized [0,1]
-- `draw_blade_indicator_hud()` → uses BladeState from BladeEdgeDetector (recommended)
-- `draw_skeleton()` → both (handles conversion internally)
-
-**Common bugs to avoid:**
-
-1. Passing pixel coords to functions expecting normalized → wrong calculations
-2. Passing normalized coords to functions expecting pixels → skeleton misaligned
-3. Smoothing in wrong coordinate space → inconsistent results
-
-### Normalization
-
-1. **Root-centering**: mid-hip → origin (0, 0)
-2. **Scale normalization**: spine length → 0.4 (typical adult athlete)
-
-### Biomechanics Metrics
-
-- **Airtime**: `(landing - takeoff) / fps` seconds
-- **Jump height**: `hip_y[landing] - min(hip_y[takeoff:landing])` ⚠️ **WARNING: Use CoM trajectory instead!**
-- **Knee angle**: Angle at hip-knee-ankle joint
-- **Arm position**: Distance from wrist to shoulder (0 = close, 1 = extended)
-- **Edge indicator**: +1 (inside edge), -1 (outside edge), 0 (flat)
-
-### Blade Edge Detection (NEW!)
-
-**BDA Algorithm** (Blade Discrimination Algorithm) uses 4 angular thresholds:
-- Strong inside: angle < -20°
-- Weak inside: -20° to -10°
-- Flat: -10° to 10°
-- Weak outside: 10° to 20°
-- Strong outside: angle > 20°
-
-**Toe pick detection:** Vertical acceleration spike during takeoff
-
-```python
-from skating_biomechanics_ml.utils import BladeEdgeDetector
-
-detector = BladeEdgeDetector(
-    inside_threshold=-15.0,
-    outside_threshold=15.0,
-    smoothing_window=3
-)
-states = detector.detect_sequence(poses, fps=30.0, foot="left")
-```
-
-### Visualization System
-
-Enhanced debug visualization with layered HUD architecture:
-
-**Layers:**
-
-- **Layer 0 (Raw)**: Skeleton only
-- **Layer 1 (Kinematics)**: + velocity vectors + motion trails
-- **Layer 2 (Technical)**: + edge indicators + joint angles
-- **Layer 3 (Coaching)**: + subtitles + full HUD
-
-**Usage:**
+### Visualization Options
 
 ```bash
-# Generate debug visualization
-uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 3 --output video_debug.mp4
-
-# With pre-computed poses
-uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 1 --poses poses.npz
+--pose-backend rtmlib|yolo   # Pose estimation backend
+--3d                         # Enable 3D-corrected 2D overlay (CorrectiveLens)
+--layer 0-3                  # HUD layer (0=skeleton, 3=full coaching HUD)
+--render-scale 0.5           # Downscale rendering for speed
+--frame-skip 8               # Process every Nth frame only
+--select-person              # Interactive person selection
+--overlays skeleton,angles   # Comparison overlays
 ```
-
-**Color scheme (skeleton):**
-
-- Left side (arm/leg): Blue
-- Right side (arm/leg): Red
-- Center (torso/head): Green
-- Joints: White
-
-**Smoothing:**
-
-- One-Euro Filter applied in normalized coordinate space
-- Reduces jitter by ~30% while preserving fast motions
-
----
-
-## 📚 Research Insights (2026-03-28)
-
-See @research/RESEARCH_SUMMARY_2026-03-28.md for comprehensive findings from Exa + Gemini Deep Research (41 cited papers).
-
-### Critical Findings
-
-1. **Flight Time Method Has 60% Error** for low jumps! Use CoM parabolic trajectory instead.
-2. **Physics-Informed Optimizer** (Leuthold 2025) reduces MPJPE by 10.2% using Kalman filter + bone constraints.
-3. **Pose3DM-S** (0.5M params) enables real-time 3D pose on RTX 3050 Ti for occlusion handling.
-4. **OC-SORT + Pose Biometrics** solves tracking with identical black clothing.
-5. **FSBench** (CVPR 2025) provides 783 videos with 3D kinematics for training.
-
-### Future Enhancements (Priority Order)
-
-**Phase A: Critical (1-2 days)**
-1. Replace flight time with CoM trajectory
-2. Physics-informed pose validator (Kalman + bone constraints)
-3. Fix auto phase detection
-
-**Phase B: Tracking (4-5 days)**
-4. OC-SORT + pose biometrics for multi-person tracking
-5. Integrate blade detection into analysis pipeline
-
-**Phase C: Advanced (1-2 weeks)**
-6. Pose3DM-S for complex occlusions
-7. GCN element classifier with BIOES-tagging
 
 ---
 
 ## Environment
 
 - **OS**: Artix Linux (Ryzen 7 5800H / RTX 3050 Ti 4GB VRAM)
-- **Python**: 3.11+ via `uv`
-- **VRAM Budget**: <200MB for current pipeline, ~520MB with all enhancements
+- **CUDA**: 13.2 system, onnxruntime-gpu uses CUDA 12 compat libs
+- **GPU Setup**: `bash scripts/setup_cuda_compat.sh` after `uv sync`
+
+## Supported Elements
+
+| Element | Type | Key Metrics |
+|---------|------|-------------|
+| `three_turn` | Step | trunk_lean, edge_change, knee_angle |
+| `waltz_jump` | Jump | airtime, max_height, landing_knee |
+| `toe_loop` | Jump | airtime, rotation_speed, toe_pick |
+| `flip` | Jump | airtime, pick_quality |
+| `salchow` | Jump | airtime, rotation_speed |
+| `loop` | Jump | airtime, height |
+| `lutz` | Jump | toe_pick_quality, rotation |
+| `axel` | Jump | height, rotation |
 
 ---
 
-## Implementation Status
+## Key Concepts
 
-✅ **Overall: MVP ~98% complete**
+### Coordinate Convention
 
-**See @ROADMAP.md for detailed phase-by-phase status**
+- `poses_norm` — Normalized [0,1]
+- `poses_px` — Pixel coordinates
+- Validate with `assert_pose_format()` from `types.py`
 
-**Complete (100%):**
-- Phase 0: Foundation (types, utils)
-- Phase 1: Person Detection (YOLOv11n)
-- Phase 2: 3D Pose Estimation (H3.6M 17kp + MotionAGFormer/TCPFormer)
-- Phase 3: Pose Normalization (root-centering + scale)
-- Phase 4: Temporal Smoothing (One-Euro Filter, 29% jitter reduction)
-- Phase 5: Biomechanics Metrics (airtime, height, angles, edge)
-- Phase 6: Phase Detection (CoM-based auto-detection)
-- Phase 7: DTW Alignment (H3.6M 17kp format, all tests passing)
-- Phase 8: Rule-Based Recommender (Russian output)
-- Phase 9: Reference System (save/load .npz)
-- Phase 11: Visualization (layered HUD, skeleton, kinematics)
-- Phase 12: CLI & Pipeline (analyze, build-ref, segment)
-- Phase 13: Blade Edge Detection (BDA algorithm, 19 tests passing)
-- Phase 14: 3D Pose & Physics Engine (CoM, trajectory, TCPFormer)
+### HALPE26 → H3.6M Mapping
 
-**Partial (90%):**
-- Phase 10: Segmentation - working, but boundaries include preparation/recovery
+`halpe26_to_h36m()` converts 26kp (COCO 17 + 6 foot + 3 face) to 17kp H3.6M format. Foot keypoints (heel, big_toe, small_toe) preserved separately for blade edge detection.
 
----
+### CorrectiveLens (3D→2D)
 
-## Recent Improvements (2026-03)
+```
+RTMPose 2D → MotionAGFormer 3D lift → kinematic constraints → anchor-based projection → blend with raw 2D
+```
 
-### Blade Edge Detection (Phase 13) ✨ NEW!
+- Bone length enforcement (iterative Jacobian)
+- Joint angle limits (knees 0-180°, elbows 0-160°, hips 30-180°)
+- Per-frame scale from torso ratio (no camera calibration needed)
+- Confidence-based blending (trust corrected at low confidence)
 
-- Implemented BDA Algorithm based on Chen et al. (2025) and Tanaka et al. (2023)
-- BladeType enum (INSIDE, OUTSIDE, FLAT, TOE_PICK, UNKNOWN)
-- BladeEdgeDetector with foot angle, ankle angle, vertical acceleration
-- Temporal smoothing via majority voting
-- 19 unit tests (all passing)
-- Takeoff/landing detection from blade state sequence
+### CUDA Compatibility
 
-### Coordinate System Architecture
-
-- Added explicit `PixelPose` and `NormalizedPose` type aliases
-- Runtime validation with `assert_pose_format()` catches coordinate bugs early
-- Helper functions: `normalize_pixel_poses()`, `pixelize_normalized_poses()`
-- Documented convention in CLAUDE.md to prevent future confusion
-
-### Enhanced Visualization
-
-- Frame-perfect synchronization between poses and video frames
-- One-Euro Filter smoothing in normalized coordinate space (~30% jitter reduction)
-- Support for VTT subtitles with Russian/Cyrillic text (via Pillow)
-- Layered HUD system for focused debugging
+System has CUDA 13.2, onnxruntime-gpu needs CUDA 12. Solution: standalone CUDA 12 libs in `.venv/cuda-compat/` with patched RUNPATH. Script `setup_cuda_compat.sh` automates this.
 
 ---
 
-## Known Issues & Workarounds
+## Performance
 
-### BlazePose Frame Skipping
+| Config | 364 frames (14.5s video) | 1800 frames (60s video) |
+|--------|--------------------------|------------------------|
+| CPU (rtmlib, frame_skip=8) | ~50s | ~247s |
+| **GPU (rtmlib, frame_skip=8)** | **~12s** | **~59s** |
+| GPU + render-scale 0.5 | ~10s | ~49s |
+| GPU + render-scale 0.33 | ~8s | ~40s |
 
-BlazePose may skip frames where person detection confidence is low. This causes:
+---
 
-- Fewer extracted poses than video frames
-- Potential synchronization issues
+## Known Issues
 
-**Solution:** The visualization script tracks frame indices and only draws skeleton when pose data exists for that frame.
-
-### Coordinate System Confusion
-
-Historically, mixing pixel and normalized coordinates caused visualization bugs.
-
-**Solution:** Always use variable name suffixes (`_px`, `_norm`) and validate with `assert_pose_format()`.
-
-### Flight Time Jump Height Error
-
-**CRITICAL:** Flight time method overestimates low jumps by up to 60%!
-
-**Solution:** Use parabolic trajectory of Center of Mass (CoM) instead. See research summary for details.
+1. **Distant skaters**: rtmpib may miss very small figures (<10% frame width). Use `--person-click X Y` or `--select-person`.
+2. **CUDA compat**: Must run `setup_cuda_compat.sh` after `uv sync` on this system.
+3. **Segment boundaries**: Phase 10 includes preparation/recovery in segments.
 
 ---
 
 ## References
 
-- **Project roadmap:** @ROADMAP.md (SINGLE SOURCE OF TRUTH)
-- **Research summary:** @research/RESEARCH_SUMMARY_2026-03-28.md (Exa + Gemini, 41 papers)
-- **Original architecture:** @research/RESEARCH.md
-- **Visualization research:** @research/VISUALIZATION_RESEARCH_PROMPT.md
-- **BlazePose keypoints:** <https://google.github.io/mediapipe/solutions/pose.html>
-- **DTW in Python:** <https://dynamictimewarping.github.io/>
-
----
-
-## Quick Reference
-
-### Most Used Commands
-
-```bash
-# Quality check
-uv run python scripts/check_all.py
-
-# Analyze video
-uv run python -m skating_biomechanics_ml.cli analyze video.mp4 --element waltz_jump
-
-# Visualize with skeleton
-uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 3
-
-# Run tests
-uv run pytest tests/ -v -m "not slow"
-```
-
-### Key Files to Know
-
-- `types.py` - All data types and validation
-- `pipeline.py` - Main orchestrator
-- `cli.py` - Command-line interface
-- `detection/blade_edge_detector_3d.py` - 3D blade edge detection
-- `visualization/` - Layer-based visualization system
-- `ROADMAP.md` - Project status and next steps
+- @ROADMAP.md — project status (SINGLE SOURCE OF TRUTH)
+- @research/RESEARCH_SUMMARY_2026-03-28.md — research findings (41 papers)
+- @research/RESEARCH.md — original architecture research
+- @MIGRATION_NOTES.md — BlazePose 33kp → H3.6M 17kp migration details
