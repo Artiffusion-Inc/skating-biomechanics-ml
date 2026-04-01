@@ -50,6 +50,48 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     person_click = None
     if args.person_click:
         person_click = PersonClick(x=args.person_click[0], y=args.person_click[1])
+    elif args.select_person:
+        # Interactive person selection
+        from .pose_estimation import H36MExtractor as _Ext  # noqa: PLC0415
+
+        extractor = _Ext(output_format="normalized")
+        persons = extractor.preview_persons(args.video)
+        if not persons:
+            print("No persons detected in the first seconds of the video.")
+            return 1
+        if len(persons) == 1:
+            print(f"Only 1 person detected (track #{persons[0]['track_id']}). Auto-selecting.")
+            mid_hip = persons[0]["mid_hip"]
+            meta = get_video_meta(args.video)
+            person_click = PersonClick(
+                x=int(mid_hip[0] * meta.width),
+                y=int(mid_hip[1] * meta.height),
+            )
+        else:
+            print(f"\nDetected {len(persons)} persons:\n")
+            for i, p in enumerate(persons, 1):
+                x1, y1, x2, y2 = p["bbox"]
+                print(
+                    f"  #{i}: track_id={p['track_id']}, "
+                    f"bbox=({x1:.2f},{y1:.2f})-({x2:.2f},{y2:.2f}), "
+                    f"hits={p['hits']}, first_frame={p['first_frame']}"
+                )
+            print()
+            try:
+                choice = int(input(f"Select person [1-{len(persons)}]: "))
+            except (ValueError, EOFError):
+                print("Cancelled.")
+                return 1
+            if choice < 1 or choice > len(persons):
+                print(f"Invalid choice: {choice}")
+                return 1
+            mid_hip = persons[choice - 1]["mid_hip"]
+            meta = get_video_meta(args.video)
+            person_click = PersonClick(
+                x=int(mid_hip[0] * meta.width),
+                y=int(mid_hip[1] * meta.height),
+            )
+            print(f"Selected person #{choice} (track_id={persons[choice - 1]['track_id']})")
 
     pipeline = AnalysisPipeline(
         reference_store=reference_store,
@@ -343,6 +385,11 @@ def main() -> None:
         nargs=2,
         metavar=("X", "Y"),
         help="Click point to select target person (pixel coordinates)",
+    )
+    analyze_parser.add_argument(
+        "--select-person",
+        action="store_true",
+        help="Интерактивный выбор персоны: показать превью, выбрать номер",
     )
     analyze_parser.add_argument(
         "--moving-camera",

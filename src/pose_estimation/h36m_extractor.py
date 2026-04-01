@@ -385,6 +385,116 @@ class H36MExtractor:
             video_meta=video_meta,
         )
 
+    def preview_persons(
+        self,
+        video_path: Path | str,
+        num_frames: int = 30,
+    ) -> list[dict]:
+        """Preview all detected persons in the first few frames.
+
+        Runs YOLO26-Pose on the first ``num_frames`` frames, tracks all
+        persons via PoseTracker, and returns a summary for each tracked
+        person so the user can choose which one to follow.
+
+        Args:
+            video_path: Path to video file.
+            num_frames: Number of frames to scan (default 30 ≈ 1 second).
+
+        Returns:
+            List of dicts, one per tracked person::
+
+                {
+                    "track_id": int,
+                    "hits": int,            # frames where person was detected
+                    "bbox": (x1, y1, x2, y2),  # normalized [0,1], best frame
+                    "first_frame": int,
+                    "mid_hip": (x, y),      # normalized, for PersonClick
+                }
+
+            Sorted by ``hits`` descending (most-visible first).
+        """
+        video_path = Path(video_path)
+        video_meta = get_video_meta(video_path)
+
+        tracker = PoseTracker(
+            max_disappeared=30, min_hits=2, fps=video_meta.fps
+        )
+
+        # track_id → {hits, best_frame_idx, best_kps, first_frame}
+        person_data: dict[int, dict] = {}
+
+        results = self.model(
+            str(video_path), verbose=False, conf=self._conf_threshold, stream=True
+        )
+
+        for frame_idx, result in enumerate(results):
+            if frame_idx >= num_frames:
+                break
+
+            if result.keypoints is None or len(result.keypoints.xy) == 0:
+                tracker.update(np.empty((0, 17, 2), dtype=np.float32))
+                continue
+
+            h, w = result.orig_shape
+            kps_all = result.keypoints.xy.cpu().numpy()
+            confs_all = result.keypoints.conf.cpu().numpy()
+            n_persons = kps_all.shape[0]
+
+            h36m_poses = np.zeros((n_persons, 17, 3), dtype=np.float32)
+            for p in range(n_persons):
+                kp = kps_all[p].copy()
+                kp[:, 0] /= w
+                kp[:, 1] /= h
+                coco_kp = np.zeros((17, 3), dtype=np.float32)
+                coco_kp[:, :2] = kp
+                coco_kp[:, 2] = confs_all[p]
+                h36m_poses[p] = _coco_to_h36m_single(coco_kp)
+
+            track_ids = tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
+
+            for p, tid in enumerate(track_ids):
+                if tid not in person_data:
+                    person_data[tid] = {
+                        "hits": 0,
+                        "best_conf": 0.0,
+                        "best_kps": None,
+                        "best_frame": frame_idx,
+                        "first_frame": frame_idx,
+                    }
+                person_data[tid]["hits"] += 1
+                avg_conf = float(np.mean(h36m_poses[p, :, 2]))
+                if avg_conf > person_data[tid]["best_conf"]:
+                    person_data[tid]["best_conf"] = avg_conf
+                    person_data[tid]["best_kps"] = h36m_poses[p].copy()
+                    person_data[tid]["best_frame"] = frame_idx
+
+        # Build output
+        output: list[dict] = []
+        for tid, data in sorted(
+            person_data.items(), key=lambda kv: kv[1]["hits"], reverse=True
+        ):
+            kps = data["best_kps"]
+            if kps is None:
+                continue
+            # Bounding box from keypoints
+            valid = kps[kps[:, 2] > 0.1]
+            if len(valid) < 3:
+                continue
+            x1, y1 = float(np.min(valid[:, 0])), float(np.min(valid[:, 1]))
+            x2, y2 = float(np.max(valid[:, 0])), float(np.max(valid[:, 1]))
+            # Mid-hip
+            mid_hip_x = float((kps[H36Key.LHIP, 0] + kps[H36Key.RHIP, 0]) / 2)
+            mid_hip_y = float((kps[H36Key.LHIP, 1] + kps[H36Key.RHIP, 1]) / 2)
+            output.append({
+                "track_id": tid,
+                "hits": data["hits"],
+                "bbox": (x1, y1, x2, y2),
+                "first_frame": data["first_frame"],
+                "mid_hip": (mid_hip_x, mid_hip_y),
+            })
+
+        return output
+
     def close(self) -> None:
         """Close the extractor and release resources.
 
