@@ -3,7 +3,7 @@
 
 H3.6M Architecture:
     Uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: H36MExtractor (YOLO26-Pose backend)
+    2D extraction: RTMPoseExtractor (rtmlib) or H36MExtractor (YOLO26-Pose)
 
 Usage:
     python -m skating_biomechanics_ml.cli analyze video.mp4 --element waltz_jump
@@ -19,15 +19,36 @@ from pathlib import Path
 
 from .analysis import element_defs
 from .pipeline import AnalysisPipeline
-from .pose_estimation import H36MExtractor, normalizer
 from .references import reference_builder, reference_store
 from .types import ElementPhase, PersonClick, ReferenceData
 from .utils.video import get_video_meta
+
+from .pose_estimation import normalizer
 
 PoseNormalizer = normalizer.PoseNormalizer
 ReferenceBuilder = reference_builder.ReferenceBuilder
 ReferenceStore = reference_store.ReferenceStore
 get_element_def = element_defs.get_element_def
+
+
+def _get_extractor(pose_backend: str, **kwargs):
+    """Create the appropriate pose extractor based on backend choice.
+
+    Args:
+        pose_backend: "rtmlib" or "yolo".
+        **kwargs: Forwarded to the extractor constructor.
+
+    Returns:
+        RTMPoseExtractor or H36MExtractor instance.
+    """
+    if pose_backend == "rtmlib":
+        from .pose_estimation.rtmlib_extractor import RTMPoseExtractor
+
+        return RTMPoseExtractor(**kwargs)
+    else:
+        from .pose_estimation import H36MExtractor
+
+        return H36MExtractor(**kwargs)
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
@@ -40,8 +61,10 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     # Initialize pipeline
     reference_store = None
     if args.reference_dir:
-        # Create builder with H3.6M extractor
-        extractor = H36MExtractor(output_format="normalized")
+        # Create builder with the selected pose backend
+        extractor = _get_extractor(
+            args.pose_backend, output_format="normalized"
+        )
         norm = PoseNormalizer(target_spine_length=0.4)
         builder = ReferenceBuilder(extractor, norm)
         reference_store = ReferenceStore(args.reference_dir)
@@ -51,10 +74,9 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.person_click:
         person_click = PersonClick(x=args.person_click[0], y=args.person_click[1])
     elif args.select_person:
-        # Interactive person selection
-        from .pose_estimation import H36MExtractor as _Ext  # noqa: PLC0415
-
-        extractor = _Ext(output_format="normalized")
+        extractor = _get_extractor(
+            args.pose_backend, output_format="normalized"
+        )
         persons = extractor.preview_persons(args.video)
         if not persons:
             print("No persons detected in the first seconds of the video.")
@@ -97,6 +119,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         reference_store=reference_store,
         person_click=person_click,
         reestimate_camera=args.moving_camera,
+        pose_backend=args.pose_backend,
     )
 
     element_type = args.element
@@ -162,7 +185,9 @@ def cmd_build_ref(args: argparse.Namespace) -> int:
         return 1
 
     # Initialize components (H3.6M format)
-    pose_extractor = H36MExtractor(output_format="normalized")
+    pose_extractor = _get_extractor(
+        args.pose_backend, output_format="normalized"
+    )
     normalizer = PoseNormalizer(target_spine_length=0.4)
     builder = ReferenceBuilder(pose_extractor, normalizer)
 
@@ -226,7 +251,10 @@ def cmd_segment(args: argparse.Namespace) -> int:
         return 1
 
     # Initialize pipeline
-    pipeline = AnalysisPipeline(enable_smoothing=True)
+    pipeline = AnalysisPipeline(
+        enable_smoothing=True,
+        pose_backend=args.pose_backend,
+    )
 
     print(f"Segmenting: {args.video}")
 
@@ -248,8 +276,10 @@ def cmd_segment(args: argparse.Namespace) -> int:
 
         # Export segments as references if output-dir specified
         if args.export_dir:
-            # Use H3.6M extractor with tracking
-            extractor = H36MExtractor(output_format="normalized")
+            # Use the selected pose backend for export extraction
+            extractor = _get_extractor(
+                args.pose_backend, output_format="normalized"
+            )
             norm = PoseNormalizer(target_spine_length=0.4)
 
             # Extract poses in H3.6M format with tracking
@@ -460,6 +490,12 @@ def main() -> None:
         help="Enable per-frame camera re-estimation for moving cameras",
     )
     analyze_parser.add_argument(
+        "--pose-backend",
+        choices=["rtmlib", "yolo"],
+        default="rtmlib",
+        help="2D pose estimation backend (default: rtmlib)",
+    )
+    analyze_parser.add_argument(
         "--verbose",
         action="store_true",
         help="Подробный вывод ошибок",
@@ -530,6 +566,12 @@ def main() -> None:
         default="expert",
         help="Имя референса (по умолчанию 'expert')",
     )
+    ref_parser.add_argument(
+        "--pose-backend",
+        choices=["rtmlib", "yolo"],
+        default="rtmlib",
+        help="2D pose estimation backend (default: rtmlib)",
+    )
 
     # segment command
     segment_parser = subparsers.add_parser(
@@ -552,6 +594,12 @@ def main() -> None:
         type=Path,
         default=None,
         help="Директория для экспорта сегментов как референсов",
+    )
+    segment_parser.add_argument(
+        "--pose-backend",
+        choices=["rtmlib", "yolo"],
+        default="rtmlib",
+        help="2D pose estimation backend (default: rtmlib)",
     )
     segment_parser.add_argument(
         "--verbose",

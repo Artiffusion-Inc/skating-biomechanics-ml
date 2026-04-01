@@ -53,6 +53,7 @@ class AnalysisPipeline:
         smoothing_config: "OneEuroFilterConfig | None" = None,  # type: ignore[valid-type]
         person_click: PersonClick | None = None,
         reestimate_camera: bool = False,
+        pose_backend: str = "rtmlib",
     ) -> None:
         """Initialize analysis pipeline.
 
@@ -63,6 +64,8 @@ class AnalysisPipeline:
             smoothing_config: Optional custom smoothing configuration.
             person_click: Optional click point to select target person in multi-person videos.
             reestimate_camera: Enable per-frame camera re-estimation for moving cameras.
+            pose_backend: 2D pose estimation backend — ``"rtmlib"`` (default)
+                or ``"yolo"`` (deprecated).
         """
         self._reference_store = reference_store
         self._use_gpu = use_gpu
@@ -70,6 +73,7 @@ class AnalysisPipeline:
         self._smoothing_config = smoothing_config
         self._person_click = person_click
         self._reestimate_camera = reestimate_camera
+        self._pose_backend = pose_backend
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
@@ -375,14 +379,21 @@ class AnalysisPipeline:
             self._detector = PersonDetector(model_size="n", confidence=0.5)
         return self._detector
 
-    def _get_pose_2d_extractor(self) -> "H36MExtractor":  # type: ignore[valid-type]
-        """Lazy-load 2D pose extractor (H3.6M 17kp format with YOLO26-Pose backend)."""
+    def _get_pose_2d_extractor(self):  # type: ignore[valid-type]
+        """Lazy-load 2D pose extractor based on configured backend."""
         if self._pose_2d_extractor is None:
-            from .pose_estimation import H36MExtractor  # noqa: PLC0415
+            if self._pose_backend == "rtmlib":
+                from .pose_estimation.rtmlib_extractor import RTMPoseExtractor  # noqa: PLC0415
 
-            self._pose_2d_extractor = H36MExtractor(
-                output_format="normalized",  # [0,1] coordinates
-            )
+                self._pose_2d_extractor = RTMPoseExtractor(
+                    output_format="normalized",
+                )
+            else:
+                from .pose_estimation import H36MExtractor  # noqa: PLC0415
+
+                self._pose_2d_extractor = H36MExtractor(
+                    output_format="normalized",
+                )
         return self._pose_2d_extractor
 
     def _get_pose_3d_extractor(self) -> "AthletePose3DExtractor":  # type: ignore[valid-type]

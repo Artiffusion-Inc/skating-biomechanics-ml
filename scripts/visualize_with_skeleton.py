@@ -131,6 +131,12 @@ def main() -> int:
         default=30,
         help="Compression quality for libx265 (lower=better, default: 30)",
     )
+    parser.add_argument(
+        "--pose-backend",
+        choices=["rtmlib", "yolo"],
+        default="rtmlib",
+        help="2D pose estimation backend (default: rtmlib)",
+    )
     args = parser.parse_args()
 
     # Validate input
@@ -153,13 +159,22 @@ def main() -> int:
         pose_frame_indices = np.arange(len(poses))
         poses_viz = poses[:, :, :2] if poses.shape[2] == 3 else poses
     else:
-        print("Extracting poses with tracking (YOLO26-Pose + OC-SORT)...")
-        extractor = H36MExtractor(
-            model_size="s",  # small model — better accuracy for distant/small skaters
-            conf_threshold=0.1,  # low threshold — detect distant skaters
-            output_format="normalized",
-            crop_enhance=False,  # ROI crop — enable when CUDA available (slow on CPU)
-        )
+        backend_label = "rtmlib BodyWithFeet" if args.pose_backend == "rtmlib" else "YOLO26-Pose + OC-SORT"
+        print(f"Extracting poses with tracking ({backend_label})...")
+        if args.pose_backend == "rtmlib":
+            from src.pose_estimation.rtmlib_extractor import RTMPoseExtractor
+
+            extractor = RTMPoseExtractor(
+                output_format="normalized",
+                conf_threshold=0.1,
+            )
+        else:
+            extractor = H36MExtractor(
+                model_size="s",  # small model — better accuracy for distant/small skaters
+                conf_threshold=0.1,  # low threshold — detect distant skaters
+                output_format="normalized",
+                crop_enhance=False,  # ROI crop — enable when CUDA available (slow on CPU)
+            )
 
         # Person selection
         from src.types import PersonClick as _PersonClick

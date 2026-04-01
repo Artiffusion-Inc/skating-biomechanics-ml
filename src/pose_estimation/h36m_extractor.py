@@ -297,6 +297,15 @@ class H36MExtractor:
                 *imgsz*; the crop pass also runs at *imgsz* so the person
                 fills the frame, matching the YOLO-Pose training distribution.
         """
+        import warnings
+
+        warnings.warn(
+            "H36MExtractor (YOLO26-Pose backend) is deprecated. "
+            "Use RTMPoseExtractor for foot keypoint support and better accuracy. "
+            "Set --pose-backend rtmlib.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
         if YOLO is None:
             raise ImportError("Ultralytics not installed. Install with: uv add ultralytics")
 
