@@ -1,144 +1,75 @@
-# Research: ML-анализ биомеханики фигурного катания
+# Research Memory Bank
 
-> Комплексное исследование архитектур, алгоритмов и аппаратных решений
+> Index of all research materials. Documents are kept for historical context — decisions made, alternatives evaluated, and dead ends explored.
 
-## 1. 2D Human Pose Estimation
+## Current System (2026-04-01)
 
-### 1.1 Обнаружение объектов: YOLOv8 vs YOLOv11
-
-| Характеристика | YOLOv8 | YOLOv11 |
-|----------------|--------|---------|
-| Архитектура | C2f modules | C3k2 + FPN + Spatial Attention |
-| Precision | ~0.850 | 0.877 |
-| Recall | — | 0.842 |
-| FPS | 20.73 | 16.84 |
-| Параметры (m) | Стандарт | -22% |
-
-**Выбор**: YOLOv11m для серверного GPU, YOLOv8n для мобильных.
-
-### 1.2 Keypoint Detection
-
-| Модель | Точек | FPS (mobile) | Примечание |
-|--------|-------|--------------|------------|
-| BlazePose | 33 | 10-40 | Детальная стопа |
-| MoveNet | 17 | — | Недостаточно |
-| ViTPose | — | — | SOTA, тяжёлый |
-
-**Выбор**: BlazePose для real-time, ViTPose для offline.
+| Component | Chosen | Rejected |
+|-----------|--------|----------|
+| **2D Pose** | RTMPose via rtmlib (HALPE26, 26kp) | YOLO26-Pose (17kp), BlazePose (33kp, deprecated) |
+| **3D Lifting** | MotionAGFormer-S (38.4mm MPJPE) | Pose3DM (code not released), VIBE (too heavy) |
+| **Tracking** | OC-SORT + anatomical biometrics | DeepSORT (color-based, fails on black clothing) |
+| **Jump Height** | CoM parabolic trajectory | Flight time (60% error for low jumps) |
+| **Inference** | ONNX Runtime + CUDA 12 compat | PyTorch CUDA (broken on CUDA 13.2) |
 
 ---
 
-## 2. 3D Pose Lifting (2D→3D)
+## Documents
 
-### 2.1 MotionBERT (Transformer)
+### Active References
 
-- Двухпоточный DSTformer
-- $\mathcal{O}(N^2)$ сложность
-- Отлично при длительных перекрытиях
-- Высокое потребление памяти
+| File | Date | Content |
+|------|------|---------|
+| [RESEARCH_SUMMARY_2026-03-28.md](RESEARCH_SUMMARY_2026-03-28.md) | 2026-03-28 | **Comprehensive findings** from Exa + Gemini Deep Research (41 papers). Critical: flight time 60% error, physics-informed optimizer, OC-SORT biometrics, FSBench dataset |
+| [RESEARCH_POSE_TOOLS_2026-03-31.md](RESEARCH_POSE_TOOLS_2026-03-31.md) | 2026-03-31 | Sports2D, RTMPose, YOLO26-Pose, Kinovea alternatives evaluation. Led to rtmlib integration |
 
-### 2.2 PoseMamba / Pose3DM (State-Space Models)
+### Integration Plans (Completed)
 
-| Модель | Сложность | MPJPE | Параметры |
-|--------|-----------|-------|-----------|
-| MotionBERT | $\mathcal{O}(N^2)$ | ~40.0 мм | — |
-| PoseMamba-L | $\mathcal{O}(N)$ | 38.1 мм | -64.7% память |
-| Pose3DM-L | $\mathcal{O}(N)$ | 37.9 мм | -82.5% params |
+| File | Date | Content |
+|------|------|---------|
+| [ATHLETEPOSE3D_INTEGRATION.md](ATHLETEPOSE3D_INTEGRATION.md) | 2026-03-28 | AthletePose3D (MotionAGFormer/TCPFormer) integration plan. Status: **DONE** |
 
-**Pose3DM-L** с FTV-регуляризацией:
-- Линейная сложность
-- Интеллектуальное сглаживание джиттера
-- Идеален для edge deployment
+### Research Prompts (Historical)
 
-### 2.3 VIBE (SMPL Mesh)
+These are the prompts given to Gemini Deep Research. The results informed implementation decisions.
 
-- GRU + SMPL parameters
-- Восстанавливает mesh тела
-- Более тяжеловесный
+| File | Date | Topic | Outcome |
+|------|------|-------|---------|
+| [PHYSICS_DETECTION_RESEARCH.md](PHYSICS_DETECTION_RESEARCH.md) | 2026-03-27 | Physics-based detection, occlusion, blade edge, CoM | → PhysicsEngine, BladeEdgeDetector3D, PoseFiltering |
+| [SPATIAL_REFERENCE_RESEARCH_PROMPT.md](SPATIAL_REFERENCE_RESEARCH_PROMPT.md) | 2026-03-28 | Camera calibration, ice rink detection | → SpatialReferenceDetector (per-frame horizon) |
+| [SPATIAL_REFERENCE_EXA_SUMMARY.md](SPATIAL_REFERENCE_EXA_SUMMARY.md) | 2026-03-28 | Exa search results for spatial reference | → Same as above |
+| [VISUALIZATION_RESEARCH_PROMPT.md](VISUALIZATION_RESEARCH_PROMPT.md) | 2026-03-28 | Skeleton overlay, kinematics viz, HUD design | → Layered HUD system (0-3) |
 
----
+### Evaluated & Rejected Alternatives
 
-## 3. Специфичные датасеты
+| File | Date | Topic | Why Rejected |
+|------|------|-------|---------------|
+| [MOGANET_RESEARCH.md](MOGANET_RESEARCH.md) | 2026-03-29 | MogaNet-B as pose estimator | Requires mmcv compilation, not standalone |
+| [MOGANET_SUMMARY.md](MOGANET_SUMMARY.md) | 2026-03-29 | MogaNet summary + YOLOv8 alternative | Duplicate of above. YOLOv8 superseded by YOLO26+rtmlib |
 
-### AthletePose3D
-- ~1.3M кадров, 165K поз
-- 12 видов спорта
-- 73K кадров фигурного катания
-- MPJPE: 214→65 мм (-69% при fine-tuning)
+### Original Research
 
-### FS-Jump3D
-- 12 высокоскоростных камер
-- Семантическая аннотация фаз: entry/flight/landing
-- VIFSS: view-invariant embeddings
-
-### Нормализация
-1. Компенсация движения камеры (гомография)
-2. Root centering (таз → origin)
-3. Масштабирование (позвоночник = 0.4)
+| File | Date | Content |
+|------|------|---------|
+| [RESEARCH_ORIGINAL.md](RESEARCH_ORIGINAL.md) | 2026-03-27 | First architecture research: YOLOv8 vs YOLOv11, BlazePose vs MoveNet, MotionBERT vs Pose3DM, AthletePose3D, FS-Jump3D datasets, MotionDTW, KISMAM, multimodal RAG |
 
 ---
 
-## 4. Сравнение движений
+## Key Decisions Log
 
-### 4.1 Dynamic Time Warping (DTW)
+| Date | Decision | Rationale |
+|------|----------|-----------|
+| 2026-03-27 | BlazePose → H3.6M 17kp | Simpler, sufficient for biomechanics, 3D-first |
+| 2026-03-28 | Flight time → CoM trajectory | 60% error on low jumps (Gemini finding) |
+| 2026-03-28 | Color Re-ID → anatomical biometrics | Black clothing on ice eliminates color |
+| 2026-03-29 | MMPose/MogaNet → YOLO26-Pose | mmcv compilation fails on CUDA 13 |
+| 2026-03-31 | YOLO26-Pose → RTMPose (rtmlib) | Better tracking, foot keypoints, ONNX (CPU+GPU) |
+| 2026-04-01 | PyTorch CUDA → onnxruntime-gpu | CUDA 13 incompatibility solved with standalone CUDA 12 libs |
+| 2026-04-01 | Raw 2D skeleton → CorrectiveLens 3D→2D | Kinematic constraints fix occlusion artifacts |
 
-Библиотеки: `dtw-python`, `tslearn`, `dtaidistance`
+## Open Questions
 
-### 4.2 MotionDTW
-
-- Двухэтапное выравнивание
-- Ключевые кадры: take-off, peak, landing
-- Superior IoU для сегментов
-
-### 4.3 KISMAM
-
-Переводит дельты углов → семантические метрики:
-- "недостаточная группировка"
-- "чрезмерный наклон корпуса"
-
-### 4.4 Физические метрики
-
-- **Время полета**: $H = 4.905 \times (t/2)^2$
-- **Угловая скорость**: до 1500°/с (top-level)
-- **Классификация прыжка**: Bi-LSTM, 99% accuracy
-- **Детекция ребра**: анализ голеностопа (зубец vs rocker)
-
----
-
-## 5. Multimodal RAG
-
-### 5.1 Pipeline
-
-| Компонент | Технология |
-|-----------|------------|
-| Извлечение | yt-dlp, FFmpeg, Whisper |
-| Метрики | MotionDTW + KISMAM |
-| Векторизация | Pinecone / pgvector |
-| Графы | TTGNN (таблицы ISU) |
-| Генерация | Qwen3 / GPT-4o |
-
-### 5.2 Cross-modal RAG
-
-1. KISMAM → семантический диагноз
-2. Embedding → поиск в QA базе
-3. TTGNN → логика таблиц GOE
-4. LLM + контекст → рекомендация
-
-### 5.3 Trustworthy AI
-
-- **L2A** (Learning-to-Abstain): отказ при низкой уверенности
-- **TTGNN**: точная работа с таблицами
-
----
-
-## 6. Итоговая архитектура
-
-```
-Video → YOLOv11 → BlazePose → Pose3DM-L → MotionDTW → KISMAM → RAG → Coach Feedback
-```
-
-**Ключевые решения:**
-- YOLOv11m + BlazePose (2D)
-- Pose3DM-L с FTV (3D)
-- MotionDTW + KISMAM (анализ)
-- Cross-modal RAG + TTGNN + L2A (генерация)
+1. **Pose3DM-L** (Mamba, 37.9mm MPJPE) — code not released. Monitor github.com/Reus3237/Pose3DM
+2. **Mass from video** — mathematically unsolved without reference force
+3. **Rocker vs Counter** — requires arc history + blade state, underspecified
+4. **Motion blur at 4-5 rev/s** — can angular momentum constraints help?

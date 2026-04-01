@@ -725,10 +725,8 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 ## Reference
 
 ### Project Documentation
-- Original architecture: `research/RESEARCH.md`
-- Visualization research: `research/VISUALIZATION_RESEARCH_PROMPT.md`
-- **Physics/Blade detection research:** `research/PHYSICS_DETECTION_RESEARCH.md`
-- **🆕 Comprehensive Research Summary:** `research/RESEARCH_SUMMARY_2026-03-28.md`
+- Research memory bank: `research/RESEARCH.md`
+- Comprehensive summary: `research/RESEARCH_SUMMARY_2026-03-28.md`
   - Exa Web Search findings (5 themes)
   - Gemini Deep Research (41 cited papers)
   - Actionable recommendations with priorities

@@ -1,115 +1,63 @@
 # Skating Biomechanics ML
 
-Комплексная система ML-анализа биомеханики фигурного катания на основе компьютерного зрения.
+AI-тренер по фигурному катанию — анализ видео, сравнение с эталонами, биомеханическая обратная связь на русском.
 
-## Архитектура системы
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Video Input   │───▶│  2D Pose Est.   │───▶│ 3D Lifting SSM  │
-│  (monocular)    │    │ (YOLO + Blaze)  │    │ (Pose3DM)       │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-                                                       │
-                       ┌─────────────────┐             │
-                       │ MotionDTW Align │◀────────────┘
-                       │   + KISMAM      │
-                       └─────────────────┘
-                                  │
-                       ┌─────────────────┐
-                       │ Multimodal RAG  │
-                       │  (Qwen/GPT-4o)  │
-                       └─────────────────┘
-                                  │
-                       ┌─────────────────┐
-                       │ Coach Feedback  │
-                       │   (Natural)     │
-                       └─────────────────┘
-```
-
-## Компоненты
-
-| Модуль | Технология | Назначение |
-|--------|------------|------------|
-| **Детекция** | YOLOv11m | Локализация фигуриста в кадре |
-| **2D Pose** | BlazePose/HRNet | 33 keypoints включая стопу |
-| **3D Lifting** | Pose3DM-L | SSM с FTV-регуляризацией |
-| **Выравнивание** | MotionDTW | Нелинейная синхронизация |
-| **Анализ** | KISMAM | Семантические диагнозы |
-| **RAG** | Qwen3/GPT-4o | Генерация рекомендаций |
-
-## Установка
+## Quick Start
 
 ```bash
 uv sync
+bash scripts/setup_cuda_compat.sh   # CUDA GPU setup (RTX 3050 Ti)
+
+# Анализ видео
+uv run python -m src.cli analyze video.mp4 --element waltz_jump --pose-backend rtmlib
+
+# Сравнение двух видео (тренировочный режим)
+uv run python -m src.cli compare attempt.mp4 reference.mp4 --overlays skeleton,angles,timer
+
+# Визуализация с 3D-коррекцией скелета
+uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 2 --3d --output out.mp4
 ```
 
-## Структура проекта
+## Architecture
 
 ```
-skating-biomechanics-ml/
-├── src/
-│   ├── detection/      # YOLOv11 object detection
-│   ├── pose_2d/        # BlazePose keypoints
-│   ├── pose_3d/        # Pose3DM lifting
-│   ├── alignment/      # MotionDTW
-│   ├── analysis/       # KISMAM biomechanics
-│   └── rag/            # Multimodal RAG
-├── research/           # Исследовательские материалы
-├── data/               # Датасеты (AthletePose3D, FS-Jump3D)
-└── tests/              # Тесты
+Video → RTMPose (rtmlib, CUDA) → HALPE26 (26kp) → H3.6M (17kp)
+  → GapFiller → Smoothing → [Optional] CorrectiveLens (3D→2D correction)
+  → Phase Detection → Biomechanics Metrics → DTW → Recommender → Russian Report
+```
+
+| Component | Technology |
+|-----------|-----------|
+| **2D Pose** | RTMPose via rtmlib (HALPE26, 26kp, CUDA) |
+| **3D Lifting** | MotionAGFormer-S / Biomechanics3DEstimator |
+| **3D Correction** | CorrectiveLens (kinematic constraints + anchor projection) |
+| **Tracking** | OC-SORT + anatomical biometric Re-ID |
+| **Physics** | CoM trajectory, Dempster anthropometric tables |
+| **GPU** | CUDA via onnxruntime-gpu (7.1x speedup) |
+
+## Project Structure
+
+```
+src/
+├── pose_estimation/     # RTMPose (rtmlib), YOLO26-Pose
+├── pose_3d/             # CorrectiveLens, MotionAGFormer, TCPFormer
+├── detection/           # PoseTracker, spatial reference, blade detection
+├── analysis/            # Physics engine, metrics, recommender
+├── visualization/       # Layered HUD, comparison, skeleton
+├── alignment/           # DTW motion alignment
+└── utils/               # GapFiller, geometry, smoothing
 ```
 
 ## Research
 
-См. [`research/RESEARCH.md`](research/RESEARCH.md) — полное исследование архитектур, алгоритмов и готовых решений.
+See [`research/RESEARCH.md`](research/RESEARCH.md) — index of all research materials, memory bank.
 
-## Качество кода
-
-### Линтер и форматировщик (Ruff)
+## Quality
 
 ```bash
-uv run ruff check .           # Проверка кода
-uv run ruff check . --fix     # Автоисправление
-uv run ruff format .          # Форматирование
-```
-
-### Тайпчекинг (MyPy)
-
-```bash
-uv run mypy src/              # Проверка типов
-```
-
-### Мёртвый код (Vulture)
-
-```bash
-uv run vulture src/ tests/ --min-confidence 80
-```
-
-### Все проверки сразу
-
-```bash
-uv run python scripts/check_all.py
-```
-
-| Инструмент | Назначение |
-|------------|------------|
-| **Ruff** | Линтер + форматировщик (замена flake8, black, isort) |
-| **MyPy** | Статическая типизация |
-| **Vulture** | Поиск неиспользуемого кода |
-| **Pytest** | Тесты с покрытием (coverage) |
-
-## Разработка
-
-```bash
-# Запуск конкретной проверки
-uv run lint          # Ruff lint
-uv run format        # Ruff format
-uv run typecheck     # MyPy
-uv run deadcode      # Vulture
-uv run test          # Pytest
-
-# Синхронизация зависимостей
-uv sync
+uv run pytest tests/ -v -m "not slow"   # 272+ tests
+uv run ruff check .                      # Lint
+uv run ruff format .                     # Format
 ```
 
 ## License
