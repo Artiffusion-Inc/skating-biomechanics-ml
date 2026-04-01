@@ -201,9 +201,20 @@ class RTMPoseExtractor:
 
                 h, w = frame.shape[:2]
 
+                # Resize large frames for detection (rtmlib struggles with 4K)
+                if max(h, w) > 1920:
+                    scale = 1920 / max(h, w)
+                    frame_ds = cv2.resize(frame, (int(w * scale), int(h * scale)))
+                else:
+                    frame_ds = frame
+
                 # Run rtmlib
-                keypoints, scores = self.tracker(frame)
+                keypoints, scores = self.tracker(frame_ds)
                 # keypoints: (P, 26, 2) pixel coords, scores: (P, 26)
+
+                # Rescale keypoints back to original resolution
+                if frame_ds is not frame:
+                    keypoints = keypoints * (max(h, w) / 1920)
 
                 if keypoints is None or len(keypoints) == 0:
                     if custom_tracker is not None:
