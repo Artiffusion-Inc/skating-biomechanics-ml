@@ -21,7 +21,7 @@ from .analysis import element_defs
 from .pipeline import AnalysisPipeline
 from .pose_estimation import H36MExtractor, normalizer
 from .references import reference_builder, reference_store
-from .types import ElementPhase, ReferenceData
+from .types import ElementPhase, PersonClick, ReferenceData
 from .utils.video import get_video_meta
 
 PoseNormalizer = normalizer.PoseNormalizer
@@ -47,8 +47,14 @@ def cmd_analyze(args: argparse.Namespace) -> int:
         reference_store = ReferenceStore(args.reference_dir)
         reference_store.set_builder(builder)
 
+    person_click = None
+    if args.person_click:
+        person_click = PersonClick(x=args.person_click[0], y=args.person_click[1])
+
     pipeline = AnalysisPipeline(
         reference_store=reference_store,
+        person_click=person_click,
+        reestimate_camera=args.moving_camera,
     )
 
     print(f"Analyzing: {args.video}")
@@ -195,16 +201,13 @@ def cmd_segment(args: argparse.Namespace) -> int:
 
         # Export segments as references if output-dir specified
         if args.export_dir:
-            # Use H3.6M extractor
-            from .person_detector import PersonDetector  # noqa: PLC0415
-
-            PersonDetector(model_size="n", confidence=0.5)
+            # Use H3.6M extractor with tracking
             extractor = H36MExtractor(output_format="normalized")
             norm = PoseNormalizer(target_spine_length=0.4)
 
-            # Extract poses in H3.6M format
-            poses_h36m, _ = extractor.extract_video(args.video)
-            normalized = norm.normalize(poses_h36m)
+            # Extract poses in H3.6M format with tracking
+            extraction = extractor.extract_video_tracked(args.video)
+            normalized = norm.normalize(extraction.poses)
 
             export_dir = args.export_dir
             export_dir.mkdir(parents=True, exist_ok=True)
@@ -333,6 +336,18 @@ def main() -> None:
         "--json",
         action="store_true",
         help="Вывести в JSON формате",
+    )
+    analyze_parser.add_argument(
+        "--person-click",
+        type=int,
+        nargs=2,
+        metavar=("X", "Y"),
+        help="Click point to select target person (pixel coordinates)",
+    )
+    analyze_parser.add_argument(
+        "--moving-camera",
+        action="store_true",
+        help="Enable per-frame camera re-estimation for moving cameras",
     )
     analyze_parser.add_argument(
         "--verbose",

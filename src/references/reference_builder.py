@@ -66,9 +66,9 @@ class ReferenceBuilder:
         # Extract video metadata
         meta = get_video_meta(video_path)
 
-        # Extract poses in H3.6M format (normalized [0,1])
-        poses_h36m, _ = self._pose_extractor.extract_video(video_path)
-        normalized = self._normalizer.normalize(poses_h36m)
+        # Extract poses in H3.6M format (normalized [0,1]) with tracking
+        extraction = self._pose_extractor.extract_video_tracked(video_path)
+        normalized = self._normalizer.normalize(extraction.poses)
 
         return ReferenceData(
             element_type=element_type,

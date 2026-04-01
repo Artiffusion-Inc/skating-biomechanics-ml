@@ -6,22 +6,23 @@ H3.6M Architecture:
     3D lifting: AthletePose3DExtractor (MotionAGFormer)
 
 Pipeline stages:
-    1. Person detection (YOLO26)
-    2. 2D pose extraction (H3.6M 17kp via H36MExtractor with YOLO26-Pose)
-    3. Normalization
-    4. Temporal smoothing (One-Euro Filter)
-    5. Phase detection
-    6. Biomechanics metrics
-    7. 3D pose estimation (optional, for blade detection & physics)
-    8. Reference comparison (DTW)
-    9. Recommendations
+    1. Extract & track: H36MExtractor.extract_video_tracked() + gap fill + spatial ref
+    2. Normalization
+    3. Temporal smoothing (One-Euro Filter)
+    4. Phase detection
+    5. Biomechanics metrics
+    6. 3D pose estimation (optional, for blade detection & physics)
+    7. Reference comparison (DTW)
+    8. Recommendations
 """
 
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from .types import AnalysisReport, ElementPhase, SegmentationResult
-from .utils.video import get_video_meta
+import numpy as np
+
+from .types import AnalysisReport, ElementPhase, PersonClick, SegmentationResult
+from .utils.video import VideoMeta, get_video_meta
 
 if TYPE_CHECKING:
     from .alignment import MotionAligner, MotionDTWAligner
@@ -50,6 +51,8 @@ class AnalysisPipeline:
         use_gpu: bool = True,
         enable_smoothing: bool = True,
         smoothing_config: "OneEuroFilterConfig | None" = None,  # type: ignore[valid-type]
+        person_click: PersonClick | None = None,
+        reestimate_camera: bool = False,
     ) -> None:
         """Initialize analysis pipeline.
 
@@ -58,11 +61,15 @@ class AnalysisPipeline:
             use_gpu: Whether to use GPU acceleration (when available).
             enable_smoothing: Whether to apply One-Euro Filter temporal smoothing.
             smoothing_config: Optional custom smoothing configuration.
+            person_click: Optional click point to select target person in multi-person videos.
+            reestimate_camera: Enable per-frame camera re-estimation for moving cameras.
         """
         self._reference_store = reference_store
         self._use_gpu = use_gpu
         self._enable_smoothing = enable_smoothing
         self._smoothing_config = smoothing_config
+        self._person_click = person_click
+        self._reestimate_camera = reestimate_camera
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
@@ -74,6 +81,87 @@ class AnalysisPipeline:
         self._analyzer_factory: type | None = None
         self._aligner: MotionAligner | MotionDTWAligner | None = None  # type: ignore[valid-type]
         self._recommender: Recommender | None = None  # type: ignore[valid-type]
+
+    def _extract_and_track(
+        self, video_path: Path, meta: VideoMeta
+    ) -> tuple[np.ndarray, int]:
+        """Extract poses with tracking, gap filling, and spatial compensation.
+
+        Combines extraction, pre-roll trimming, gap filling, and camera
+        compensation into a single method.
+
+        Args:
+            video_path: Path to video file.
+            meta: Video metadata (width, height, fps, etc.).
+
+        Returns:
+            (compensated_h36m, frame_offset) — poses (N, 17, 3) normalized,
+            frame_offset = first_detection_frame index.
+        """
+        # 1. Tracked extraction
+        extraction = self._get_pose_2d_extractor().extract_video_tracked(
+            video_path, person_click=self._person_click
+        )
+
+        # 2. Skip pre-roll (trim leading NaN frames before first detection)
+        frame_offset = extraction.first_detection_frame
+        poses = extraction.poses[frame_offset:]
+        valid = extraction.valid_mask()[frame_offset:]
+
+        # 3. Gap filling
+        from .utils.gap_filling import GapFiller
+
+        filler = GapFiller()
+        filled, _report = filler.fill_gaps(poses, valid)
+
+        # 4. Spatial reference / camera compensation
+        if self._reestimate_camera:
+            from .detection.spatial_reference import (
+                compensate_poses_per_frame,
+                estimate_pose_sequence,
+            )
+
+            camera_poses = estimate_pose_sequence(
+                str(video_path), interval=30, fps=meta.fps
+            )
+            compensated = compensate_poses_per_frame(
+                filled,
+                camera_poses,
+                video_width=meta.width,
+                video_height=meta.height,
+            )
+        else:
+            # Single-frame estimation (existing behavior)
+            import cv2
+
+            from .detection.spatial_reference import SpatialReferenceDetector
+
+            spatial_detector = SpatialReferenceDetector()
+            cap = cv2.VideoCapture(str(video_path))
+            ret, first_frame = cap.read()
+            if ret:
+                camera_pose = spatial_detector.estimate_pose(first_frame)
+            else:
+                camera_pose = SpatialReferenceDetector.CameraPose()
+            cap.release()
+
+            if camera_pose.confidence > 0.1:
+                # Convert to pixels, compensate, convert back
+                poses_px = filled[:, :, :2] * np.array([meta.width, meta.height])
+                poses_with_conf = np.dstack([poses_px, filled[:, :, 2]])
+                compensated_px = spatial_detector.compensate_poses(
+                    poses_with_conf, camera_pose
+                )
+                compensated = compensated_px[:, :, :2] / np.array(
+                    [meta.width, meta.height]
+                )
+                compensated = np.dstack(
+                    [compensated, compensated_px[:, :, 2:3]]
+                )
+            else:
+                compensated = filled
+
+        return compensated, frame_offset
 
     def analyze(  # noqa: PLR0912, PLR0915
         self,
@@ -97,7 +185,7 @@ class AnalysisPipeline:
             ValueError: If video cannot be processed or element type not supported.
         """
         # Validate element type
-        from .analysis import element_defs  # noqa: PLC0415
+        from .analysis import element_defs
 
         element_def = element_defs.get_element_def(element_type)
         if element_def is None:
@@ -106,48 +194,8 @@ class AnalysisPipeline:
         # Get video metadata
         meta = get_video_meta(video_path)
 
-        # Stage 1: Detect person (optional if video has single person)
-        self._get_detector().detect_first_frame(video_path)
-
-        # Stage 2: Extract 2D poses in H3.6M format (17 keypoints)
-        poses_h36m, _frame_indices = self._get_pose_2d_extractor().extract_video(video_path)
-
-        # Stage 2.5: Estimate camera pose (for spatial reference)
-        import cv2  # noqa: PLC0415
-        import numpy as np  # noqa: PLC0415
-
-        from .detection import spatial_reference  # noqa: PLC0415
-
-        SpatialReferenceDetector = spatial_reference.SpatialReferenceDetector
-
-        spatial_detector = SpatialReferenceDetector(
-            hough_threshold=80,
-            hough_min_line_length=100,
-            hough_max_line_gap=10,
-        )
-        # Estimate from first frame
-        cap = cv2.VideoCapture(str(video_path))
-        ret, first_frame = cap.read()
-        camera_pose = (
-            spatial_detector.estimate_pose(first_frame)
-            if ret
-            else spatial_detector.estimate_pose(np.zeros((100, 100, 3), dtype=np.uint8))
-        )
-        cap.release()
-
-        # Stage 2.6: Compensate poses for camera tilt
-        # Convert H3.6M normalized to pixels for compensation
-        poses_px = poses_h36m[:, :, :2] * np.array([meta.width, meta.height])
-        poses_with_conf = np.dstack([poses_px, poses_h36m[:, :, 2]])  # Add conf back
-
-        if camera_pose.confidence > 0.1:
-            compensated_poses = spatial_detector.compensate_poses(poses_with_conf, camera_pose)
-        else:
-            compensated_poses = poses_with_conf
-
-        # Convert back to normalized
-        compensated_h36m = compensated_poses[:, :, :2] / np.array([meta.width, meta.height])
-        compensated_h36m = np.dstack([compensated_h36m, compensated_poses[:, :, 2:3]])
+        # Stage 1-2.6: Extract poses with tracking, gap filling, spatial compensation
+        compensated_h36m, _frame_offset = self._extract_and_track(video_path, meta)
 
         # Stage 3: Normalize poses
 
@@ -284,12 +332,12 @@ class AnalysisPipeline:
         # Get video metadata
         meta = get_video_meta(video_path)
 
-        # Stage 1: Extract 2D poses in H3.6M format
-        poses_h36m, _ = self._get_pose_2d_extractor().extract_video(video_path)
+        # Stage 1-2.6: Extract poses with tracking, gap filling, spatial compensation
+        compensated_h36m, _frame_offset = self._extract_and_track(video_path, meta)
 
         # Stage 2: Normalize poses
 
-        normalized = self._get_normalizer().normalize(poses_h36m)
+        normalized = self._get_normalizer().normalize(compensated_h36m)
 
         # Stage 3: Smooth poses
         if self._enable_smoothing:
