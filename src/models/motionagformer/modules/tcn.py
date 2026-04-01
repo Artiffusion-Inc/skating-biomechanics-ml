@@ -63,7 +63,7 @@ class MultiScaleTCN(nn.Module):
                         dilation=dilation,
                     ),
                 )
-                for ks, dilation in zip(kernel_size, dilations)
+                for ks, dilation in zip(kernel_size, dilations, strict=False)
             ]
         )
 
@@ -89,7 +89,7 @@ class MultiScaleTCN(nn.Module):
 
         # Residual connection
         if not residual:
-            self.residual = lambda x: 0
+            self.residual = lambda _x: 0
         elif (in_channels == out_channels) and (stride == 1):
             self.residual = lambda x: x
         else:

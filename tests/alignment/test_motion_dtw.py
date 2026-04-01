@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.motion_dtw import MotionDTWAligner
+from src.alignment.motion_dtw import MotionDTWAligner
 from src.types import ElementPhase
 
 
@@ -59,9 +59,7 @@ class TestMotionDTWAligner:
         assert aligner._window_type == "sakoechiba"
         assert aligner._window_size == 0.2
 
-        aligner_custom = MotionDTWAligner(
-            window_type="itakura", window_size=0.3, phase_weight=2.0
-        )
+        aligner_custom = MotionDTWAligner(window_type="itakura", window_size=0.3, phase_weight=2.0)
         assert aligner_custom._window_type == "itakura"
         assert aligner_custom._window_size == 0.3
         assert aligner_custom._phase_weight == 2.0
@@ -81,9 +79,7 @@ class TestMotionDTWAligner:
             name="test_jump", start=0, takeoff=20, peak=40, landing=60, end=79
         )
 
-        result = aligner.align_with_keyframes(
-            user_poses, user_phases, ref_poses, ref_phases
-        )
+        result = aligner.align_with_keyframes(user_poses, user_phases, ref_poses, ref_phases)
 
         # Check result structure
         assert result.aligned_user.shape[1] == 33
@@ -101,9 +97,7 @@ class TestMotionDTWAligner:
         """Test keyframe-aware alignment for step/turn."""
         aligner = MotionDTWAligner()
 
-        result = aligner.align_with_keyframes(
-            sample_poses, step_phases, sample_poses, step_phases
-        )
+        result = aligner.align_with_keyframes(sample_poses, step_phases, sample_poses, step_phases)
 
         # For steps, should have single phase
         assert len(result.phase_alignments) == 1
@@ -123,7 +117,7 @@ class TestMotionDTWAligner:
         assert "landing" in distances
 
         # Identical sequences should have low distance
-        for phase_name, distance in distances.items():
+        for _phase_name, distance in distances.items():
             assert distance >= 0
             assert distance < 1.0  # Should be relatively low for identical
 
@@ -182,22 +176,14 @@ class TestMotionDTWAligner:
         aligner = MotionDTWAligner()
 
         # Create phases with empty entry phase
-        user_phases = ElementPhase(
-            name="test", start=0, takeoff=0, peak=30, landing=60, end=99
-        )
-        ref_phases = ElementPhase(
-            name="test", start=0, takeoff=0, peak=30, landing=60, end=99
-        )
+        user_phases = ElementPhase(name="test", start=0, takeoff=0, peak=30, landing=60, end=99)
+        ref_phases = ElementPhase(name="test", start=0, takeoff=0, peak=30, landing=60, end=99)
 
-        result = aligner.align_with_keyframes(
-            sample_poses, user_phases, sample_poses, ref_phases
-        )
+        result = aligner.align_with_keyframes(sample_poses, user_phases, sample_poses, ref_phases)
 
         # Should skip empty entry phase
         phase_names = [pa.name for pa in result.phase_alignments]
-        assert "entry" not in phase_names or all(
-            pa.distance >= 0 for pa in result.phase_alignments
-        )
+        assert "entry" not in phase_names or all(pa.distance >= 0 for pa in result.phase_alignments)
 
     def test_different_length_sequences(self, sample_poses, jump_phases):
         """Test alignment of sequences with different lengths."""
@@ -206,9 +192,7 @@ class TestMotionDTWAligner:
         user_poses = sample_poses[:70]
         ref_poses = sample_poses[:80]
 
-        result = aligner.align_with_keyframes(
-            user_poses, jump_phases, ref_poses, jump_phases
-        )
+        result = aligner.align_with_keyframes(user_poses, jump_phases, ref_poses, jump_phases)
 
         # Should produce aligned output
         assert result.aligned_user.shape[0] == len(ref_poses)

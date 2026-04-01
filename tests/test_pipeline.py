@@ -32,7 +32,7 @@ class TestAnalysisPipeline:
         pipeline = AnalysisPipeline(reference_store=None)
 
         # Create mock phases
-        phases = ElementPhase(
+        ElementPhase(
             name="three_turn",
             start=0,
             takeoff=0,
@@ -49,7 +49,7 @@ class TestAnalysisPipeline:
         """Should format report correctly."""
         pipeline = AnalysisPipeline()
 
-        from src.types import AnalysisReport, MetricResult
+        from src.types import AnalysisReport, MetricResult  # noqa: PLC0415
 
         # Create mock report
         phases = ElementPhase(
@@ -91,7 +91,7 @@ class TestAnalysisPipeline:
         """Should compute overall score correctly."""
         pipeline = AnalysisPipeline()
 
-        from src.types import MetricResult
+        from src.types import MetricResult  # noqa: PLC0415
 
         # All good metrics
         metrics_good = [
@@ -182,10 +182,10 @@ class TestPipelineLazyLoading:
 
     def test_pose_2d_extractor_lazy_load(self):
         """Should lazy-load 2D pose extractor (H3.6M format)."""
-        from pathlib import Path
+        from pathlib import Path  # noqa: PLC0415
 
         # Skip if YOLO model not available
-        model_file = Path("yolov11n-pose.pt")
+        model_file = Path("yolo26n-pose.pt")
         if not model_file.exists():
             pytest.skip("YOLO model not available")
 

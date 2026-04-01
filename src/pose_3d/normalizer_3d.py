@@ -70,10 +70,7 @@ class Pose3DNormalizer:
             lowest_foot = min(left_foot_y, right_foot_y)
             body_height = head_y - lowest_foot
 
-            if body_height < 0.1:  # Less than 10cm - degenerate case
-                scale = 1.0
-            else:
-                scale = self._target_height / body_height
+            scale = 1.0 if body_height < 0.1 else self._target_height / body_height
 
             normalized[frame_idx] = centered * scale
 

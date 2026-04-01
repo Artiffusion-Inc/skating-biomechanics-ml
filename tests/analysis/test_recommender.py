@@ -1,7 +1,6 @@
 """Tests for recommendation engine."""
 
-
-from src.recommender import Recommender
+from src.analysis.recommender import Recommender
 from src.types import MetricResult
 
 

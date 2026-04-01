@@ -11,7 +11,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from .types import ElementPhase
+from ..types import ElementPhase
 
 
 @dataclass
@@ -54,7 +54,7 @@ ELEMENT_NAMES_RU = {
     "двойка": "double_three_turn",
     "скобка": "bracket_turn",
     "лост": "mohawk",
-    "хoki": "choctaw",
+    "хoki": "choctaw",  # noqa: RUF001
     # Other
     "спираль": "spiral",
     "дорожка": "step_sequence",

@@ -2,13 +2,13 @@
 
 import numpy as np
 
-from src.geometry import (
+from src.types import H36Key
+from src.utils.geometry import (
     calculate_center_of_mass,
     calculate_com_trajectory,
     get_mid_hip,
     get_mid_shoulder,
 )
-from src.types import H36Key
 
 
 class TestCalculateCenterOfMass:
@@ -113,7 +113,6 @@ class TestCalculateCenterOfMass:
 
         # CoM should be slightly different but NOT as different as hips
         # The hip-only method would show large difference, CoM shows small diff
-        hip_diff = 0.0  # Hips at same Y in this setup
         com_diff = abs(com_bent - com_straight)
 
         # CoM difference should be proportional to knee bend

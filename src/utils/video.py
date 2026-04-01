@@ -6,7 +6,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
-from .types import BoundingBox, VideoMeta
+from ..types import BoundingBox, VideoMeta
 
 
 def open_video(path: Path) -> cv2.VideoCapture:

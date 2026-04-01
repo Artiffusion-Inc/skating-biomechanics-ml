@@ -1,10 +1,10 @@
 """H3.6M 17-keypoint pose extractor.
 
-Direct H3.6M format extraction using YOLOv8-Pose backend with integrated conversion.
+Direct H3.6M format extraction using YOLO26-Pose backend with integrated conversion.
 This is the primary 2D pose extractor for the skating analysis pipeline.
 
 Architecture:
-    YOLOv8-Pose (17kp COCO) → geometric conversion → H3.6M (17kp) output
+    YOLO26-Pose (17kp COCO) → geometric conversion → H3.6M (17kp) output
 
 The conversion is geometric (not learned) and happens on-the-fly during extraction.
 """
@@ -18,7 +18,6 @@ try:
     from ultralytics import YOLO
 except ImportError:
     YOLO = None  # type: ignore[assignment]
-
 
 
 # H3.6M keypoint indices
@@ -44,9 +43,9 @@ class H36Key:
     RWRIST = 16
 
 
-# YOLOv8-Pose COCO keypoint indices (for internal mapping)
+# YOLO26-Pose COCO keypoint indices (for internal mapping)
 class _COCOKey:
-    """YOLOv8-Pose COCO keypoint indices (17 total) - internal use only."""
+    """YOLO26-Pose COCO keypoint indices (17 total) - internal use only."""
 
     NOSE = 0
     LEFT_EYE = 1
@@ -116,7 +115,7 @@ H36M_KEYPOINT_NAMES = [
 
 
 def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
-    """Convert YOLOv8-Pose COCO 17 keypoints to H3.6M 17 keypoints (single frame).
+    """Convert YOLO26-Pose COCO 17 keypoints to H3.6M 17 keypoints (single frame).
 
     Args:
         coco_pose: (17, 2) or (17, 3) array in COCO format
@@ -131,9 +130,7 @@ def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
 
     # Midpoints
     mid_hip = (coco_pose[_COCOKey.LEFT_HIP] + coco_pose[_COCOKey.RIGHT_HIP]) / 2
-    mid_shoulder = (
-        coco_pose[_COCOKey.LEFT_SHOULDER] + coco_pose[_COCOKey.RIGHT_SHOULDER]
-    ) / 2
+    mid_shoulder = (coco_pose[_COCOKey.LEFT_SHOULDER] + coco_pose[_COCOKey.RIGHT_SHOULDER]) / 2
 
     # Direct mapping from COCO to H3.6M
     h36m_pose[H36Key.HIP_CENTER] = mid_hip
@@ -160,7 +157,7 @@ def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
 class H36MExtractor:
     """H3.6M 17-keypoint pose extractor.
 
-    Uses YOLOv8-Pose backend with integrated H3.6M conversion.
+    Uses YOLO26-Pose backend with integrated H3.6M conversion.
     Outputs H3.6M format directly (17 keypoints) - no intermediate COCO storage.
 
     This is the primary 2D pose extractor for the skating analysis pipeline.
@@ -175,11 +172,12 @@ class H36MExtractor:
         self,
         model_size: str = "n",
         model_path: Path | str | None = None,
+        device: str = "0",
         conf_threshold: float = 0.5,
         output_format: str = "normalized",  # "normalized" or "pixels"
         skip_model_check: bool = False,
     ):
-        """Initialize H3.6M extractor with YOLOv8-Pose backend.
+        """Initialize H3.6M extractor with YOLO26-Pose backend.
 
         Args:
             model_size: Model size - 'n' (nano), 's' (small), 'm' (medium)
@@ -189,15 +187,15 @@ class H36MExtractor:
             skip_model_check: If True, don't validate model exists (for testing)
         """
         if YOLO is None:
-            raise ImportError(
-                "Ultralytics not installed. Install with: uv add ultralytics"
-            )
+            raise ImportError("Ultralytics not installed. Install with: uv add ultralytics")
 
         self.model_size = model_size
         self._model_path = Path(model_path) if model_path else None
         self._conf_threshold = conf_threshold
         self._output_format = output_format
         self._skip_model_check = skip_model_check
+
+        self._device = device
 
         # Lazy-load model on first access
         self._model: YOLO | None = None
@@ -209,14 +207,12 @@ class H36MExtractor:
             if self._model_path is not None:
                 self._model = YOLO(str(self._model_path))
             else:
-                # YOLOv8n-Pose (YOLOv8 doesn't have pose models yet)
-                model_name = f"yolov8{self.model_size}-pose.pt"
+                # YOLO26-Pose (NMS-free, better occlusion handling)
+                model_name = f"yolo26{self.model_size}-pose.pt"
                 self._model = YOLO(model_name)
         return self._model
 
-    def extract_frame(
-        self, frame: np.ndarray
-    ) -> np.ndarray | None:
+    def extract_frame(self, frame: np.ndarray) -> np.ndarray | None:
         """Extract H3.6M pose from single frame.
 
         Args:
@@ -232,13 +228,16 @@ class H36MExtractor:
         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
         # Run inference
-        results = self.model(frame_rgb, verbose=False, conf=self._conf_threshold)
+        results = self.model(frame_rgb, verbose=False, conf=self._conf_threshold, device=self._device)
 
         if len(results) == 0 or results[0].keypoints is None:
             return None
 
         # Get first person detected
-        keypoints = results[0].keypoints.xy.cpu().numpy()[0]  # (17, 2)
+        kps = results[0].keypoints.xy.cpu().numpy()
+        if len(kps) == 0:
+            return None
+        keypoints = kps[0]  # (17, 2)
         confidence = results[0].keypoints.conf.cpu().numpy()[0]  # (17,)
 
         # Normalize to [0, 1]
@@ -265,7 +264,7 @@ class H36MExtractor:
     def extract_video(
         self,
         video_path: Path | str,
-        fps: float | None = None,
+        _fps: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Extract H3.6M poses from all frames of a video.
 
@@ -357,15 +356,17 @@ def extract_h36m_poses(
         poses: (N, 17, 3) array with x, y, confidence
         frame_indices: (N,) array of frame indices
     """
-    extractor = H36MExtractor(model_size=model_size, model_path=model_path, output_format=output_format)
+    extractor = H36MExtractor(
+        model_size=model_size, model_path=model_path, output_format=output_format
+    )
     return extractor.extract_video(video_path)
 
 
-def blazepose_to_h36m(blazepose_pose: np.ndarray) -> np.ndarray:
+def blazepose_to_h36m(_blazepose_pose: np.ndarray) -> np.ndarray:
     """Convert BlazePose 33 keypoints to H3.6M 17 keypoints.
 
     .. deprecated::
-        BlazePose is no longer supported. Use YOLOv8-Pose via H36MExtractor instead.
+        BlazePose is no longer supported. Use YOLO26-Pose via H36MExtractor instead.
         This function provides YOLO-based conversion for backward compatibility.
 
     Args:
@@ -377,11 +378,11 @@ def blazepose_to_h36m(blazepose_pose: np.ndarray) -> np.ndarray:
     Raises:
         ValueError: If input shape is invalid
     """
-    import warnings
+    import warnings  # noqa: PLC0415
 
     warnings.warn(
         "blazepose_to_h36m is deprecated and will be removed in a future version. "
-        "Use H36MExtractor with YOLOv8-Pose backend instead.",
+        "Use H36MExtractor with YOLO26-Pose backend instead.",
         DeprecationWarning,
         stacklevel=2,
     )
@@ -391,7 +392,7 @@ def blazepose_to_h36m(blazepose_pose: np.ndarray) -> np.ndarray:
     # The result will be YOLO H3.6M keypoints, not converted BlazePose
     raise NotImplementedError(
         "Direct BlazePose to H3.6M conversion is no longer supported. "
-        "Use H36MExtractor with YOLOv8-Pose backend for new pose extraction. "
+        "Use H36MExtractor with YOLO26-Pose backend for new pose extraction. "
         "For existing BlazePose data, you must re-extract using H36MExtractor."
     )
 

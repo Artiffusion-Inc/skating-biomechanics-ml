@@ -93,9 +93,9 @@ def get_skeleton_color(
 
 
 def get_joint_color(
-    joint_idx: int,
+    joint_idx: int,  # noqa: ARG001
     joint_color: tuple[int, int, int] = color_joint,
-    **kwargs,
+    **kwargs,  # noqa: ARG001
 ) -> tuple[int, int, int]:
     """Get color for joint circle.
 
@@ -174,10 +174,7 @@ def get_joint_radius_3d(
         4  # Medium depth, medium radius
     """
     # Normalize depth to [0, 1]
-    if depth_max > depth_min:
-        t = (depth - depth_min) / (depth_max - depth_min)
-    else:
-        t = 0.5
+    t = (depth - depth_min) / (depth_max - depth_min) if depth_max > depth_min else 0.5
     t = max(0.0, min(1.0, t))
 
     # Scale radius: closer = larger
@@ -295,10 +292,7 @@ def get_bone_thickness_3d(
         1  # Thinner for far bones
     """
     # Normalize depth to [0, 1]
-    if depth_max > depth_min:
-        t = (depth - depth_min) / (depth_max - depth_min)
-    else:
-        t = 0.5
+    t = (depth - depth_min) / (depth_max - depth_min) if depth_max > depth_min else 0.5
     t = max(0.0, min(1.0, t))
 
     # Scale thickness: closer = thicker

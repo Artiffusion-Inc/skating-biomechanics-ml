@@ -74,6 +74,7 @@ known-first-party = ["src"]
 "tests/**/*.py" = ["ARG", "PLR2004"]
 "__init__.py" = ["F401"]  # unused imports
 "scripts/visualize_with_skeleton.py" = ["PLR0912", "PLR0915", "PLC0415"]
+"src/analysis/rules/*.py" = ["RUF001"]  # Russian text strings with Cyrillic chars
 
 [tool.mypy]
 python_version = "3.11"

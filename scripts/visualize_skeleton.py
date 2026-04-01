@@ -7,19 +7,26 @@ import cv2
 import numpy as np
 
 from src.pose_estimation import H36MExtractor
-from src.video import extract_frames, get_video_meta
+from src.utils.video import extract_frames, get_video_meta
 
 # COCO 17 keypoints skeleton edges (pairs of indices)
 SKELETON_EDGES = [
-    (0, 1), (0, 2),  # head
-    (1, 3), (2, 4),  # ears to shoulders
+    (0, 1),
+    (0, 2),  # head
+    (1, 3),
+    (2, 4),  # ears to shoulders
     (5, 6),  # shoulders
-    (5, 7), (7, 9),  # left arm
-    (6, 8), (8, 10),  # right arm
-    (5, 11), (6, 12),  # shoulders to hips
+    (5, 7),
+    (7, 9),  # left arm
+    (6, 8),
+    (8, 10),  # right arm
+    (5, 11),
+    (6, 12),  # shoulders to hips
     (11, 12),  # hips
-    (11, 13), (13, 15),  # left leg
-    (12, 14), (14, 16),  # right leg
+    (11, 13),
+    (13, 15),  # left leg
+    (12, 14),
+    (14, 16),  # right leg
 ]
 
 # Colors for visualization
@@ -62,8 +69,9 @@ def draw_skeleton(frame: np.ndarray, keypoints: np.ndarray, threshold: float = 0
         cv2.circle(result, (cx, cy), 5, COLORS["keypoints"], -1)
 
         # Draw index
-        cv2.putText(result, str(i), (cx + 8, cy - 8),
-                   cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1)
+        cv2.putText(
+            result, str(i), (cx + 8, cy - 8), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (255, 255, 255), 1
+        )
 
     # Draw skeleton edges
     for idx1, idx2 in SKELETON_EDGES:
@@ -106,7 +114,7 @@ def create_skeleton_video(
     print(f"Processing {video_path.name}...")
 
     extractor = H36MExtractor(model_size="s")
-    meta = get_video_meta(video_path)
+    get_video_meta(video_path)
 
     # Get video properties
     cap = cv2.VideoCapture(str(video_path))
@@ -121,7 +129,7 @@ def create_skeleton_video(
     frame_count = 0
     processed = 0
 
-    for frame in extract_frames(video_path, max_frames=max_frames):
+    for frame_count, frame in enumerate(extract_frames(video_path, max_frames=max_frames)):
         if frame_count % display_frames == 0:
             # Extract pose
             keypoints = extractor.extract_frame(frame)
@@ -135,8 +143,6 @@ def create_skeleton_video(
                 # No person detected, write original
                 out.write(frame)
                 processed += 1
-
-        frame_count += 1
 
         if frame_count >= max_frames:
             break
@@ -174,11 +180,18 @@ def save_sample_frames(video_path: Path, output_dir: Path, num_samples: int = 5)
                     annotated = draw_skeleton(frame, keypoints)
 
                     # Add frame info
-                    h, w = annotated.shape[:2]
-                    cv2.putText(annotated, f"Frame {j}", (10, 30),
-                              cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                    _h, _w = annotated.shape[:2]
+                    cv2.putText(
+                        annotated,
+                        f"Frame {j}",
+                        (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        1,
+                        (0, 255, 0),
+                        2,
+                    )
 
-                    output_path = output_dir / f"{video_path.stem}_frame{i+1}.jpg"
+                    output_path = output_dir / f"{video_path.stem}_frame{i + 1}.jpg"
                     cv2.imwrite(str(output_path), annotated)
                     print(f"  Saved: {output_path.name}")
                 break

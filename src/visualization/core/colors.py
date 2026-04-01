@@ -65,10 +65,7 @@ def get_depth_color(
     depth_clamped = max(depth_min, min(depth_max, depth))
 
     # Normalize to [0, 1]
-    if depth_max > depth_min:
-        t = (depth_clamped - depth_min) / (depth_max - depth_min)
-    else:
-        t = 0.5
+    t = (depth_clamped - depth_min) / (depth_max - depth_min) if depth_max > depth_min else 0.5
 
     # Map to color gradient
     num_colors = len(color_map)
@@ -132,7 +129,7 @@ def get_depth_colors_vectorized(
         c2 = np.array(DEPTH_COLORS[idx_high[i]])
         colors[i] = (c1 * (1 - local_t[i]) + c2 * local_t[i]).astype(np.int32)
 
-    return colors.reshape(original_shape + (3,))
+    return colors.reshape((*original_shape, 3))
 
 
 # =============================================================================
@@ -140,7 +137,7 @@ def get_depth_colors_vectorized(
 # =============================================================================
 
 
-def get_heatmap_color(
+def get_heatmap_color(  # noqa: PLR0912
     value: float,
     vmin: float = 0.0,
     vmax: float = 1.0,
@@ -168,10 +165,7 @@ def get_heatmap_color(
         (0, 255, 255)  # Cyan (midpoint)
     """
     # Normalize to [0, 1]
-    if vmax > vmin:
-        t = (value - vmin) / (vmax - vmin)
-    else:
-        t = 0.5
+    t = (value - vmin) / (vmax - vmin) if vmax > vmin else 0.5
     t = max(0.0, min(1.0, t))
 
     # Colormap definitions (RGB, will convert to BGR)
@@ -345,9 +339,9 @@ def blend_colors(
     if total_weight == 0:
         return (0, 0, 0)
 
-    r = sum(c[2] * w for c, w in zip(colors, weights)) / total_weight
-    g = sum(c[1] * w for c, w in zip(colors, weights)) / total_weight
-    b = sum(c[0] * w for c, w in zip(colors, weights)) / total_weight
+    r = sum(c[2] * w for c, w in zip(colors, weights, strict=False)) / total_weight
+    g = sum(c[1] * w for c, w in zip(colors, weights, strict=False)) / total_weight
+    b = sum(c[0] * w for c, w in zip(colors, weights, strict=False)) / total_weight
 
     return (int(b), int(g), int(r))
 

@@ -1,0 +1,106 @@
+# $schema: https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json
+assert_lefthook_installed: true
+colors: true
+
+pre-commit:
+  parallel: true
+  commands:
+    protect-branches:
+      run: |
+        BRANCH=$(git symbolic-ref --short HEAD 2>/dev/null)
+        if [[ $BRANCH =~ ^(main|master|develop)$ ]]; then
+          echo "❌ Direct commits to '$BRANCH' are not allowed."
+          echo "Please use a feature/hotfix/release branch."
+          exit 1
+        fi
+
+    ruff-check:
+      glob: "*.py"
+      run: uv run ruff check {staged_files} --fix
+      stage_fixed: true
+
+    ruff-format:
+      glob: "*.py"
+      run: uv run ruff format {staged_files}
+      stage_fixed: true
+
+commit-msg:
+  commands:
+    lint-commit-msg:
+      run: |
+        COMMIT_MSG=$(cat {1})
+
+        if echo "$COMMIT_MSG" | grep -qE "^Merge (branch|remote-tracking branch)"; then
+          exit 0
+        fi
+
+        PATTERN='^(feat|fix|refactor|chore|docs|test|ci)\(([a-z0-9_-]+)\): .{3,}$'
+
+        if ! echo "$COMMIT_MSG" | grep -Eq "$PATTERN"; then
+          echo "❌ Bad commit message:"
+          echo "   $COMMIT_MSG"
+          echo ""
+          echo "✅ Use: type(scope): summary"
+          echo "   Types: feat, fix, refactor, chore, docs, test, ci"
+          echo "   e.g. feat(pose): add MotionAGFormer integration"
+          echo "        fix(aligner): correct DTW window calculation"
+          exit 1
+        fi
+
+pre-push:
+  parallel: false
+  commands:
+    warn-pr-size:
+      run: |
+        REMOTE_BRANCH=$(git rev-parse --abbrev-ref --symbolic-full-name @{u} 2>/dev/null | sed 's|/.*||')
+        REMOTE_BRANCH=${REMOTE_BRANCH:-origin}
+        DEFAULT_BRANCH=$(git remote show $REMOTE_BRANCH 2>/dev/null | grep 'HEAD branch' | cut -d' ' -f5)
+        DEFAULT_BRANCH=${DEFAULT_BRANCH:-main}
+
+        CHANGED_FILES=$(git diff --stat $DEFAULT_BRANCH...HEAD 2>/dev/null | tail -n1 | awk '{print $1}')
+        ADDED_LINES=$(git diff $DEFAULT_BRANCH...HEAD --numstat 2>/dev/null | awk '{add+=$1} END {print add}')
+        DELETED_LINES=$(git diff $DEFAULT_BRANCH...HEAD --numstat 2>/dev/null | awk '{del+=$2} END {print del}')
+        TOTAL_LINES=$((ADDED_LINES + DELETED_LINES))
+
+        if [ -z "$TOTAL_LINES" ] || [ "$TOTAL_LINES" -eq 0 ]; then
+          exit 0
+        fi
+
+        if [ "$TOTAL_LINES" -lt 100 ]; then
+          SIZE="XS"
+          EMOJI="🟢"
+        elif [ "$TOTAL_LINES" -lt 400 ]; then
+          SIZE="S"
+          EMOJI="🟢"
+        elif [ "$TOTAL_LINES" -lt 1000 ]; then
+          SIZE="M"
+          EMOJI="🟡"
+        elif [ "$TOTAL_LINES" -lt 2000 ]; then
+          SIZE="L"
+          EMOJI="🟠"
+          echo ""
+          echo "⚠️  $EMOJI Large PR detected: ~$TOTAL_LINES lines changed in $CHANGED_FILES files"
+          echo "   Size category: $SIZE"
+          echo ""
+          echo "   Consider splitting if this addresses multiple issues."
+          echo ""
+        else
+          SIZE="XL"
+          EMOJI="🔴"
+          echo ""
+          echo "🚨 $EMOJI Extra-large PR: ~$TOTAL_LINES lines changed in $CHANGED_FILES files"
+          echo "   Size category: $SIZE (recommended max: 2000 lines)"
+          echo ""
+          echo "   Please consider splitting into smaller, focused PRs."
+          echo ""
+          echo "   To bypass: git push --no-verify"
+          echo ""
+        fi
+
+        echo "📊 PR Size: $EMOJI $SIZE (~$TOTAL_LINES lines, $CHANGED_FILES files)"
+
+format:
+  commands:
+    ruff-format:
+      glob: "*.py"
+      run: uv run ruff format {staged_files}

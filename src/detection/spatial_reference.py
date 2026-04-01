@@ -22,7 +22,7 @@ import cv2
 import numpy as np
 from scipy.spatial.transform import Rotation
 
-from .types import PixelPose
+from ..types import PixelPose
 
 
 @dataclass
@@ -287,7 +287,6 @@ class SpatialReferenceDetector:
         R = camera_pose.as_rotation_matrix()
 
         # Axis directions in world space
-        # X = right, Y = forward, Z = up
         axes_world = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
 
         # Rotate axes by camera pose (to show how they appear from camera perspective)
@@ -298,7 +297,7 @@ class SpatialReferenceDetector:
         colors = [(0, 0, 255), (0, 255, 0), (255, 0, 0)]  # BGR: X=B, Y=G, Z=R
         labels = ["X", "Y", "Z"]
 
-        for i, (axis, color, label) in enumerate(zip(axes_camera.T, colors, labels)):
+        for i, (axis, color, label) in enumerate(zip(axes_camera.T, colors, labels, strict=False)):
             # Project 3D to 2D (simple orthographic)
             # For visualization, we use X and Z components
             if i == 1:  # Y axis (depth) - draw at angle

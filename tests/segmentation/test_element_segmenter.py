@@ -6,9 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.element_segmenter import ElementSegmenter
+from src.analysis.element_segmenter import ElementSegmenter
 from src.types import H36Key, NormalizedPose, SegmentationResult
-from src.video import VideoMeta
+from src.utils.video import VideoMeta
 
 
 @pytest.fixture
@@ -99,11 +99,13 @@ class TestElementSegmenter:
     def test_detect_stillness(self):
         """Test stillness period detection."""
         # Create synthetic signal: motion - still - motion
-        motion_energy = np.concatenate([
-            np.ones(20) * 0.5,  # Motion
-            np.zeros(10),  # Still
-            np.ones(20) * 0.5,  # Motion
-        ]).astype(np.float32)
+        motion_energy = np.concatenate(
+            [
+                np.ones(20) * 0.5,  # Motion
+                np.zeros(10),  # Still
+                np.ones(20) * 0.5,  # Motion
+            ]
+        ).astype(np.float32)
 
         segmenter = ElementSegmenter(min_still_duration=0.3)
         stillness = segmenter._detect_stillness(motion_energy, fps=30.0)
@@ -114,13 +116,22 @@ class TestElementSegmenter:
 
     def test_extract_active_segments(self):
         """Test active segment extraction."""
-        stillness = np.array([
-            False, False, False,  # Active
-            True, True,  # Still
-            False, False,  # Active
-            True,  # Still
-            False, False, False,  # Active
-        ], dtype=bool)
+        stillness = np.array(
+            [
+                False,
+                False,
+                False,  # Active
+                True,
+                True,  # Still
+                False,
+                False,  # Active
+                True,  # Still
+                False,
+                False,
+                False,  # Active
+            ],
+            dtype=bool,
+        )
 
         segmenter = ElementSegmenter()
         segments = segmenter._extract_active_segments(stillness)

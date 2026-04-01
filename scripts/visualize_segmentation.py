@@ -7,7 +7,7 @@ from pathlib import Path
 import cv2
 
 
-def main():
+def main():  # noqa: PLR0915
     parser = argparse.ArgumentParser(description="Visualize element segmentation on video")
     parser.add_argument("video", type=Path, help="Path to video file")
     parser.add_argument("--segments", type=Path, help="Path to segmentation JSON")
@@ -22,14 +22,11 @@ def main():
 
     # Default segments for video1 if no JSON provided
     if args.segments and args.segments.exists():
-        import json
+        import json  # noqa: PLC0415
 
-        with open(args.segments) as f:
+        with args.segments.open() as f:
             data = json.load(f)
-        segments = [
-            (s["start"], s["end"], s["element_type"])
-            for s in data["segments"]
-        ]
+        segments = [(s["start"], s["end"], s["element_type"]) for s in data["segments"]]
     # Default segments for the test videos
     elif "video1" in args.video.name:
         segments = [(8, 159, "three_turn"), (451, 500, "three_turn")]
@@ -125,10 +122,20 @@ def main():
             # Boundary markers
             if frame_idx == start:
                 cv2.line(frame, (0, 0), (0, height), (0, 255, 0), 5)
-                cv2.putText(frame, "START", (10, height // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                cv2.putText(
+                    frame, "START", (10, height // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2
+                )
             if frame_idx == end:
                 cv2.line(frame, (width - 1, 0), (width - 1, height), (0, 0, 255), 5)
-                cv2.putText(frame, "END", (width - 100, height // 2), cv2.FONT_HERSHEY_SIMPLEX, 1, (0, 0, 255), 2)
+                cv2.putText(
+                    frame,
+                    "END",
+                    (width - 100, height // 2),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1,
+                    (0, 0, 255),
+                    2,
+                )
 
         writer.write(frame)
         frame_idx += 1
@@ -140,5 +147,4 @@ def main():
 
 
 if __name__ == "__main__":
-
     main()

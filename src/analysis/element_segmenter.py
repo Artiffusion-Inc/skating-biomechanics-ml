@@ -11,16 +11,16 @@ import numpy as np
 from numpy.typing import NDArray
 from scipy.ndimage import binary_opening
 
-from .geometry import get_mid_hip, smooth_signal
-from .types import (
+from ..types import (
     ElementPhase,
     ElementSegment,
     NormalizedPose,
     SegmentationResult,
 )
+from ..utils.geometry import get_mid_hip, smooth_signal
 
 if TYPE_CHECKING:
-    from .video import VideoMeta
+    from ..utils.video import VideoMeta
 
 
 class ElementSegmenter:
@@ -412,7 +412,7 @@ class ElementSegmenter:
             ElementPhase with adjusted frame indices, or None.
         """
         try:
-            from . import phase_detector
+            from . import phase_detector  # noqa: PLC0415
 
             PhaseDetector = phase_detector.PhaseDetector
 
@@ -461,7 +461,7 @@ class ElementSegmenter:
         """
         # Simplified: use foot velocity direction as edge indicator
         # For H3.6M format, use LFOOT and RFOOT keypoints
-        from .types import H36Key
+        from ..types import H36Key  # noqa: PLC0415
 
         left_foot = poses[:, H36Key.LFOOT, :]
         right_foot = poses[:, H36Key.RFOOT, :]
@@ -489,7 +489,7 @@ class ElementSegmenter:
         Returns:
             Shoulder rotation angles in radians.
         """
-        from .types import H36Key  # noqa: PLC0415
+        from ..types import H36Key  # noqa: PLC0415
 
         left_shoulder = poses[:, H36Key.LSHOULDER, :]
         right_shoulder = poses[:, H36Key.RSHOULDER, :]
@@ -516,8 +516,8 @@ class ElementSegmenter:
         Returns:
             Knee angles in degrees.
         """
-        from .geometry import angle_3pt  # noqa: PLC0415
-        from .types import H36Key  # noqa: PLC0415
+        from ..types import H36Key  # noqa: PLC0415
+        from ..utils.geometry import angle_3pt  # noqa: PLC0415
 
         if side == "left":
             hip_idx = H36Key.LHIP

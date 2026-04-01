@@ -21,8 +21,8 @@ ML-based personal AI coach for figure skating using computer vision. Analyzes sk
 | ------------------- | ---------------------------------------- |
 | **Language**        | Python 3.11+                             |
 | **Package Manager** | `uv`                                     |
-| **Detection**       | YOLOv11n (Ultralytics)                   |
-| **2D Pose**         | H3.6M 17-keypoint (MediaPipe backend)    |
+| **Detection**       | YOLO26n (Ultralytics, NMS-free)          |
+| **2D Pose**         | H3.6M 17-keypoint (YOLO26-Pose backend)  |
 | **3D Pose**         | MotionAGFormer / TCPFormer (AthletePose3D) |
 | **Normalization**   | Root-centering + scale normalization     |
 | **Alignment**       | DTW (dtw-python) with Sakoe-Chiba window |
@@ -33,7 +33,7 @@ ML-based personal AI coach for figure skating using computer vision. Analyzes sk
 ## MVP Architecture (3D-First)
 
 ```
-Video Input → YOLOv11n (detect) → H36MExtractor (H3.6M 17kp) → Normalization
+Video Input → YOLO26n (detect) → H36MExtractor (H3.6M 17kp) → Normalization
     ↓
 3D Lifting (MotionAGFormer/TCPFormer) → 3D Poses
     ↓
@@ -111,20 +111,16 @@ Before committing:
 
 ```
 src/
+├── __init__.py
 ├── types.py              # Shared data types (H36Key, FrameKeypoints, BladeType, etc.)
 ├── pipeline.py           # Main AnalysisPipeline orchestrator
 ├── cli.py                # argparse CLI (analyze, build-ref, segment commands)
-├── detection/
-│   └── person_detector.py    # YOLOv11n wrapper
-├── pose_estimation/
-│   ├── h36m_extractor.py     # H3.6M 17-keypoint extractor (MediaPipe backend)
-│   └── __init__.py           # Exports H36MExtractor, H36Key, H36M_SKELETON_EDGES
-├── pose_3d/
-│   ├── athletepose_extractor.py  # AthletePose3D wrapper (MotionAGFormer/TCPFormer)
-│   ├── biomechanics_estimator.py # Simple 3D estimation (no ML model)
-│   ├── normalizer_3d.py          # 3D pose normalization
-│   └── blazepose_extractor.py     # Legacy BlazePose 33kp extractor (scripts only)
+├── alignment/
+│   ├── aligner.py             # DTW motion alignment
+│   └── motion_dtw.py          # DTW utilities
 ├── analysis/
+│   ├── element_defs.py        # Element definitions & ideal metrics
+│   ├── element_segmenter.py   # Automatic motion segmentation
 │   ├── metrics.py             # BiomechanicsAnalyzer (airtime, angles, etc.)
 │   ├── phase_detector.py      # Auto-detect takeoff/peak/landing
 │   ├── physics_engine.py      # CoM calculation, jump height, angular momentum
@@ -132,25 +128,36 @@ src/
 │   └── rules/
 │       ├── jump_rules.py      # Rules for all jump types
 │       └── three_turn_rules.py # Rules for three_turn
-├── alignment/
-│   ├── aligner.py             # DTW motion alignment
-│   └── motion_dtw.py          # DTW utilities
-├── references/
-│   ├── element_defs.py        # Element definitions & ideal metrics
-│   ├── reference_builder.py   # Build reference from expert video
-│   └── reference_store.py     # Store/load .npz reference files
-├── segmentation/
-│   └── element_segmenter.py   # Automatic motion segmentation
+├── detection/
+│   ├── blade_edge_detector_3d.py  # 3D blade edge detection (BDA algorithm)
+│   ├── person_detector.py         # YOLOv11n wrapper
+│   ├── pose_tracker.py            # Multi-person tracking (OC-SORT + biometrics)
+│   └── spatial_reference.py       # Camera pose estimation
 ├── models/
 │   ├── motionagformer/        # MotionAGFormer 3D lifter
 │   └── tcpformer/             # TCPFormer 3D lifter
-└── utils/
-    ├── blade_edge_detector.py # BDA algorithm for blade edge detection
-    ├── video.py               # cv2 video utilities
-    ├── geometry.py            # Angles, distances, smoothing
-    ├── smoothing.py           # One-Euro Filter for pose smoothing
-    ├── visualization.py       # Skeleton, kinematics, HUD drawing
-    └── subtitles.py           # VTT subtitle parser for coach commentary
+├── pose_estimation/
+│   ├── h36m_extractor.py     # H3.6M 17-keypoint extractor (YOLOv11-Pose)
+│   ├── normalizer.py         # Pose normalization (root-centering + scale)
+│   └── yolo_extractor.py     # Raw YOLOv11-Pose (17kp COCO format)
+├── pose_3d/
+│   ├── athletepose_extractor.py  # AthletePose3D wrapper (MotionAGFormer/TCPFormer)
+│   ├── biomechanics_estimator.py # Simple 3D estimation (no ML model)
+│   └── normalizer_3d.py          # 3D pose normalization
+├── references/
+│   ├── reference_builder.py   # Build reference from expert video
+│   └── reference_store.py     # Store/load .npz reference files
+├── utils/
+│   ├── geometry.py            # Angles, distances, smoothing
+│   ├── smoothing.py           # One-Euro Filter for pose smoothing
+│   ├── subtitles.py           # VTT subtitle parser for coach commentary
+│   └── video.py               # cv2 video utilities
+└── visualization/
+    ├── config.py              # Layer configuration & constants
+    ├── core/                  # Color, geometry, text utilities
+    ├── hud/                   # HUD elements, layout, panel
+    ├── layers/                # Layer-based rendering (skeleton, velocity, trail, HUD, blade)
+    └── skeleton/              # Skeleton drawing (2D/3D, joints)
 
 scripts/
 ├── check_all.py               # Run all quality checks
@@ -503,6 +510,6 @@ uv run pytest tests/ -v -m "not slow"
 - `types.py` - All data types and validation
 - `pipeline.py` - Main orchestrator
 - `cli.py` - Command-line interface
-- `utils/blade_edge_detector.py` - Blade edge detection (NEW!)
-- `utils/visualization.py` - All visualization functions
+- `detection/blade_edge_detector_3d.py` - 3D blade edge detection
+- `visualization/` - Layer-based visualization system
 - `ROADMAP.md` - Project status and next steps

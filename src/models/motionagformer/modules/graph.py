@@ -99,7 +99,7 @@ class GCN(nn.Module):
 
     @staticmethod
     def normalize_digraph(adj):
-        b, n, c = adj.shape
+        b, n, _c = adj.shape
 
         node_degrees = adj.detach().sum(dim=-1)
         deg_inv_sqrt = node_degrees**-0.5

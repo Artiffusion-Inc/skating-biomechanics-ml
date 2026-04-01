@@ -96,7 +96,7 @@ class HUDPanel:
     max_width: int = 400
     render_fn: PanelRenderer | None = None
 
-    def get_position(
+    def get_position(  # noqa: PLR0911
         self,
         frame_width: int,
         frame_height: int,
@@ -217,7 +217,7 @@ class HUDPanel:
             return y
 
         # Measure title size
-        (text_width, text_height), baseline = cv2.getTextSize(
+        (_text_width, text_height), baseline = cv2.getTextSize(
             self.title,
             cv2.FONT_HERSHEY_SIMPLEX,
             0.6,

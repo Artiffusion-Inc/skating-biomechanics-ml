@@ -23,16 +23,16 @@ from src.visualization.hud.panel import (
 )
 
 __all__ = [
+    # Layout
+    "HUDLayout",
+    # Panel
+    "HUDPanel",
+    "PanelPosition",
+    "Position",
+    "draw_blade_indicator_hud",
     # Elements
     "draw_frame_counter",
     "draw_metrics_panel",
     "draw_phase_indicator",
-    "draw_blade_indicator_hud",
-    # Panel
-    "HUDPanel",
-    "PanelPosition",
-    # Layout
-    "HUDLayout",
-    "Position",
     "get_default_layout",
 ]

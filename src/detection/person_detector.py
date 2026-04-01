@@ -9,8 +9,8 @@ from pathlib import Path
 import numpy as np
 from ultralytics import YOLO
 
-from .types import BoundingBox
-from .video import extract_frames
+from ..types import BoundingBox
+from ..utils.video import extract_frames
 
 
 class PersonDetector:
@@ -114,7 +114,7 @@ class PersonDetector:
             will handle tracking internally. Use this instead of detect_video()
             for single-person videos.
         """
-        from .video import extract_frames
+        from .video import extract_frames  # noqa: PLC0415
 
         for frame in extract_frames(video_path, max_frames=1):
             return self.detect_frame(frame)

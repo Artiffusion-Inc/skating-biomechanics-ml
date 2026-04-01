@@ -2,8 +2,15 @@ from torch import nn
 
 
 class MLP(nn.Module):
-    def __init__(self, in_features, hidden_features=None, out_features=None, act_layer=nn.GELU, drop=0.,
-                 channel_first=False):
+    def __init__(
+        self,
+        in_features,
+        hidden_features=None,
+        out_features=None,
+        act_layer=nn.GELU,
+        drop=0.0,
+        channel_first=False,
+    ):
 
         super().__init__()
         out_features = out_features or in_features

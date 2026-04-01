@@ -129,7 +129,7 @@ class PoseTracker:
     def update(
         self,
         poses: np.ndarray,
-        confidences: np.ndarray | None = None,
+        _confidences: np.ndarray | None = None,
     ) -> list[int]:
         """Update tracks with new frame detections.
 
@@ -270,7 +270,7 @@ class PoseTracker:
         cost_matrix = np.full((len(self.tracks), len(detections)), 1e6)
 
         for i, track in enumerate(self.tracks):
-            for j, (detection, pose) in enumerate(zip(detections, poses)):
+            for j, (detection, pose) in enumerate(zip(detections, poses, strict=False)):
                 # IoU distance (simplified as L2 distance for normalized coords)
                 iou_dist = float(np.linalg.norm(predictions[i] - detection))
 
@@ -292,7 +292,7 @@ class PoseTracker:
         unmatched_tracks = list(set(range(len(self.tracks))) - set(track_indices))
         unmatched_dets = list(set(range(len(detections))) - set(det_indices))
 
-        for t, d in zip(track_indices, det_indices):
+        for t, d in zip(track_indices, det_indices, strict=False):
             # Threshold: combined cost < 0.3 for valid match
             if cost_matrix[t, d] < 0.3:
                 matches.append((t, d))

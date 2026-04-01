@@ -51,6 +51,8 @@ def draw_skeleton(
     confidence_threshold: float = 0.5,
     line_width: int = 2,
     joint_radius: int = 4,
+    normalized: bool | None = None,  # noqa: ARG001
+    confidences: np.ndarray | None = None,
 ) -> Frame:
     """Draw 2D skeleton overlay on frame.
 

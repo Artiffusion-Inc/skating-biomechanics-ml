@@ -210,7 +210,7 @@ def sort_layers_by_z_index(layers: list[Layer]) -> list[Layer]:
         >>> layers = [SkeletonLayer(), VelocityLayer(), HUDLayer()]
         >>> sorted_layers = sort_layers_by_z_index(layers)
     """
-    return sorted(layers, key=lambda l: l.z_index)
+    return sorted(layers, key=lambda _l: _l.z_index)
 
 
 def render_layers(

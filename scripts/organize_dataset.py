@@ -6,7 +6,7 @@ import shutil
 from pathlib import Path
 
 from src.pipeline import AnalysisPipeline
-from src.video import get_video_meta
+from src.utils.video import get_video_meta
 
 # Dataset configuration
 DATASET_DIR = Path("data/dataset")
@@ -19,14 +19,14 @@ VIDEO_SOURCES = [
         "filename": "skating_video.mp4",
         "url": "https://youtu.be/7wjiqGGv_RY?si=LRZSYUcTUVF8neaS",
         "title": "Лига фигурного катания - тренировка по скольжению",
-        "description": "Обучающее видео о скольжении, тройках и базовых упражнениях",
+        "description": "Обучающее видео о скольжении, тройках и базовых упражнениях",  # noqa: RUF001
     },
     {
         "id": "video2",
         "filename": "skating_video2.mp4",
         "url": "https://youtu.be/y9fwL-3OCpk?si=ikG9xrTVRNzuq0Hd",
         "title": "Фигурное катание - техника",
-        "description": "Видео о технике фигурного катания",
+        "description": "Видео о технике фигурного катания",  # noqa: RUF001
     },
     {
         "id": "video3",
@@ -63,7 +63,7 @@ def create_video_metadata(video_info: dict, video_path: Path) -> dict:
     }
 
 
-def analyze_video(video_path: Path, video_id: str) -> dict:
+def analyze_video(video_path: Path, video_id: str) -> dict:  # noqa: ARG001
     """Run analysis on video and return results."""
     pipeline = AnalysisPipeline(reference_store=None)
 
@@ -143,7 +143,7 @@ def main():
 
             # Save analysis results
             analysis_file = DATASET_DIR / "analysis" / f"{video_info['id']}.json"
-            with open(analysis_file, "w") as f:
+            with analysis_file.open("w") as f:
                 json.dump(analysis_results, f, indent=2, ensure_ascii=False)
             print(f"  Saved analysis: {analysis_file.name}")
 
@@ -159,7 +159,7 @@ def main():
 
         # Save video metadata
         meta_file = DATASET_DIR / "metadata" / f"{video_info['id']}.json"
-        with open(meta_file, "w") as f:
+        with meta_file.open("w") as f:
             json.dump(video_meta, f, indent=2, ensure_ascii=False)
         print(f"  Saved metadata: {meta_file.name}")
 
@@ -167,7 +167,7 @@ def main():
 
     # Save dataset index
     index_file = DATASET_DIR / "index.json"
-    with open(index_file, "w") as f:
+    with index_file.open("w") as f:
         json.dump(dataset_metadata, f, indent=2, ensure_ascii=False)
 
     print("\nDataset organized successfully!")

@@ -218,7 +218,7 @@ class VelocityLayer(Layer):
 
             # Get color based on depth or speed
             if self.color_mode == "depth":
-                from src.visualization.core.colors import get_depth_color
+                from src.visualization.core.colors import get_depth_color  # noqa: PLC0415
 
                 depth = context.pose_3d[joint_idx, 2]
                 color = get_depth_color(depth, 0.0, 2.0)

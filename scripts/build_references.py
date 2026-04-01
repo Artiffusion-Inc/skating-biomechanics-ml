@@ -12,10 +12,10 @@ from pathlib import Path
 
 from skating_biomechanics_ml.references import ReferenceBuilder, ReferenceStore
 
-from src.normalizer import PoseNormalizer
 from src.pose_estimation import H36MExtractor
+from src.pose_estimation.normalizer import PoseNormalizer
 from src.types import ElementPhase
-from src.video import get_video_meta
+from src.utils.video import get_video_meta
 
 
 def main() -> None:

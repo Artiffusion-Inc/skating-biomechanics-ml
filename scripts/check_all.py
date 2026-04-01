@@ -34,7 +34,7 @@ def main() -> int:
     print(f"\n{'=' * 60}")
     print("SUMMARY")
     print(f"{'=' * 60}")
-    for (cmd, name), success in zip(checks, results):
+    for (_cmd, name), success in zip(checks, results, strict=False):
         status = "✓" if success else "✗"
         print(f"{status} {name}")
 

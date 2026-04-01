@@ -3,7 +3,7 @@
 Implements:
 - Center of Mass (CoM) calculation using anthropometric data
 - Moment of Inertia (I) calculation
-- Angular Momentum (L = I × ω)
+- Angular Momentum (L = I * w)
 - Parabolic trajectory fitting for jump height
 
 References:
@@ -79,7 +79,7 @@ class PhysicsEngine:
     ) -> np.ndarray:
         """Calculate Center of Mass trajectory from 3D poses.
 
-        CoM = (1/M) × Σ(mᵢ × pᵢ)
+        CoM = (1/M) * sum(m_i * p_i)
 
         Where:
             M = total body mass
@@ -95,7 +95,7 @@ class PhysicsEngine:
         Returns:
             com_trajectory: (N, 3) array of CoM positions
         """
-        from src.pose_estimation import H36Key
+        from ..pose_estimation import H36Key  # noqa: PLC0415
 
         n_frames = poses_3d.shape[0]
         com_trajectory = np.zeros((n_frames, 3))
@@ -114,7 +114,7 @@ class PhysicsEngine:
             torso_pos = (spine_pos + thorax_pos) / 2
             com_trajectory[frame_idx] += self.segment_masses["torso"] * torso_pos
 
-            # Arms (upper, forearm, hand)
+            # Process arm segments
             for side, prefix in [("left", "l"), ("right", "r")]:
                 shoulder_idx = getattr(H36Key, f"{prefix.upper()}SHOULDER")
                 elbow_idx = getattr(H36Key, f"{prefix.upper()}ELBOW")
@@ -133,7 +133,7 @@ class PhysicsEngine:
                 # Hand: wrist position
                 com_trajectory[frame_idx] += self.segment_masses[f"{side}_hand"] * pose[wrist_idx]
 
-            # Legs (thigh, shin, foot)
+            # Process leg segments
             for side, prefix in [("left", "l"), ("right", "r")]:
                 hip_idx = getattr(H36Key, f"{prefix.upper()}HIP")
                 knee_idx = getattr(H36Key, f"{prefix.upper()}KNEE")
@@ -158,11 +158,11 @@ class PhysicsEngine:
     def calculate_moment_of_inertia(
         self,
         poses_3d: np.ndarray,
-        axis: str = "vertical",
+        axis: str = "vertical",  # noqa: ARG002
     ) -> np.ndarray:
         """Calculate Moment of Inertia about vertical axis.
 
-        I = Σ(mᵢ × rᵢ²)
+        I = sum(m_i * r_i^2)
 
         Where:
             mᵢ = segment mass
@@ -175,7 +175,7 @@ class PhysicsEngine:
         Returns:
             inertia: (N,) array of moment of inertia values (kg·m²)
         """
-        from src.pose_estimation import H36Key
+        from ..pose_estimation import H36Key  # noqa: PLC0415
 
         n_frames = poses_3d.shape[0]
         inertia = np.zeros(n_frames)
@@ -199,7 +199,7 @@ class PhysicsEngine:
             r = np.linalg.norm(spine_pos - com)
             inertia[frame_idx] += self.segment_masses["torso"] * r**2
 
-            # Arms and legs (simplified)
+            # Process all limb segments
             for side, prefix in [("left", "l"), ("right", "r")]:
                 shoulder_idx = getattr(H36Key, f"{prefix.upper()}SHOULDER")
                 elbow_idx = getattr(H36Key, f"{prefix.upper()}ELBOW")
@@ -237,7 +237,7 @@ class PhysicsEngine:
     ) -> np.ndarray:
         """Calculate Angular Momentum.
 
-        L = I × ω
+        L = I * w
 
         Args:
             poses_3d: (N, 17, 3) array of poses

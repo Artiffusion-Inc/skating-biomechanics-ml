@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from src.element_defs import get_element_def
-from src.metrics import BiomechanicsAnalyzer
+from src.analysis.element_defs import get_element_def
+from src.analysis.metrics import BiomechanicsAnalyzer
 from src.types import ElementPhase, H36Key, MetricResult
 
 

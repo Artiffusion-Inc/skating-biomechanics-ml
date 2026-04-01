@@ -39,8 +39,8 @@ class MetaFormerBlock(nn.Module):
         self.mixers = nn.ModuleList()
         mixer_types = [mixer_type] if isinstance(mixer_type, str) else mixer_type
         dim_out = dim // len(mixer_types)
-        for mixer_type in mixer_types:
-            if mixer_type == "attention":
+        for mt in mixer_types:
+            if mt == "attention":
                 self.mixers.append(
                     Attention(
                         dim,
@@ -53,7 +53,7 @@ class MetaFormerBlock(nn.Module):
                         mode=mode,
                     )
                 )
-            elif mixer_type == "gcn":
+            elif mt == "gcn":
                 self.mixers.append(
                     GCN(
                         dim,
@@ -65,7 +65,7 @@ class MetaFormerBlock(nn.Module):
                         temporal_connection_len=temporal_connection_len,
                     )
                 )
-            elif mixer_type == "ms-tcn":
+            elif mt == "ms-tcn":
                 self.mixers.append(
                     MultiScaleTCN(
                         in_channels=dim,
@@ -74,7 +74,7 @@ class MetaFormerBlock(nn.Module):
                         dilations=tcn_dilations,
                     )
                 )
-            elif mixer_type == "ctr-gcn":
+            elif mt == "ctr-gcn":
                 self.mixers.append(CTRGCBlock(dim, dim_out))
             else:
                 raise NotImplementedError("mixer_type is not supported")

@@ -6,7 +6,7 @@ including their biomechanical characteristics and ideal performance ranges.
 
 from dataclasses import dataclass
 
-from .types import H36Key
+from ..types import H36Key
 
 
 @dataclass(frozen=True)

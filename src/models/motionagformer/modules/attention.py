@@ -50,7 +50,7 @@ class Attention(nn.Module):
         return x
 
     def forward_spatial(self, q, k, v):
-        B, H, T, J, C = q.shape
+        B, _H, T, J, C = q.shape
         attn = (q @ k.transpose(-2, -1)) * self.scale  # (B, H, T, J, J)
         attn = attn.softmax(dim=-1)
         attn = self.attn_drop(attn)
@@ -60,7 +60,7 @@ class Attention(nn.Module):
         return x  # (B, T, J, C)
 
     def forward_temporal(self, q, k, v):
-        B, H, T, J, C = q.shape
+        B, _H, T, J, C = q.shape
         qt = q.transpose(2, 3)  # (B, H, J, T, C)
         kt = k.transpose(2, 3)  # (B, H, J, T, C)
         vt = v.transpose(2, 3)  # (B, H, J, T, C)

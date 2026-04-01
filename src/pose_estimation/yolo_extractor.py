@@ -1,6 +1,6 @@
-"""YOLOv11-Pose extractor for figure skating analysis.
+"""YOLO26-Pose extractor for figure skating analysis.
 
-YOLOv11-Pose provides fast, accurate 2D pose estimation with 17 keypoints (COCO format).
+YOLO26-Pose provides fast, accurate 2D pose estimation with 17 keypoints (COCO format).
 Advantages over BlazePose:
 - Single-stage detection + pose (faster)
 - No left/right confusion (better tracking)
@@ -8,6 +8,7 @@ Advantages over BlazePose:
 """
 
 from pathlib import Path
+from typing import ClassVar
 
 import cv2
 import numpy as np
@@ -18,9 +19,8 @@ except ImportError:
     YOLO = None  # type: ignore[assignment]
 
 
-
 class YOLOPoseExtractor:
-    """YOLOv11-Pose wrapper for figure skating pose extraction.
+    """YOLO26-Pose wrapper for figure skating pose extraction.
 
     Advantages over BlazePose:
     - Single-stage detection + pose (faster)
@@ -32,30 +32,40 @@ class YOLOPoseExtractor:
     - Fewer foot/hand keypoints
     """
 
-    # YOLOv11-Pose 17 keypoints (COCO format)
-    COCO_KEYPOINTS = [
-        "nose", "left_eye", "right_eye", "left_ear", "right_ear",
-        "left_shoulder", "right_shoulder", "left_elbow", "right_elbow",
-        "left_wrist", "right_wrist", "left_hip", "right_hip",
-        "left_knee", "right_knee", "left_ankle", "right_ankle",
+    COCO_KEYPOINTS: ClassVar[list[str]] = [
+        "nose",
+        "left_eye",
+        "right_eye",
+        "left_ear",
+        "right_ear",
+        "left_shoulder",
+        "right_shoulder",
+        "left_elbow",
+        "right_elbow",
+        "left_wrist",
+        "right_wrist",
+        "left_hip",
+        "right_hip",
+        "left_knee",
+        "right_knee",
+        "left_ankle",
+        "right_ankle",
     ]
 
     def __init__(self, model_size: str = "n", model_path: Path | str | None = None):
-        """Initialize YOLOv11-Pose model.
+        """Initialize YOLO26-Pose model.
 
         Args:
             model_size: Model size - 'n' (nano), 's' (small), 'm' (medium)
             model_path: Path to custom model weights, or None for default
         """
         if YOLO is None:
-            raise ImportError(
-                "Ultralytics not installed. Install with: uv add ultralytics"
-            )
+            raise ImportError("Ultralytics not installed. Install with: uv add ultralytics")
 
         if model_path is not None:
             self.model = YOLO(str(model_path))
         else:
-            model_name = f"yolov11{model_size}-pose.pt"
+            model_name = f"yolo26{model_size}-pose.pt"
             self.model = YOLO(model_name)
 
         self.model_size = model_size
@@ -170,12 +180,12 @@ class YOLOPoseExtractor:
             8: 15,  # right_elbow -> relbow
             9: 13,  # left_wrist -> lwrist
             10: 16,  # right_wrist -> rwrist
-            11: 4,   # left_hip -> lhip
-            12: 1,   # right_hip -> rhip
-            13: 5,   # left_knee -> lknee
-            14: 2,   # right_knee -> rknee
-            15: 6,   # left_ankle -> lfoot
-            16: 3,   # right_ankle -> rfoot
+            11: 4,  # left_hip -> lhip
+            12: 1,  # right_hip -> rhip
+            13: 5,  # left_knee -> lknee
+            14: 2,  # right_knee -> rknee
+            15: 6,  # left_ankle -> lfoot
+            16: 3,  # right_ankle -> rfoot
         }
 
         # Compute hip_center (midpoint of hips)

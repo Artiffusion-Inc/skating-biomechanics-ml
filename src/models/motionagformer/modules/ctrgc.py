@@ -15,7 +15,7 @@ def edge2mat(link, num_node):
 
 def normalize_digraph(A):
     Dl = np.sum(A, 0)
-    h, w = A.shape
+    _h, w = A.shape
     Dn = np.zeros((w, w))
     for i in range(w):
         if Dl[i] > 0:
@@ -25,10 +25,10 @@ def normalize_digraph(A):
 
 
 def get_spatial_graph(self_link, inward, outward, num_node):
-    I = edge2mat(self_link, num_node)
+    I_mat = edge2mat(self_link, num_node)
     In = normalize_digraph(edge2mat(inward, num_node))
     Out = normalize_digraph(edge2mat(outward, num_node))
-    A = np.stack((I, In, Out))
+    A = np.stack((I_mat, In, Out))
     return A
 
 
@@ -49,7 +49,7 @@ class CTRGC(nn.Module):
         super().__init__()
         self.in_channels = in_channels
         self.out_channels = out_channels
-        if in_channels == 3 or in_channels == 9:
+        if in_channels in {3, 9}:
             self.rel_channels = 8
         else:
             self.rel_channels = in_channels // rel_reduction
@@ -83,7 +83,7 @@ class CTRGCBlock(nn.Module):
         A = self._init_A()
         self.num_subset = A.shape[0]
         self.convs = nn.ModuleList()
-        for i in range(self.num_subset):
+        for _i in range(self.num_subset):
             self.convs.append(CTRGC(in_channels, out_channels))
 
         if in_channels != out_channels:
@@ -142,10 +142,7 @@ class CTRGCBlock(nn.Module):
         x = x.permute(0, 3, 1, 2)  # (B, T, J, C) -> (B, C, T, J)
 
         y = None
-        if self.adaptive:
-            A = self.PA
-        else:
-            A = self.A.cuda(x.get_device())
+        A = self.PA if self.adaptive else self.A.cuda(x.get_device())
         for i in range(self.num_subset):
             z = self.convs[i](x, A[i], self.alpha)
             y = z + y if y is not None else z

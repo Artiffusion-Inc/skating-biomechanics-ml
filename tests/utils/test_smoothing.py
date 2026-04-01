@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.smoothing import (
+from src.utils.smoothing import (
     OneEuroFilter,
     OneEuroFilterConfig,
     PoseSmoother,
@@ -159,7 +159,7 @@ class TestPoseSmoother:
     @pytest.fixture
     def sample_poses(self):
         """Create sample pose sequence with 17 joints (H3.6M format)."""
-        from src.types import H36Key
+        from src.types import H36Key  # noqa: PLC0415
 
         # 30 frames, 17 joints, 2 coords
         poses = np.zeros((30, 17, 2), dtype=np.float32)
@@ -216,14 +216,12 @@ class TestPoseSmoother:
             return np.mean(np.abs(np.diff(signal, n=2)))
 
         # Smoothed should be smoother than original
-        original_smoothness = np.mean([
-            smoothness(poses[:, j, c])
-            for j in range(17) for c in range(2)
-        ])
-        smoothed_smoothness = np.mean([
-            smoothness(smoothed[:, j, c])
-            for j in range(17) for c in range(2)
-        ])
+        original_smoothness = np.mean(
+            [smoothness(poses[:, j, c]) for j in range(17) for c in range(2)]
+        )
+        smoothed_smoothness = np.mean(
+            [smoothness(smoothed[:, j, c]) for j in range(17) for c in range(2)]
+        )
 
         assert smoothed_smoothness < original_smoothness
 
@@ -324,7 +322,7 @@ class TestOneEuroFilterConfig:
         """Test that config is immutable (frozen dataclass)."""
         config = OneEuroFilterConfig()
 
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(Exception, match="cannot assign to field"):  # FrozenInstanceError
             config.min_cutoff = 2.0
 
 
@@ -365,11 +363,11 @@ class TestIntegration:
 
     def test_smoothing_after_normalization(self):
         """Test that smoothing works after pose normalization."""
-        from src.types import H36Key
+        from src.types import H36Key  # noqa: PLC0415
 
         # Create normalized poses (centered at origin)
         poses = np.zeros((30, 17, 2), dtype=np.float32)
-        t = np.arange(30) / 30.0
+        np.arange(30) / 30.0
         for i in range(30):
             poses[i, H36Key.LEFT_HIP, 0] = -0.05
             poses[i, H36Key.LEFT_HIP, 1] = 0.0

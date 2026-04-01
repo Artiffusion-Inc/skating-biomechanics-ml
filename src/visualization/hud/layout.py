@@ -19,7 +19,7 @@ from src.visualization.config import margin, panel_spacing
 # =============================================================================
 
 Frame = NDArray[np.uint8]  # OpenCV image (H, W, 3)
-Position = tuple[int, int]  # (x, y) pixel coordinates
+PixelPosition = tuple[int, int]  # (x, y) pixel coordinates
 
 
 # =============================================================================
@@ -73,14 +73,14 @@ class HUDLayout:
     columns: int = 2
     rows: int = 3
 
-    def get_position(
+    def get_position(  # noqa: PLR0911
         self,
         pos: Position | str,
         frame_width: int,
         frame_height: int,
         element_width: int = 0,
         element_height: int = 0,
-    ) -> Position:
+    ) -> PixelPosition:
         """Get position for HUD element.
 
         Args:
@@ -152,11 +152,11 @@ class HUDLayout:
         self,
         col: int,
         row: int,
-        frame_width: int,
-        frame_height: int,
+        frame_width: int,  # noqa: ARG002
+        frame_height: int,  # noqa: ARG002
         cell_width: int,
         cell_height: int,
-    ) -> Position:
+    ) -> PixelPosition:
         """Get position for grid-based layout.
 
         Args:
@@ -279,7 +279,7 @@ def calculate_text_position(
     font_scale: float = 0.6,
     thickness: int = 2,
     margin: int = 10,
-) -> Position:
+) -> PixelPosition:
     """Calculate position for text to be drawn.
 
     Args:
@@ -299,9 +299,9 @@ def calculate_text_position(
         (1850, 32)  # Text position
     """
     # Measure text size
-    import cv2
+    import cv2  # noqa: PLC0415
 
-    (text_width, text_height), baseline = cv2.getTextSize(
+    (text_width, text_height), _baseline = cv2.getTextSize(
         text,
         cv2.FONT_HERSHEY_SIMPLEX,
         font_scale,
@@ -313,12 +313,10 @@ def calculate_text_position(
     base_x, base_y = layout.get_position(position, frame_width, frame_height)
 
     # Adjust for text dimensions
-    if position == Position.TOP_RIGHT or position == Position.BOTTOM_RIGHT:
+    if position in (Position.TOP_RIGHT, Position.BOTTOM_RIGHT):
         x = base_x - text_width
     elif (
-        position == Position.TOP_CENTER
-        or position == Position.BOTTOM_CENTER
-        or position == Position.CENTER
+        position in (Position.TOP_CENTER, Position.BOTTOM_CENTER, Position.CENTER)
     ):
         x = base_x - text_width // 2
     else:
@@ -326,9 +324,7 @@ def calculate_text_position(
 
     # Adjust for text height
     if (
-        position == Position.BOTTOM_LEFT
-        or position == Position.BOTTOM_RIGHT
-        or position == Position.BOTTOM_CENTER
+        position in (Position.BOTTOM_LEFT, Position.BOTTOM_RIGHT, Position.BOTTOM_CENTER)
     ):
         y = base_y - text_height
     elif position == Position.CENTER:

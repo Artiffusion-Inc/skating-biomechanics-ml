@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from src.metrics import PhaseDetectionResult
-from src.phase_detector import PhaseDetector
+from src.analysis.metrics import PhaseDetectionResult
+from src.analysis.phase_detector import PhaseDetector
 from src.types import ElementPhase, H36Key
 
 

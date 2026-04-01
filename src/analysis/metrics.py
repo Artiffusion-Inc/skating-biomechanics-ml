@@ -4,21 +4,22 @@ This module provides metrics for analyzing skating technique,
 including joint angles, airtime, rotation speed, and edge quality.
 """
 
+import warnings
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .geometry import (
-    angle_3pt,
-    calculate_com_trajectory,
-)
-from .types import (
+from ..types import (
     ElementPhase,
     H36Key,
     MetricResult,
     NormalizedPose,
     TimeSeries,
+)
+from ..utils.geometry import (
+    angle_3pt,
+    calculate_com_trajectory,
 )
 
 if TYPE_CHECKING:
@@ -307,8 +308,6 @@ class BiomechanicsAnalyzer:
             The hip-only method overestimates low jumps by up to 60% because
             skaters land with bent knees, which affects hip position but not CoM.
         """
-        import warnings
-
         warnings.warn(
             "compute_jump_height() is deprecated due to 60% error for low jumps. "
             "Use compute_jump_height_com() for physics-accurate results using "

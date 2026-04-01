@@ -13,12 +13,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
-from .types import (
+from ..types import (
     ElementPhase,
     ReferenceData,
     VideoMeta,
 )
-from .video import get_video_meta
+from ..utils.video import get_video_meta
 
 if TYPE_CHECKING:
     from .normalizer import PoseNormalizer

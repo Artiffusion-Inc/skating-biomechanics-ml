@@ -2,12 +2,12 @@
 
 H3.6M Architecture:
     This pipeline uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: H36MExtractor (YOLOv11-Pose backend)
+    2D extraction: H36MExtractor (YOLO26-Pose backend)
     3D lifting: AthletePose3DExtractor (MotionAGFormer)
 
 Pipeline stages:
-    1. Person detection (YOLOv11)
-    2. 2D pose extraction (H3.6M 17kp via H36MExtractor with YOLOv11-Pose)
+    1. Person detection (YOLO26)
+    2. 2D pose extraction (H3.6M 17kp via H36MExtractor with YOLO26-Pose)
     3. Normalization
     4. Temporal smoothing (One-Euro Filter)
     5. Phase detection
@@ -21,33 +21,25 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from .types import AnalysisReport, ElementPhase, SegmentationResult
-from .video import get_video_meta
+from .utils.video import get_video_meta
 
 if TYPE_CHECKING:
-    from . import aligner, motion_dtw
-
-    MotionAligner = aligner.MotionAligner
-    MotionDTWAligner = motion_dtw.MotionDTWAligner
-    from . import phase_detector, recommender
-
-    PhaseDetector = phase_detector.PhaseDetector
-    Recommender = recommender.Recommender
-    from . import person_detector
-
-    PersonDetector = person_detector.PersonDetector
-    from . import reference_store
+    from .alignment import MotionAligner, MotionDTWAligner
+    from .analysis.phase_detector import PhaseDetector
+    from .analysis.recommender import Recommender
+    from .detection import PersonDetector
     from .pose_3d import AthletePose3DExtractor
     from .pose_estimation import H36MExtractor
-
-    ReferenceStore = reference_store.ReferenceStore
-    from .smoothing import OneEuroFilterConfig, PoseSmoother
+    from .pose_estimation.normalizer import PoseNormalizer
+    from .references import ReferenceStore
+    from .utils.smoothing import OneEuroFilterConfig, PoseSmoother
 
 
 class AnalysisPipeline:
     """Main pipeline for skating technique analysis.
 
     H3.6M Architecture:
-        - 2D poses: H36MExtractor (17 keypoints, normalized [0,1], YOLOv11-Pose backend)
+        - 2D poses: H36MExtractor (17 keypoints, normalized [0,1], YOLO26-Pose backend)
         - 3D poses: AthletePose3DExtractor (MotionAGFormer)
         - No intermediate 33kp storage
     """
@@ -83,7 +75,7 @@ class AnalysisPipeline:
         self._aligner: MotionAligner | MotionDTWAligner | None = None  # type: ignore[valid-type]
         self._recommender: Recommender | None = None  # type: ignore[valid-type]
 
-    def analyze(
+    def analyze(  # noqa: PLR0912, PLR0915
         self,
         video_path: Path,
         element_type: str,
@@ -105,7 +97,7 @@ class AnalysisPipeline:
             ValueError: If video cannot be processed or element type not supported.
         """
         # Validate element type
-        from . import element_defs
+        from .analysis import element_defs  # noqa: PLC0415
 
         element_def = element_defs.get_element_def(element_type)
         if element_def is None:
@@ -115,16 +107,16 @@ class AnalysisPipeline:
         meta = get_video_meta(video_path)
 
         # Stage 1: Detect person (optional if video has single person)
-        bbox = self._get_detector().detect_first_frame(video_path)
+        self._get_detector().detect_first_frame(video_path)
 
         # Stage 2: Extract 2D poses in H3.6M format (17 keypoints)
-        poses_h36m, frame_indices = self._get_pose_2d_extractor().extract_video(video_path)
+        poses_h36m, _frame_indices = self._get_pose_2d_extractor().extract_video(video_path)
 
         # Stage 2.5: Estimate camera pose (for spatial reference)
-        import cv2
-        import numpy as np
+        import cv2  # noqa: PLC0415
+        import numpy as np  # noqa: PLC0415
 
-        from . import spatial_reference
+        from .detection import spatial_reference  # noqa: PLC0415
 
         SpatialReferenceDetector = spatial_reference.SpatialReferenceDetector
 
@@ -158,9 +150,7 @@ class AnalysisPipeline:
         compensated_h36m = np.dstack([compensated_h36m, compensated_poses[:, :, 2:3]])
 
         # Stage 3: Normalize poses
-        from . import normalizer
 
-        PoseNormalizer = normalizer.PoseNormalizer
         normalized = self._get_normalizer().normalize(compensated_h36m)
 
         # Stage 3.5: Smooth poses (temporal filtering)
@@ -182,7 +172,7 @@ class AnalysisPipeline:
             # Use MotionAGFormer for 3D lifting (H3.6M format)
             poses_3d = self._get_pose_3d_extractor().extract_sequence(smoothed)
 
-            from .blade_edge_detector_3d import BladeEdgeDetector3D
+            from .detection.blade_edge_detector_3d import BladeEdgeDetector3D  # noqa: PLC0415
 
             # Detect blade edge states using 3D poses
             blade_detector_3d = BladeEdgeDetector3D(fps=meta.fps)
@@ -236,7 +226,7 @@ class AnalysisPipeline:
         physics_dict: dict = {}
         if poses_3d is not None:
             try:
-                from .analysis import PhysicsEngine
+                from .analysis import PhysicsEngine  # noqa: PLC0415
 
                 physics_engine = PhysicsEngine(body_mass=60.0)
 
@@ -287,7 +277,7 @@ class AnalysisPipeline:
         Returns:
             SegmentationResult with detected elements.
         """
-        from . import element_segmenter
+        from .analysis import element_segmenter  # noqa: PLC0415
 
         ElementSegmenter = element_segmenter.ElementSegmenter
 
@@ -298,9 +288,7 @@ class AnalysisPipeline:
         poses_h36m, _ = self._get_pose_2d_extractor().extract_video(video_path)
 
         # Stage 2: Normalize poses
-        from . import normalizer
 
-        PoseNormalizer = normalizer.PoseNormalizer
         normalized = self._get_normalizer().normalize(poses_h36m)
 
         # Stage 3: Smooth poses
@@ -318,7 +306,7 @@ class AnalysisPipeline:
     def _get_detector(self) -> "PersonDetector":  # type: ignore[valid-type]
         """Lazy-load person detector."""
         if self._detector is None:
-            from . import person_detector
+            from .detection import person_detector  # noqa: PLC0415
 
             PersonDetector = person_detector.PersonDetector
 
@@ -326,9 +314,9 @@ class AnalysisPipeline:
         return self._detector
 
     def _get_pose_2d_extractor(self) -> "H36MExtractor":  # type: ignore[valid-type]
-        """Lazy-load 2D pose extractor (H3.6M 17kp format with YOLOv11-Pose backend)."""
+        """Lazy-load 2D pose extractor (H3.6M 17kp format with YOLO26-Pose backend)."""
         if self._pose_2d_extractor is None:
-            from .pose_estimation import H36MExtractor
+            from .pose_estimation import H36MExtractor  # noqa: PLC0415
 
             self._pose_2d_extractor = H36MExtractor(
                 output_format="normalized",  # [0,1] coordinates
@@ -338,7 +326,7 @@ class AnalysisPipeline:
     def _get_pose_3d_extractor(self) -> "AthletePose3DExtractor":  # type: ignore[valid-type]
         """Lazy-load 3D pose lifter (MotionAGFormer)."""
         if self._pose_3d_extractor is None:
-            from .pose_3d import AthletePose3DExtractor
+            from .pose_3d import AthletePose3DExtractor  # noqa: PLC0415
 
             model_path = "data/models/motionagformer-s-ap3d.pth.tr"
             self._pose_3d_extractor = AthletePose3DExtractor(
@@ -350,7 +338,7 @@ class AnalysisPipeline:
     def _get_normalizer(self) -> "PoseNormalizer":  # type: ignore[valid-type]
         """Lazy-load pose normalizer."""
         if self._normalizer is None:
-            from . import normalizer
+            from .pose_estimation import normalizer  # noqa: PLC0415
 
             PoseNormalizer = normalizer.PoseNormalizer
 
@@ -360,13 +348,13 @@ class AnalysisPipeline:
     def _get_smoother(self, fps: float = 30.0) -> "PoseSmoother":  # type: ignore[valid-type]
         """Lazy-load pose smoother with One-Euro Filter."""
         if not self._enable_smoothing:
-            from .smoothing import OneEuroFilterConfig, PoseSmoother
+            from .utils.smoothing import OneEuroFilterConfig, PoseSmoother  # noqa: PLC0415
 
             config = OneEuroFilterConfig(min_cutoff=100.0, beta=0.0, freq=fps)
             return PoseSmoother(config=config, freq=fps)
 
         if self._smoother is None:
-            from .smoothing import (
+            from .utils.smoothing import (  # noqa: PLC0415
                 PoseSmoother,
                 get_skating_optimized_config,
             )
@@ -378,7 +366,7 @@ class AnalysisPipeline:
     def _get_phase_detector(self) -> "PhaseDetector":  # type: ignore[valid-type]
         """Lazy-load phase detector."""
         if self._phase_detector is None:
-            from . import phase_detector
+            from .analysis import phase_detector  # noqa: PLC0415
 
             PhaseDetector = phase_detector.PhaseDetector
 
@@ -388,7 +376,7 @@ class AnalysisPipeline:
     def _get_analyzer_factory(self) -> type:
         """Get analyzer factory (returns BiomechanicsAnalyzer class)."""
         if self._analyzer_factory is None:
-            from . import metrics
+            from .analysis import metrics  # noqa: PLC0415
 
             BiomechanicsAnalyzer = metrics.BiomechanicsAnalyzer
 
@@ -398,7 +386,7 @@ class AnalysisPipeline:
     def _get_aligner(self) -> "MotionAligner | MotionDTWAligner":  # type: ignore[valid-type]
         """Lazy-load motion aligner (using phase-aware MotionDTW)."""
         if self._aligner is None:
-            from . import motion_dtw
+            from .alignment import motion_dtw  # noqa: PLC0415
 
             MotionDTWAligner = motion_dtw.MotionDTWAligner
 
@@ -408,7 +396,7 @@ class AnalysisPipeline:
     def _get_recommender(self) -> "Recommender":  # type: ignore[valid-type]
         """Lazy-load recommender."""
         if self._recommender is None:
-            from . import recommender
+            from .analysis import recommender  # noqa: PLC0415
 
             Recommender = recommender.Recommender
 
@@ -464,7 +452,7 @@ class AnalysisPipeline:
         # Metrics
         lines.append("\n--- Биомеханические метрики ---")
         for metric in report.metrics:
-            status = "✓ ОК" if metric.is_good else "✗ ПЛОХО"
+            status = "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
             ref_min, ref_max = metric.reference_range
             lines.append(
                 f"  {metric.name}: {metric.value:.2f} {metric.unit} [{status}] "
@@ -473,7 +461,7 @@ class AnalysisPipeline:
 
         # DTW distance
         if report.dtw_distance is not None:
-            lines.append("\n--- Сходство с референсом ---")
+            lines.append("\n--- \u0421\u0445\u043e\u0434\u0441\u0442\u0432\u043e \u0441 \u0440\u0435\u0444\u0435\u0440\u0435\u043d\u0441\u043e\u043c ---")
             lines.append(f"  DTW-расстояние: {report.dtw_distance:.3f} (0 = идеально)")
 
         # Blade edge information
@@ -505,7 +493,7 @@ class AnalysisPipeline:
 
         # Overall score
         if report.overall_score is not None:
-            lines.append(f"\nОбщий балл: {report.overall_score:.1f} / 10")
+            lines.append(f"\n\u041e\u0431\u0449\u0438\u0439 \u0431\u0430\u043b\u043b: {report.overall_score:.1f} / 10")
 
         lines.append("=" * 60)
 

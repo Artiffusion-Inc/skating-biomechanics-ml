@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from src.person_detector import PersonDetector
+from src.detection.person_detector import PersonDetector
 from src.types import BoundingBox
 
 
@@ -76,5 +76,5 @@ class TestBoundingBox:
         """BoundingBox is frozen dataclass."""
         bbox = BoundingBox(x1=10, y1=20, x2=110, y2=120, confidence=0.9)
 
-        with pytest.raises(Exception):  # FrozenInstanceError
+        with pytest.raises(Exception, match="cannot assign to field"):  # FrozenInstanceError
             bbox.x1 = 50

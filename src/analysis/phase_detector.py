@@ -7,10 +7,10 @@ from pose sequences using biomechanical cues.
 import numpy as np
 from scipy.signal import find_peaks
 
+from ..types import ElementPhase, NormalizedPose
+from ..utils.geometry import calculate_com_trajectory
 from .element_defs import ElementDef
-from .geometry import calculate_com_trajectory
 from .metrics import BiomechanicsAnalyzer, PhaseDetectionResult
-from .types import ElementPhase, NormalizedPose
 
 # NOTE: 2D blade detector removed in 3D-only migration
 # Phase detection now uses CoM-based method only
@@ -69,7 +69,7 @@ class PhaseDetector:
         """
         return self._detect_jump_phases_com_improved(poses, fps)
 
-    def _detect_jump_phases_com_improved(
+    def _detect_jump_phases_com_improved(  # noqa: PLR0912, PLR0915
         self, poses: NormalizedPose, fps: float
     ) -> PhaseDetectionResult:
         """Improved jump phase detection using CoM velocity with adaptive thresholds.
@@ -96,11 +96,11 @@ class PhaseDetector:
 
         # Detect takeoff: positive velocity peak (skater pushing upward)
         # Use 2-sigma threshold for sensitivity
-        takeoff_candidates, takeoff_props = find_peaks(vy, height=2 * vy_std, distance=10)
+        takeoff_candidates, _takeoff_props = find_peaks(vy, height=2 * vy_std, distance=10)
 
         # Detect landing: negative velocity spike (impact)
         # Use 3-sigma threshold for robustness against false positives
-        landing_candidates, landing_props = find_peaks(-vy, height=3 * vy_std, distance=10)
+        landing_candidates, _landing_props = find_peaks(-vy, height=3 * vy_std, distance=10)
 
         # Find peak: minimum CoM Y (maximum height)
         if len(takeoff_candidates) > 0 and len(landing_candidates) > 0:
@@ -277,7 +277,7 @@ class PhaseDetector:
     def _find_takeoff_accel(
         self,
         com_y: np.ndarray,
-        fps: float,
+        fps: float,  # noqa: ARG002
         peak_idx: int,
     ) -> int:
         """Find takeoff using vertical acceleration spike.
@@ -319,7 +319,7 @@ class PhaseDetector:
     def _find_landing_accel(
         self,
         com_y: np.ndarray,
-        fps: float,
+        fps: float,  # noqa: ARG002
         peak_idx: int,
         takeoff_idx: int,
     ) -> int:

@@ -18,7 +18,7 @@ from enum import Enum
 import numpy as np
 from numpy.typing import NDArray
 
-from .types import BladeState3D, BladeType, IceTrace, MotionDirection
+from ..types import BladeState3D, BladeType, IceTrace, MotionDirection
 
 
 class BladeZone(Enum):
@@ -198,7 +198,7 @@ class BladeEdgeDetector3D:
 
         return velocity * self.fps  # Convert to units/s
 
-    def _detect_motion_direction(self, velocity: NDArray, foot: str) -> MotionDirection:
+    def _detect_motion_direction(self, velocity: NDArray, _foot: str) -> MotionDirection:  # noqa: PLR0911
         """Detect motion direction from velocity vector.
 
         Uses smoothed velocity from history.

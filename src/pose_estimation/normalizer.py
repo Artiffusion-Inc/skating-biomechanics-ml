@@ -10,7 +10,7 @@ Updated for H3.6M 17-keypoint format (3D-only pipeline).
 
 import numpy as np
 
-from .types import H36Key, NormalizedPose, Pose3D
+from ..types import H36Key, NormalizedPose, Pose3D
 
 
 class PoseNormalizer:
@@ -69,11 +69,7 @@ class PoseNormalizer:
             spine_vector = thorax - hip_center
             spine_length = np.linalg.norm(spine_vector)
 
-            if spine_length < 1e-6:
-                # Degenerate case: use identity scale
-                scale = 1.0
-            else:
-                scale = self._target_spine_length / spine_length
+            scale = 1.0 if spine_length < 1e-6 else self._target_spine_length / spine_length
 
             # 3. Project to 2D (x, y) - drop z coordinate
             normalized[frame_idx] = centered[:, :2] * scale

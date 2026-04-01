@@ -228,7 +228,7 @@ class MotionAGFormerBlock(nn.Module):
         x: tensor with shape [B, T, J, C]
         """
         if self.hierarchical:
-            B, T, J, C = x.shape
+            _B, _T, _J, C = x.shape
             x_attn, x_graph = x[..., : C // 2], x[..., C // 2 :]
 
             x_attn = self.att_temporal(self.att_spatial(x_attn))
@@ -420,9 +420,9 @@ class MotionAGFormer(nn.Module):
 
 
 def _test():
-    import warnings
+    import warnings  # noqa: PLC0415
 
-    from torchprofile import profile_macs
+    from torchprofile import profile_macs  # noqa: PLC0415
 
     warnings.filterwarnings("ignore")
     b, c, t, j = 1, 3, 27, 17
@@ -450,7 +450,7 @@ def _test():
     for _ in range(10):
         _ = model(random_x)
 
-    import time
+    import time  # noqa: PLC0415
 
     num_iterations = 100
     # Measure the inference time for 'num_iterations' iterations

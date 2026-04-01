@@ -3,7 +3,7 @@
 
 H3.6M Architecture:
     Uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: H36MExtractor (YOLOv8-Pose backend)
+    2D extraction: H36MExtractor (YOLO26-Pose backend)
 
 Usage:
     python -m skating_biomechanics_ml.cli analyze video.mp4 --element waltz_jump
@@ -17,18 +17,17 @@ import sys
 import traceback
 from pathlib import Path
 
-from . import normalizer
+from .analysis import element_defs
 from .pipeline import AnalysisPipeline
-from .pose_estimation import H36MExtractor
+from .pose_estimation import H36MExtractor, normalizer
+from .references import reference_builder, reference_store
+from .types import ElementPhase, ReferenceData
+from .utils.video import get_video_meta
 
 PoseNormalizer = normalizer.PoseNormalizer
-from . import element_defs, reference_builder, reference_store
-
 ReferenceBuilder = reference_builder.ReferenceBuilder
 ReferenceStore = reference_store.ReferenceStore
 get_element_def = element_defs.get_element_def
-from .types import ElementPhase, ReferenceData
-from .video import get_video_meta
 
 
 def cmd_analyze(args: argparse.Namespace) -> int:
@@ -197,9 +196,9 @@ def cmd_segment(args: argparse.Namespace) -> int:
         # Export segments as references if output-dir specified
         if args.export_dir:
             # Use H3.6M extractor
-            from .person_detector import PersonDetector
+            from .person_detector import PersonDetector  # noqa: PLC0415
 
-            detector = PersonDetector(model_size="n", confidence=0.5)
+            PersonDetector(model_size="n", confidence=0.5)
             extractor = H36MExtractor(output_format="normalized")
             norm = PoseNormalizer(target_spine_length=0.4)
 
@@ -221,7 +220,7 @@ def cmd_segment(args: argparse.Namespace) -> int:
 
                 # Create phases if not available
                 if segment.phases is None:
-                    from .types import ElementPhase
+                    from .types import ElementPhase  # noqa: PLC0415
 
                     segment_phases = ElementPhase(
                         name=segment.element_type,
@@ -270,10 +269,10 @@ def main() -> None:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Примеры:
-  # Анализировать видео с тройкой
+  # Анализировать видео \u0441 тройкой
   %(prog)s analyze my_skating.mp4 --element three_turn
 
-  # Анализировать прыжок с сохранением отчёта
+  # Анализировать прыжок \u0441 сохранением отчёта
   %(prog)s analyze jump.mp4 --element waltz_jump --output report.txt
 
   # Создать референс из экспертного видео
@@ -283,7 +282,7 @@ def main() -> None:
   %(prog)s segment coach_tutorial.mp4 --export-dir data/references
 
 Архитектура:
-  2D Pose: YOLOv8-Pose → H3.6M 17-keypoint format
+  2D Pose: YOLO26-Pose → H3.6M 17-keypoint format
   3D Pose: MotionAGFormer-S (59MB) or TCPFormer (422MB)
         """,
     )
@@ -317,12 +316,12 @@ def main() -> None:
         "--reference-dir",
         type=Path,
         default=None,
-        help="Директория с референсами (data/references)",
+        help="Директория с референсами (data/references)",  # noqa: RUF001
     )
     analyze_parser.add_argument(
         "--no-detect",
         action="store_true",
-        help="Пропустить детекцию (для видео с одним человеком)",
+        help="Пропустить детекцию (для видео с одним человеком)",  # noqa: RUF001
     )
     analyze_parser.add_argument(
         "--output",

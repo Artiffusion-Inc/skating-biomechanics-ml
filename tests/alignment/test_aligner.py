@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from src.aligner import MotionAligner
+from src.alignment.aligner import MotionAligner
 from src.types import ElementPhase
 
 

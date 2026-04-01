@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from dtw import dtw
 
-from .types import ElementPhase, NormalizedPose
+from ..types import ElementPhase, NormalizedPose
 
 if TYPE_CHECKING:
     from dtw import DTW

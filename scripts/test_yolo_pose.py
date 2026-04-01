@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
-Quick test script for YOLOv11-Pose as alternative to BlazePose.
+Quick test script for YOLO26-Pose as alternative to BlazePose.
 
-This script tests YOLOv11-Pose availability and basic functionality.
+This script tests YOLO26-Pose availability and basic functionality.
 """
 
 import sys
@@ -14,24 +14,25 @@ sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 
 
 def test_yolo_pose():
-    """Test YOLOv11-Pose installation and basic usage."""
+    """Test YOLO26-Pose installation and basic usage."""
     print("=" * 60)
-    print("Testing YOLOv11-Pose")
+    print("Testing YOLO26-Pose")
     print("=" * 60)
 
     # Test 1: Import
     print("\n[Test 1] Importing ultralytics...")
     try:
-        from ultralytics import YOLO
+        from ultralytics import YOLO  # noqa: PLC0415
+
         print("✓ ultralytics imported successfully")
     except ImportError as e:
         print(f"✗ Failed to import: {e}")
         return False
 
     # Test 2: Load model
-    print("\n[Test 2] Loading YOLOv11n-Pose model...")
+    print("\n[Test 2] Loading YOLO26n-Pose model...")
     try:
-        model = YOLO('yolov11n-pose.pt')
+        model = YOLO("yolo26n-pose.pt")
         print(f"✓ Model loaded: {type(model).__name__}")
     except Exception as e:
         print(f"✗ Failed to load model: {e}")
@@ -40,7 +41,8 @@ def test_yolo_pose():
     # Test 3: Create dummy image
     print("\n[Test 3] Testing inference on dummy image...")
     try:
-        import numpy as np
+        import numpy as np  # noqa: PLC0415
+
         test_image = np.random.randint(0, 255, (480, 640, 3), dtype=np.uint8)
 
         start = time.time()
@@ -57,7 +59,8 @@ def test_yolo_pose():
             print(f"  Persons detected: {num_persons}")
     except Exception as e:
         print(f"✗ Inference failed: {e}")
-        import traceback
+        import traceback  # noqa: PLC0415
+
         traceback.print_exc()
         return False
 
@@ -84,20 +87,20 @@ def test_yolo_pose():
 
 
 def test_with_video(video_path: str):
-    """Test YOLOv11-Pose with actual video file."""
+    """Test YOLO26-Pose with actual video file."""
     print(f"\n{'=' * 60}")
     print(f"Testing with video: {video_path}")
-    print('=' * 60)
+    print("=" * 60)
 
     if not Path(video_path).exists():
         print(f"✗ Video file not found: {video_path}")
         return False
 
-    import cv2
-    from ultralytics import YOLO
+    import cv2  # noqa: PLC0415
+    from ultralytics import YOLO  # noqa: PLC0415
 
     # Load model
-    model = YOLO('yolov11n-pose.pt')
+    model = YOLO("yolo26n-pose.pt")
 
     # Get video info
     cap = cv2.VideoCapture(video_path)
@@ -116,7 +119,7 @@ def test_with_video(video_path: str):
     results = model(video_path, verbose=False, stream=True)
 
     poses = []
-    for i, result in enumerate(results):
+    for _i, result in enumerate(results):
         if result.keypoints is not None and len(result.keypoints.xy) > 0:
             kp = result.keypoints.xy.cpu().numpy()[0]
             poses.append(kp)
@@ -126,7 +129,9 @@ def test_with_video(video_path: str):
     if len(poses) > 0:
         print("\n✓ Successfully processed video")
         print(f"  Frames with poses: {len(poses)}/{frame_count}")
-        print(f"  Processing time: {total_time:.1f}s ({total_time/frame_count*1000:.1f} ms/frame)")
+        print(
+            f"  Processing time: {total_time:.1f}s ({total_time / frame_count * 1000:.1f} ms/frame)"
+        )
         print(f"  Pose shape: {poses[0].shape} (should be (17, 2))")
 
         # Show sample pose
@@ -143,13 +148,10 @@ def test_with_video(video_path: str):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Test YOLOv11-Pose")
+    parser = argparse.ArgumentParser(description="Test YOLO26-Pose")
     parser.add_argument("--video", type=str, help="Test with specific video file")
     args = parser.parse_args()
 
-    if args.video:
-        success = test_with_video(args.video)
-    else:
-        success = test_yolo_pose()
+    success = test_with_video(args.video) if args.video else test_yolo_pose()
 
     sys.exit(0 if success else 1)

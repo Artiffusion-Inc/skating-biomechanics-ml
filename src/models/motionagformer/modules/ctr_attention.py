@@ -1,3 +1,5 @@
+import contextlib
+
 import torch
 from torch import nn
 from torch.autograd import Variable
@@ -84,14 +86,10 @@ class CTRAttention(nn.Module):
 
         for i in range(self.n_frames):
             for j in range(self.temporal_connection_length + 1):
-                try:
+                with contextlib.suppress(IndexError):
                     attn[i, i + j] = 1
-                except IndexError:  # next j frame does not exist
-                    pass
-                try:
+                with contextlib.suppress(IndexError):
                     attn[i, i - j] = 1
-                except IndexError:  # previous j frame does not exist
-                    pass
 
         if self.adaptive:
             return nn.Parameter(attn)
@@ -99,7 +97,7 @@ class CTRAttention(nn.Module):
             return Variable(attn, requires_grad=False)
 
     def forward(self, x):
-        B, T, J, C = x.shape
+        B, T, J, _C = x.shape
 
         qkv = (
             self.qkv(x)

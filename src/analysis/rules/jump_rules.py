@@ -3,7 +3,7 @@
 These rules generate specific Russian recommendations for common jump errors.
 """
 
-from .types import RecommendationRule
+from ...types import RecommendationRule
 
 
 def _is_bad(value: float, ref_range: tuple[float, float]) -> bool:

@@ -68,7 +68,7 @@ class AthletePose3DExtractor:
         # Simple biomechanics estimator (fallback)
         self._simple_estimator = Biomechanics3DEstimator() if self.use_simple else None
 
-    def _load_model(self) -> torch.nn.Module:
+    def _load_model(self) -> torch.nn.Module:  # noqa: PLR0912, PLR0915
         """Load the 3D pose model (MotionAGFormer or TCPFormer)."""
         if self._model_loaded:
             return self.model  # type: ignore
@@ -77,8 +77,8 @@ class AthletePose3DExtractor:
             raise FileNotFoundError(f"Model not found: {self.model_path}")
 
         # Import models from our models directory
-        import sys
-        from pathlib import Path
+        import sys  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
 
         # Add models directory to path
         models_dir = Path(__file__).parent.parent / "models"
@@ -94,7 +94,8 @@ class AthletePose3DExtractor:
 
         # Choose model class based on type
         if self.model_type == "tcpformer":
-            from tcpformer import MemoryInducedTransformer
+            from tcpformer import MemoryInducedTransformer  # noqa: PLC0415
+
             ModelClass = MemoryInducedTransformer
             # TCPFormer uses 3 input channels (x, y, confidence)
             dim_in = 3
@@ -103,7 +104,8 @@ class AthletePose3DExtractor:
             dim_feat = 128
         else:
             # Default to MotionAGFormer
-            from motionagformer import MotionAGFormer
+            from motionagformer import MotionAGFormer  # noqa: PLC0415
+
             ModelClass = MotionAGFormer
             # MotionAGFormer also uses 3 input channels (x, y, confidence)
             dim_in = 3

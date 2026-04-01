@@ -3,7 +3,7 @@
 import numpy as np
 from numpy.typing import NDArray
 
-from .types import FrameKeypoints, H36Key, NormalizedPose, TimeSeries
+from ..types import FrameKeypoints, H36Key, NormalizedPose, TimeSeries
 
 
 def angle_3pt(a: NDArray[np.float64], b: NDArray[np.float64], c: NDArray[np.float64]) -> float:
@@ -87,11 +87,7 @@ def normalize_poses(
         spine_vector = centered[shoulder_idx] - centered[hip_idx]
         spine_length = np.linalg.norm(spine_vector)
 
-        if spine_length < 1e-6:
-            # Degenerate case: use identity scale
-            scale = 1.0
-        else:
-            scale = target_spine_length / spine_length
+        scale = 1.0 if spine_length < 1e-6 else target_spine_length / spine_length
 
         normalized[frame_idx] = centered * scale
 
@@ -153,7 +149,7 @@ def calculate_center_of_mass(poses: NormalizedPose, frame_idx: int) -> float:
 
     Uses anthropometric segment mass ratios from Dempster (1955) and
     Zatsiorsky (2002). The CoM is the weighted average of body segment
-    positions: CoM = (1/M) × Σ(mᵢ × pᵢ)
+    positions: CoM = (1/M) * sum(m_i * p_i)
 
     This provides a physics-accurate measure of jump height, independent
     of landing pose. The hip-only method has 60% error for low jumps due

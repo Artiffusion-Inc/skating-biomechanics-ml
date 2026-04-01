@@ -4,6 +4,8 @@ This module defines all core data structures that flow between pipeline stages.
 Types are annotated for mypy strict mode compatibility.
 """
 
+import json
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from enum import Enum, IntEnum
 from pathlib import Path
@@ -105,17 +107,17 @@ class BladeType(Enum):
     """
 
     # Edge types
-    INSIDE = "inside"  # Внутреннее ребро (inside edge)
-    OUTSIDE = "outside"  # Наружное ребро (outside edge)
-    FLAT = "flat"  # Плоскость лезвия (flat)
+    INSIDE = "inside"  # inside edge
+    OUTSIDE = "outside"  # outside edge
+    FLAT = "flat"  # blade flat
 
     # Blade zone types
-    TOE_PICK = "toe_pick"  # Зубец (toe pick) - передняя часть лезвия
-    ROCKER = "rocker"  # Рокер (rocker) - средняя часть, дуга лезвия
-    HEEL = "heel"  # Пятка (heel) - задняя часть (редко используется)
+    TOE_PICK = "toe_pick"  # front of blade
+    ROCKER = "rocker"  # middle arc
+    HEEL = "heel"  # rear (rarely used)
 
     # Fallback
-    UNKNOWN = "unknown"  # Не удалось определить
+    UNKNOWN = "unknown"  # undetermined
 
 
 class MotionDirection(Enum):
@@ -132,7 +134,7 @@ class MotionDirection(Enum):
     DIAGONAL_RIGHT = "diagonal_right"  # Диагональ вправо-вперёд
     ROTATION_LEFT = "rotation_left"  # Вращение влево
     ROTATION_RIGHT = "rotation_right"  # Вращение вправо
-    STATIONARY = "stationary"  # На месте (спираль, шаги на месте)
+    STATIONARY = "stationary"  # in-place (spin, steps in place)
 
 
 @dataclass
@@ -514,7 +516,7 @@ class AnalysisReport:
     blade_summary_right: dict[str, Any] = field(default_factory=dict)
     physics: dict[str, Any] = field(default_factory=dict)
 
-    def format(self) -> str:
+    def format(self) -> str:  # noqa: PLR0912
         """Format report as readable Russian text."""
         lines = [
             "=" * 60,
@@ -532,7 +534,7 @@ class AnalysisReport:
         ]
 
         for metric in self.metrics:
-            status = "✓ ОК" if metric.is_good else "✗ ПЛОХО"
+            status = "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
             lines.append(
                 f"  {metric.name}: {metric.value:.2f} {metric.unit} [{status}] "
                 f"(референс: {metric.reference_range[0]:.2f}-{metric.reference_range[1]:.2f})"
@@ -541,7 +543,7 @@ class AnalysisReport:
         lines.extend(
             [
                 "",
-                "--- Сходство с референсом ---",
+                "--- \u0421\u0445\u043e\u0434\u0441\u0442\u0432\u043e \u0441 \u0440\u0435\u0444\u0435\u0440\u0435\u043d\u0441\u043e\u043c ---",
                 f"  DTW-расстояние: {self.dtw_distance:.3f} (0 = идеально)",
                 "",
                 "--- РЕКОМЕНДАЦИИ ---",
@@ -593,10 +595,10 @@ class AnalysisReport:
                 lines.append(f"  Высота прыжка (CoM): {h:.2f} м")
             if "flight_time" in self.physics:
                 t = self.physics["flight_time"]
-                lines.append(f"  Время полёта: {t:.2f} с")
+                lines.append(f"  \u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043b\u0451\u0442\u0430: {t:.2f} \u0441")
             if "takeoff_velocity" in self.physics:
                 v = self.physics["takeoff_velocity"]
-                lines.append(f"  Скорость отрыва: {v:.2f} м/с")
+                lines.append(f"  \u0421\u043a\u043e\u0440\u043e\u0441\u0442\u044c \u043e\u0442\u0440\u044b\u0432\u0430: {v:.2f} \u043c/\u0441")
             if "avg_inertia" in self.physics:
                 i = self.physics["avg_inertia"]
                 lines.append(f"  Средний момент инерции: {i:.3f} кг·м²")
@@ -740,8 +742,6 @@ class SegmentationResult:
 
     def export_segments_json(self, output_path: Path) -> None:
         """Export segmentation results as JSON for verification/editing."""
-        import json
-
         data = {
             "video_path": str(self.video_path),
             "method": self.method,
@@ -764,13 +764,11 @@ class SegmentationResult:
             ],
         }
 
-        with open(output_path, "w") as f:
+        with output_path.open("w") as f:
             json.dump(data, f, indent=2)
 
 
 # Recommendation system types
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
 
 
 @dataclass(frozen=True)

@@ -37,9 +37,7 @@ class TestPhysicsEngineInit:
 
         for name, ratio in SEGMENT_MASS_RATIOS.items():
             expected = ratio * 100.0
-            np.testing.assert_almost_equal(
-                engine.segment_masses[name], expected, decimal=2
-            )
+            np.testing.assert_almost_equal(engine.segment_masses[name], expected, decimal=2)
 
 
 class TestCalculateCenterOfMass:
@@ -131,7 +129,7 @@ class TestCalculateAngularMomentum:
         assert L.shape == (100,)
 
     def test_angular_momentum_proportional_to_omega(self):
-        """Test L = I × ω relationship."""
+        """Test L = I x omega relationship."""
         engine = PhysicsEngine()
         poses_3d = np.random.rand(10, 17, 3).astype(np.float32)
 
@@ -166,8 +164,8 @@ class TestFitJumpTrajectory:
         # Create a realistic arc trajectory with proper CoM variation
         poses_3d = np.zeros((100, 17, 3), dtype=np.float32)
         # Simulate jump: Y goes up then down
-        frames = np.arange(100)
-        takeoff, peak, landing = 20, 50, 80
+        np.arange(100)
+        takeoff, _peak, landing = 20, 50, 80
         # Parabolic arc: h(t) = h0 + v0*t - 0.5*g*t^2
         t = np.arange(landing - takeoff) / 30.0  # Time in seconds
         # Create a proper parabola with meaningful values

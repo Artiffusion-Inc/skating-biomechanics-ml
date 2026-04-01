@@ -177,7 +177,7 @@ def project_3d_to_2d(
         result = np.stack([x_2d, y_2d], axis=-1).astype(np.int32)
 
         # Reshape to original shape (with 2 instead of 3)
-        new_shape = original_shape[:-1] + (2,)
+        new_shape = (*original_shape[:-1], 2)
         result = result.reshape(new_shape)
 
         return result
@@ -236,8 +236,6 @@ def project_3d_to_normalized(
 
         scale = focal_length / depth
 
-        # Project to normalized coordinates
-        # Center is (0.5, 0.5)
         x_norm = 0.5 + x * scale / 1920
         y_norm = 0.5 + y * scale / 1080
 
@@ -252,7 +250,7 @@ def project_3d_to_normalized(
 def get_axis_endpoints(
     center: Position2D,
     length: int = 50,
-    origin_3d: Position3D | None = None,
+    origin_3d: Position3D | None = None,  # noqa: ARG001
 ) -> dict[str, tuple[Position2D, Position2D]]:
     """Get start and end points for spatial axes.
 
@@ -283,7 +281,7 @@ def get_axis_endpoints(
 def get_axis_endpoints_3d(
     origin: Position3D,
     length: float = 0.5,
-    camera_distance: float = default_camera_distance,
+    camera_distance: float = default_camera_distance,  # noqa: ARG001
 ) -> dict[str, tuple[Position3D, Position3D]]:
     """Get 3D endpoints for spatial axes.
 

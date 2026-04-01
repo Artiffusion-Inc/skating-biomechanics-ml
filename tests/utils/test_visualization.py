@@ -61,7 +61,9 @@ class TestVelocityLayer:
 
         # First frame (no previous) — should not crash
         ctx1 = LayerContext(
-            frame_width=640, frame_height=480, fps=25.0,
+            frame_width=640,
+            frame_height=480,
+            fps=25.0,
             pose_2d=np.random.rand(17, 2).astype(np.float32),
             normalized=True,
         )
@@ -70,7 +72,9 @@ class TestVelocityLayer:
 
         # Second frame — should draw velocity
         ctx2 = LayerContext(
-            frame_width=640, frame_height=480, fps=25.0,
+            frame_width=640,
+            frame_height=480,
+            fps=25.0,
             pose_2d=np.random.rand(17, 2).astype(np.float32),
             normalized=True,
         )
@@ -83,7 +87,9 @@ class TestVelocityLayer:
         layer = VelocityLayer()
 
         ctx = LayerContext(
-            frame_width=640, frame_height=480, fps=25.0,
+            frame_width=640,
+            frame_height=480,
+            fps=25.0,
             pose_2d=np.random.rand(17, 2).astype(np.float32),
             normalized=True,
         )
@@ -99,9 +105,11 @@ class TestTrailLayer:
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
         layer = TrailLayer(length=10)
 
-        for i in range(10):
+        for _i in range(10):
             ctx = LayerContext(
-                frame_width=640, frame_height=480, fps=25.0,
+                frame_width=640,
+                frame_height=480,
+                fps=25.0,
                 pose_2d=np.random.rand(17, 2).astype(np.float32),
                 normalized=True,
             )
@@ -119,7 +127,9 @@ class TestBladeLayer:
         layer = BladeLayer()
 
         ctx = LayerContext(
-            frame_width=640, frame_height=480, fps=25.0,
+            frame_width=640,
+            frame_height=480,
+            fps=25.0,
         )
         result = layer.render(frame, ctx)
         assert result.shape == (480, 640, 3)

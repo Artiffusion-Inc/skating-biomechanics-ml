@@ -327,7 +327,7 @@ def draw_blade_indicator_hud(
 
     # Draw blade type label
     label = blade_state.blade_type.name.lower()
-    (text_width, text_height), _ = cv2.getTextSize(
+    (text_width, _text_height), _ = cv2.getTextSize(
         label,
         cv2.FONT_HERSHEY_SIMPLEX,
         font_scale,
@@ -376,7 +376,7 @@ def draw_blade_indicator_hud(
 
 def _get_blade_color(blade_type) -> tuple[int, int, int]:
     """Get color for blade type."""
-    from src.types import BladeType
+    from src.types import BladeType  # noqa: PLC0415
 
     color_map = {
         BladeType.INSIDE: blade_inside_color,
@@ -407,7 +407,7 @@ def _draw_direction_arrow(
         thickness: Line thickness.
         color: BGR color.
     """
-    import math
+    import math  # noqa: PLC0415
 
     # Convert angle to radians
     angle_rad = math.radians(angle)

@@ -36,7 +36,7 @@ The system has been migrated to use H3.6M 17-keypoint 3D format as the primary p
 ```
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌──────────────┐
 │   Video     │ -> │  Detection   │ -> │  Pose 3D    │ -> │ Normalized   │
-│   Input     │    │  (YOLOv11n)   │    │  (H3.6M)     │    │   Poses       │
+│   Input     │    │  (YOLO26n)    │    │  (H3.6M)     │    │   Poses       │
 └─────────────┘    └──────────────┘    └─────────────┘    └──────────────┘
                                                                   v
 ┌──────────────────────────────────────────────────────────────────────┐
@@ -365,7 +365,7 @@ from src.pose_estimation import H36MExtractor
 from src.pose_3d import AthletePose3DExtractor
 from src.analysis import PhysicsEngine
 
-# Extract H3.6M 17-keypoint poses (YOLOv11-Pose backend)
+# Extract H3.6M 17-keypoint poses (YOLO26-Pose backend)
 extractor_2d = H36MExtractor(conf_threshold=0.5, output_format="normalized")
 poses_2d = extractor_2d.extract_video(video_path)  # (N, 17, 2)
 
@@ -467,11 +467,90 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - Target: 80% accuracy
     - **Estimated:** 1-2 weeks (data + training)
 
+### Phase E: Pose Estimation Upgrade (2026-03-31)
+
+📚 **Detailed Research:** See `research/RESEARCH_POSE_TOOLS_2026-03-31.md`
+
+11. **YOLO26-Pose Upgrade** ✅ DONE (2026-04-01)
+    - Migrated from YOLOv8/YOLO11 to YOLO26-Pose across all modules
+    - NMS-free inference, better occlusion handling
+    - All files standardized on `yolo26{size}-pose.pt`
+    - Files: `src/pose_estimation/h36m_extractor.py`, `src/pose_estimation/yolo_extractor.py`, `scripts/`
+
+12. **Standardize YOLO Model** ✅ DONE (2026-04-01)
+    - Both extractors now use `yolo26{size}-pose.pt`
+    - Resolved inconsistency between yolov8 and yolov11 references
+
+13. **rtmlib Evaluation** 📝 MEDIUM
+    - Standalone ONNX inference (no mmpose/mmcv needed)
+    - `body_with_feet` model: 26 keypoints (HALPE26, includes foot keypoints)
+    - Compare RTMPose vs YOLO for skating detection quality
+    - Need HALPE26→H3.6M keypoint mapping layer
+    - Files: new `src/pose_estimation/rtmlib_extractor.py`
+    - **Estimated:** 1-2 days
+
+14. **Sports2D Angle Integration** 📝 LOW
+    - Borrow joint/segment angle formulas from Sports2D
+    - 12 joint angles + 15 segment angles with biomechanics conventions
+    - Hampel outlier rejection, Butterworth/Kalman filtering
+    - Could improve JointAngleLayer accuracy without changing model
+    - **Estimated:** 1 day (formulas only, no full integration)
+
+15. **Monitor Pose3DM-L** 📝 WATCH
+    - New SOTA 3D lifter: 37.9mm MPJPE (vs MotionAGFormer 38.4mm)
+    - 60% less compute (127M vs 322M MACs), 7.4M params
+    - **Code not released yet** (github.com/Reus3237/Pose3DM returns 404)
+    - FTV regularization technique could be adopted independently
+    - **Estimated:** 0 hours now, 1-2 days when code available
+
+16. **FS-Jump3D Fine-tuning** 📝 LOW
+    - Real skating 3D pose data (4 skaters x 7 jumps, H3.6M 17kp)
+    - Could improve our 3D lifter on skating-specific poses
+    - **Estimated:** 2-3 days (download + fine-tune + evaluate)
+
+---
+
+## Kinovea-like Comparison Tool (2026-03-31) ✅ NEW
+
+**Status:** Implemented and tested on DJI 4K video
+
+17. **Dual-Video Comparison** ✅ DONE
+    - `scripts/compare_videos.py` — CLI tool
+    - `src/visualization/comparison.py` — ComparisonRenderer module
+    - Side-by-side and overlay modes
+    - Configurable overlays: skeleton, axis, angles, timer
+
+18. **Vertical Axis Layer** ✅ DONE
+    - Dashed vertical reference line + spine axis + tilt angle arc
+    - `src/visualization/layers/vertical_axis_layer.py`
+
+19. **Joint Angle Layer** ✅ DONE
+    - Angle arcs at 8 joints (knees, elbows, hips, shoulders)
+    - Color-coded: green (good range), yellow (warning), red (bad)
+    - `src/visualization/layers/joint_angle_layer.py`
+
+20. **Timer Layer** ✅ DONE
+    - mm:ss.ms elapsed time in top-right corner
+    - `src/visualization/layers/timer_layer.py`
+
+21. **Pose Validation** ✅ DONE
+    - Reject false positives by spread threshold (spread_x < 0.10 or spread_y < 0.15)
+    - Gap-based filling (max 10 consecutive frames)
+    - Fixes skeleton drawing on non-person footage
+
+**Kinovea Alternatives Researched:**
+| Tool | Stars | Key Feature | Relevance |
+|------|-------|-------------|-----------|
+| **Pose2Sim** | 592 | Full 2D→3D→OpenSim pipeline | 🔥 HIGH |
+| **Sports2D** | 202 | Ready joint angles, foot keypoints | MEDIUM |
+| **SprintLab** | 32 | Sprint kinematics, YOLO-based | LOW (wrong sport) |
+
 ---
 
 ## Future Enhancements (Research Findings)
 
-📚 **Comprehensive Summary:** See `research/RESEARCH_SUMMARY_2026-03-28.md` for Exa + Gemini Deep Research (41 papers)
+📚 **Comprehensive Summary:** See `research/RESEARCH_SUMMARY_2026-03-28.md`
+📚 **Pose Tools Research:** See `research/RESEARCH_POSE_TOOLS_2026-03-31.md` for Exa + Gemini Deep Research (41 papers)
 
 ### Physics-Based Improvements (Gemini Recommendations)
 

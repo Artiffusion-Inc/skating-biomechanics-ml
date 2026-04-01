@@ -13,7 +13,7 @@ from typing import Final
 import numpy as np
 from numpy.typing import NDArray
 
-from .types import NormalizedPose
+from ..types import NormalizedPose
 
 
 @dataclass(frozen=True)

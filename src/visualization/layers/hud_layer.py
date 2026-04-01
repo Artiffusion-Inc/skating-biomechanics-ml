@@ -181,7 +181,7 @@ class DebugHUDLayer(Layer):
         x, y = self.position
 
         # Frame info
-        import cv2
+        import cv2  # noqa: PLC0415
 
         cv2.putText(
             frame,
