@@ -19,6 +19,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 from src.detection.blade_edge_detector_3d import BladeEdgeDetector3D
 from src.detection.spatial_reference import SpatialReferenceDetector
@@ -402,6 +403,7 @@ def main() -> int:
     # Process frames
     frame_idx = 0
     pose_idx = 0
+    pbar = tqdm(total=meta.num_frames, desc="Rendering", unit="frame", ncols=100)
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
@@ -521,10 +523,9 @@ def main() -> int:
 
         writer.write(frame)
         frame_idx += 1
+        pbar.update(1)
 
-        if frame_idx % 100 == 0:
-            print(f"  Processed {frame_idx}/{meta.num_frames} frames")
-
+    pbar.close()
     cap.release()
     writer.release()
 

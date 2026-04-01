@@ -25,6 +25,7 @@ from pathlib import Path
 
 import cv2
 import numpy as np
+from tqdm import tqdm
 
 try:
     from rtmlib import BodyWithFeet, PoseTracker
@@ -177,7 +178,7 @@ class RTMPoseExtractor:
             raise RuntimeError(f"Failed to open video: {video_path}")
 
         try:
-            for frame_idx in range(num_frames):
+            for frame_idx in tqdm(range(num_frames), desc="Extracting poses", unit="frame", ncols=100):
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -406,7 +407,7 @@ class RTMPoseExtractor:
             raise RuntimeError(f"Failed to open video: {video_path}")
 
         try:
-            for frame_idx in range(num_frames):
+            for frame_idx in tqdm(range(num_frames), desc="Previewing persons", unit="frame", ncols=100):
                 ret, frame = cap.read()
                 if not ret:
                     break
