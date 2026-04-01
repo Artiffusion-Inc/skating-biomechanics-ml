@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-from src.pose_estimation import H36MExtractor
+from src.pose_estimation import H36MExtractor, RTMPoseExtractor
 from src.utils.smoothing import PoseSmoother, get_skating_optimized_config
 from src.utils.video import get_video_meta
 from src.visualization import draw_skeleton
@@ -91,34 +91,17 @@ class ComparisonRenderer:
         self.layers = _build_layers(self.config.overlays)
         self._sorted_layers = sorted(self.layers, key=lambda ly: ly.z_index)
 
-    def _create_extractor(self, device: str) -> H36MExtractor:
-        """Create H36MExtractor with GPU fallback to CPU.
-
-        Args:
-            device: Device string ('0' for GPU, 'cpu' for CPU).
-
-        Returns:
-            H36MExtractor configured for a working device.
-        """
-        if device in ("cpu", ""):
-            print("  Using device: cpu", flush=True)
-            return H36MExtractor(conf_threshold=0.3, output_format="normalized", device="cpu")
-
-        # Try GPU first, fall back to CPU on failure
-        print(f"  Trying device: {device} (GPU)...", flush=True)
+    def _create_extractor(self, device: str) -> RTMPoseExtractor:
+        """Create RTMPoseExtractor with GPU fallback to CPU."""
+        dev = "cuda" if device not in ("cpu", "") else "cpu"
         try:
-            extractor = H36MExtractor(conf_threshold=0.3, output_format="normalized", device=device)
-            # Force model load to detect CUDA errors early
-            _ = extractor.model
-            print(f"  GPU device {device} OK", flush=True)
+            print(f"  Trying device: {device} (GPU)...", flush=True)
+            extractor = RTMPoseExtractor(conf_threshold=0.3, device=dev)
             return extractor
-        except (RuntimeError, Exception) as exc:
-            logger.warning("GPU device %s failed: %s", device, exc)
-            print(
-                f"  WARNING: GPU device '{device}' failed ({exc}). Falling back to CPU.",
-                flush=True,
-            )
-            return H36MExtractor(conf_threshold=0.3, output_format="normalized", device="cpu")
+        except Exception as exc:
+            logger.warning("GPU failed: %s", exc)
+            print(f"  WARNING: GPU failed ({exc}). Falling back to CPU.", flush=True)
+            return RTMPoseExtractor(conf_threshold=0.3, device="cpu")
 
     # -- Pose caching --------------------------------------------------------
 
@@ -469,57 +452,25 @@ class ComparisonRenderer:
     def _extract_poses_streaming(
         self,
         video_path: Path,
-        extractor: H36MExtractor,
+        extractor: RTMPoseExtractor,
         target_w: int,
         target_h: int,
         max_frames: int = 0,
         start_frame: int = 0,
     ) -> list[np.ndarray]:
-        """Extract poses from video in streaming mode (constant memory)."""
-        cap = cv2.VideoCapture(str(video_path))
-        if cap is None or not cap.isOpened():
-            print(f"  WARNING: Cannot open video: {video_path}", flush=True)
-            return []
+        """Extract poses from video using RTMPoseExtractor."""
+        result = extractor.extract_video_tracked(str(video_path))
+        poses_3d = result.poses  # (N, 17, 3) normalized
 
+        if max_frames > 0:
+            poses_3d = poses_3d[:max_frames]
         if start_frame > 0:
-            cap.set(cv2.CAP_PROP_POS_FRAMES, start_frame)
+            poses_3d = poses_3d[start_frame:]
 
+        # Convert to list of (17, 2) arrays
         poses: list[np.ndarray] = []
-        last_pose: np.ndarray | None = None
-        gap_count = 0
-        max_gap = 10
+        for i in range(len(poses_3d)):
+            pose_2d = poses_3d[i, :, :2]
+            poses.append(pose_2d)
 
-        limit = max_frames if max_frames > 0 else 100000
-        for frame_idx in range(limit):
-            ret, frame = cap.read()
-            if not ret:
-                break
-
-            frame = cv2.resize(frame, (target_w, target_h))
-            kp = extractor.extract_frame(frame)
-
-            if kp is not None:
-                pose_2d = kp[:, :2] if kp.shape[-1] > 2 else kp
-
-                # Reject false positives with too-small spread
-                spread_x = pose_2d[:, 0].max() - pose_2d[:, 0].min()
-                spread_y = pose_2d[:, 1].max() - pose_2d[:, 1].min()
-                if spread_x < 0.10 or spread_y < 0.15:
-                    gap_count += 1
-                    if gap_count <= max_gap and last_pose is not None:
-                        poses.append(last_pose)
-                    continue
-
-                poses.append(pose_2d)
-                last_pose = pose_2d
-                gap_count = 0
-            else:
-                gap_count += 1
-                if gap_count <= max_gap and last_pose is not None:
-                    poses.append(last_pose)
-
-            if frame_idx % 200 == 0:
-                print(f"    Extracted {len(poses)}/{frame_idx + 1} poses...", flush=True)
-
-        cap.release()
         return poses
