@@ -176,6 +176,7 @@ def main() -> int:
                 conf_threshold=0.1,
                 det_frequency=8,  # detect every 8 frames, track in between
                 frame_skip=8,  # only run pose estimation every 8th frame (8x faster)
+                device="cuda",  # GPU acceleration (7x faster than CPU)
             )
         else:
             extractor = H36MExtractor(
