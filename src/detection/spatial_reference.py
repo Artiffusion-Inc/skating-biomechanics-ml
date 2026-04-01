@@ -390,3 +390,153 @@ def compensate_angles_for_camera(
         Compensated angles (true angles relative to vertical)
     """
     return angles - camera_roll
+
+
+def estimate_pose_sequence(
+    video_path: str,
+    interval: int = 30,
+    fps: float = 30.0,
+) -> list[tuple[int, CameraPose]]:
+    """Estimate camera pose at regular intervals throughout a video.
+
+    Opens the video, samples frames at the given cadence, and runs
+    SpatialReferenceDetector.estimate_pose() on each sampled frame.
+    Camera pose estimates are smoothed with a One-Euro Filter for
+    temporal consistency.
+
+    Args:
+        video_path: Path to the video file.
+        interval: Sample every N-th frame.
+        fps: Video frame rate (used for One-Euro Filter timing).
+
+    Returns:
+        List of (frame_idx, CameraPose) tuples. Only includes frames
+        where person detection confidence > 0.1.
+    """
+    from ..utils.smoothing import OneEuroFilter
+
+    detector = SpatialReferenceDetector()
+
+    # One-Euro Filters for roll/pitch/yaw smoothing
+    roll_filter = OneEuroFilter(freq=fps / interval, min_cutoff=1.0, beta=0.01)
+    pitch_filter = OneEuroFilter(freq=fps / interval, min_cutoff=1.0, beta=0.01)
+    yaw_filter = OneEuroFilter(freq=fps / interval, min_cutoff=1.0, beta=0.01)
+
+    cap = cv2.VideoCapture(str(video_path))
+    if not cap.isOpened():
+        return []
+
+    results: list[tuple[int, CameraPose]] = []
+    frame_idx = 0
+    sample_idx = 0
+
+    try:
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            if frame_idx % interval == 0:
+                pose = detector.estimate_pose(frame)
+
+                if pose.confidence > 0.1:
+                    # Apply One-Euro smoothing
+                    t = sample_idx / (fps / interval) if fps > 0 else float(sample_idx)
+                    smoothed_roll = roll_filter.filter_sample(t, pose.roll)
+                    smoothed_pitch = pitch_filter.filter_sample(t, pose.pitch)
+                    smoothed_yaw = yaw_filter.filter_sample(t, pose.yaw)
+
+                    results.append((
+                        frame_idx,
+                        CameraPose(
+                            roll=smoothed_roll,
+                            pitch=smoothed_pitch,
+                            yaw=smoothed_yaw,
+                            confidence=pose.confidence,
+                            source=pose.source,
+                        ),
+                    ))
+                sample_idx += 1
+
+            frame_idx += 1
+    finally:
+        cap.release()
+
+    return results
+
+
+def compensate_poses_per_frame(
+    poses: np.ndarray,
+    camera_poses: list[tuple[int, CameraPose]],
+    frame_indices: np.ndarray | None = None,
+    video_width: int = 1920,
+    video_height: int = 1080,
+) -> np.ndarray:
+    """Compensate normalized poses using per-frame camera estimates.
+
+    For each frame, the nearest camera pose estimate is used to apply
+    roll compensation.  Camera poses are linearly interpolated between
+    sparse samples for smooth transitions.
+
+    Args:
+        poses: Normalized poses (N, 17, 3) with x, y, confidence.
+            May contain NaN values for missing frames.
+        camera_poses: List of (frame_idx, CameraPose) from
+            estimate_pose_sequence.
+        frame_indices: Optional array of frame indices corresponding to
+            each pose.  If None, assumes sequential 0..N-1.
+        video_width: Video width in pixels (unused, kept for API compat).
+        video_height: Video height in pixels (unused, kept for API compat).
+
+    Returns:
+        Compensated poses in normalized coordinates, same shape as input.
+        NaN frames are preserved unchanged.
+    """
+    if not camera_poses:
+        return poses.copy()
+
+    num_frames = poses.shape[0]
+    if frame_indices is None:
+        frame_indices = np.arange(num_frames)
+
+    # Build interpolated roll array for all frames
+    sample_indices = np.array([cp[0] for cp in camera_poses], dtype=float)
+    sample_rolls = np.array([cp[1].roll for cp in camera_poses], dtype=float)
+
+    # Linear interpolation of roll across all frames
+    target_indices = frame_indices.astype(float)
+    if len(sample_indices) >= 2:
+        interpolated_rolls = np.interp(
+            target_indices,
+            sample_indices,
+            sample_rolls,
+            left=sample_rolls[0],
+            right=sample_rolls[-1],
+        )
+    else:
+        # Only one sample -- use it everywhere
+        interpolated_rolls = np.full(num_frames, sample_rolls[0])
+
+    # Apply roll compensation per frame
+    compensated = poses.copy()
+    for i in range(num_frames):
+        roll_deg = interpolated_rolls[i]
+        if abs(roll_deg) < 0.01:
+            continue  # Skip near-identity transforms
+
+        roll_rad = np.deg2rad(roll_deg)
+        cos_r = np.cos(-roll_rad)
+        sin_r = np.sin(-roll_rad)
+
+        for j in range(poses.shape[1]):
+            x, y = compensated[i, j, 0], compensated[i, j, 1]
+            # Skip NaN keypoints
+            if np.isnan(x) or np.isnan(y):
+                continue
+            # Rotate around center (0.5, 0.5) in normalized space
+            dx = x - 0.5
+            dy = y - 0.5
+            compensated[i, j, 0] = cos_r * dx - sin_r * dy + 0.5
+            compensated[i, j, 1] = sin_r * dx + cos_r * dy + 0.5
+
+    return compensated
