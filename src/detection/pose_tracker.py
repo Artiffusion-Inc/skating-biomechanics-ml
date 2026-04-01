@@ -13,7 +13,6 @@ Based on:
 from dataclasses import dataclass
 
 import numpy as np
-from filterpy.kalman import KalmanFilter
 from scipy.optimize import linear_sum_assignment
 from scipy.spatial.distance import cosine
 
@@ -28,8 +27,9 @@ class Track:
         hits: Total number of detections associated.
         time_since_update: Frames since last detection update.
         state: Kalman filter state [x, y, vx, vy, a_x, a_y] for mid-hip.
+        covariance: Kalman filter covariance matrix (6x6).
         biometrics: Scale-invariant anatomical ratios for Re-ID.
-        hit streak: Consecutive detections (for track initialization).
+        hit_streak: Consecutive detections (for track initialization).
     """
 
     id: int
@@ -37,6 +37,7 @@ class Track:
     hits: int = 0
     time_since_update: int = 0
     state: np.ndarray | None = None
+    covariance: np.ndarray | None = None
     biometrics: dict[str, float] | None = None
     hit_streak: int = 0
 
@@ -56,7 +57,11 @@ class PoseTracker:
         min_hits: Min detections before track is confirmed.
         next_id: Counter for new track IDs.
         tracks: List of active Track objects.
-        kf: KalmanFilter for motion prediction (6-state).
+        F: State transition matrix (shared, immutable).
+        H: Observation matrix (shared, immutable).
+        Q: Process noise covariance (shared, immutable).
+        R: Measurement noise covariance (shared, immutable).
+        P0: Initial state covariance for new tracks.
     """
 
     def __init__(
@@ -79,11 +84,13 @@ class PoseTracker:
         self.fps = fps
         self.dt = 1.0 / fps
 
-        # Initialize Kalman filter [x, y, vx, vy, ax, ay]
-        self.kf = self._init_kalman_filter()
+        # Kalman filter parameters (shared, read-only during predict/update)
+        self.F, self.H, self.Q, self.R, self.P0 = self._init_kalman_params()
 
-    def _init_kalman_filter(self) -> KalmanFilter:
-        """Initialize 6-state Kalman filter for constant acceleration model.
+    def _init_kalman_params(
+        self,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+        """Initialize Kalman filter matrices for constant acceleration model.
 
         State vector: [x, y, vx, vy, ax, ay]
         - x, y: Mid-hip position (normalized coordinates)
@@ -91,40 +98,91 @@ class PoseTracker:
         - ax, ay: Acceleration
 
         Returns:
-            Initialized KalmanFilter.
+            Tuple of (F, H, Q, R, P0) matrices.
         """
-        kf = KalmanFilter(dim_x=6, dim_z=2)
+        dt = self.dt
 
         # State transition matrix (constant acceleration)
-        # x(t+dt) = x(t) + vx(t)*dt + 0.5*ax(t)*dt^2
-        dt = self.dt
-        kf.F = np.array(
+        F = np.array(
             [
-                [1, 0, dt, 0, 0.5 * dt**2, 0],  # x
-                [0, 1, 0, dt, 0, 0.5 * dt**2],  # y
-                [0, 0, 1, 0, dt, 0],  # vx
-                [0, 0, 0, 1, 0, dt],  # vy
-                [0, 0, 0, 0, 1, 0],  # ax
-                [0, 0, 0, 0, 0, 1],  # ay
+                [1, 0, dt, 0, 0.5 * dt**2, 0],
+                [0, 1, 0, dt, 0, 0.5 * dt**2],
+                [0, 0, 1, 0, dt, 0],
+                [0, 0, 0, 1, 0, dt],
+                [0, 0, 0, 0, 1, 0],
+                [0, 0, 0, 0, 0, 1],
             ]
         )
 
         # Measurement matrix (observe x, y only)
-        kf.H = np.array(
+        H = np.array(
             [
-                [1, 0, 0, 0, 0, 0],  # Observe x
-                [0, 1, 0, 0, 0, 0],  # Observe y
+                [1, 0, 0, 0, 0, 0],
+                [0, 1, 0, 0, 0, 0],
             ]
         )
 
-        # Noise covariance
-        kf.Q = np.eye(6) * 0.01  # Process noise
-        kf.R = np.eye(2) * 0.1  # Measurement noise
+        # Noise covariances
+        Q = np.eye(6) * 0.01  # Process noise
+        R = np.eye(2) * 0.1  # Measurement noise
+        P0 = np.eye(6) * 1.0  # Initial state covariance
 
-        # Initial state covariance
-        kf.P = np.eye(6) * 1.0
+        return F, H, Q, R, P0
 
-        return kf
+    @staticmethod
+    def _kalman_predict(
+        x: np.ndarray,
+        P: np.ndarray,
+        F: np.ndarray,
+        Q: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Kalman predict step on per-track state and covariance.
+
+        Args:
+            x: State vector (6, 1).
+            P: Covariance matrix (6, 6).
+            F: State transition matrix (6, 6).
+            Q: Process noise covariance (6, 6).
+
+        Returns:
+            Tuple of (predicted_state, predicted_covariance).
+        """
+        x_pred = F @ x
+        P_pred = F @ P @ F.T + Q
+        return x_pred, P_pred
+
+    @staticmethod
+    def _kalman_update(
+        x: np.ndarray,
+        P: np.ndarray,
+        z: np.ndarray,
+        H: np.ndarray,
+        R: np.ndarray,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Kalman update step on per-track state and covariance.
+
+        Args:
+            x: Predicted state vector (6, 1).
+            P: Predicted covariance matrix (6, 6).
+            z: Measurement vector (2, 1).
+            H: Observation matrix (2, 6).
+            R: Measurement noise covariance (2, 2).
+
+        Returns:
+            Tuple of (updated_state, updated_covariance).
+        """
+        # Innovation
+        y = z - H @ x
+        # Innovation covariance
+        S = H @ P @ H.T + R
+        # Kalman gain
+        K = P @ H.T @ np.linalg.inv(S)
+        # Updated state
+        x_upd = x + K @ y
+        # Updated covariance (Joseph form for numerical stability)
+        I_KH = np.eye(len(x)) - K @ H
+        P_upd = I_KH @ P @ I_KH.T + K @ R @ K.T
+        return x_upd, P_upd
 
     def update(
         self,
@@ -156,10 +214,9 @@ class PoseTracker:
         predicted_positions = []
         for track in self.tracks:
             if track.state is not None:
-                self.kf.x = track.state.copy()
-                self.kf.predict()
-                track.state = self.kf.x.copy()
-                # Extract x, y from column vector
+                track.state, track.covariance = self._kalman_predict(
+                    track.state, track.covariance, self.F, self.Q
+                )
                 predicted_positions.append([track.state[0, 0], track.state[1, 0]])
             else:
                 predicted_positions.append(np.zeros(2))
@@ -174,16 +231,18 @@ class PoseTracker:
         for track_idx, det_idx in matched:
             track = self.tracks[track_idx]
             mid_hip = mid_hips[det_idx]
+            z = np.array([[mid_hip[0]], [mid_hip[1]]])
 
-            # Update Kalman filter
             if track.state is None:
                 # Initialize state [x, y, vx, vy, ax, ay]
-                self.kf.x = np.array([[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]])
+                track.state = np.array(
+                    [[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]]
+                )
+                track.covariance = self.P0.copy()
             else:
-                self.kf.x = track.state.copy()
-
-            self.kf.update(np.array([[mid_hip[0]], [mid_hip[1]]]))
-            track.state = self.kf.x.copy()
+                track.state, track.covariance = self._kalman_update(
+                    track.state, track.covariance, z, self.H, self.R
+                )
 
             # Update track info
             track.hits += 1
@@ -199,18 +258,19 @@ class PoseTracker:
 
         # Create new tracks for unmatched detections
         for det_idx in unmatched_dets:
+            mid_hip = mid_hips[det_idx]
             new_track = Track(
                 id=self.next_id,
                 age=1,
                 hits=1,
                 time_since_update=0,
+                state=np.array(
+                    [[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]]
+                ),
+                covariance=self.P0.copy(),
                 biometrics=self._extract_biometrics(poses[det_idx]),
                 hit_streak=1,
             )
-            # Initialize state [x, y, vx, vy, ax, ay]
-            mid_hip = mid_hips[det_idx]
-            self.kf.x = np.array([[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]])
-            new_track.state = self.kf.x.copy()
 
             self.tracks.append(new_track)
             track_ids.append(self.next_id)
