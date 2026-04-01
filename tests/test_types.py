@@ -13,7 +13,9 @@ from src.types import (
     ElementPhase,
     H36Key,
     MetricResult,
+    PersonClick,
     ReferenceData,
+    TrackedExtraction,
     VideoMeta,
 )
 
@@ -296,3 +298,151 @@ class TestReferenceData:
         assert ref.element_type == "three_turn"
         assert ref.poses.shape == (100, 17, 2)  # H3.6M format
         assert ref.source == "YouTube: Expert Skater"
+
+
+class TestPersonClick:
+    """Test PersonClick dataclass."""
+
+    def test_creation(self):
+        """Should store pixel coordinates."""
+        click = PersonClick(x=960, y=540)
+        assert click.x == 960
+        assert click.y == 540
+
+    def test_frozen(self):
+        """Should be immutable (frozen dataclass)."""
+        click = PersonClick(x=100, y=200)
+        with pytest.raises(AttributeError):
+            click.x = 50  # type: ignore[misc]
+
+    def test_to_normalized(self):
+        """Should convert pixel coords to [0,1] normalized coords."""
+        click = PersonClick(x=960, y=540)
+        x_norm, y_norm = click.to_normalized(w=1920, h=1080)
+        assert x_norm == pytest.approx(0.5)
+        assert y_norm == pytest.approx(0.5)
+
+    def test_to_normalized_top_left(self):
+        """Origin click should normalize to (0, 0)."""
+        click = PersonClick(x=0, y=0)
+        x_norm, y_norm = click.to_normalized(w=1920, h=1080)
+        assert x_norm == pytest.approx(0.0)
+        assert y_norm == pytest.approx(0.0)
+
+    def test_to_normalized_bottom_right(self):
+        """Corner click should normalize close to (1, 1)."""
+        click = PersonClick(x=1919, y=1079)
+        x_norm, y_norm = click.to_normalized(w=1920, h=1080)
+        assert x_norm == pytest.approx(1919 / 1920)
+        assert y_norm == pytest.approx(1079 / 1080)
+
+
+class TestTrackedExtraction:
+    """Test TrackedExtraction dataclass."""
+
+    def _make_meta(self, tmp_path: Path) -> VideoMeta:
+        return VideoMeta(
+            path=tmp_path / "test.mp4",
+            fps=30.0,
+            width=1920,
+            height=1080,
+            num_frames=900,
+        )
+
+    def test_creation(self, tmp_path: Path):
+        """Should store all fields correctly."""
+        poses = np.random.rand(100, 17, 3).astype(np.float32)
+        frame_indices = np.arange(100)
+        meta = self._make_meta(tmp_path)
+
+        te = TrackedExtraction(
+            poses=poses,
+            frame_indices=frame_indices,
+            first_detection_frame=5,
+            target_track_id=2,
+            fps=30.0,
+            video_meta=meta,
+        )
+
+        assert te.poses.shape == (100, 17, 3)
+        assert te.first_detection_frame == 5
+        assert te.target_track_id == 2
+        assert te.fps == 30.0
+        assert te.video_meta is meta
+
+    def test_valid_mask_all_valid(self, tmp_path: Path):
+        """All-real poses should produce all-True mask."""
+        poses = np.ones((10, 17, 3), dtype=np.float32)
+        meta = self._make_meta(tmp_path)
+
+        te = TrackedExtraction(
+            poses=poses,
+            frame_indices=np.arange(10),
+            first_detection_frame=0,
+            target_track_id=None,
+            fps=30.0,
+            video_meta=meta,
+        )
+
+        mask = te.valid_mask()
+        assert mask.shape == (10,)
+        assert mask.all()
+
+    def test_valid_mask_with_gaps(self, tmp_path: Path):
+        """NaN frames should be False in the mask."""
+        poses = np.ones((10, 17, 3), dtype=np.float32)
+        # Frames 2, 5, 7 are missing (NaN)
+        poses[2, :, :] = np.nan
+        poses[5, :, :] = np.nan
+        poses[7, :, :] = np.nan
+        meta = self._make_meta(tmp_path)
+
+        te = TrackedExtraction(
+            poses=poses,
+            frame_indices=np.arange(10),
+            first_detection_frame=0,
+            target_track_id=1,
+            fps=30.0,
+            video_meta=meta,
+        )
+
+        mask = te.valid_mask()
+        expected = np.array([True, True, False, True, True, False, True, False, True, True])
+        np.testing.assert_array_equal(mask, expected)
+        assert mask.sum() == 7
+
+    def test_valid_mask_all_nan(self, tmp_path: Path):
+        """All-NaN poses should produce all-False mask."""
+        poses = np.full((5, 17, 3), np.nan, dtype=np.float32)
+        meta = self._make_meta(tmp_path)
+
+        te = TrackedExtraction(
+            poses=poses,
+            frame_indices=np.arange(5),
+            first_detection_frame=0,
+            target_track_id=None,
+            fps=30.0,
+            video_meta=meta,
+        )
+
+        mask = te.valid_mask()
+        assert mask.shape == (5,)
+        assert not mask.any()
+
+    def test_valid_mask_single_frame(self, tmp_path: Path):
+        """Single-frame extraction should work."""
+        poses = np.random.rand(1, 17, 3).astype(np.float32)
+        meta = self._make_meta(tmp_path)
+
+        te = TrackedExtraction(
+            poses=poses,
+            frame_indices=np.array([42]),
+            first_detection_frame=42,
+            target_track_id=0,
+            fps=30.0,
+            video_meta=meta,
+        )
+
+        mask = te.valid_mask()
+        assert mask.shape == (1,)
+        assert mask[0] is np.True_

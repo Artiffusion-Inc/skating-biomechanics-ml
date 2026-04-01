@@ -240,6 +240,8 @@ __all__ = [
     "H36MPose3D",
     "MetricResult",
     "NormalizedPose",
+    "PersonClick",
+    "TrackedExtraction",
     "PixelPose",
     "Pose3D",
     "RecommendationRule",
@@ -769,6 +771,67 @@ class SegmentationResult:
 
 
 # Recommendation system types
+
+
+@dataclass(frozen=True)
+class PersonClick:
+    """A user click on a video frame to select a person.
+
+    Stores pixel coordinates from a click event and provides
+    conversion to normalized [0,1] coordinates.
+
+    Attributes:
+        x: Horizontal pixel coordinate.
+        y: Vertical pixel coordinate.
+    """
+
+    x: int
+    y: int
+
+    def to_normalized(self, w: int, h: int) -> tuple[float, float]:
+        """Convert pixel coordinates to normalized [0,1].
+
+        Args:
+            w: Frame width in pixels.
+            h: Frame height in pixels.
+
+        Returns:
+            (x_norm, y_norm) in [0, 1].
+        """
+        return (self.x / w, self.y / h)
+
+
+@dataclass
+class TrackedExtraction:
+    """Pose extraction result with multi-person tracking support.
+
+    Holds a pose sequence for a single tracked person across video frames.
+    Missing frames (gaps) are represented as NaN values in the poses array.
+
+    Attributes:
+        poses: Pose array of shape (N, 17, 3) with NaN for missing frames.
+        frame_indices: Real frame numbers, shape (N,), monotonically increasing.
+        first_detection_frame: Index of first frame with a valid detection
+            (pre-roll boundary, used by gap filler).
+        target_track_id: The locked-on track ID, or None if tracking not used.
+        fps: Video frame rate.
+        video_meta: Full video metadata.
+    """
+
+    poses: np.ndarray
+    frame_indices: np.ndarray
+    first_detection_frame: int
+    target_track_id: int | None
+    fps: float
+    video_meta: VideoMeta
+
+    def valid_mask(self) -> np.ndarray:
+        """Return boolean mask of frames with valid (non-NaN) poses.
+
+        Returns:
+            Boolean array of shape (N,) where True means the pose is valid.
+        """
+        return ~np.isnan(self.poses[:, 0, 0])
 
 
 @dataclass(frozen=True)
