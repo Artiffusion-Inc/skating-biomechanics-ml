@@ -1,5 +1,6 @@
 """Utility modules for video processing, geometry, and smoothing."""
 
+from src.utils.gap_filling import GapFiller, GapReport
 from src.utils.geometry import (
     angle_3pt,
     calculate_center_of_mass,
@@ -16,6 +17,8 @@ from src.utils.video import VideoMeta, extract_frames, get_video_meta, open_vide
 
 __all__ = [
     "ElementEvent",
+    "GapFiller",
+    "GapReport",
     "OneEuroFilter",
     "OneEuroFilterConfig",
     "PoseSmoother",
