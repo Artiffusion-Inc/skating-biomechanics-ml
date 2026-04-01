@@ -163,6 +163,7 @@ def main() -> int:
             extractor = RTMPoseExtractor(
                 output_format="normalized",
                 conf_threshold=0.1,
+                det_frequency=8,  # detect every 8 frames, track in between (faster)
             )
         else:
             extractor = H36MExtractor(
@@ -471,10 +472,10 @@ def main() -> int:
                 frame, poses_viz[current_pose_idx], meta.height, meta.width
             )
 
-        # Spatial reference detection (all layers >= 1)
-        if args.layer >= 1:
+        # Spatial reference detection (every 30 frames — camera doesn't change fast)
+        if args.layer >= 1 and frame_idx % 30 == 0:
             camera_pose = spatial_detector.estimate_pose(frame)
-            if frame_idx % 100 == 0 and camera_pose.confidence > 0:
+            if camera_pose.confidence > 0:
                 print(
                     f"  Frame {frame_idx}: Roll={camera_pose.roll:.2f}°, Conf={camera_pose.confidence:.2f}, Source={camera_pose.source}"
                 )
