@@ -11,13 +11,16 @@ The conversion is geometric (not learned) and happens on-the-fly during extracti
 
 from pathlib import Path
 
-import cv2
 import numpy as np
 
 try:
     from ultralytics import YOLO
 except ImportError:
     YOLO = None  # type: ignore[assignment]
+
+from ..detection.pose_tracker import PoseTracker
+from ..types import PersonClick, TrackedExtraction, VideoMeta
+from ..utils.video import get_video_meta
 
 
 # H3.6M keypoint indices
@@ -212,85 +215,84 @@ class H36MExtractor:
                 self._model = YOLO(model_name)
         return self._model
 
-    def extract_frame(self, frame: np.ndarray) -> np.ndarray | None:
-        """Extract H3.6M pose from single frame.
-
-        Args:
-            frame: Input frame (height, width, 3) as BGR image.
-
-        Returns:
-            pose: (17, 3) array with x, y, confidence in H3.6M format.
-                  Returns None if no person detected.
-                  Coordinates are normalized [0,1] if output_format="normalized",
-                  or in pixels if output_format="pixels".
-        """
-        # Convert BGR to RGB
-        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-
-        # Run inference
-        results = self.model(frame_rgb, verbose=False, conf=self._conf_threshold, device=self._device)
-
-        if len(results) == 0 or results[0].keypoints is None:
-            return None
-
-        # Get first person detected
-        kps = results[0].keypoints.xy.cpu().numpy()
-        if len(kps) == 0:
-            return None
-        keypoints = kps[0]  # (17, 2)
-        confidence = results[0].keypoints.conf.cpu().numpy()[0]  # (17,)
-
-        # Normalize to [0, 1]
-        h, w = frame.shape[:2]
-        keypoints_norm = keypoints.copy()
-        keypoints_norm[:, 0] /= w
-        keypoints_norm[:, 1] /= h
-
-        # Combine x, y, confidence
-        coco_kp = np.zeros((17, 3), dtype=np.float32)
-        coco_kp[:, :2] = keypoints_norm
-        coco_kp[:, 2] = confidence
-
-        # Convert to H3.6M 17kp (integrated conversion)
-        h36m_kp = _coco_to_h36m_single(coco_kp)
-
-        # Convert to pixels if requested
-        if self._output_format == "pixels":
-            h36m_kp[:, 0] *= w
-            h36m_kp[:, 1] *= h
-
-        return h36m_kp
-
-    def extract_video(
+    def extract_video_tracked(
         self,
         video_path: Path | str,
-        _fps: float | None = None,
-    ) -> tuple[np.ndarray, np.ndarray]:
-        """Extract H3.6M poses from all frames of a video.
+        person_click: PersonClick | None = None,
+    ) -> TrackedExtraction:
+        """Extract H3.6M poses from video with multi-person tracking.
+
+        Runs YOLO26-Pose on every frame, tracks all detected persons via
+        PoseTracker (OC-SORT + biometric Re-ID), and selects a single
+        target person for output.
 
         Args:
             video_path: Path to video file.
-            fps: Video FPS (not used, kept for API compatibility).
+            person_click: Optional user click to select target person.
+                If provided, the nearest detection's mid-hip to the click
+                point (in the first min_hits*2 frames) is locked as target.
 
         Returns:
-            poses: (N, 17, 3) array with x, y, confidence in H3.6M format.
-            frame_indices: (N,) array of frame indices where poses were detected.
+            TrackedExtraction with poses (N, 17, 3), frame indices,
+            first_detection_frame, target_track_id, fps, and video_meta.
+            Missing frames are filled with NaN.
+
+        Raises:
+            ValueError: If no pose is detected in any frame.
         """
         video_path = Path(video_path)
+        video_meta = get_video_meta(video_path)
+        num_frames = video_meta.num_frames
 
-        # Run inference on video
-        results = self.model(str(video_path), verbose=False, conf=self._conf_threshold, stream=True)
+        # Pre-allocate with NaN
+        all_poses = np.full(
+            (num_frames, 17, 3), np.nan, dtype=np.float32
+        )
 
-        poses_list = []
-        frame_indices = []
+        tracker = PoseTracker(
+            max_disappeared=30,
+            min_hits=3,
+            fps=video_meta.fps,
+        )
 
-        for result in results:
-            if result.keypoints is not None and len(result.keypoints.xy) > 0:
-                kp = result.keypoints.xy.cpu().numpy()[0]  # (17, 2)
-                conf = result.keypoints.conf.cpu().numpy()[0]  # (17,)
+        # Per-frame mapping: track_id → pose for current frame
+        target_track_id: int | None = None
+        click_lock_window = tracker.min_hits * 2
+        click_norm: tuple[float, float] | None = None
+        if person_click is not None:
+            click_norm = person_click.to_normalized(
+                video_meta.width, video_meta.height
+            )
+
+        # Track hit counts for auto-select (track_id → hits)
+        track_hit_counts: dict[int, int] = {}
+
+        # Run YOLO stream
+        results = self.model(
+            str(video_path), verbose=False, conf=self._conf_threshold, stream=True
+        )
+
+        for frame_idx, result in enumerate(results):
+            if frame_idx >= num_frames:
+                break
+
+            if result.keypoints is None or len(result.keypoints.xy) == 0:
+                # No detections — still update tracker so it ages tracks
+                tracker.update(np.empty((0, 17, 2), dtype=np.float32))
+                continue
+
+            h, w = result.orig_shape
+            kps_all = _to_numpy(result.keypoints.xy)      # (P, 17, 2)
+            confs_all = _to_numpy(result.keypoints.conf)      # (P, 17)
+
+            n_persons = kps_all.shape[0]
+            h36m_poses = np.zeros((n_persons, 17, 3), dtype=np.float32)
+
+            for p in range(n_persons):
+                kp = kps_all[p]        # (17, 2) pixel
+                conf = confs_all[p]    # (17,)
 
                 # Normalize to [0, 1]
-                h, w = result.orig_shape
                 kp_norm = kp.copy()
                 kp_norm[:, 0] /= w
                 kp_norm[:, 1] /= h
@@ -300,7 +302,7 @@ class H36MExtractor:
                 coco_kp[:, :2] = kp_norm
                 coco_kp[:, 2] = conf
 
-                # Convert to H3.6M 17kp (integrated conversion)
+                # Convert to H3.6M 17kp
                 h36m_kp = _coco_to_h36m_single(coco_kp)
 
                 # Convert to pixels if requested
@@ -308,16 +310,69 @@ class H36MExtractor:
                     h36m_kp[:, 0] *= w
                     h36m_kp[:, 1] *= h
 
-                poses_list.append(h36m_kp)
-                frame_indices.append(len(poses_list) - 1)
+                h36m_poses[p] = h36m_kp
 
-        if not poses_list:
+            # Feed to tracker (xy coords only for tracking)
+            track_ids = tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
+
+            # Update hit counts
+            for tid in track_ids:
+                track_hit_counts[tid] = track_hit_counts.get(tid, 0) + 1
+
+            # --- Target selection ---
+            # Phase 1: Click-based selection (within lock window)
+            if (
+                target_track_id is None
+                and click_norm is not None
+                and frame_idx < click_lock_window
+            ):
+                best_dist = float("inf")
+                best_tid: int | None = None
+                for p, tid in enumerate(track_ids):
+                    # Mid-hip in normalized coords
+                    mid_hip_x = (h36m_poses[p, H36Key.LHIP, 0] + h36m_poses[p, H36Key.RHIP, 0]) / 2
+                    mid_hip_y = (h36m_poses[p, H36Key.LHIP, 1] + h36m_poses[p, H36Key.RHIP, 1]) / 2
+                    dist = (
+                        (mid_hip_x - click_norm[0]) ** 2
+                        + (mid_hip_y - click_norm[1]) ** 2
+                    )
+                    if dist < best_dist:
+                        best_dist = dist
+                        best_tid = tid
+                if best_tid is not None:
+                    target_track_id = best_tid
+
+            # Phase 2: Auto-select by most hits (after lock window)
+            if (
+                target_track_id is None
+                and frame_idx >= click_lock_window
+                and track_hit_counts
+            ):
+                target_track_id = max(
+                    track_hit_counts, key=lambda k: track_hit_counts[k]  # type: ignore[arg-type]
+                )
+
+            # Fill target pose for this frame
+            if target_track_id is not None:
+                for p, tid in enumerate(track_ids):
+                    if tid == target_track_id:
+                        all_poses[frame_idx] = h36m_poses[p]
+                        break
+
+        # Determine first_detection_frame
+        valid_mask = ~np.isnan(all_poses[:, 0, 0])
+        if not np.any(valid_mask):
             raise ValueError(f"No valid pose detected in video: {video_path}")
+        first_detection_frame = int(np.argmax(valid_mask))
 
-        poses = np.stack(poses_list)
-        frame_indices = np.array(frame_indices)
-
-        return poses, frame_indices
+        return TrackedExtraction(
+            poses=all_poses,
+            frame_indices=np.arange(num_frames),
+            first_detection_frame=first_detection_frame,
+            target_track_id=target_track_id,
+            fps=video_meta.fps,
+            video_meta=video_meta,
+        )
 
     def close(self) -> None:
         """Close the extractor and release resources.
@@ -341,25 +396,26 @@ def extract_h36m_poses(
     model_size: str = "n",
     model_path: Path | str | None = None,
     output_format: str = "normalized",
-) -> tuple[np.ndarray, np.ndarray]:
-    """Extract H3.6M poses from video.
+    person_click: PersonClick | None = None,
+) -> TrackedExtraction:
+    """Extract H3.6M poses from video with multi-person tracking.
 
-    Convenience function that creates extractor and runs extraction.
+    Convenience function that creates extractor and runs tracked extraction.
 
     Args:
         video_path: Path to video file.
         model_size: Model size - 'n' (nano), 's' (small), 'm' (medium)
         model_path: Path to custom model weights (deprecated, use model_size)
         output_format: "normalized" or "pixels"
+        person_click: Optional click to select target person.
 
     Returns:
-        poses: (N, 17, 3) array with x, y, confidence
-        frame_indices: (N,) array of frame indices
+        TrackedExtraction with poses and tracking metadata.
     """
     extractor = H36MExtractor(
         model_size=model_size, model_path=model_path, output_format=output_format
     )
-    return extractor.extract_video(video_path)
+    return extractor.extract_video_tracked(video_path, person_click=person_click)
 
 
 def blazepose_to_h36m(_blazepose_pose: np.ndarray) -> np.ndarray:
