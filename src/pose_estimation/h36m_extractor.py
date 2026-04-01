@@ -267,6 +267,9 @@ class H36MExtractor:
         # Track hit counts for auto-select (track_id → hits)
         track_hit_counts: dict[int, int] = {}
 
+        # Per-frame track_id→pose mapping for retroactive fill
+        frame_track_poses: dict[int, dict[int, np.ndarray]] = {}
+
         # Run YOLO stream
         results = self.model(
             str(video_path), verbose=False, conf=self._conf_threshold, stream=True
@@ -282,8 +285,8 @@ class H36MExtractor:
                 continue
 
             h, w = result.orig_shape
-            kps_all = _to_numpy(result.keypoints.xy)      # (P, 17, 2)
-            confs_all = _to_numpy(result.keypoints.conf)      # (P, 17)
+            kps_all = result.keypoints.xy.cpu().numpy()   # (P, 17, 2)
+            confs_all = result.keypoints.conf.cpu().numpy()   # (P, 17)
 
             n_persons = kps_all.shape[0]
             h36m_poses = np.zeros((n_persons, 17, 3), dtype=np.float32)
@@ -315,6 +318,12 @@ class H36MExtractor:
             # Feed to tracker (xy coords only for tracking)
             track_ids = tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
 
+            # Store per-track poses for retroactive fill
+            frame_track_poses[frame_idx] = {
+                tid: h36m_poses[p].copy()
+                for p, tid in enumerate(track_ids)
+            }
+
             # Update hit counts
             for tid in track_ids:
                 track_hit_counts[tid] = track_hit_counts.get(tid, 0) + 1
@@ -342,22 +351,24 @@ class H36MExtractor:
                 if best_tid is not None:
                     target_track_id = best_tid
 
-            # Phase 2: Auto-select by most hits (after lock window)
-            if (
-                target_track_id is None
-                and frame_idx >= click_lock_window
-                and track_hit_counts
-            ):
-                target_track_id = max(
-                    track_hit_counts, key=lambda k: track_hit_counts[k]  # type: ignore[arg-type]
-                )
-
-            # Fill target pose for this frame
+            # Fill target pose for current frame (click path only — auto deferred)
             if target_track_id is not None:
                 for p, tid in enumerate(track_ids):
                     if tid == target_track_id:
                         all_poses[frame_idx] = h36m_poses[p]
                         break
+
+        # Phase 2 (deferred): Auto-select by most hits — after full loop
+        # This ensures we pick the track with the most total detections across
+        # the entire video, not just an early snapshot.
+        if target_track_id is None and track_hit_counts:
+            target_track_id = max(
+                track_hit_counts, key=lambda k: track_hit_counts[k]  # type: ignore[arg-type]
+            )
+            # Retroactive fill: all frames where this track appeared
+            for fidx, tmap in frame_track_poses.items():
+                if target_track_id in tmap:
+                    all_poses[fidx] = tmap[target_track_id]
 
         # Determine first_detection_frame
         valid_mask = ~np.isnan(all_poses[:, 0, 0])
