@@ -162,7 +162,7 @@ class AnalysisPipeline:
         video_path: Path,
         element_type: str | None = None,
         manual_phases: ElementPhase | None = None,
-        reference_path: Path | None = None,  # noqa: ARG002
+        reference_path: Path | None = None,
     ) -> AnalysisReport:
         """Analyze a skating video.
 

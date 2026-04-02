@@ -23,12 +23,12 @@ class MIBlock(nn.Module):
         use_layer_scale=True,
         layer_scale_init_value=1e-5,
         mode="temporal",
-        mixer_type="attention",  # noqa: ARG002
-        use_temporal_similarity=True,  # noqa: ARG002
-        temporal_connection_len=1,  # noqa: ARG002
-        neighbour_num=4,  # noqa: ARG002
-        n_frames=243,  # noqa: ARG002
-        is_local=None,  # noqa: ARG002
+        mixer_type="attention",
+        use_temporal_similarity=True,
+        temporal_connection_len=1,
+        neighbour_num=4,
+        n_frames=243,
+        is_local=None,
     ):
         super().__init__()
         self.norm_full = nn.LayerNorm(dim)

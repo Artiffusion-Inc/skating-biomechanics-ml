@@ -152,8 +152,8 @@ class HUDLayout:
         self,
         col: int,
         row: int,
-        frame_width: int,  # noqa: ARG002
-        frame_height: int,  # noqa: ARG002
+        frame_width: int,
+        frame_height: int,
         cell_width: int,
         cell_height: int,
     ) -> PixelPosition:

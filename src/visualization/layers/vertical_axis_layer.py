@@ -113,7 +113,7 @@ class VerticalAxisLayer(Layer):
         cy: int,
         target_x: int,
         target_y: int,
-        angle_deg: float,  # noqa: ARG002
+        angle_deg: float,
         radius: int = 20,
     ) -> None:
         """Draw angle arc from vertical to spine axis direction."""

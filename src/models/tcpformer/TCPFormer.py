@@ -26,10 +26,10 @@ class TransBlock(nn.Module):
         layer_scale_init_value=1e-5,
         mode="spatial",
         mixer_type="attention",
-        use_temporal_similarity=True,  # noqa: ARG002
-        temporal_connection_len=1,  # noqa: ARG002
-        neighbour_num=4,  # noqa: ARG002
-        n_frames=243,  # noqa: ARG002
+        use_temporal_similarity=True,
+        temporal_connection_len=1,
+        neighbour_num=4,
+        n_frames=243,
     ):
         super().__init__()
         self.norm1 = nn.LayerNorm(dim)
@@ -260,8 +260,8 @@ class DSTFormerBlock(nn.Module):
         hierarchical=False,
         use_temporal_similarity=True,
         temporal_connection_len=1,
-        use_tcn=False,  # noqa: ARG002
-        graph_only=False,  # noqa: ARG002
+        use_tcn=False,
+        graph_only=False,
         neighbour_num=4,
         n_frames=243,
     ):
@@ -384,12 +384,12 @@ class MemoryInducedBlock(nn.Module):
         qkv_bias=False,
         qk_scale=None,
         layer_scale_init_value=1e-5,
-        use_adaptive_fusion=True,  # noqa: ARG002
-        hierarchical=False,  # noqa: ARG002
+        use_adaptive_fusion=True,
+        hierarchical=False,
         use_temporal_similarity=True,
-        temporal_connection_len=1,  # noqa: ARG002
-        use_tcn=False,  # noqa: ARG002
-        graph_only=False,  # noqa: ARG002
+        temporal_connection_len=1,
+        use_tcn=False,
+        graph_only=False,
         neighbour_num=4,
         n_frames=243,
         mode="temporal",

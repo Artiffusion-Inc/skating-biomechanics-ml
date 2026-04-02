@@ -280,7 +280,7 @@ class MotionDTWAligner:
         user_segment: NormalizedPose,
         ref_segment: NormalizedPose,
         joints: list[int],
-        phase_name: str,  # noqa: ARG002
+        phase_name: str,
     ) -> tuple[float, np.ndarray]:
         """Align a single phase using DTW.
 

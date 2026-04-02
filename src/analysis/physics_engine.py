@@ -158,7 +158,7 @@ class PhysicsEngine:
     def calculate_moment_of_inertia(
         self,
         poses_3d: np.ndarray,
-        axis: str = "vertical",  # noqa: ARG002
+        axis: str = "vertical",
     ) -> np.ndarray:
         """Calculate Moment of Inertia about vertical axis.
 

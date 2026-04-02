@@ -69,6 +69,7 @@ ignore = [
     "PLR2004", # magic value comparison
     "PLC0415", # import not at top-level (lazy imports for heavy deps)
     "SIM108", # ternary instead of if-else
+    "ARG002", # unused method argument (common in callback interfaces)
 ]
 unfixable = [
     "ERA",    # don't auto-remove commented out code

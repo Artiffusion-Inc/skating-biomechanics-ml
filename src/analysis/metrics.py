@@ -150,8 +150,8 @@ class BiomechanicsAnalyzer:
     def _analyze_step(
         self,
         poses: NormalizedPose,
-        phases: ElementPhase,  # noqa: ARG002
-        fps: float,  # noqa: ARG002
+        phases: ElementPhase,
+        fps: float,
     ) -> list[MetricResult]:
         """Analyze step/edge-specific metrics.
 
@@ -209,7 +209,7 @@ class BiomechanicsAnalyzer:
         self,
         poses: NormalizedPose,
         phases: ElementPhase,
-        fps: float,  # noqa: ARG002
+        fps: float,
     ) -> list[MetricResult]:
         """Analyze metrics common to all elements.
 

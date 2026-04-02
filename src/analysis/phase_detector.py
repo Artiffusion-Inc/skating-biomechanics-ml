@@ -207,7 +207,7 @@ class PhaseDetector:
     def detect_three_turn_phases(
         self,
         poses: NormalizedPose,
-        fps: float,  # noqa: ARG002
+        fps: float,
     ) -> PhaseDetectionResult:
         """Detect three-turn phases by edge change.
 
@@ -277,7 +277,7 @@ class PhaseDetector:
     def _find_takeoff_accel(
         self,
         com_y: np.ndarray,
-        fps: float,  # noqa: ARG002
+        fps: float,
         peak_idx: int,
     ) -> int:
         """Find takeoff using vertical acceleration spike.
@@ -319,7 +319,7 @@ class PhaseDetector:
     def _find_landing_accel(
         self,
         com_y: np.ndarray,
-        fps: float,  # noqa: ARG002
+        fps: float,
         peak_idx: int,
         takeoff_idx: int,
     ) -> int:
