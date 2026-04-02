@@ -1,7 +1,6 @@
 """Tests for GapFiller temporal interpolation of missing poses."""
 
 import numpy as np
-import pytest
 
 from src.utils.gap_filling import GapFiller, GapReport
 
@@ -288,9 +287,7 @@ class TestPhaseAwareNoCrossBoundary:
         mask = ~np.isnan(poses[:, 0, 0])
 
         filler = GapFiller()
-        filled, report = filler.fill_gaps(
-            poses, mask, phase_boundaries=[20]
-        )
+        filled, report = filler.fill_gaps(poses, mask, phase_boundaries=[20])
 
         assert _valid_count(filled) == 60
         # Sub-gap before boundary: 18-19
@@ -313,9 +310,7 @@ class TestPhaseAwareNoCrossBoundary:
         mask = ~np.isnan(poses[:, 0, 0])
 
         filler = GapFiller()
-        filled, report = filler.fill_gaps(
-            poses, mask, phase_boundaries=[15, 25]
-        )
+        filled, report = filler.fill_gaps(poses, mask, phase_boundaries=[15, 25])
 
         assert _valid_count(filled) == 50
         # Three sub-gaps: [10,14], [15,24], [25,30]

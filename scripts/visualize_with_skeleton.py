@@ -25,7 +25,6 @@ from src.detection.blade_edge_detector_3d import BladeEdgeDetector3D
 from src.detection.spatial_reference import SpatialReferenceDetector
 from src.pose_estimation import H36Key, H36MExtractor
 from src.types import BladeState3D
-
 from src.utils.subtitles import SubtitleParser
 from src.utils.video import get_video_meta
 from src.visualization import (
@@ -42,7 +41,6 @@ from src.visualization import (
     render_layers,
 )
 from src.visualization.core.text import draw_text_box
-
 
 
 def main() -> int:
@@ -169,7 +167,9 @@ def main() -> int:
         pose_frame_indices = np.arange(len(poses))
         poses_viz = poses[:, :, :2] if poses.shape[2] == 3 else poses
     else:
-        backend_label = "rtmlib BodyWithFeet" if args.pose_backend == "rtmlib" else "YOLO26-Pose + OC-SORT"
+        backend_label = (
+            "rtmlib BodyWithFeet" if args.pose_backend == "rtmlib" else "YOLO26-Pose + OC-SORT"
+        )
         print(f"Extracting poses with tracking ({backend_label})...")
         if args.pose_backend == "rtmlib":
             from src.pose_estimation.rtmlib_extractor import RTMPoseExtractor
@@ -177,7 +177,7 @@ def main() -> int:
             extractor = RTMPoseExtractor(
                 output_format="normalized",
                 conf_threshold=0.3,
-                det_frequency=1,        # detect every frame — GPU is fast enough
+                det_frequency=1,  # detect every frame — GPU is fast enough
                 device="cuda",
             )
         else:
@@ -350,7 +350,7 @@ def main() -> int:
     output_path = args.output or args.video.parent / f"{args.video.stem}_layer{args.layer}.mp4"
 
     if args.no_render:
-        print(f"Pose extraction complete. Skipping rendering (--no-render).")
+        print("Pose extraction complete. Skipping rendering (--no-render).")
         return 0
 
     # Apply render scale for faster processing
@@ -432,10 +432,10 @@ def main() -> int:
 
         # Layer 0: Skeleton — always use raw rtmlib (no 3D jitter)
         if args.layer >= 0 and current_pose_idx is not None:
-                frame = draw_skeleton(frame, poses[current_pose_idx], draw_h, draw_w)
-                context.pose_2d = poses_viz[current_pose_idx]
-                if poses_3d is not None and current_pose_idx < len(poses_3d):
-                    context.pose_3d = poses_3d[current_pose_idx]
+            frame = draw_skeleton(frame, poses[current_pose_idx], draw_h, draw_w)
+            context.pose_2d = poses_viz[current_pose_idx]
+            if poses_3d is not None and current_pose_idx < len(poses_3d):
+                context.pose_3d = poses_3d[current_pose_idx]
 
         # Layers 1+: velocity, trails (rendered via layer system)
         if args.layer >= 1 and current_pose_idx is not None:
@@ -452,9 +452,7 @@ def main() -> int:
                 )
 
                 if len(com_trajectory) > 1:
-                    frame = _draw_3d_trajectory(
-                        frame, com_trajectory, draw_h, draw_w, camera_z=3.0
-                    )
+                    frame = _draw_3d_trajectory(frame, com_trajectory, draw_h, draw_w, camera_z=3.0)
 
         # Spatial reference detection (every 30 frames — camera doesn't change fast)
         if args.layer >= 1 and frame_idx % 30 == 0:

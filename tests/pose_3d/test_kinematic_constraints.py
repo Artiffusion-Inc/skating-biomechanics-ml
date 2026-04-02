@@ -4,7 +4,6 @@ import numpy as np
 import pytest
 
 from src.pose_3d.kinematic_constraints import (
-    JOINT_LIMITS,
     apply_kinematic_constraints,
     enforce_bone_lengths,
     enforce_joint_angle_limits,
@@ -68,9 +67,9 @@ class TestEnforceBoneLengths:
             ref_len = np.linalg.norm(t_pose[child] - t_pose[parent])
             corrected_len = np.linalg.norm(corrected[5, child] - corrected[5, parent])
             perturbed_len = np.linalg.norm(perturbed[5, child] - perturbed[5, parent])
-            assert abs(corrected_len - ref_len) < abs(
-                perturbed_len - ref_len
-            ) + 0.01, f"Bone ({parent},{child}): corrected {corrected_len:.3f} vs ref {ref_len:.3f}"
+            assert abs(corrected_len - ref_len) < abs(perturbed_len - ref_len) + 0.01, (
+                f"Bone ({parent},{child}): corrected {corrected_len:.3f} vs ref {ref_len:.3f}"
+            )
 
     def test_shape_preserved(self):
         t_pose = make_t_pose_3d()
@@ -167,18 +166,14 @@ class TestApplyKinematicConstraints:
 
     def test_invalid_shape_raises(self):
         with pytest.raises(ValueError, match="Expected shape"):
-            apply_kinematic_constraints(
-                np.zeros((5, 17, 2), dtype=np.float32), fps=30.0
-            )
+            apply_kinematic_constraints(np.zeros((5, 17, 2), dtype=np.float32), fps=30.0)
 
     def test_with_confidences(self):
         """Confidences are accepted but currently unused (reserved)."""
         t_pose = make_t_pose_3d()
         poses = np.stack([t_pose] * 10)
         confidences = np.random.rand(10, 17).astype(np.float32)
-        corrected = apply_kinematic_constraints(
-            poses.copy(), fps=25.0, confidences=confidences
-        )
+        corrected = apply_kinematic_constraints(poses.copy(), fps=25.0, confidences=confidences)
         assert corrected.shape == poses.shape
         assert np.all(np.isfinite(corrected))
 

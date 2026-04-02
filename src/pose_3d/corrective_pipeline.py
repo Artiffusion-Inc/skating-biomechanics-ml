@@ -28,8 +28,8 @@ class CorrectiveLens:
         from .biomechanics_estimator import Biomechanics3DEstimator  # noqa: PLC0415
 
         if model_path is not None and Path(model_path).exists():
-            self.extractor: AthletePose3DExtractor | Biomechanics3DEstimator = AthletePose3DExtractor(
-                model_path=model_path, device=device
+            self.extractor: AthletePose3DExtractor | Biomechanics3DEstimator = (
+                AthletePose3DExtractor(model_path=model_path, device=device)
             )
             self._uses_ml = True
         else:

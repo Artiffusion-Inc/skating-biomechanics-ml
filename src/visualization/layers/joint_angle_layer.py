@@ -189,16 +189,15 @@ class JointAngleLayer(Layer):
                 v = np.array(pv, dtype=np.float64)
                 c = np.array(pc, dtype=np.float64)
                 angle = angle_3pt(a, v, c)
+            # 3D angle computed — still need 2D positions for arc placement
+            elif context.normalized:
+                pv = normalized_to_pixel(pose[spec.vertex], w, h)
+                pa = normalized_to_pixel(pose[spec.point_a], w, h)
+                pc = normalized_to_pixel(pose[spec.point_c], w, h)
             else:
-                # 3D angle computed — still need 2D positions for arc placement
-                if context.normalized:
-                    pv = normalized_to_pixel(pose[spec.vertex], w, h)
-                    pa = normalized_to_pixel(pose[spec.point_a], w, h)
-                    pc = normalized_to_pixel(pose[spec.point_c], w, h)
-                else:
-                    pa = pose[spec.point_a].astype(int)
-                    pv = pose[spec.vertex].astype(int)
-                    pc = pose[spec.point_c].astype(int)
+                pa = pose[spec.point_a].astype(int)
+                pv = pose[spec.vertex].astype(int)
+                pc = pose[spec.point_c].astype(int)
 
             # Skip NaN/invalid angles
             if np.isnan(angle) or angle < 0 or angle > 360:

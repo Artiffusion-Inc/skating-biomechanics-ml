@@ -35,9 +35,9 @@ except ImportError:
 
 from ..detection.pose_tracker import PoseTracker as CustomPoseTracker
 from ..pose_estimation.h36m_extractor import _biometric_distance
-from ..types import PersonClick, TrackedExtraction, VideoMeta
+from ..types import PersonClick, TrackedExtraction
 from ..utils.video import get_video_meta
-from .halpe26 import HALPE26Key, extract_foot_keypoints, halpe26_to_h36m
+from .halpe26 import extract_foot_keypoints, halpe26_to_h36m
 
 logger = logging.getLogger(__name__)
 
@@ -77,9 +77,7 @@ class RTMPoseExtractor:
         backend: str = "onnxruntime",
     ) -> None:
         if PoseTracker is None:
-            raise ImportError(
-                "rtmlib is not installed. Install with: uv add rtmlib"
-            )
+            raise ImportError("rtmlib is not installed. Install with: uv add rtmlib")
 
         self._mode = mode
         self._tracking_backend = tracking_backend
@@ -158,9 +156,7 @@ class RTMPoseExtractor:
         click_lock_window = 6  # ~0.2-0.24s at 25-30fps
         click_norm: tuple[float, float] | None = None
         if person_click is not None:
-            click_norm = person_click.to_normalized(
-                video_meta.width, video_meta.height
-            )
+            click_norm = person_click.to_normalized(video_meta.width, video_meta.height)
 
         # Track hit counts for auto-select
         track_hit_counts: dict[int, int] = {}
@@ -218,9 +214,7 @@ class RTMPoseExtractor:
 
                 if keypoints is None or len(keypoints) == 0:
                     if custom_tracker is not None:
-                        custom_tracker.update(
-                            np.empty((0, 17, 2), dtype=np.float32)
-                        )
+                        custom_tracker.update(np.empty((0, 17, 2), dtype=np.float32))
                     continue
 
                 n_persons = len(keypoints)
@@ -258,9 +252,7 @@ class RTMPoseExtractor:
 
                 # --- Track association ---
                 if self._tracking_backend == "custom":
-                    track_ids = custom_tracker.update(
-                        h36m_poses[:, :, :2], h36m_poses[:, :, 2]
-                    )
+                    track_ids = custom_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
                 else:
                     # rtmlib assigns per-person IDs internally via tracking.
                     # Since rtmlib returns persons in tracked order, we need
@@ -268,9 +260,7 @@ class RTMPoseExtractor:
                     # the track ID directly in the default API, so we use a
                     # spatial matching approach: match detections to existing
                     # tracks by biometric distance.
-                    track_ids = self._assign_track_ids(
-                        h36m_poses, rtmlib_id_map, next_internal_id
-                    )
+                    track_ids = self._assign_track_ids(h36m_poses, rtmlib_id_map, next_internal_id)
                     next_internal_id = max(rtmlib_id_map.values(), default=-1) + 1
 
                 # Store per-track data for retroactive fill
@@ -293,15 +283,9 @@ class RTMPoseExtractor:
                     best_dist = float("inf")
                     best_tid: int | None = None
                     for p, tid in enumerate(track_ids):
-                        mid_hip_x = (
-                            h36m_poses[p, 4, 0] + h36m_poses[p, 1, 0]
-                        ) / 2  # LHIP + RHIP
-                        mid_hip_y = (
-                            h36m_poses[p, 4, 1] + h36m_poses[p, 1, 1]
-                        ) / 2
-                        dist = (mid_hip_x - click_norm[0]) ** 2 + (
-                            mid_hip_y - click_norm[1]
-                        ) ** 2
+                        mid_hip_x = (h36m_poses[p, 4, 0] + h36m_poses[p, 1, 0]) / 2  # LHIP + RHIP
+                        mid_hip_y = (h36m_poses[p, 4, 1] + h36m_poses[p, 1, 1]) / 2
+                        dist = (mid_hip_x - click_norm[0]) ** 2 + (mid_hip_y - click_norm[1]) ** 2
                         if dist < best_dist:
                             best_dist = dist
                             best_tid = tid
@@ -330,9 +314,7 @@ class RTMPoseExtractor:
                             best_new_tid: int | None = None
                             best_new_data: tuple[np.ndarray, np.ndarray] | None = None
                             for p, tid in enumerate(track_ids):
-                                dist = _biometric_distance(
-                                    h36m_poses[p], last_target_pose
-                                )
+                                dist = _biometric_distance(h36m_poses[p], last_target_pose)
                                 if dist < best_dist:
                                     best_dist = dist
                                     best_new_tid = tid
@@ -349,10 +331,7 @@ class RTMPoseExtractor:
                                 target_lost_frame = None
                                 # Retroactively fill from stored frames
                                 for fidx, tmap in frame_track_data.items():
-                                    if (
-                                        target_track_id in tmap
-                                        and np.isnan(all_poses[fidx, 0, 0])
-                                    ):
+                                    if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
                                         all_poses[fidx] = tmap[target_track_id][0]
                                         all_feet[fidx] = tmap[target_track_id][1]
 
@@ -423,9 +402,7 @@ class RTMPoseExtractor:
         video_meta = get_video_meta(video_path)
 
         if self._tracking_backend == "custom":
-            tracker = CustomPoseTracker(
-                max_disappeared=30, min_hits=2, fps=video_meta.fps
-            )
+            tracker = CustomPoseTracker(max_disappeared=30, min_hits=2, fps=video_meta.fps)
         else:
             tracker = None  # type: ignore[assignment]
 
@@ -438,7 +415,9 @@ class RTMPoseExtractor:
             raise RuntimeError(f"Failed to open video: {video_path}")
 
         try:
-            for frame_idx in tqdm(range(num_frames), desc="Previewing persons", unit="frame", ncols=100):
+            for frame_idx in tqdm(
+                range(num_frames), desc="Previewing persons", unit="frame", ncols=100
+            ):
                 ret, frame = cap.read()
                 if not ret:
                     break
@@ -468,13 +447,9 @@ class RTMPoseExtractor:
 
                 # Track association
                 if tracker is not None:
-                    track_ids = tracker.update(
-                        h36m_poses[:, :, :2], h36m_poses[:, :, 2]
-                    )
+                    track_ids = tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
                 else:
-                    track_ids = self._assign_track_ids(
-                        h36m_poses, rtmlib_id_map, next_internal_id
-                    )
+                    track_ids = self._assign_track_ids(h36m_poses, rtmlib_id_map, next_internal_id)
                     next_internal_id = max(rtmlib_id_map.values(), default=-1) + 1
 
                 for p, tid in enumerate(track_ids):
@@ -497,9 +472,7 @@ class RTMPoseExtractor:
 
         # Build output
         output: list[dict] = []
-        for tid, data in sorted(
-            person_data.items(), key=lambda kv: kv[1]["hits"], reverse=True
-        ):
+        for tid, data in sorted(person_data.items(), key=lambda kv: kv[1]["hits"], reverse=True):
             kps = data["best_kps"]
             if kps is None:
                 continue

@@ -1,7 +1,6 @@
 """Tests for anchor_projection module (anchor-based 2D projection, confidence blending)."""
 
 import numpy as np
-import pytest
 
 from src.pose_3d.anchor_projection import anchor_project, blend_by_confidence
 

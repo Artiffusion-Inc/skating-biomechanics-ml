@@ -20,7 +20,7 @@ except ImportError:
     YOLO = None  # type: ignore[assignment]
 
 from ..detection.pose_tracker import PoseTracker
-from ..types import PersonClick, TrackedExtraction, VideoMeta
+from ..types import PersonClick, TrackedExtraction
 from ..utils.video import get_video_meta
 
 logger = logging.getLogger(__name__)
@@ -151,7 +151,7 @@ def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
     h36m_pose[H36Key.NECK] = coco_pose[_COCOKey.NOSE]
 
     # HEAD: use midpoint of eyes (indices 1, 2) for better head position
-    left_eye = coco_pose[_COCOKey.LEFT_EYE]   # index 1
+    left_eye = coco_pose[_COCOKey.LEFT_EYE]  # index 1
     right_eye = coco_pose[_COCOKey.RIGHT_EYE]  # index 2
     if has_confidence:
         eye_conf_ok = left_eye[2] >= 0.3 and right_eye[2] >= 0.3

@@ -18,7 +18,6 @@ import pytest
 from src.pose_estimation.h36m_extractor import H36MExtractor
 from src.types import PersonClick, TrackedExtraction, VideoMeta
 
-
 # ---------------------------------------------------------------------------
 # Helpers -- fake YOLO result objects that mimic torch tensors
 # ---------------------------------------------------------------------------
@@ -229,9 +228,7 @@ class TestExtractVideoTracked:
         extractor._model = mock_model
 
         with patch("src.pose_estimation.h36m_extractor.get_video_meta", return_value=meta):
-            result = extractor.extract_video_tracked(
-                "/fake/video.mp4", person_click=click
-            )
+            result = extractor.extract_video_tracked("/fake/video.mp4", person_click=click)
 
         assert isinstance(result, TrackedExtraction)
         assert result.poses.shape == (num_frames, 17, 3)
@@ -244,9 +241,7 @@ class TestExtractVideoTracked:
         pose = result.poses[first_valid_idx]
         # H36Key.LHIP=4, H36Key.RHIP=1, mid-hip x should be near 0.3
         mid_hip_x = (pose[4, 0] + pose[1, 0]) / 2
-        assert mid_hip_x < 0.5, (
-            f"Expected person A (x~0.3), got mid_hip_x={mid_hip_x:.2f}"
-        )
+        assert mid_hip_x < 0.5, f"Expected person A (x~0.3), got mid_hip_x={mid_hip_x:.2f}"
 
     def test_gaps_are_nan(self, extractor: H36MExtractor) -> None:
         """Frames where target is not detected should be NaN."""
@@ -258,16 +253,12 @@ class TestExtractVideoTracked:
 
         # Gap frames should be NaN
         for gap_idx in gap_frames:
-            assert np.isnan(result.poses[gap_idx, 0, 0]), (
-                f"Frame {gap_idx} should be NaN (gap)"
-            )
+            assert np.isnan(result.poses[gap_idx, 0, 0]), f"Frame {gap_idx} should be NaN (gap)"
 
         # Non-gap frames should be valid
         for i in range(num_frames):
             if i not in gap_frames:
-                assert not np.isnan(result.poses[i, 0, 0]), (
-                    f"Frame {i} should be valid"
-                )
+                assert not np.isnan(result.poses[i, 0, 0]), f"Frame {i} should be valid"
 
     def test_preroll_empty_frames(self, extractor: H36MExtractor) -> None:
         """First N frames empty -- first_detection_frame should be N."""
@@ -279,8 +270,7 @@ class TestExtractVideoTracked:
         result = _setup_extractor(extractor, fake_results, meta)
 
         assert result.first_detection_frame == preroll, (
-            f"Expected first_detection_frame={preroll}, "
-            f"got {result.first_detection_frame}"
+            f"Expected first_detection_frame={preroll}, got {result.first_detection_frame}"
         )
 
         # Verify NaN in pre-roll
@@ -299,9 +289,7 @@ class TestExtractVideoTracked:
         """
         num_frames = 50
         gap_frames_a = set(range(20, num_frames))  # A absent from frame 20+
-        fake_results = _make_multi_person_results(
-            num_frames, gap_frames_a=gap_frames_a
-        )
+        fake_results = _make_multi_person_results(num_frames, gap_frames_a=gap_frames_a)
         meta = _make_video_meta(num_frames)
         result = _setup_extractor(extractor, fake_results, meta)
 
@@ -313,16 +301,12 @@ class TestExtractVideoTracked:
         assert valid[late_idx], "Frame 40 should have a valid pose (person B)"
         pose = result.poses[late_idx]
         mid_hip_x = (pose[4, 0] + pose[1, 0]) / 2
-        assert mid_hip_x > 0.5, (
-            f"Expected person B (x~0.7), got mid_hip_x={mid_hip_x:.2f}"
-        )
+        assert mid_hip_x > 0.5, f"Expected person B (x~0.7), got mid_hip_x={mid_hip_x:.2f}"
 
     def test_no_detections_raises(self, extractor: H36MExtractor) -> None:
         """No person detected in any frame -- ValueError."""
         num_frames = 10
-        fake_results = _make_single_person_results(
-            num_frames, gap_frames=set(range(num_frames))
-        )
+        fake_results = _make_single_person_results(num_frames, gap_frames=set(range(num_frames)))
         meta = _make_video_meta(num_frames)
 
         mock_model = MagicMock()

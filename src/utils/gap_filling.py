@@ -13,7 +13,7 @@ independently.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import numpy as np
 from numpy.typing import NDArray
@@ -151,9 +151,7 @@ class GapFiller:
                 elif gap_len <= self._medium_threshold:
                     seg_mask = valid_mask[seg_start : seg_end + 1]
                     # Map to segment-local indices for velocity lookback
-                    self._fill_extrapolation(
-                        poses, abs_start, abs_end, seg_start, seg_mask
-                    )
+                    self._fill_extrapolation(poses, abs_start, abs_end, seg_start, seg_mask)
                     all_strategies.append("extrapolation")
                 else:
                     # Long gap within a phase segment: still fill linearly
@@ -173,9 +171,7 @@ class GapFiller:
         return poses, GapReport(gaps=all_gaps, strategy_used=all_strategies)
 
     @staticmethod
-    def _build_phase_segments(
-        total_frames: int, boundaries: list[int]
-    ) -> list[tuple[int, int]]:
+    def _build_phase_segments(total_frames: int, boundaries: list[int]) -> list[tuple[int, int]]:
         """Build (start, end) inclusive segment ranges from boundaries.
 
         Segments are the intervals between consecutive phase boundaries,
@@ -220,9 +216,7 @@ class GapFiller:
                 strategies.append("extrapolation")
             else:
                 # Long gap: split sequence, keep longest valid segment
-                poses_new, actual_start, actual_end = self._split_at_long_gap(
-                    poses, start, end
-                )
+                poses_new, actual_start, actual_end = self._split_at_long_gap(poses, start, end)
                 # After split, we must re-run on remaining gaps
                 # For simplicity, handle this one long gap and adjust
                 # remaining poses in-place. The caller gets the trimmed array.
@@ -264,9 +258,7 @@ class GapFiller:
     # ------------------------------------------------------------------
 
     @staticmethod
-    def _fill_linear(
-        poses: NDArray[np.floating], gap_start: int, gap_end: int
-    ) -> None:
+    def _fill_linear(poses: NDArray[np.floating], gap_start: int, gap_end: int) -> None:
         """Fill gap with linear interpolation between bounding valid frames.
 
         For gaps at the array edges (no valid frame on one side), copies

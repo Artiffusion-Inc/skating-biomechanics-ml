@@ -86,9 +86,7 @@ class AnalysisPipeline:
         self._aligner: MotionAligner | MotionDTWAligner | None = None  # type: ignore[valid-type]
         self._recommender: Recommender | None = None  # type: ignore[valid-type]
 
-    def _extract_and_track(
-        self, video_path: Path, meta: VideoMeta
-    ) -> tuple[np.ndarray, int]:
+    def _extract_and_track(self, video_path: Path, meta: VideoMeta) -> tuple[np.ndarray, int]:
         """Extract poses with tracking, gap filling, and spatial compensation.
 
         Combines extraction, pre-roll trimming, gap filling, and camera
@@ -125,9 +123,7 @@ class AnalysisPipeline:
                 estimate_pose_sequence,
             )
 
-            camera_poses = estimate_pose_sequence(
-                str(video_path), interval=30, fps=meta.fps
-            )
+            camera_poses = estimate_pose_sequence(str(video_path), interval=30, fps=meta.fps)
             compensated = compensate_poses_per_frame(
                 filled,
                 camera_poses,
@@ -153,15 +149,9 @@ class AnalysisPipeline:
                 # Convert to pixels, compensate, convert back
                 poses_px = filled[:, :, :2] * np.array([meta.width, meta.height])
                 poses_with_conf = np.dstack([poses_px, filled[:, :, 2]])
-                compensated_px = spatial_detector.compensate_poses(
-                    poses_with_conf, camera_pose
-                )
-                compensated = compensated_px[:, :, :2] / np.array(
-                    [meta.width, meta.height]
-                )
-                compensated = np.dstack(
-                    [compensated, compensated_px[:, :, 2:3]]
-                )
+                compensated_px = spatial_detector.compensate_poses(poses_with_conf, camera_pose)
+                compensated = compensated_px[:, :, :2] / np.array([meta.width, meta.height])
+                compensated = np.dstack([compensated, compensated_px[:, :, 2:3]])
             else:
                 compensated = filled
 
@@ -265,7 +255,7 @@ class AnalysisPipeline:
                 )
                 phases = phase_result.phases
 
-        # Stage 5: Compute biomechanics metrics
+            # Stage 5: Compute biomechanics metrics
             analyzer = self._get_analyzer_factory()(element_def)
             metrics = analyzer.analyze(smoothed, phases, meta.fps)
 
@@ -525,7 +515,9 @@ class AnalysisPipeline:
         # Metrics
         lines.append("\n--- Биомеханические метрики ---")
         for metric in report.metrics:
-            status = "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
+            status = (
+                "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
+            )
             ref_min, ref_max = metric.reference_range
             lines.append(
                 f"  {metric.name}: {metric.value:.2f} {metric.unit} [{status}] "
@@ -534,7 +526,9 @@ class AnalysisPipeline:
 
         # DTW distance
         if report.dtw_distance is not None:
-            lines.append("\n--- \u0421\u0445\u043e\u0434\u0441\u0442\u0432\u043e \u0441 \u0440\u0435\u0444\u0435\u0440\u0435\u043d\u0441\u043e\u043c ---")
+            lines.append(
+                "\n--- \u0421\u0445\u043e\u0434\u0441\u0442\u0432\u043e \u0441 \u0440\u0435\u0444\u0435\u0440\u0435\u043d\u0441\u043e\u043c ---"
+            )
             lines.append(f"  DTW-расстояние: {report.dtw_distance:.3f} (0 = идеально)")
 
         # Blade edge information
@@ -566,7 +560,9 @@ class AnalysisPipeline:
 
         # Overall score
         if report.overall_score is not None:
-            lines.append(f"\n\u041e\u0431\u0449\u0438\u0439 \u0431\u0430\u043b\u043b: {report.overall_score:.1f} / 10")
+            lines.append(
+                f"\n\u041e\u0431\u0449\u0438\u0439 \u0431\u0430\u043b\u043b: {report.overall_score:.1f} / 10"
+            )
 
         lines.append("=" * 60)
 

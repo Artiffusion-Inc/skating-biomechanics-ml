@@ -19,11 +19,10 @@ from pathlib import Path
 
 from .analysis import element_defs
 from .pipeline import AnalysisPipeline
+from .pose_estimation import normalizer
 from .references import reference_builder, reference_store
 from .types import ElementPhase, PersonClick, ReferenceData
 from .utils.video import get_video_meta
-
-from .pose_estimation import normalizer
 
 PoseNormalizer = normalizer.PoseNormalizer
 ReferenceBuilder = reference_builder.ReferenceBuilder
@@ -62,9 +61,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     reference_store = None
     if args.reference_dir:
         # Create builder with the selected pose backend
-        extractor = _get_extractor(
-            args.pose_backend, output_format="normalized"
-        )
+        extractor = _get_extractor(args.pose_backend, output_format="normalized")
         norm = PoseNormalizer(target_spine_length=0.4)
         builder = ReferenceBuilder(extractor, norm)
         reference_store = ReferenceStore(args.reference_dir)
@@ -74,9 +71,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.person_click:
         person_click = PersonClick(x=args.person_click[0], y=args.person_click[1])
     elif args.select_person:
-        extractor = _get_extractor(
-            args.pose_backend, output_format="normalized"
-        )
+        extractor = _get_extractor(args.pose_backend, output_format="normalized")
         persons = extractor.preview_persons(args.video)
         if not persons:
             print("No persons detected in the first seconds of the video.")
@@ -185,9 +180,7 @@ def cmd_build_ref(args: argparse.Namespace) -> int:
         return 1
 
     # Initialize components (H3.6M format)
-    pose_extractor = _get_extractor(
-        args.pose_backend, output_format="normalized"
-    )
+    pose_extractor = _get_extractor(args.pose_backend, output_format="normalized")
     normalizer = PoseNormalizer(target_spine_length=0.4)
     builder = ReferenceBuilder(pose_extractor, normalizer)
 
@@ -277,9 +270,7 @@ def cmd_segment(args: argparse.Namespace) -> int:
         # Export segments as references if output-dir specified
         if args.export_dir:
             # Use the selected pose backend for export extraction
-            extractor = _get_extractor(
-                args.pose_backend, output_format="normalized"
-            )
+            extractor = _get_extractor(args.pose_backend, output_format="normalized")
             norm = PoseNormalizer(target_spine_length=0.4)
 
             # Extract poses in H3.6M format with tracking

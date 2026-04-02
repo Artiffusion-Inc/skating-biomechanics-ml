@@ -235,9 +235,7 @@ class PoseTracker:
 
             if track.state is None:
                 # Initialize state [x, y, vx, vy, ax, ay]
-                track.state = np.array(
-                    [[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]]
-                )
+                track.state = np.array([[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]])
                 track.covariance = self.P0.copy()
             else:
                 track.state, track.covariance = self._kalman_update(
@@ -264,9 +262,7 @@ class PoseTracker:
                 age=1,
                 hits=1,
                 time_since_update=0,
-                state=np.array(
-                    [[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]]
-                ),
+                state=np.array([[mid_hip[0]], [mid_hip[1]], [0], [0], [0], [0]]),
                 covariance=self.P0.copy(),
                 biometrics=self._extract_biometrics(poses[det_idx]),
                 hit_streak=1,

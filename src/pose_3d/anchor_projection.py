@@ -65,12 +65,12 @@ def anchor_project(
     projected_norm = np.zeros((n, 17, 2), dtype=np.float32)
 
     # Pre-compute 2D reference points (pixels) with NaN fallback
-    lhip_2d = poses_2d_norm[:, H36Key.LHIP, :]   # (N, 2)
-    rhip_2d = poses_2d_norm[:, H36Key.RHIP, :]    # (N, 2)
+    lhip_2d = poses_2d_norm[:, H36Key.LHIP, :]  # (N, 2)
+    rhip_2d = poses_2d_norm[:, H36Key.RHIP, :]  # (N, 2)
     lshoulder_2d = poses_2d_norm[:, H36Key.LSHOULDER, :]  # (N, 2)
     rshoulder_2d = poses_2d_norm[:, H36Key.RSHOULDER, :]  # (N, 2)
 
-    hip_2d_norm = (lhip_2d + rhip_2d) / 2.0       # (N, 2)
+    hip_2d_norm = (lhip_2d + rhip_2d) / 2.0  # (N, 2)
     shoulder_2d_norm = (lshoulder_2d + rshoulder_2d) / 2.0  # (N, 2)
 
     # Fill NaN in reference points with temporal median
@@ -140,9 +140,7 @@ def blend_by_confidence(
     """
     # weight_3d = 1.0 when confidence is low (use corrected),
     # weight_3d = 0.0 when confidence is high (use raw).
-    weight_3d = 1.0 - np.clip(
-        (confidences - threshold + 0.2) / 0.4, 0.0, 1.0
-    )  # (N, 17)
+    weight_3d = 1.0 - np.clip((confidences - threshold + 0.2) / 0.4, 0.0, 1.0)  # (N, 17)
 
     # Broadcast to (N, 17, 2)
     w = weight_3d[:, :, np.newaxis]

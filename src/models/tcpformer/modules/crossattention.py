@@ -55,4 +55,3 @@ class CrossAttention(nn.Module):
             return attn, out
         else:
             return out
-

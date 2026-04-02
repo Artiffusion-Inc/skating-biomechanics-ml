@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 import numpy as np
-import pytest
 
 from src.detection.spatial_reference import (
     CameraPose,
@@ -11,10 +10,10 @@ from src.detection.spatial_reference import (
     estimate_pose_sequence,
 )
 
-
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _make_poses(num_frames: int, fill: float = 0.5, with_nans: bool = False):
     """Create a simple (N, 17, 3) pose array.
@@ -42,6 +41,7 @@ def _identity_camera_poses(num_frames: int, interval: int = 30):
 # estimate_pose_sequence tests
 # ---------------------------------------------------------------------------
 
+
 class TestEstimatePoseSequence:
     """Tests for estimate_pose_sequence()."""
 
@@ -67,6 +67,7 @@ class TestEstimatePoseSequence:
 
         # Mock detector to return low confidence for frame 30, high for others
         call_count = 0
+
         def fake_estimate(frame):
             nonlocal call_count
             call_count += 1
@@ -137,6 +138,7 @@ class TestEstimatePoseSequence:
 # ---------------------------------------------------------------------------
 # compensate_poses_per_frame tests
 # ---------------------------------------------------------------------------
+
 
 class TestCompensatePosesPerFrame:
     """Tests for compensate_poses_per_frame()."""
@@ -210,6 +212,7 @@ class TestCompensatePosesPerFrame:
 
         # Frame 0 (roll=0): unchanged
         np.testing.assert_allclose(result[0], poses[0], atol=1e-6)
+
         # Frame 15 (roll ~5): should be slightly rotated
         # Frame 30 (roll=10): should be most rotated
         # Verify monotonic displacement
@@ -234,9 +237,7 @@ class TestCompensatePosesPerFrame:
             (30, CameraPose(roll=10.0, confidence=1.0)),
         ]
 
-        result = compensate_poses_per_frame(
-            poses, camera_poses, frame_indices=frame_indices
-        )
+        result = compensate_poses_per_frame(poses, camera_poses, frame_indices=frame_indices)
 
         # First pose (frame 10, roll=0) should be unchanged
         np.testing.assert_allclose(result[0], poses[0], atol=1e-6)

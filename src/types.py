@@ -241,13 +241,13 @@ __all__ = [
     "MetricResult",
     "NormalizedPose",
     "PersonClick",
-    "TrackedExtraction",
     "PixelPose",
     "Pose3D",
     "RecommendationRule",
     "ReferenceData",
     "SegmentationResult",
     "TimeSeries",
+    "TrackedExtraction",
     "VideoMeta",
     "assert_pose_format",
     "normalize_pixel_poses",
@@ -536,7 +536,9 @@ class AnalysisReport:
         ]
 
         for metric in self.metrics:
-            status = "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
+            status = (
+                "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
+            )
             lines.append(
                 f"  {metric.name}: {metric.value:.2f} {metric.unit} [{status}] "
                 f"(референс: {metric.reference_range[0]:.2f}-{metric.reference_range[1]:.2f})"
@@ -597,10 +599,14 @@ class AnalysisReport:
                 lines.append(f"  Высота прыжка (CoM): {h:.2f} м")
             if "flight_time" in self.physics:
                 t = self.physics["flight_time"]
-                lines.append(f"  \u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043b\u0451\u0442\u0430: {t:.2f} \u0441")
+                lines.append(
+                    f"  \u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043b\u0451\u0442\u0430: {t:.2f} \u0441"
+                )
             if "takeoff_velocity" in self.physics:
                 v = self.physics["takeoff_velocity"]
-                lines.append(f"  \u0421\u043a\u043e\u0440\u043e\u0441\u0442\u044c \u043e\u0442\u0440\u044b\u0432\u0430: {v:.2f} \u043c/\u0441")
+                lines.append(
+                    f"  \u0421\u043a\u043e\u0440\u043e\u0441\u0442\u044c \u043e\u0442\u0440\u044b\u0432\u0430: {v:.2f} \u043c/\u0441"
+                )
             if "avg_inertia" in self.physics:
                 i = self.physics["avg_inertia"]
                 lines.append(f"  Средний момент инерции: {i:.3f} кг·м²")
@@ -824,7 +830,9 @@ class TrackedExtraction:
     target_track_id: int | None
     fps: float
     video_meta: VideoMeta
-    foot_keypoints: np.ndarray | None = None  # (N, 6, 3) [L_Heel, L_BigToe, L_SmallToe, R_Heel, R_BigToe, R_SmallToe]
+    foot_keypoints: np.ndarray | None = (
+        None  # (N, 6, 3) [L_Heel, L_BigToe, L_SmallToe, R_Heel, R_BigToe, R_SmallToe]
+    )
 
     def valid_mask(self) -> np.ndarray:
         """Return boolean mask of frames with valid (non-NaN) poses.

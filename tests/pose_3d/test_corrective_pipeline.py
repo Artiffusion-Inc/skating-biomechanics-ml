@@ -1,7 +1,6 @@
 """Tests for corrective_pipeline module (CorrectiveLens end-to-end)."""
 
 import numpy as np
-import pytest
 
 from src.pose_3d.corrective_pipeline import CorrectiveLens
 

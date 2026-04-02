@@ -315,17 +315,13 @@ def calculate_text_position(
     # Adjust for text dimensions
     if position in (Position.TOP_RIGHT, Position.BOTTOM_RIGHT):
         x = base_x - text_width
-    elif (
-        position in (Position.TOP_CENTER, Position.BOTTOM_CENTER, Position.CENTER)
-    ):
+    elif position in (Position.TOP_CENTER, Position.BOTTOM_CENTER, Position.CENTER):
         x = base_x - text_width // 2
     else:
         x = base_x
 
     # Adjust for text height
-    if (
-        position in (Position.BOTTOM_LEFT, Position.BOTTOM_RIGHT, Position.BOTTOM_CENTER)
-    ):
+    if position in (Position.BOTTOM_LEFT, Position.BOTTOM_RIGHT, Position.BOTTOM_CENTER):
         y = base_y - text_height
     elif position == Position.CENTER:
         y = base_y - text_height // 2

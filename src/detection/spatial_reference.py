@@ -446,16 +446,18 @@ def estimate_pose_sequence(
                     smoothed_pitch = pitch_filter.filter_sample(t, pose.pitch)
                     smoothed_yaw = yaw_filter.filter_sample(t, pose.yaw)
 
-                    results.append((
-                        frame_idx,
-                        CameraPose(
-                            roll=smoothed_roll,
-                            pitch=smoothed_pitch,
-                            yaw=smoothed_yaw,
-                            confidence=pose.confidence,
-                            source=pose.source,
-                        ),
-                    ))
+                    results.append(
+                        (
+                            frame_idx,
+                            CameraPose(
+                                roll=smoothed_roll,
+                                pitch=smoothed_pitch,
+                                yaw=smoothed_yaw,
+                                confidence=pose.confidence,
+                                source=pose.source,
+                            ),
+                        )
+                    )
                 sample_idx += 1
 
             frame_idx += 1

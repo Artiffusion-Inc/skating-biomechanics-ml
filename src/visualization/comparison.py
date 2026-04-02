@@ -14,7 +14,6 @@ Optimizations:
 
 from __future__ import annotations
 
-import hashlib
 import logging
 import subprocess
 from dataclasses import dataclass, field
@@ -24,7 +23,7 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-from src.pose_estimation import H36MExtractor, RTMPoseExtractor
+from src.pose_estimation import RTMPoseExtractor
 from src.utils.smoothing import PoseSmoother, get_skating_optimized_config
 from src.utils.video import get_video_meta
 from src.visualization import draw_skeleton
@@ -110,9 +109,7 @@ class ComparisonRenderer:
         """Return cache path for extracted poses (next to video)."""
         return video_path.with_name(f"{video_path.stem}_poses.npz")
 
-    def _save_pose_cache(
-        self, video_path: Path, poses: list[np.ndarray]
-    ) -> None:
+    def _save_pose_cache(self, video_path: Path, poses: list[np.ndarray]) -> None:
         """Save extracted poses to .npz cache."""
         if not poses:
             return
@@ -121,9 +118,7 @@ class ComparisonRenderer:
         np.savez_compressed(cache_path, poses=arr)
         print(f"  Cached {len(poses)} poses -> {cache_path}", flush=True)
 
-    def _load_pose_cache(
-        self, video_path: Path, expected_frames: int
-    ) -> list[np.ndarray] | None:
+    def _load_pose_cache(self, video_path: Path, expected_frames: int) -> list[np.ndarray] | None:
         """Load poses from cache if valid.
 
         Returns None if cache missing, stale, or no_cache=True.
@@ -455,7 +450,6 @@ class ComparisonRenderer:
             str(output_path),
         ]
         return subprocess.Popen(cmd, stdin=subprocess.PIPE, stderr=subprocess.DEVNULL)
-
 
     def _extract_poses_streaming(
         self,

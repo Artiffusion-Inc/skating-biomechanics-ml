@@ -44,17 +44,13 @@ class VerticalAxisLayer(Layer):
 
         # Get mid-hip and mid-shoulder in pixels
         if context.normalized:
-            mid_hip = normalized_to_pixel(
-                (pose[H36Key.LHIP] + pose[H36Key.RHIP]) / 2, w, h
-            )
+            mid_hip = normalized_to_pixel((pose[H36Key.LHIP] + pose[H36Key.RHIP]) / 2, w, h)
             mid_shoulder = normalized_to_pixel(
                 (pose[H36Key.LSHOULDER] + pose[H36Key.RSHOULDER]) / 2, w, h
             )
         else:
             mid_hip = ((pose[H36Key.LHIP] + pose[H36Key.RHIP]) / 2).astype(int)
-            mid_shoulder = (
-                (pose[H36Key.LSHOULDER] + pose[H36Key.RSHOULDER]) / 2
-            ).astype(int)
+            mid_shoulder = ((pose[H36Key.LSHOULDER] + pose[H36Key.RSHOULDER]) / 2).astype(int)
 
         hip_x, hip_y = int(mid_hip[0]), int(mid_hip[1])
         sh_x, sh_y = int(mid_shoulder[0]), int(mid_shoulder[1])
