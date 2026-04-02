@@ -57,6 +57,12 @@ perf(viz): add frame_skip, render-scale for 3x speedup
 
 Pre-commit: `uv run pytest tests/ -v -m "not slow"` + `uv run ruff check .`
 
+## GPU Requirements
+
+**GPU-only. CPU inference is forbidden.** Always use `device='cuda'`.
+Before running: `bash scripts/setup_cuda_compat.sh` (required after `uv sync`).
+System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-compat/`.
+
 ---
 
 ## Project Structure

@@ -62,8 +62,9 @@ done
 for lib in libcublas.so.12 libcublasLt.so.12 libcudart.so.12; do
     src=$(find "$TMPDIR/extract/nvidia" -name "$lib" 2>/dev/null | head -1)
     if [ -n "$src" ]; then
-        echo "  ✓ $lib (nvidia-cuda12)"
-        ln -sf "$src" "$COMPAT/$lib"
+        # Copy (not symlink) — symlinks to /tmp break after reboot
+        cp -f "$src" "$COMPAT/$lib"
+        echo "  ✓ $lib (nvidia-cuda12, copied)"
     else
         echo "  ✗ $lib NOT FOUND in pip packages"
     fi
