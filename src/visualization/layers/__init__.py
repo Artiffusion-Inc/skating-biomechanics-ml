@@ -10,8 +10,10 @@ Provides modular layer-based rendering:
 - Vertical axis layer
 - Joint angle layer
 - Timer layer
+- Angle panel layer
 """
 
+from src.visualization.layers.angle_panel_layer import AnglePanelLayer
 from src.visualization.layers.base import Layer, LayerContext, render_layers
 from src.visualization.layers.blade_layer import BladeLayer
 from src.visualization.layers.hud_layer import HUDLayer
@@ -23,6 +25,7 @@ from src.visualization.layers.velocity_layer import VelocityLayer
 from src.visualization.layers.vertical_axis_layer import VerticalAxisLayer
 
 __all__ = [
+    "AnglePanelLayer",
     "BladeLayer",
     "HUDLayer",
     "JointAngleLayer",
