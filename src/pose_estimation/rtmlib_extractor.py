@@ -69,6 +69,7 @@ class RTMPoseExtractor:
         self,
         mode: str = "balanced",
         tracking_backend: str = "rtmlib",
+        tracking_mode: str = "auto",
         conf_threshold: float = 0.3,
         output_format: str = "normalized",
         det_frequency: int = 1,
@@ -81,6 +82,7 @@ class RTMPoseExtractor:
 
         self._mode = mode
         self._tracking_backend = tracking_backend
+        self._tracking_mode = tracking_mode
         self._conf_threshold = conf_threshold
         self._output_format = output_format
         self._det_frequency = det_frequency
@@ -151,6 +153,17 @@ class RTMPoseExtractor:
             )
         else:
             custom_tracker = None  # type: ignore[assignment]
+
+        # Новый трекинг (Sports2D / DeepSORT)
+        resolved_mode = self._resolve_tracking_mode()
+        sports2d_tracker = None
+        deepsort_tracker = None
+        if resolved_mode == "sports2d":
+            from ..tracking.sports2d import Sports2DTracker
+            sports2d_tracker = Sports2DTracker(max_disappeared=30)
+        elif resolved_mode == "deepsort":
+            from ..tracking.deepsort_tracker import DeepSORTTracker
+            deepsort_tracker = DeepSORTTracker(max_age=30, embedder_gpu=True)
 
         target_track_id: int | None = None
         click_lock_window = 6  # ~0.2-0.24s at 25-30fps
@@ -251,15 +264,15 @@ class RTMPoseExtractor:
                     foot_kps_list.append(foot)
 
                 # --- Track association ---
-                if self._tracking_backend == "custom":
+                if sports2d_tracker is not None:
+                    track_ids = sports2d_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
+                elif deepsort_tracker is not None:
+                    track_ids = deepsort_tracker.update(
+                        h36m_poses[:, :, :2], h36m_poses[:, :, 2], frame=frame
+                    )
+                elif self._tracking_backend == "custom":
                     track_ids = custom_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
                 else:
-                    # rtmlib assigns per-person IDs internally via tracking.
-                    # Since rtmlib returns persons in tracked order, we need
-                    # to identify which person is which.  rtmlib doesn't expose
-                    # the track ID directly in the default API, so we use a
-                    # spatial matching approach: match detections to existing
-                    # tracks by biometric distance.
                     track_ids = self._assign_track_ids(h36m_poses, rtmlib_id_map, next_internal_id)
                     next_internal_id = max(rtmlib_id_map.values(), default=-1) + 1
 
@@ -406,6 +419,17 @@ class RTMPoseExtractor:
         else:
             tracker = None  # type: ignore[assignment]
 
+        # Новый трекинг (Sports2D / DeepSORT)
+        resolved_mode = self._resolve_tracking_mode()
+        sports2d_tracker = None
+        deepsort_tracker = None
+        if resolved_mode == "sports2d":
+            from ..tracking.sports2d import Sports2DTracker
+            sports2d_tracker = Sports2DTracker(max_disappeared=30)
+        elif resolved_mode == "deepsort":
+            from ..tracking.deepsort_tracker import DeepSORTTracker
+            deepsort_tracker = DeepSORTTracker(max_age=30, embedder_gpu=True)
+
         rtmlib_id_map: dict[int, int] = {}
         next_internal_id = 0
         person_data: dict[int, dict] = {}
@@ -446,7 +470,13 @@ class RTMPoseExtractor:
                     h36m_poses[p] = halpe26_to_h36m(halpe26)
 
                 # Track association
-                if tracker is not None:
+                if sports2d_tracker is not None:
+                    track_ids = sports2d_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
+                elif deepsort_tracker is not None:
+                    track_ids = deepsort_tracker.update(
+                        h36m_poses[:, :, :2], h36m_poses[:, :, 2], frame=frame
+                    )
+                elif tracker is not None:
                     track_ids = tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
                 else:
                     track_ids = self._assign_track_ids(h36m_poses, rtmlib_id_map, next_internal_id)
@@ -499,6 +529,18 @@ class RTMPoseExtractor:
     # ------------------------------------------------------------------
     # Internal helpers
     # ------------------------------------------------------------------
+
+    def _resolve_tracking_mode(self) -> str:
+        """Разрешить 'auto' в конкретный режим трекинга."""
+        if self._tracking_mode != "auto":
+            return self._tracking_mode
+        try:
+            import deep_sort_realtime  # noqa: F401
+            logger.info("Авто-выбор: DeepSORT (deep-sort-realtime доступен)")
+            return "deepsort"
+        except ImportError:
+            logger.info("Авто-выбор: Sports2D (Венгерский алгоритм)")
+            return "sports2d"
 
     def _assign_track_ids(
         self,
