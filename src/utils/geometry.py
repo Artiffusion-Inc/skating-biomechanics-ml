@@ -329,3 +329,79 @@ def compute_foot_angles_series(
             right_angles[i] = foot_angle(r_heel[i, :2], r_big_toe[i, :2])
 
     return left_angles, right_angles
+
+
+# ---------------------------------------------------------------------------
+# Visible side detection (Sports2D-inspired)
+# ---------------------------------------------------------------------------
+
+
+def detect_visible_side(
+    foot_keypoints: np.ndarray,
+    conf_threshold: float = 0.3,
+) -> str | None:
+    """Detect which side of the body is facing the camera.
+
+    Uses HALPE26 foot keypoints (heel + big_toe) to determine orientation.
+    If big_toe is to the RIGHT of heel → right side visible.
+    If big_toe is to the LEFT of heel → left side visible.
+
+    Args:
+        foot_keypoints: (1, 6, 3) or (N, 6, 3) foot keypoints in pixel coords.
+            Columns: [L_Heel, L_BigToe, L_SmallToe, R_Heel, R_BigToe, R_SmallToe]
+            Channels: [x, y, confidence].
+        conf_threshold: Minimum confidence for valid keypoints.
+
+    Returns:
+        "left", "right", or None if insufficient data.
+    """
+    # Use first frame if multi-frame
+    if foot_keypoints.ndim == 3:
+        # Aggregate: median orientation across frames
+        orientations = []
+        for i in range(foot_keypoints.shape[0]):
+            fp = foot_keypoints[i]
+            l_conf = fp[1, 2]  # L_BigToe confidence
+            r_conf = fp[4, 2]  # R_BigToe confidence
+            if l_conf < conf_threshold or r_conf < conf_threshold:
+                continue
+            l_orientation = fp[1, 0] - fp[0, 0]  # L_BigToe.x - L_Heel.x
+            r_orientation = fp[4, 0] - fp[3, 0]  # R_BigToe.x - R_Heel.x
+            orientations.append(l_orientation + r_orientation)
+        if not orientations:
+            return None
+        return "right" if np.median(orientations) >= 0 else "left"
+    return None
+
+
+# ---------------------------------------------------------------------------
+# Floor angle estimation (Sports2D-inspired)
+# ---------------------------------------------------------------------------
+
+
+def estimate_floor_angle(
+    foot_positions: np.ndarray,
+) -> float:
+    """Estimate floor angle from foot positions.
+
+    Fits a line through foot positions and returns the angle of that line
+    relative to horizontal. Used to correct segment angles for camera tilt.
+
+    Args:
+        foot_positions: (N, 2) array of foot (x, y) positions in pixels.
+
+    Returns:
+        Floor angle in degrees. 0 = horizontal. Positive = upward slope in image coords.
+        Returns 0.0 if fewer than 2 points.
+    """
+    if len(foot_positions) < 2:
+        return 0.0
+
+    # Fit line: y = m*x + b
+    coeffs = np.polyfit(foot_positions[:, 0], foot_positions[:, 1], 1)
+    # coeffs[0] = slope (dy/dx), coeffs[1] = intercept
+    # Angle of slope relative to horizontal (image coords: y-down)
+    # In image coords: positive slope (dy/dx > 0) = Y increases with X = downward
+    # We return the angle as it appears visually in the image
+    angle = np.degrees(np.arctan(coeffs[0]))
+    return float(angle)
