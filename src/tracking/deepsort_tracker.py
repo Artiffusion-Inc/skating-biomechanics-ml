@@ -77,6 +77,8 @@ class DeepSORTTracker:
         keypoints: np.ndarray,
         scores: np.ndarray,
         frame: np.ndarray | None = None,
+        frame_width: int = 1,
+        frame_height: int = 1,
     ) -> list[int]:
         """Обновить трекер детекциями текущего кадра.
 
@@ -85,6 +87,8 @@ class DeepSORTTracker:
             scores: (P, 17) confidence для каждого ключа.
             frame: BGR-изображение (нужно для appearance features).
                 Если None, работает только по bbox.
+            frame_width: Ширина кадра в пикселях (для конвертации bbox).
+            frame_height: Высота кадра в пикселях (для конвертации bbox).
 
         Returns:
             Список внутренних track ID, по одному на каждого человека.
@@ -113,6 +117,12 @@ class DeepSORTTracker:
         bboxes_ltwh = np.stack(
             (x_min_pad, y_min_pad, width_pad, height_pad), axis=1
         )
+
+        # DeepSORT needs pixel coordinates for frame cropping
+        bboxes_ltwh[:, 0] *= frame_width   # x_min
+        bboxes_ltwh[:, 1] *= frame_height   # y_min
+        bboxes_ltwh[:, 2] *= frame_width   # width
+        bboxes_ltwh[:, 3] *= frame_height   # height
         bbox_scores = np.nanmean(scores, axis=1)
 
         detections = list(

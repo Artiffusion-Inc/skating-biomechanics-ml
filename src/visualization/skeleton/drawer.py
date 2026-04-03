@@ -106,8 +106,8 @@ def draw_skeleton(
         if not (_is_valid_point(pt_a, width, height) and _is_valid_point(pt_b, width, height)):
             continue
 
-        # Sports2D bone colors
-        color = _get_sports2d_bone_color(joint_a, joint_b)
+        # Clean single-color bones (light gray)
+        color = (200, 200, 200)
 
         cv2.line(frame, pt_a, pt_b, color, line_width, cv2.LINE_AA)
 
@@ -419,7 +419,7 @@ def _draw_foot_keypoints(
     width: int,
     height: int,
     confidence_threshold: float = 0.5,
-    kp_radius: int = 3,
+    kp_radius: int = 2,
     line_thickness: int = 1,
 ) -> None:
     """Draw HALPE26 foot keypoints and segments.
@@ -443,6 +443,10 @@ def _draw_foot_keypoints(
     for heel_idx, toe_idx in foot_pairs:
         heel_conf = fk[heel_idx, 2]
         toe_conf = fk[toe_idx, 2]
+
+        # Skip NaN keypoints
+        if np.isnan(heel_conf) or np.isnan(toe_conf):
+            continue
 
         heel_pt = (int(fk[heel_idx, 0]), int(fk[heel_idx, 1]))
         toe_pt = (int(fk[toe_idx, 0]), int(fk[toe_idx, 1]))

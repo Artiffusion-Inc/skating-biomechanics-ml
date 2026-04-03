@@ -13,7 +13,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-03-25T17:29:31.75141559Z"
+exclude-newer = "2026-03-27T15:45:14.078030782Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -674,6 +674,20 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/43/fa/6d96a0978d19e17b68d634497769987b16c8f4cd0a7a05048bec693caa6b/decorator-5.2.1.tar.gz", hash = "sha256:65f266143752f734b0a7cc83c46f4618af75b8c5911b00ccb61d0ac9b6da0360", size = 56711, upload-time = "2025-02-24T04:41:34.073Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/4e/8c/f3147f5c4b73e7550fe5f9352eaa956ae838d5c51eb58e7a25b9f3e2643b/decorator-5.2.1-py3-none-any.whl", hash = "sha256:d316bb415a2d9e2d2b3abcc4084c6502fc09240e292cd76a76afc106a1c8e04a", size = 9190, upload-time = "2025-02-24T04:41:32.565Z" },
+]
+
+[[package]]
+name = "deep-sort-realtime"
+version = "1.3.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+    { name = "opencv-python" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e3/f5/9c91aaaae40e4e7925db191f128c5dd5d3a662df1ca76d6a874925c022af/deep-sort-realtime-1.3.2.tar.gz", hash = "sha256:32bab92f981a274fce3ff121f35894e5adab7ca00314c113c348de7bcb82d73e", size = 8429969, upload-time = "2023-02-11T04:25:38.744Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/3c/73c13af1dddc287cb42493ad59bd296daef106408e0006a4897c20a4ddd6/deep_sort_realtime-1.3.2-py3-none-any.whl", hash = "sha256:a6e144c888fdfb27245d2a060acbe0d2f3088448defbc419f7a26bce063bdd6c", size = 8429443, upload-time = "2023-02-11T04:25:28.56Z" },
 ]
 
 [[package]]
@@ -3039,6 +3053,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "anytree" },
+    { name = "deep-sort-realtime" },
     { name = "dtw-python" },
     { name = "filterpy" },
     { name = "numpy" },
@@ -3050,6 +3065,11 @@ dependencies = [
     { name = "timm" },
     { name = "torch" },
     { name = "ultralytics" },
+]
+
+[package.optional-dependencies]
+deepsort = [
+    { name = "deep-sort-realtime" },
 ]
 
 [package.dev-dependencies]
@@ -3065,6 +3085,8 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "anytree", specifier = ">=2.13.0" },
+    { name = "deep-sort-realtime", specifier = ">=1.3.2" },
+    { name = "deep-sort-realtime", marker = "extra == 'deepsort'", specifier = ">=1.3.2" },
     { name = "dtw-python", specifier = ">=1.5.0" },
     { name = "filterpy", specifier = ">=1.4.5" },
     { name = "numpy", specifier = ">=2.0.0" },
@@ -3077,6 +3099,7 @@ requires-dist = [
     { name = "torch", specifier = ">=2.5.0" },
     { name = "ultralytics", specifier = ">=0.3.0" },
 ]
+provides-extras = ["deepsort"]
 
 [package.metadata.requires-dev]
 dev = [

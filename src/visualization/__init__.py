@@ -66,6 +66,7 @@ from src.visualization.hud import (
 
 # Layers
 from src.visualization.layers import (
+    AnglePanelLayer,
     BladeLayer,
     HUDLayer,
     JointAngleLayer,
@@ -90,6 +91,7 @@ from src.visualization.skeleton import (
 )
 
 __all__ = [
+    "AnglePanelLayer",
     "BladeLayer",
     "HUDLayer",
     # HUD

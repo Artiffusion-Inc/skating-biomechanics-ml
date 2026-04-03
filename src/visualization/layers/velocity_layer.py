@@ -113,8 +113,13 @@ class VelocityLayer(Layer):
         if context.pose_2d is not None and self._prev_pose_2d is not None:
             self._draw_velocity_2d(frame, context)
 
-        # Store current poses for next frame
-        self._prev_pose_2d = context.pose_2d.copy() if context.pose_2d is not None else None
+        # Store current poses for next frame (skip all-NaN poses to avoid NaN velocity)
+        if context.pose_2d is not None and not np.all(np.isnan(context.pose_2d)):
+            self._prev_pose_2d = context.pose_2d.copy()
+            self._prev_pose_3d = context.pose_3d.copy() if context.pose_3d is not None else None
+        elif context.pose_2d is None:
+            self._prev_pose_2d = None
+            self._prev_pose_3d = None
         self._prev_pose_3d = context.pose_3d.copy() if context.pose_3d is not None else None
 
         return frame
@@ -126,6 +131,10 @@ class VelocityLayer(Layer):
     ) -> None:
         """Draw 2D velocity vectors with smoothing."""
         if context.pose_2d is None or self._prev_pose_2d is None:
+            return
+
+        # Skip frames with all-NaN poses (no valid detection)
+        if np.all(np.isnan(context.pose_2d)):
             return
 
         # Detect person switch: if mid-hip jumped too far, reset history
@@ -156,6 +165,10 @@ class VelocityLayer(Layer):
 
         # Draw vectors
         for joint_idx in self.joints:
+            # Skip NaN keypoints or NaN velocity
+            if np.any(np.isnan(pose_px[joint_idx])) or np.any(np.isnan(vel_px[joint_idx])):
+                continue
+
             vector = vel_px[joint_idx]
             length = np.linalg.norm(vector)
 
@@ -175,16 +188,16 @@ class VelocityLayer(Layer):
                 speed = min(length / self.max_length, 1.0)
                 color = get_heatmap_color(speed, 0.0, 1.0, "jet")
             else:
-                color = (0, 255, 255)  # Cyan
+                color = (0, 200, 0)  # Green
 
             cv2.arrowedLine(
                 frame,
                 start,
                 end,
                 color,
-                2,
+                1,
                 cv2.LINE_AA,
-                tipLength=0.3,
+                tipLength=0.2,
             )
 
     def _draw_velocity_3d(
@@ -250,7 +263,7 @@ class VelocityLayer(Layer):
                 speed = length / self.max_length
                 color = get_heatmap_color(speed, 0.0, 1.0, "jet")
             else:
-                color = (0, 255, 255)  # Cyan
+                color = (0, 200, 0)  # Green
 
             # Draw arrow
             cv2.arrowedLine(
@@ -258,7 +271,7 @@ class VelocityLayer(Layer):
                 start,
                 end,
                 color,
-                2,
+                1,
                 cv2.LINE_AA,
-                tipLength=0.3,
+                tipLength=0.2,
             )

@@ -38,8 +38,8 @@ class TimerLayer(Layer):
 
         # Measure text size for background box
         font = cv2.FONT_HERSHEY_SIMPLEX
-        font_scale = 0.7
-        thickness = 2
+        font_scale = 0.5
+        thickness = 1
         (tw, th), baseline = cv2.getTextSize(text, font, font_scale, thickness)
 
         margin = 10

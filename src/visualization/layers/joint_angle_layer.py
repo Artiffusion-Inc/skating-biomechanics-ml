@@ -89,7 +89,7 @@ DEFAULT_JOINT_SPECS: list[JointAngleSpec] = [
         H36Key.LKNEE,
         H36Key.LFOOT,
         COLOR_CYAN,
-        12,
+        8,
         good_range=(90, 170),
     ),
     JointAngleSpec(
@@ -98,7 +98,7 @@ DEFAULT_JOINT_SPECS: list[JointAngleSpec] = [
         H36Key.RKNEE,
         H36Key.RFOOT,
         COLOR_CYAN,
-        12,
+        8,
         good_range=(90, 170),
     ),
     JointAngleSpec(
@@ -107,7 +107,7 @@ DEFAULT_JOINT_SPECS: list[JointAngleSpec] = [
         H36Key.LELBOW,
         H36Key.LWRIST,
         COLOR_YELLOW,
-        10,
+        6,
         good_range=(30, 160),
     ),
     JointAngleSpec(
@@ -116,7 +116,7 @@ DEFAULT_JOINT_SPECS: list[JointAngleSpec] = [
         H36Key.RELBOW,
         H36Key.RWRIST,
         COLOR_YELLOW,
-        10,
+        6,
         good_range=(30, 160),
     ),
     JointAngleSpec(
@@ -125,7 +125,7 @@ DEFAULT_JOINT_SPECS: list[JointAngleSpec] = [
         H36Key.LHIP,
         H36Key.LKNEE,
         (255, 165, 0),  # Orange
-        10,
+        6,
         good_range=(80, 140),
     ),
     JointAngleSpec(
@@ -134,7 +134,7 @@ DEFAULT_JOINT_SPECS: list[JointAngleSpec] = [
         H36Key.RHIP,
         H36Key.RKNEE,
         (255, 165, 0),  # Orange
-        10,
+        6,
         good_range=(80, 140),
     ),
 ]
@@ -217,8 +217,8 @@ class JointAngleLayer(Layer):
             color = spec.get_color_for_angle(angle)
             _vx, _vy = int(pv[0]), int(pv[1])
 
-            # Draw angle arc with optional degree label
-            self._draw_arc(frame, pv, pa, pc, spec.arc_radius, color)
+            # Draw angle arc with optional degree label (white for max contrast)
+            self._draw_arc(frame, pv, pa, pc, spec.arc_radius, (220, 220, 220))
 
             if self.show_degree_labels and not np.isnan(angle):
                 self._draw_degree_label(frame, pv, angle, color)
@@ -259,7 +259,7 @@ class JointAngleLayer(Layer):
             start,
             end,
             color,
-            2,
+            1,
         )
 
     @staticmethod

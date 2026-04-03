@@ -53,12 +53,15 @@ data/processed/*
 !data/processed/.gitkeep
 data/references/*
 !data/references/.gitkeep
+data/datasets/
+data/dataset/
 
 # Models
 *.pt
 *.pth
 *.onnx
 *.weights
+*.pkl
 
 # Jupyter
 .ipynb_checkpoints/

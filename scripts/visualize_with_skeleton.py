@@ -206,7 +206,7 @@ def main() -> int:
             person_click = _PersonClick(x=args.person_click[0], y=args.person_click[1])
             print(f"Using click point: ({person_click.x}, {person_click.y})")
         elif args.select_person:
-            persons = extractor.preview_persons(args.video)
+            persons, preview_path = extractor.preview_persons(args.video)
             if not persons:
                 print("No persons detected in the first seconds.")
                 return 1
@@ -218,6 +218,12 @@ def main() -> int:
                     y=int(mid_hip[1] * meta.height),
                 )
             else:
+                # Show visual preview if available
+                if preview_path:
+                    import subprocess as _sp
+
+                    _sp.run(["xdg-open", preview_path], check=False)
+
                 print(f"\nDetected {len(persons)} persons:\n")
                 for i, p in enumerate(persons, 1):
                     x1, y1, x2, y2 = p["bbox"]
@@ -226,6 +232,8 @@ def main() -> int:
                         f"bbox=({x1:.2f},{y1:.2f})-({x2:.2f},{y2:.2f}), "
                         f"hits={p['hits']}, first_frame={p['first_frame']}"
                     )
+                if preview_path:
+                    print(f"\n  Preview: {preview_path}")
                 print()
                 try:
                     choice = int(input(f"Select person [1-{len(persons)}]: "))

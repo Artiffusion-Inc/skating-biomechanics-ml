@@ -56,15 +56,15 @@ class VerticalAxisLayer(Layer):
         sh_x, sh_y = int(mid_shoulder[0]), int(mid_shoulder[1])
 
         # Vertical line length (extend both up and down from hip)
-        line_len = int(h * 0.4)
+        line_len = int(h * 0.25)
         vert_top = (hip_x, hip_y - line_len)
         vert_bottom = (hip_x, hip_y + line_len // 2)
 
         # Draw dashed vertical line
-        self._draw_dashed_line(frame, vert_top, vert_bottom, COLOR_YELLOW, 1, dash=10)
+        self._draw_dashed_line(frame, vert_top, vert_bottom, (0, 200, 255), 1, dash=8)
 
         # Draw spine axis
-        cv2.line(frame, (hip_x, hip_y), (sh_x, sh_y), COLOR_YELLOW, 1)
+        cv2.line(frame, (hip_x, hip_y), (sh_x, sh_y), (0, 200, 255), 1)
 
         # Calculate tilt angle using angle_3pt
         # Point above hip on vertical, hip (vertex), shoulder
@@ -114,7 +114,7 @@ class VerticalAxisLayer(Layer):
         target_x: int,
         target_y: int,
         angle_deg: float,
-        radius: int = 20,
+        radius: int = 15,
     ) -> None:
         """Draw angle arc from vertical to spine axis direction."""
         # Angle of spine axis in OpenCV coords (y-axis inverted)
@@ -141,6 +141,6 @@ class VerticalAxisLayer(Layer):
             0,
             min(start_angle, end_angle),
             max(start_angle, end_angle),
-            COLOR_YELLOW,
+            (0, 200, 255),
             1,
         )

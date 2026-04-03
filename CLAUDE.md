@@ -15,7 +15,6 @@ ML-based AI coach for figure skating. Analyzes video, compares attempts to profe
 
 | Component | Technology |
 |-----------|-----------|
-| **Language** | Python 3.11+ (`uv`) |
 | **2D Pose** | RTMPose via rtmlib (HALPE26, 26kp with feet) **default** |
 | **2D Pose (alt)** | YOLO26-Pose (H3.6M, 17kp) |
 | **3D Lifting** | MotionAGFormer-S / Biomechanics3DEstimator |
@@ -24,7 +23,7 @@ ML-based AI coach for figure skating. Analyzes video, compares attempts to profe
 | **Alignment** | DTW (dtw-python) with Sakoe-Chiba window |
 | **Analysis** | CoM trajectory, physics engine (Dempster tables) |
 | **GPU** | CUDA via onnxruntime-gpu (7.1x speedup) |
-| **Testing** | pytest + pytest-cov (279+ tests) |
+| **Testing** | pytest + pytest-cov (272+ tests) |
 
 ## Architecture
 
@@ -37,33 +36,11 @@ Video → RTMPose (rtmlib, CUDA) → HALPE26 (26kp)
 ```
 
 **Key decisions:**
-- **rtmlib > YOLO-Pose** for 2D: better tracking, foot keypoints, ONNX (fast on CPU, CUDA on GPU)
+- **rtmlib > YOLO-Pose**: better tracking, foot keypoints, ONNX (CPU+GPU)
 - **HALPE26 (26kp)** as intermediate format, converted to H3.6M (17kp) for downstream
-- **CorrectiveLens**: uses 3D lifting as corrective layer for 2D skeleton (Kinovea-style angles)
+- **CorrectiveLens**: 3D lifting as corrective layer for 2D skeleton (Kinovea-style angles)
 - **PoseTracker**: anatomical biometric Re-ID instead of color (solves black clothing on ice)
 - **CoM trajectory** instead of flight time (eliminates 60% error for low jumps)
-
----
-
-## Git Workflow
-
-Commit types: `feat`, `fix`, `docs`, `refactor`, `test`, `chore`, `perf`
-
-```
-feat(pose): add RTMPoseExtractor with HALPE26 foot keypoints
-fix(tracking): give each track its own Kalman state
-perf(viz): add frame_skip, render-scale for 3x speedup
-```
-
-Pre-commit: `uv run pytest tests/ -v -m "not slow"` + `uv run ruff check .`
-
-## GPU Requirements
-
-**GPU-only. CPU inference is forbidden.** Always use `device='cuda'`.
-Before running: `bash scripts/setup_cuda_compat.sh` (required after `uv sync`).
-System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-compat/`.
-
----
 
 ## Project Structure
 
@@ -107,41 +84,42 @@ src/
 
 scripts/
 ├── visualize_with_skeleton.py        # Main viz script (layered HUD, --3d, --pose-backend)
+├── compare_models.py                 # Compare pose backends side-by-side
 ├── setup_cuda_compat.sh              # CUDA 12 compat for onnxruntime on CUDA 13.x
 ├── check_all.py                      # Quality checks
 └── download_models.py                # Download model weights
 
+data/
+├── datasets/
+│   └── athletepose3d/               # Training dataset (142kp mocap, 5154 videos, 12 cameras)
+│       ├── videos/                   # train_set, valid_set, test_set
+│       ├── annotations_3d/           # pose_3d_v3 (train.pkl, valid.pkl, frame_81/)
+│       └── cam_param.json            # 24 camera intrinsic/extrinsic matrices
+├── models/                           # Model checkpoints (.pth.tr, .pt)
+├── raw/                              # Test videos
+├── processed/
+└── references/                       # Expert references (.npz)
+
 tests/
-├── pose_3d/                          # 37 tests (corrective pipeline)
+├── pose_3d/                          # Corrective pipeline tests
 ├── detection/                        # Tracker tests
 ├── analysis/                         # Metrics, physics, recommender
 └── alignment/                        # DTW aligner
 ```
 
----
-
 ## CLI Usage
 
 ```bash
-# Analyze video (full pipeline)
 uv run python -m src.cli analyze video.mp4 --element waltz_jump --pose-backend rtmlib
-
-# Build reference from expert video
 uv run python -m src.cli build-ref expert.mp4 --element waltz_jump
-
-# Compare two videos (training mode)
 uv run python -m src.cli compare attempt.mp4 reference.mp4 --overlays skeleton,angles,timer
-
-# Visualize with 3D-corrected skeleton
 uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 2 --3d --output out.mp4
-
-# Interactive person selection
-uv run python -m src.cli analyze video.mp4 --element three_turn --select-person
+uv run python scripts/compare_models.py video.mp4 --backends rtmlib,yolo26 --conf-threshold 0.3
 ```
 
 ### Visualization Options
 
-```bash
+```
 --pose-backend rtmlib|yolo   # Pose estimation backend
 --3d                         # Enable 3D-corrected 2D overlay (CorrectiveLens)
 --layer 0-3                  # HUD layer (0=skeleton, 3=full coaching HUD)
@@ -151,13 +129,11 @@ uv run python -m src.cli analyze video.mp4 --element three_turn --select-person
 --overlays skeleton,angles   # Comparison overlays
 ```
 
----
+## GPU Requirements
 
-## Environment
-
-- **OS**: Artix Linux (Ryzen 7 5800H / RTX 3050 Ti 4GB VRAM)
-- **CUDA**: 13.2 system, onnxruntime-gpu uses CUDA 12 compat libs
-- **GPU Setup**: `bash scripts/setup_cuda_compat.sh` after `uv sync`
+**GPU-only. CPU inference is forbidden.** Always use `device='cuda'`.
+Before running: `bash scripts/setup_cuda_compat.sh` (required after `uv sync`).
+System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-compat/`.
 
 ## Supported Elements
 
@@ -172,55 +148,56 @@ uv run python -m src.cli analyze video.mp4 --element three_turn --select-person
 | `lutz` | Jump | toe_pick_quality, rotation |
 | `axel` | Jump | height, rotation |
 
----
-
 ## Key Concepts
 
-### Coordinate Convention
+- `poses_norm` — Normalized [0,1], `poses_px` — Pixel coordinates. Validate with `assert_pose_format()`.
+- `halpe26_to_h36m()`: 26kp (COCO 17 + 6 foot + 3 face) → 17kp H3.6M. Foot keypoints preserved separately.
+- **CorrectiveLens**: 2D → MotionAGFormer 3D lift → kinematic constraints → anchor projection → blend.
+- **CUDA compat**: standalone CUDA 12 libs in `.venv/cuda-compat/` with patched RUNPATH.
 
-- `poses_norm` — Normalized [0,1]
-- `poses_px` — Pixel coordinates
-- Validate with `assert_pose_format()` from `types.py`
+## Tracking Debugging Workflow
 
-### HALPE26 → H3.6M Mapping
+When tracking quality degrades (skeleton jumps to wrong person), follow this data-driven analysis approach. **Do NOT guess — extract data and find the exact divergence frame.**
 
-`halpe26_to_h36m()` converts 26kp (COCO 17 + 6 foot + 3 face) to 17kp H3.6M format. Foot keypoints (heel, big_toe, small_toe) preserved separately for blade edge detection.
+### Step 1: Isolate the layer
 
-### CorrectiveLens (3D→2D)
+The tracking pipeline has 3 layers that can independently cause track switches:
+1. **Sports2DTracker** — per-frame centroid association (Kalman-predicted distance matrix)
+2. **Anti-steal logic** — in `rtmlib_extractor.py`, guards against centroid jumps
+3. **Tracklet merger** — post-hoc NaN gap filling with biometric re-association
 
-```
-RTMPose 2D → MotionAGFormer 3D lift → kinematic constraints → anchor-based projection → blend with raw 2D
-```
+To determine which layer is at fault, monkey-patch `Sports2DTracker.update()` to log per-frame state (centroids, track IDs, Kalman predictions) to a CSV. Then render the video and compare the CSV data against visual frame numbers.
 
-- Bone length enforcement (iterative Jacobian)
-- Joint angle limits (knees 0-180°, elbows 0-160°, hips 30-180°)
-- Per-frame scale from torso ratio (no camera calibration needed)
-- Confidence-based blending (trust corrected at low confidence)
+### Step 2: Analyze centroid trajectories
 
-### CUDA Compatibility
+In the CSV, look for:
+- **Sports2D misassignment**: track ID on wrong detection index without anti-steal trigger
+- **Anti-steal false positive**: `target_track_id` switched even though Sports2D assigned correctly
+- **Tracklet merger error**: wrong track merged into the gap
 
-System has CUDA 13.2, onnxruntime-gpu needs CUDA 12. Solution: standalone CUDA 12 libs in `.venv/cuda-compat/` with patched RUNPATH. Script `setup_cuda_compat.sh` automates this.
+The most common failure mode in figure skating: **anti-steal false positive during complex movements** (salchow leg swing, spin preparation) where 2D skeletal ratios change dramatically but the person hasn't actually moved.
 
----
+### Step 3: Fix the root cause
 
-## Performance
+Key lessons learned:
+- **Anti-steal must use AND (not OR)** for combining position + biometric signals. OR causes false positives during any movement that changes skeletal ratios.
+- **Kalman dt=1.0 (frame-based), not dt=1/fps**. Frame-based dt converges velocity faster and produces more accurate predictions for Sports2D association.
+- **Figure skating movements are NOT anomalies** — leg swings, rotations, and limb compressions are normal and should not trigger anti-steal alone.
 
-| Config | 364 frames (14.5s video) | 1800 frames (60s video) |
-|--------|--------------------------|------------------------|
-| CPU (rtmlib, frame_skip=8) | ~50s | ~247s |
-| **GPU (rtmlib, frame_skip=8)** | **~12s** | **~59s** |
-| GPU + render-scale 0.5 | ~10s | ~49s |
-| GPU + render-scale 0.33 | ~8s | ~40s |
+### Anti-steal thresholds
 
----
+Current working thresholds (tested on VOLODYA.MOV):
+- Centroid jump: `> 0.15` (normalized coordinates)
+- Skeletal anomaly: `> 0.25` (bone ratio change)
+- **Logic: AND** — both must exceed threshold simultaneously
 
 ## Known Issues
 
-1. **Distant skaters**: rtmpib may miss very small figures (<10% frame width). Use `--person-click X Y` or `--select-person`.
+1. **Distant skaters**: rtmpose may miss very small figures (<10% frame width). Use `--person-click X Y` or `--select-person`.
 2. **CUDA compat**: Must run `setup_cuda_compat.sh` after `uv sync` on this system.
 3. **Segment boundaries**: Phase 10 includes preparation/recovery in segments.
-
----
+4. **Foot keypoints on skates**: RTMPose foot keypoints (HALPE26 indices 17-22) are unreliable on ice skates. Validate by distance to ankle before using for blade edge detection.
+5. **Multi-bbox per person**: RTMPose sometimes produces multiple bounding boxes for the same person, especially during rotations and limb occlusions. Each bbox gets a separate track ID from Sports2D. NMS deduplication may be needed at rtmlib detection level or as a post-Sports2D pass.
 
 ## References
 
