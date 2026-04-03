@@ -71,6 +71,8 @@ def cmd_analyze(args: argparse.Namespace) -> int:
     if args.person_click:
         person_click = PersonClick(x=args.person_click[0], y=args.person_click[1])
     elif args.select_person:
+        from .pose_estimation.person_selector import select_persons_interactive
+
         extractor = _get_extractor(args.pose_backend, output_format="normalized")
         persons = extractor.preview_persons(args.video)
         if not persons:
@@ -85,30 +87,45 @@ def cmd_analyze(args: argparse.Namespace) -> int:
                 y=int(mid_hip[1] * meta.height),
             )
         else:
-            print(f"\nDetected {len(persons)} persons:\n")
-            for i, p in enumerate(persons, 1):
-                x1, y1, x2, y2 = p["bbox"]
-                print(
-                    f"  #{i}: track_id={p['track_id']}, "
-                    f"bbox=({x1:.2f},{y1:.2f})-({x2:.2f},{y2:.2f}), "
-                    f"hits={p['hits']}, first_frame={p['first_frame']}"
-                )
-            print()
-            try:
-                choice = int(input(f"Select person [1-{len(persons)}]: "))
-            except (ValueError, EOFError):
-                print("Cancelled.")
-                return 1
-            if choice < 1 or choice > len(persons):
-                print(f"Invalid choice: {choice}")
-                return 1
-            mid_hip = persons[choice - 1]["mid_hip"]
+            # Convert person data to pose array for matplotlib selector
+            import numpy as np
+
             meta = get_video_meta(args.video)
+            poses_array = np.zeros((len(persons), 17, 2), dtype=np.float32)
+            bboxes = []
+            for i, p in enumerate(persons):
+                x1, y1, x2, y2 = p["bbox"]
+                # Convert normalized bbox to pixel coordinates
+                bboxes.append(
+                    (
+                        int(x1 * meta.width),
+                        int(y1 * meta.height),
+                        int(x2 * meta.width),
+                        int(y2 * meta.height),
+                    )
+                )
+                # Use mid_hip as a representative point (will be expanded to bbox in GUI)
+                poses_array[i, 0] = [
+                    p["mid_hip"][0] * meta.width,
+                    p["mid_hip"][1] * meta.height,
+                ]
+
+            # Interactive matplotlib selection
+            selected_indices = select_persons_interactive(
+                args.video, poses_array, bboxes=bboxes
+            )
+
+            if not selected_indices:
+                print("No person selected. Canceling.")
+                return 1
+
+            choice_idx = selected_indices[0]
+            mid_hip = persons[choice_idx]["mid_hip"]
             person_click = PersonClick(
                 x=int(mid_hip[0] * meta.width),
                 y=int(mid_hip[1] * meta.height),
             )
-            print(f"Selected person #{choice} (track_id={persons[choice - 1]['track_id']})")
+            print(f"Selected person #{choice_idx} (track_id={persons[choice_idx]['track_id']})")
 
     pipeline = AnalysisPipeline(
         reference_store=reference_store,
