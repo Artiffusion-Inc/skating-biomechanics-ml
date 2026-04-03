@@ -89,6 +89,11 @@ def main() -> int:
         help="Enable Center of Mass trajectory line (yellow line)",
     )
     parser.add_argument("--output", type=Path, help="Output video path")
+    parser.add_argument(
+        "--export",
+        action="store_true",
+        help="Export poses (NPY) and biomechanics data (CSV) alongside output video",
+    )
     parser.add_argument("--poses", type=Path, help="Pre-computed poses .npz file (optional)")
     parser.add_argument("--segments", type=Path, help="Segmentation JSON file (optional)")
     parser.add_argument(
@@ -361,6 +366,13 @@ def main() -> int:
     # Setup output
     output_path = args.output or args.video.parent / f"{args.video.stem}_layer{args.layer}.mp4"
 
+    # Data export buffers
+    export_frames: list[int] = []
+    export_timestamps: list[float] = []
+    export_floor_angles: list[float] = []
+    export_joint_angles: list[dict[str, float]] = []
+    export_poses: list[np.ndarray] = []
+
     if args.no_render:
         print("Pose extraction complete. Skipping rendering (--no-render).")
         return 0
@@ -546,6 +558,15 @@ def main() -> int:
             except (ValueError, IndexError):
                 pass
 
+            # Export data collection
+            if args.export and current_pose_idx is not None:
+                export_frames.append(frame_idx)
+                export_timestamps.append(round(frame_idx / meta.fps, 3))
+                export_floor_angles.append(round(floor_angle, 2))
+                ja = compute_joint_angles(poses_viz[current_pose_idx])
+                export_joint_angles.append(ja)
+                export_poses.append(poses[current_pose_idx].copy())
+
             # Detect visible side from HALPE26 foot keypoints
             if raw_foot_kps is not None and current_pose_idx < len(raw_foot_kps):
                 fk = raw_foot_kps[current_pose_idx]
@@ -596,6 +617,41 @@ def main() -> int:
     else:
         writer.release()
         print(f"\nSaved to: {output_path}")
+
+    # Export NPY + CSV
+    if args.export and export_poses:
+        import csv as _csv
+
+        out_dir = output_path.parent
+        stem = output_path.stem
+
+        # NPY: (N, 17, 3) raw poses
+        npy_path = out_dir / f"{stem}_poses.npy"
+        np.save(str(npy_path), np.array(export_poses))
+        print(f"Poses saved: {npy_path}")
+
+        # CSV: frame, timestamp, floor_angle, 12 joint angles
+        csv_path = out_dir / f"{stem}_biomechanics.csv"
+        angle_keys = [
+            "R Ankle", "L Ankle", "R Knee", "L Knee",
+            "R Hip", "L Hip", "R Shoulder", "L Shoulder",
+            "R Elbow", "L Elbow", "R Wrist", "L Wrist",
+        ]
+        header = ["frame", "timestamp_s", "floor_angle_deg"] + angle_keys
+        with open(csv_path, "w", newline="") as f:
+            writer = _csv.writer(f)
+            writer.writerow(header)
+            for idx in range(len(export_frames)):
+                ja = export_joint_angles[idx]
+                row = [
+                    export_frames[idx],
+                    export_timestamps[idx],
+                    export_floor_angles[idx],
+                ]
+                row += [round(ja.get(k, float("nan")), 1) for k in angle_keys]
+                writer.writerow(row)
+        print(f"Biomechanics saved: {csv_path}")
+
     return 0
 
 
