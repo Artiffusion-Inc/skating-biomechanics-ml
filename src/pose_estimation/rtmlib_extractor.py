@@ -35,6 +35,8 @@ except ImportError:
 
 from ..detection.pose_tracker import PoseTracker as CustomPoseTracker
 from ..pose_estimation.h36m_extractor import _biometric_distance
+from ..tracking.skeletal_identity import compute_2d_skeletal_ratios
+from ..tracking.tracklet_merger import TrackletMerger, build_tracklets
 from ..types import PersonClick, TrackedExtraction
 from ..utils.video import get_video_meta
 from .halpe26 import extract_foot_keypoints, halpe26_to_h36m
@@ -179,6 +181,7 @@ class RTMPoseExtractor:
 
         # Last known target pose for biometric track migration
         last_target_pose: np.ndarray | None = None
+        last_target_ratios: np.ndarray | None = None
         target_lost_frame: int | None = None
 
         # rtmlib assigns its own IDs (int per tracked person).
@@ -268,7 +271,8 @@ class RTMPoseExtractor:
                     track_ids = sports2d_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
                 elif deepsort_tracker is not None:
                     track_ids = deepsort_tracker.update(
-                        h36m_poses[:, :, :2], h36m_poses[:, :, 2], frame=frame
+                        h36m_poses[:, :, :2], h36m_poses[:, :, 2],
+                        frame=frame, frame_width=w, frame_height=h,
                     )
                 elif self._tracking_backend == "custom":
                     track_ids = custom_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
@@ -308,17 +312,45 @@ class RTMPoseExtractor:
                 # Fill target data for current frame
                 if target_track_id is not None:
                     found = False
+                    stolen = False
                     for p, tid in enumerate(track_ids):
                         if tid == target_track_id:
+                            # Validate: centroid must not jump too far
+                            if last_target_pose is not None:
+                                cur_cx = np.nanmean(h36m_poses[p, :, 0])
+                                cur_cy = np.nanmean(h36m_poses[p, :, 1])
+                                prev_cx = np.nanmean(last_target_pose[:, 0])
+                                prev_cy = np.nanmean(last_target_pose[:, 1])
+                                jump = np.sqrt((cur_cx - prev_cx) ** 2 + (cur_cy - prev_cy) ** 2)
+
+                                # Skeletal anomaly: sudden change in body proportions
+                                skeletal_anomaly = False
+                                if last_target_ratios is not None:
+                                    curr_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
+                                    ratio_change = float(
+                                        np.linalg.norm(curr_ratios - last_target_ratios)
+                                    )
+                                    skeletal_anomaly = ratio_change > 0.25
+
+                                if jump > 0.15 or skeletal_anomaly:
+                                    stolen = True
+                                    break
                             all_poses[frame_idx] = h36m_poses[p]
                             all_feet[frame_idx] = foot_kps_list[p]
                             last_target_pose = h36m_poses[p].copy()
+                            last_target_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
                             target_lost_frame = None
                             found = True
                             break
 
-                    # Track migration: biometric matching when target lost
-                    if not found and last_target_pose is not None:
+                    # Track migration: biometric matching when target lost or stolen
+                    # When stolen, we must NOT keep the impostor's data
+                    if stolen:
+                        all_poses[frame_idx] = np.full((17, 3), np.nan, dtype=np.float32)
+                        all_feet[frame_idx] = np.full((6, 3), np.nan, dtype=np.float32)
+                        found = False
+
+                    if (not found or stolen) and last_target_pose is not None:
                         if target_lost_frame is None:
                             target_lost_frame = frame_idx
 
@@ -326,21 +358,38 @@ class RTMPoseExtractor:
                             best_dist = float("inf")
                             best_new_tid: int | None = None
                             best_new_data: tuple[np.ndarray, np.ndarray] | None = None
+                            prev_cx = np.nanmean(last_target_pose[:, 0])
+                            prev_cy = np.nanmean(last_target_pose[:, 1])
                             for p, tid in enumerate(track_ids):
-                                dist = _biometric_distance(h36m_poses[p], last_target_pose)
-                                if dist < best_dist:
-                                    best_dist = dist
+                                # Skip the thief track
+                                if stolen and tid == target_track_id:
+                                    continue
+                                cur_cx = np.nanmean(h36m_poses[p, :, 0])
+                                cur_cy = np.nanmean(h36m_poses[p, :, 1])
+                                pos_dist = np.sqrt(
+                                    (cur_cx - prev_cx) ** 2 + (cur_cy - prev_cy) ** 2
+                                )
+                                bio_dist = _biometric_distance(h36m_poses[p], last_target_pose)
+                                # Weight position heavily when recently lost,
+                                # biometry when lost for longer
+                                elapsed = frame_idx - (target_lost_frame or frame_idx)
+                                w_pos = max(0.2, 1.0 - elapsed * 0.02)
+                                w_bio = 1.0 - w_pos
+                                combined = w_pos * pos_dist / 0.15 + w_bio * bio_dist / 0.08
+                                if combined < best_dist:
+                                    best_dist = combined
                                     best_new_tid = tid
                                     best_new_data = (
                                         h36m_poses[p],
                                         foot_kps_list[p],
                                     )
 
-                            if best_new_tid is not None and best_dist < 0.08:
+                            if best_new_tid is not None and best_dist < 1.5:
                                 target_track_id = best_new_tid
                                 all_poses[frame_idx] = best_new_data[0]
                                 all_feet[frame_idx] = best_new_data[1]
                                 last_target_pose = best_new_data[0].copy()
+                                last_target_ratios = compute_2d_skeletal_ratios(best_new_data[0])
                                 target_lost_frame = None
                                 # Retroactively fill from stored frames
                                 for fidx, tmap in frame_track_data.items():
@@ -364,6 +413,67 @@ class RTMPoseExtractor:
                 if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
                     all_poses[fidx] = tmap[target_track_id][0]
                     all_feet[fidx] = tmap[target_track_id][1]
+
+        # --- Post-hoc tracklet merging for occlusion recovery ---
+        valid_mask_pre = ~np.isnan(all_poses[:, 0, 0])
+        if not valid_mask_pre.all() and frame_track_data:
+            model_3d = Path("data/models/motionagformer-s-ap3d.pth.tr")
+            identity_ext = None
+            if model_3d.exists():
+                from ..tracking.skeletal_identity import (
+                    SkeletalIdentityExtractor,
+                )
+
+                identity_ext = SkeletalIdentityExtractor(
+                    model_path=model_3d, device="auto",
+                )
+
+            merger = TrackletMerger(
+                identity_extractor=identity_ext,
+                similarity_threshold=0.80,
+            )
+            tracklets = build_tracklets(frame_track_data)
+
+            target_tracklet = None
+            for t in tracklets:
+                if t.track_id == target_track_id:
+                    target_tracklet = t
+                    break
+
+            if target_tracklet is not None:
+                valid_frames = np.where(valid_mask_pre)[0]
+                if len(valid_frames) > 0:
+                    last_valid = int(valid_frames[-1])
+                    if last_valid < num_frames - 1:
+                        candidates = [
+                            t for t in tracklets
+                            if t.track_id != target_track_id
+                        ]
+                        match = merger.find_best_match(
+                            target_tracklet, candidates,
+                        )
+                        if match is not None:
+                            for f in match.frames:
+                                if (
+                                    f < num_frames
+                                    and np.isnan(all_poses[f, 0, 0])
+                                ):
+                                    all_poses[f] = match.poses.get(
+                                        f, all_poses[f],
+                                    )
+                                    all_feet[f] = match.foot_keypoints.get(
+                                        f, all_feet[f],
+                                    )
+                            logger.info(
+                                "Post-hoc merge: filled %d frames from track %d",
+                                sum(
+                                    1
+                                    for f in match.frames
+                                    if f < num_frames
+                                    and np.isnan(all_poses[f, 0, 0])
+                                ),
+                                match.track_id,
+                            )
 
         # Determine first_detection_frame
         valid_mask = ~np.isnan(all_poses[:, 0, 0])
@@ -438,6 +548,8 @@ class RTMPoseExtractor:
         if not cap.isOpened():
             raise RuntimeError(f"Failed to open video: {video_path}")
 
+        best_frame: np.ndarray | None = None  # keep the frame with highest avg confidence
+
         try:
             for frame_idx in tqdm(
                 range(num_frames), desc="Previewing persons", unit="frame", ncols=100
@@ -447,6 +559,8 @@ class RTMPoseExtractor:
                     break
 
                 h, w = frame.shape[:2]
+                if best_frame is None:
+                    best_frame = frame.copy()
                 keypoints, scores = self.tracker(frame)
 
                 if keypoints is None or len(keypoints) == 0:
@@ -474,7 +588,8 @@ class RTMPoseExtractor:
                     track_ids = sports2d_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
                 elif deepsort_tracker is not None:
                     track_ids = deepsort_tracker.update(
-                        h36m_poses[:, :, :2], h36m_poses[:, :, 2], frame=frame
+                        h36m_poses[:, :, :2], h36m_poses[:, :, 2],
+                        frame=frame, frame_width=w, frame_height=h,
                     )
                 elif tracker is not None:
                     track_ids = tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
@@ -500,8 +615,39 @@ class RTMPoseExtractor:
         finally:
             cap.release()
 
+        # Build visual preview with numbered bboxes
+        preview_path: str | None = None
+        if best_frame is not None and person_data:
+            preview_img = best_frame.copy()
+            for i, (tid, data) in enumerate(
+                sorted(person_data.items(), key=lambda kv: kv[1]["hits"], reverse=True)
+            ):
+                kps = data["best_kps"]
+                if kps is None:
+                    continue
+                valid = kps[kps[:, 2] > 0.1]
+                if len(valid) < 3:
+                    continue
+                bx1 = int(np.min(valid[:, 0]) * preview_img.shape[1])
+                by1 = int(np.min(valid[:, 1]) * preview_img.shape[0])
+                bx2 = int(np.max(valid[:, 0]) * preview_img.shape[1])
+                by2 = int(np.max(valid[:, 1]) * preview_img.shape[0])
+                label = f"#{i+1} (hits={data['hits']})"
+                cv2.rectangle(preview_img, (bx1, by1), (bx2, by2), (0, 200, 255), 2)
+                cv2.putText(
+                    preview_img, label, (bx1, by1 - 5),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 1, cv2.LINE_AA,
+                )
+            import tempfile
+
+            preview_path = str(
+                Path(tempfile.mktemp(suffix=".jpg")).with_name("person_preview.jpg")
+            )
+            cv2.imwrite(preview_path, preview_img)
+
         # Build output
         output: list[dict] = []
+        preview_path_out = preview_path
         for tid, data in sorted(person_data.items(), key=lambda kv: kv[1]["hits"], reverse=True):
             kps = data["best_kps"]
             if kps is None:
@@ -524,7 +670,7 @@ class RTMPoseExtractor:
                 }
             )
 
-        return output
+        return output, preview_path_out
 
     # ------------------------------------------------------------------
     # Internal helpers
