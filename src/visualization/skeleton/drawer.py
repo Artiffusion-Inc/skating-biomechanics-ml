@@ -105,11 +105,10 @@ def draw_skeleton(
         if not (_is_valid_point(pt_a, width, height) and _is_valid_point(pt_b, width, height)):
             continue
 
-        # Get bone color and thickness
-        color = get_skeleton_color(joint_a)
-        thickness = get_bone_thickness(joint_a, line_width)
+        # Sports2D bone colors
+        color = _get_sports2d_bone_color(joint_a, joint_b)
 
-        cv2.line(frame, pt_a, pt_b, color, thickness, cv2.LINE_AA)
+        cv2.line(frame, pt_a, pt_b, color, line_width, cv2.LINE_AA)
 
     # Draw joints
     for joint_idx in range(len(pose_px)):
@@ -394,6 +393,52 @@ def draw_skeleton_3d_pip(
 # =============================================================================
 # UTILITY FUNCTIONS
 # =============================================================================
+
+# Sports2D color constants (BGR)
+_SPORTS2D_LEFT_COLOR: tuple[int, int, int] = (0, 255, 0)     # Green
+_SPORTS2D_RIGHT_COLOR: tuple[int, int, int] = (0, 128, 255)   # Orange
+_SPORTS2D_CENTER_COLOR: tuple[int, int, int] = (255, 153, 51)  # Blue
+
+
+def _get_sports2d_bone_color(joint_a: int, joint_b: int) -> tuple[int, int, int]:
+    """Return bone color based on Sports2D side convention.
+
+    Sports2D uses:
+    - Green for left-side bones
+    - Orange for right-side bones
+    - Blue for center/torso bones
+
+    Args:
+        joint_a: First joint index (H36Key).
+        joint_b: Second joint index (H36Key).
+
+    Returns:
+        BGR color tuple for the bone.
+
+    Example:
+        >>> _get_sports2d_bone_color(H36Key.LHIP, H36Key.LKNEE)
+        (0, 255, 0)  # Green
+    """
+    from src.types import H36Key
+
+    left_joints = {H36Key.LHIP, H36Key.LKNEE, H36Key.LFOOT,
+                   H36Key.LSHOULDER, H36Key.LELBOW, H36Key.LWRIST}
+    right_joints = {H36Key.RHIP, H36Key.RKNEE, H36Key.RFOOT,
+                    H36Key.RSHOULDER, H36Key.RELBOW, H36Key.RWRIST}
+
+    a_left = joint_a in left_joints
+    a_right = joint_a in right_joints
+    b_left = joint_b in left_joints
+    b_right = joint_b in right_joints
+
+    # Both joints on left side
+    if a_left and not a_right and b_left and not b_right:
+        return _SPORTS2D_LEFT_COLOR
+    # Both joints on right side
+    if a_right and not a_left and b_right and not b_left:
+        return _SPORTS2D_RIGHT_COLOR
+    # Mixed or center bones
+    return _SPORTS2D_CENTER_COLOR
 
 
 def _is_valid_point(
