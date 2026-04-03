@@ -153,10 +153,12 @@ class JointAngleLayer(Layer):
         config: LayerConfig | None = None,
         viz_config: VisualizationConfig | None = None,
         joints: list[JointAngleSpec] | None = None,
+        show_degree_labels: bool = True,
     ):
         super().__init__(config=config or LayerConfig(enabled=True, z_index=6))
         self.viz = viz_config or VisualizationConfig()
         self.joints = joints or DEFAULT_JOINT_SPECS
+        self.show_degree_labels = show_degree_labels
 
     def render(self, frame: Frame, context: LayerContext) -> Frame:
         pose = context.pose_2d
@@ -206,8 +208,11 @@ class JointAngleLayer(Layer):
             color = spec.get_color_for_angle(angle)
             _vx, _vy = int(pv[0]), int(pv[1])
 
-            # Draw subtle angle arc (thin line, no label)
+            # Draw angle arc with optional degree label
             self._draw_arc(frame, pv, pa, pc, spec.arc_radius, color)
+
+            if self.show_degree_labels and not np.isnan(angle):
+                self._draw_degree_label(frame, pv, angle, color)
 
         return frame
 
@@ -245,5 +250,22 @@ class JointAngleLayer(Layer):
             start,
             end,
             color,
-            1,
+            2,
         )
+
+    @staticmethod
+    def _draw_degree_label(
+        frame: Frame,
+        vertex: np.ndarray,
+        angle: float,
+        color: tuple[int, int, int],
+        offset: int = 20,
+    ) -> None:
+        """Draw degree label near angle vertex."""
+        from src.visualization.core.text import draw_text_outlined
+
+        vx, vy = int(vertex[0]), int(vertex[1])
+        label = f"{angle:.0f}°"
+        # Position label above-right of vertex
+        pos = (vx + offset, vy - offset)
+        draw_text_outlined(frame, label, pos, font_scale=0.4, thickness=1, color=color)
