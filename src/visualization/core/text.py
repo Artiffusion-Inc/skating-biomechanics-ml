@@ -346,18 +346,11 @@ def draw_text_box(
     box_width = text_width + 2 * padding
     box_height = text_height + baseline + 2 * padding
 
-    # Draw semi-transparent background
+    # Draw semi-transparent background (ROI-scoped, no full-frame copy)
     if bg_alpha > 0:
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (x, y),
-            (x + box_width, y + box_height),
-            bg_color,
-            -1,
-            cv2.LINE_AA,
-        )
-        frame[:] = cv2.addWeighted(overlay, bg_alpha, frame, 1 - bg_alpha, 0)
+        from src.visualization.core.overlay import draw_overlay_rect
+
+        draw_overlay_rect(frame, (x, y, box_width, box_height), color=bg_color, alpha=bg_alpha)
 
     # Draw text
     cv2.putText(
