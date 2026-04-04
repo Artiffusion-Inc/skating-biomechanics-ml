@@ -6,12 +6,14 @@ showing element name, key metrics, and recommendations in Russian.
 
 from dataclasses import dataclass
 
+import cv2
 import numpy as np
 from numpy.typing import NDArray
 
 from src.analysis.element_defs import ELEMENT_DEFS
 from src.types import ElementPhase, MetricResult
-from src.visualization.core.text import render_cyrillic_text
+from src.visualization.config import font_path
+from src.visualization.hud.panel import HUDPanel
 
 Frame = NDArray[np.uint8]
 Position = tuple[int, int]
@@ -79,15 +81,12 @@ def draw_coach_panel(
     frame: Frame,
     data: CoachOverlayData,
     position: Position = (10, 90),
-    font_size: int = 24,
-    line_height: int = 30,
+    font_size: int = 16,
+    line_height: int = 20,
 ) -> Frame:
-    """Draw AI coach overlay panel on frame.
+    """Draw compact AI coach overlay panel.
 
-    Renders a broadcast-style panel with:
-    - Element name in Russian (bold title)
-    - Key metrics with quality indicators (checkmark/cross)
-    - Top recommendation
+    Uses cached Pillow bitmaps blitted via numpy — no full-frame conversion.
 
     Args:
         frame: OpenCV image (H, W, 3) BGR format.
@@ -99,50 +98,40 @@ def draw_coach_panel(
     Returns:
         Frame with panel drawn (modified in place).
     """
-    x, y = position
+    from src.visualization.core.text import put_cyrillic_text, put_cyrillic_text_size
 
-    # 1. Element name (title)
-    frame = render_cyrillic_text(
-        frame,
-        data.element_name_ru,
-        (x, y),
-        font_size=font_size + 4,
-        color=(255, 255, 255),
-        background=(0, 0, 0),
-        background_alpha=0.7,
-    )
-    y += line_height + 5
-
-    # 2. Metrics with quality symbols
+    # Collect lines: (font_size, text, color_bgr)
+    lines: list[tuple[int, str, tuple[int, int, int]]] = [
+        (font_size + 1, data.element_name_ru, (255, 255, 255))
+    ]
     for name_ru, value_str, is_good in data.metrics:
-        symbol = QUALITY_SYMBOLS[is_good]
-        color = (0, 220, 0) if is_good else (0, 0, 220)  # BGR: green=good, red=bad
-        text = f"{name_ru}: {value_str}  {symbol}"
-        frame = render_cyrillic_text(
-            frame,
-            text,
-            (x + 10, y),
-            font_size=font_size,
-            color=color,
-            background=(0, 0, 0),
-            background_alpha=0.5,
-        )
-        y += line_height
-
-    # 3. Recommendations (if any)
+        sym = QUALITY_SYMBOLS[is_good]
+        c = (0, 200, 0) if is_good else (0, 0, 200)  # BGR
+        lines.append((font_size, f"{name_ru}: {value_str} {sym}", c))
     if data.recommendations:
-        y += 5
-        for rec in data.recommendations:
-            frame = render_cyrillic_text(
-                frame,
-                f"\u26a0 {rec}",
-                (x + 10, y),
-                font_size=font_size - 4,
-                color=(0, 180, 255),  # BGR: orange
-                background=(0, 0, 0),
-                background_alpha=0.5,
-            )
-            y += line_height - 4
+        for rec in data.recommendations[:2]:  # max 2 recs
+            lines.append((max(font_size - 2, 12), rec, (0, 165, 255)))  # BGR orange
+
+    # Measure panel size
+    pad = 6
+    max_w = max(put_cyrillic_text_size(t, font_path, fs)[0] for fs, t, _ in lines)
+    panel_w = max_w + 2 * pad
+    panel_h = pad + len(lines) * line_height + pad
+
+    px, py = position
+
+    # Semi-transparent black background (OpenCV, fast)
+    overlay = frame[py : py + panel_h, px : px + panel_w].copy()
+    cv2.rectangle(overlay, (0, 0), (panel_w, panel_h), (0, 0, 0), -1)
+    frame[py : py + panel_h, px : px + panel_w] = cv2.addWeighted(
+        overlay, 0.7, frame[py : py + panel_h, px : px + panel_w], 0.3, 0
+    )
+
+    # Render text via cached bitmaps (no full-frame conversion)
+    tx, ty = px + pad, py + pad
+    for fs, text, color_bgr in lines:
+        put_cyrillic_text(frame, text, (tx, ty), font_path=font_path, font_size=fs, color=color_bgr)
+        ty += line_height
 
     return frame
 

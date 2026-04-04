@@ -74,3 +74,20 @@ Thumbs.db
 # Logs
 *.log
 data/models/*.pth.tr
+
+# Output files
+out*.mp4
+out*.csv
+out*.npy
+
+# Submodules (managed separately)
+Sports2D/
+TCPFormer/
+
+# Vast.ai
+vast-instances.json
+
+# Temp session files
+*.txt
+!requirements.txt
+!CLAUDE.md

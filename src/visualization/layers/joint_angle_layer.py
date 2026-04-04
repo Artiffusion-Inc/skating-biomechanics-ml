@@ -258,7 +258,7 @@ class JointAngleLayer(Layer):
             start,
             end,
             color,
-            1,
+            2,
         )
 
     @staticmethod
@@ -276,4 +276,4 @@ class JointAngleLayer(Layer):
         label = f"{angle:.0f}°"
         # Position label above-right of vertex
         pos = (vx + offset, vy - offset)
-        draw_text_outlined(frame, label, pos, font_scale=0.4, thickness=1, color=color)
+        draw_text_outlined(frame, label, pos, font_scale=0.55, thickness=1, color=color)

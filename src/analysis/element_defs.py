@@ -125,6 +125,73 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "air_position": (0.7, 1.0),  # Body position in air (tight vs loose)
         },
     ),
+    "salchow": ElementDef(
+        name="salchow",
+        name_ru="перекидной",
+        rotations=1,
+        has_toe_pick=False,
+        key_joints=[
+            H36Key.LHIP, H36Key.RHIP, H36Key.LKNEE, H36Key.RKNEE,
+            H36Key.LFOOT, H36Key.RFOOT, H36Key.LSHOULDER, H36Key.RSHOULDER,
+        ],
+        ideal_metrics={
+            "airtime": (0.3, 0.6),
+            "max_height": (0.15, 0.4),
+            "landing_knee_angle": (90, 130),
+            "rotation_speed": (300, 500),
+            "takeoff_angle": (65, 85),
+        },
+    ),
+    "loop": ElementDef(
+        name="loop",
+        name_ru="петля",
+        rotations=1,
+        has_toe_pick=False,
+        key_joints=[
+            H36Key.LHIP, H36Key.RHIP, H36Key.LKNEE, H36Key.RKNEE,
+            H36Key.LFOOT, H36Key.RFOOT, H36Key.LSHOULDER, H36Key.RSHOULDER,
+        ],
+        ideal_metrics={
+            "airtime": (0.3, 0.6),
+            "max_height": (0.15, 0.4),
+            "landing_knee_angle": (90, 130),
+            "rotation_speed": (300, 500),
+        },
+    ),
+    "lutz": ElementDef(
+        name="lutz",
+        name_ru="льютц",
+        rotations=1,
+        has_toe_pick=True,
+        key_joints=[
+            H36Key.LHIP, H36Key.RHIP, H36Key.LKNEE, H36Key.RKNEE,
+            H36Key.LFOOT, H36Key.RFOOT, H36Key.LSHOULDER, H36Key.RSHOULDER,
+        ],
+        ideal_metrics={
+            "airtime": (0.35, 0.6),
+            "max_height": (0.15, 0.4),
+            "landing_knee_angle": (90, 125),
+            "pick_quality": (0.7, 1.0),
+            "rotation_speed": (350, 550),
+        },
+    ),
+    "axel": ElementDef(
+        name="axel",
+        name_ru="аксель",
+        rotations=1.5,
+        has_toe_pick=False,
+        key_joints=[
+            H36Key.LHIP, H36Key.RHIP, H36Key.LKNEE, H36Key.RKNEE,
+            H36Key.LFOOT, H36Key.RFOOT, H36Key.LSHOULDER, H36Key.RSHOULDER,
+        ],
+        ideal_metrics={
+            "airtime": (0.4, 0.7),
+            "max_height": (0.2, 0.5),
+            "landing_knee_angle": (90, 130),
+            "rotation_speed": (350, 550),
+            "takeoff_angle": (65, 85),
+        },
+    ),
 }
 
 
