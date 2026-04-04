@@ -131,7 +131,6 @@ def process_video_pipeline(
         VelocityLayer,
         VerticalAxisLayer,
         draw_skeleton,
-        put_text,
         render_layers,
     )
 
@@ -191,15 +190,7 @@ def process_video_pipeline(
         layers.append(
             TrailLayer(length=20, joint=H36Key.LFOOT, width=1, color=(200, 80, 80))
         )
-        from src.visualization.layers.joint_angle_layer import DEFAULT_JOINT_SPECS, JointAngleSpec
-        big_arc_specs = [
-            JointAngleSpec(
-                s.name, s.point_a, s.vertex, s.point_c,
-                s.color, arc_radius=22, good_range=s.good_range, warn_range=s.warn_range,
-            )
-            for s in DEFAULT_JOINT_SPECS
-        ]
-        layers.append(JointAngleLayer(joints=big_arc_specs, show_degree_labels=True))
+        layers.append(JointAngleLayer())
     if layer >= 2:
         layers.append(VerticalAxisLayer())
 
@@ -261,7 +252,8 @@ def process_video_pipeline(
         seconds = int(frame_idx / meta.fps) % 60
         ms = int((frame_idx / meta.fps - int(frame_idx / meta.fps)) * 100)
         frame_text = f"{frame_idx}/{total}  {minutes:02d}:{seconds:02d}.{ms:02d}"
-        put_text(frame, frame_text, (draw_w - 220, 30), font_size=18, color=(200, 200, 200))
+        from src.visualization.core.text import draw_text_box
+        draw_text_box(frame, frame_text, (draw_w - 220, 10), font_scale=0.5)
 
         if export and current_pose_idx is not None:
             export_frames.append(frame_idx)
