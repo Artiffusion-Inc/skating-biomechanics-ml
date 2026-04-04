@@ -58,19 +58,17 @@ class AnglePanelLayer(Layer):
         x0 = hud_padding
         y0 = hud_padding
 
-        # Semi-transparent background
+        # Semi-transparent background (ROI-scoped, no full-frame copy)
         total_height = len(angles) * self.line_spacing + hud_padding * 2
         bg_width = self.bar_width + 220
-        overlay = frame.copy()
-        cv2.rectangle(
-            overlay,
-            (x0 - 5, y0 - 5),
-            (x0 + bg_width, y0 + total_height),
-            hud_bg_color,
-            -1,
-            cv2.LINE_AA,
+        from src.visualization.core.overlay import draw_overlay_rect
+
+        draw_overlay_rect(
+            frame,
+            (x0 - 5, y0 - 5, bg_width + 5, total_height + 5),
+            color=hud_bg_color,
+            alpha=hud_bg_alpha,
         )
-        frame[:] = cv2.addWeighted(overlay, hud_bg_alpha, frame, 1 - hud_bg_alpha, 0)
 
         for i, (name, value) in enumerate(angles.items()):
             y = y0 + i * self.line_spacing + hud_padding
