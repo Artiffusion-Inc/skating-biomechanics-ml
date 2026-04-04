@@ -39,11 +39,10 @@ from src.visualization import (
     draw_blade_indicator_hud,
     draw_skeleton,
     project_3d_to_2d,
-    render_cyrillic_text,
+    put_text,
     render_layers,
 )
 from src.visualization.core.text import draw_text_box, draw_text_outlined
-from src.visualization.hud.coach_panel import CoachOverlayData, compute_coach_overlays, draw_coach_panel
 
 
 def main() -> int:
@@ -164,6 +163,11 @@ def main() -> int:
         action="store_true",
         help="Skip video rendering entirely (pose extraction only)",
     )
+    parser.add_argument(
+        "--profile",
+        action="store_true",
+        help="Print per-frame timing breakdown",
+    )
     args = parser.parse_args()
 
     # Validate input
@@ -277,37 +281,6 @@ def main() -> int:
     blade_states_left = [None] * len(poses_viz)
     blade_states_right = [None] * len(poses_viz)
 
-    # --- Pre-compute AI coach overlays ---
-    coach_overlays: list[CoachOverlayData] = []
-    if args.element and poses_viz is not None:
-        try:
-            from src.analysis.metrics import BiomechanicsAnalyzer
-            from src.analysis.phase_detector import PhaseDetector
-            from src.analysis.recommender import Recommender
-            from src.analysis.element_defs import get_element_def
-
-            element_def = get_element_def(args.element)
-            if element_def:
-                detector = PhaseDetector()
-                analyzer = BiomechanicsAnalyzer(element_def)
-                recommender = Recommender()
-
-                phase_result = detector.detect_phases(poses_viz, meta.fps, args.element)
-                metrics = analyzer.analyze(poses_viz, phase_result.phases, meta.fps)
-                recs = recommender.recommend(metrics, args.element)
-                coach_overlays = compute_coach_overlays(
-                    phases=phase_result.phases,
-                    metrics=metrics,
-                    recommendations=recs,
-                    element_type=args.element,
-                    fps=meta.fps,
-                )
-                if coach_overlays:
-                    ov = coach_overlays[0]
-                    print(f"Coach overlay: {ov.element_name_ru} at frame {ov.landing_frame}")
-        except Exception as e:
-            print(f"Coach overlay skipped: {e}")
-            coach_overlays = []
 
     # Initialize 3D pose extraction if requested
     poses_3d = None
@@ -469,8 +442,18 @@ def main() -> int:
         layers.append(
             TrailLayer(length=args.trail_length, joint=H36Key.LFOOT, width=1, color=(200, 80, 80))
         )
+        # Joint angles with degree labels at layer 1
+        from src.visualization.layers.joint_angle_layer import DEFAULT_JOINT_SPECS, JointAngleSpec
+
+        big_arc_specs = [
+            JointAngleSpec(
+                s.name, s.point_a, s.vertex, s.point_c,
+                s.color, arc_radius=22, good_range=s.good_range, warn_range=s.warn_range,
+            )
+            for s in DEFAULT_JOINT_SPECS
+        ]
+        layers.append(JointAngleLayer(joints=big_arc_specs, show_degree_labels=True))
     if args.layer >= 2:
-        layers.append(JointAngleLayer(show_degree_labels=False))
         layers.append(VerticalAxisLayer())
 
     # Pre-create PhysicsEngine for CoM trajectory (avoid per-frame allocation)
@@ -481,13 +464,19 @@ def main() -> int:
         physics_engine = PhysicsEngine(body_mass=60.0)
 
     # Process frames
+    import time as _time
+
     frame_idx = 0
     pose_idx = 0
     pbar = tqdm(total=meta.num_frames, desc="Rendering", unit="frame", ncols=100)
+    _pt: dict[str, float] = {}
+    _pc = 0
     while cap.isOpened():
         ret, frame = cap.read()
         if not ret:
             break
+
+        _t0 = _time.perf_counter() if args.profile else 0.0
 
         # Downscale for rendering if requested
         if render_scale != 1.0:
@@ -518,6 +507,8 @@ def main() -> int:
             normalized=True,
         )
 
+        _t_skel = _time.perf_counter() if args.profile else _t0
+
         # Layer 0: Skeleton — always use raw rtmlib (no 3D jitter)
         if args.layer >= 0 and current_pose_idx is not None:
             foot_kp = raw_foot_kps[current_pose_idx] if raw_foot_kps is not None else None
@@ -534,10 +525,7 @@ def main() -> int:
             if poses_3d is not None and current_pose_idx < len(poses_3d):
                 context.pose_3d = poses_3d[current_pose_idx]
 
-            # Compute angles for angle panel (Task 7: 26 biomechanics angles)
-            if args.layer >= 2:
-                joint_angles = compute_joint_angles(poses_viz[current_pose_idx])
-                context.custom_data["angles"] = joint_angles
+        _t_layers = _time.perf_counter() if args.profile else _t0
 
         # Layers 1+: velocity, trails (rendered via layer system)
         if args.layer >= 1 and current_pose_idx is not None:
@@ -564,7 +552,9 @@ def main() -> int:
                     f"  Frame {frame_idx}: Roll={camera_pose.roll:.2f}°, Conf={camera_pose.confidence:.2f}, Source={camera_pose.source}"
                 )
 
-        # Layer 3: Coaching (subtitles)
+        _t_coach = _time.perf_counter() if args.profile else _t0
+
+        # Layer 3: Subtitles
         if args.layer >= 3 and subtitle_events:
             current_time = frame_idx / meta.fps
             for event in subtitle_events:
@@ -576,11 +566,14 @@ def main() -> int:
                         text_parts.extend(event.instructions)
                     if text_parts:
                         subtitle_text = " | ".join(text_parts)
-                        frame = render_cyrillic_text(
+                        put_text(
                             frame,
                             subtitle_text,
                             (50, meta.height - 50),
                             font_size=args.font_size,
+                            color=(255, 255, 255),
+                            bg_color=(0, 0, 0),
+                            bg_alpha=0.6,
                         )
                     break
 
@@ -618,10 +611,7 @@ def main() -> int:
         blade_left = _get_blade_state(blade_states_left, current_pose_idx)
         blade_right = _get_blade_state(blade_states_right, current_pose_idx)
 
-        # AI coach overlay (after landing, for display_duration seconds)
-        coach_overlay = _get_coach_overlay(coach_overlays, frame_idx)
-        if coach_overlay is not None:
-            frame = draw_coach_panel(frame, coach_overlay, position=(10, 90))
+        _t_hud = _time.perf_counter() if args.profile else _t0
 
         frame = _draw_hud(
             frame,
@@ -637,6 +627,8 @@ def main() -> int:
             floor_angle=floor_angle,
         )
 
+        _t_write = _time.perf_counter() if args.profile else _t0
+
         if args.compress:
             try:
                 writer.stdin.write(frame.tobytes())
@@ -644,10 +636,30 @@ def main() -> int:
                 break
         else:
             writer.write(frame)
+
+        if args.profile and _t0:
+            _t1 = _time.perf_counter()
+            _pc += 1
+            for k, t0, t1 in [
+                ("read+resize", _t0, _t_skel),
+                ("skeleton", _t_skel, _t_layers),
+                ("layers", _t_layers, _t_coach),
+                ("subtitles+detect", _t_coach, _t_hud),
+                ("coach+hud", _t_hud, _t_write),
+                ("write", _t_write, _t1),
+            ]:
+                _pt[k] = _pt.get(k, 0.0) + (t1 - t0)
+
         frame_idx += 1
         pbar.update(1)
 
     pbar.close()
+    if args.profile and _pc > 0:
+        print("\n--- Per-frame timing (avg ms) ---")
+        for k in sorted(_pt):
+            print(f"  {k:20s}: {_pt[k] / _pc * 1000:.1f} ms")
+        total = sum(_pt.values())
+        print(f"  {'TOTAL':20s}: {total / _pc * 1000:.1f} ms")
     cap.release()
 
     if args.compress:
@@ -730,16 +742,6 @@ def _get_active_segment(segments: list, frame_idx: int) -> dict:
                 "confidence": seg.get("confidence", 0.0),
             }
     return {}
-
-
-def _get_coach_overlay(
-    overlays: list[CoachOverlayData], frame_idx: int
-) -> CoachOverlayData | None:
-    """Find the coach overlay visible at the current frame."""
-    for overlay in overlays:
-        if overlay.is_visible_at(frame_idx):
-            return overlay
-    return None
 
 
 def _draw_hud(
