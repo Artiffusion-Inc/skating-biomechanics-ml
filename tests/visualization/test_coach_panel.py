@@ -96,3 +96,42 @@ class TestComputeCoachOverlays:
             fps=30.0,
         )
         assert len(overlays) == 0
+
+
+class TestDrawCoachPanel:
+    """Test coach panel rendering."""
+
+    def test_draw_on_empty_frame(self):
+        """Should draw panel without errors on a blank frame."""
+        from src.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
+
+        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        data = CoachOverlayData(
+            element_name_ru="вальсовый прыжок",
+            metrics=[
+                ("Время полёта", "0.37с", True),
+                ("Высота", "0.12", False),
+            ],
+            recommendations=["Недостаточная высота"],
+            landing_frame=100,
+            fps=30.0,
+        )
+        result = draw_coach_panel(frame, data)
+        assert result.shape == frame.shape
+        # Should have drawn something (non-zero pixels)
+        assert np.any(result > 0)
+
+    def test_draw_returns_same_frame(self):
+        """Should modify frame in place and return it."""
+        from src.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
+
+        frame = np.zeros((720, 1280, 3), dtype=np.uint8)
+        data = CoachOverlayData(
+            element_name_ru="тест",
+            metrics=[("м1", "1.0", True)],
+            recommendations=[],
+            landing_frame=0,
+            fps=30.0,
+        )
+        result = draw_coach_panel(frame, data)
+        assert result is frame  # Same object (in-place modification)
