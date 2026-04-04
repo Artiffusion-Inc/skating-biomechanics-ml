@@ -244,6 +244,13 @@ def render_cyrillic_text(
         >>> frame = np.zeros((480, 640, 3), dtype=np.uint8)
         >>> render_cyrillic_text(frame, "Привет мир", (10, 30))
     """
+    import warnings
+    warnings.warn(
+        "render_cyrillic_text() is slow (full-frame Pillow conversion). "
+        "Use put_text() or put_cyrillic_text() instead.",
+        DeprecationWarning,
+        stacklevel=2,
+    )
     x, y = position
 
     # Convert BGR to RGB for Pillow
@@ -418,6 +425,187 @@ def draw_text_multiline(
         y += line_spacing
 
     return (x, y)
+
+
+# =============================================================================
+# FAST CYRILLIC TEXT (bitmap caching, no full-frame conversion)
+# =============================================================================
+
+
+# Cache: (text, font_path, font_size, color_rgb) -> (bitmap_bgr, alpha_mask)
+_text_bitmap_cache: dict[tuple[str, str, int, tuple[int, int, int]], tuple[NDArray, NDArray]] = {}
+
+
+def _render_text_bitmap(
+    text: str,
+    fp: str,
+    font_size: int,
+    color_rgb: tuple[int, int, int],
+) -> tuple[NDArray, NDArray]:
+    """Render text to a small RGBA bitmap via Pillow (cached).
+
+    Returns:
+        (bitmap_bgr, alpha_mask) — bitmap_bgr is (H, W, 3) uint8 BGR,
+        alpha_mask is (H, W) float32 in [0, 1].
+    """
+    cache_key = (text, fp, font_size, color_rgb)
+    if cache_key in _text_bitmap_cache:
+        return _text_bitmap_cache[cache_key]
+
+    font = _get_font(fp, font_size)
+
+    # Measure
+    tmp = Image.new("RGBA", (1, 1))
+    d = ImageDraw.Draw(tmp)
+    bbox = d.textbbox((0, 0), text, font=font)
+    w = bbox[2] - bbox[0] + 2
+    h = bbox[3] - bbox[1] + 2
+
+    # Render onto small RGBA image
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+    draw.text((-bbox[0] + 1, -bbox[1] + 1), text, font=font, fill=(*color_rgb, 255))
+
+    arr = np.array(img)  # (H, W, 4) RGBA
+    bitmap_bgr = arr[:, :, :3][:, :, ::-1].copy()  # RGB -> BGR
+    alpha_mask = arr[:, :, 3].astype(np.float32) / 255.0
+
+    _text_bitmap_cache[cache_key] = (bitmap_bgr, alpha_mask)
+    return bitmap_bgr, alpha_mask
+
+
+def put_cyrillic_text(
+    frame: Frame,
+    text: str,
+    position: Position,
+    font_path: str = font_path,
+    font_size: int = 16,
+    color: tuple[int, int, int] = font_color,
+) -> Frame:
+    """Render Cyrillic text onto frame using cached Pillow bitmaps.
+
+    Unlike render_cyrillic_text(), this does NOT convert the entire frame
+    through Pillow. Instead, text is pre-rendered to a small bitmap (cached)
+    and alpha-blended onto the frame via numpy slicing.
+
+    Args:
+        frame: OpenCV image (H, W, 3) BGR.
+        text: Text to render (supports Cyrillic / Unicode).
+        position: (x, y) top-left pixel position.
+        font_path: Path to TTF font file.
+        font_size: Font size in points.
+        color: Text color (BGR).
+
+    Returns:
+        Frame with text rendered (modified in place).
+    """
+    color_rgb = (color[2], color[1], color[0])
+    bitmap_bgr, alpha = _render_text_bitmap(text, font_path, font_size, color_rgb)
+
+    x, y = position
+    bh, bw = bitmap_bgr.shape[:2]
+    fh, fw = frame.shape[:2]
+
+    # Clip to frame bounds
+    x1 = max(x, 0)
+    y1 = max(y, 0)
+    x2 = min(x + bw, fw)
+    y2 = min(y + bh, fh)
+    if x1 >= x2 or y1 >= y2:
+        return frame
+
+    # Corresponding bitmap region
+    bx1 = x1 - x
+    by1 = y1 - y
+    bx2 = bx1 + (x2 - x1)
+    by2 = by1 + (y2 - y1)
+
+    roi = frame[y1:y2, x1:x2]
+    a = alpha[by1:by2, bx1:bx2, np.newaxis]
+    frame[y1:y2, x1:x2] = (roi * (1.0 - a) + bitmap_bgr[by1:by2, bx1:bx2] * a).astype(np.uint8)
+
+    return frame
+
+
+def put_cyrillic_text_size(
+    text: str,
+    font_path: str = font_path,
+    font_size: int = 16,
+) -> tuple[int, int]:
+    """Measure size of text rendered by put_cyrillic_text().
+
+    Returns:
+        (width, height) in pixels.
+    """
+    bitmap_bgr, _ = _render_text_bitmap(text, font_path, font_size, (0, 0, 0))
+    return bitmap_bgr.shape[1], bitmap_bgr.shape[0]
+
+
+def put_text(
+    frame: Frame,
+    text: str,
+    position: Position,
+    font_path: str = font_path,
+    font_size: int = 16,
+    color: tuple[int, int, int] = font_color,
+    bg_color: tuple[int, int, int] | None = None,
+    bg_alpha: float = 0.6,
+    padding: int = 4,
+) -> Frame:
+    """Universal text rendering — auto-detects Cyrillic, always fast.
+
+    For any text: uses cached Pillow bitmaps blitted via numpy.
+    Optionally draws a semi-transparent background behind the text.
+
+    Args:
+        frame: OpenCV image (H, W, 3) BGR — modified in place.
+        text: Text to render (any Unicode).
+        position: (x, y) top-left pixel position.
+        font_path: Path to TTF font file.
+        font_size: Font size in points.
+        color: Text color (BGR).
+        bg_color: Background color (BGR). None = no background.
+        bg_alpha: Background opacity [0, 1].
+        padding: Padding around text for background box.
+
+    Returns:
+        frame (same object, modified in place).
+    """
+    if not text:
+        return frame
+
+    x, y = position
+
+    # Draw background if requested
+    if bg_color is not None and bg_alpha > 0:
+        from src.visualization.core.overlay import draw_overlay_rect
+
+        tw, th = put_cyrillic_text_size(text, font_path, font_size)
+        draw_overlay_rect(
+            frame,
+            (x - padding, y - padding, tw + 2 * padding, th + 2 * padding),
+            color=bg_color,
+            alpha=bg_alpha,
+        )
+
+    # Render text via cached bitmap
+    put_cyrillic_text(frame, text, (x, y), font_path=font_path, font_size=font_size, color=color)
+    return frame
+
+
+def measure_text_size_fast(
+    text: str,
+    font_path: str = font_path,
+    font_size: int = 16,
+) -> tuple[int, int]:
+    """Fast text measurement using cached bitmaps.
+
+    Works for any Unicode text (Cyrillic, ASCII, etc.).
+
+    Returns:
+        (width, height) in pixels.
+    """
+    return put_cyrillic_text_size(text, font_path, font_size)
 
 
 # =============================================================================
