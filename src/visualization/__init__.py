@@ -48,6 +48,7 @@ from src.visualization.core.geometry import (
 from src.visualization.core.text import (
     draw_text_box,
     measure_text_size,
+    put_text,
     render_cyrillic_text,
 )
 
