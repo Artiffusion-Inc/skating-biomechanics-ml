@@ -181,7 +181,7 @@ def process_video_pipeline(
 
     out_w = int(meta.width * render_scale)
     out_h = int(meta.height * render_scale)
-    fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+    fourcc = cv2.VideoWriter_fourcc(*"avc1")
     writer = cv2.VideoWriter(str(output_path), fourcc, meta.fps, (out_w, out_h))
 
     layers: list = []
