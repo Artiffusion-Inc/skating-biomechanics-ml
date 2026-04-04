@@ -10,8 +10,15 @@ Provides a browser-based interface for:
 
 from __future__ import annotations
 
-import gradio as gr
+import logging
 from pathlib import Path
+
+import gradio as gr
+
+logger = logging.getLogger(__name__)
+
+import cv2
+import numpy as np
 
 from src.gradio_helpers import (
     choice_to_person_click,
@@ -23,6 +30,29 @@ from src.gradio_helpers import (
 from src.pose_estimation.rtmlib_extractor import RTMPoseExtractor
 from src.types import PersonClick
 from src.utils.video import get_video_meta
+
+
+def _create_extractor(tracking: str) -> RTMPoseExtractor:
+    """Create RTMPoseExtractor with GPU→CPU fallback."""
+    try:
+        return RTMPoseExtractor(
+            mode="balanced",
+            tracking_backend="rtmlib",
+            tracking_mode=tracking,
+            conf_threshold=0.3,
+            output_format="normalized",
+            device="cuda",
+        )
+    except Exception:
+        logger.warning("CUDA unavailable, falling back to CPU")
+        return RTMPoseExtractor(
+            mode="balanced",
+            tracking_backend="rtmlib",
+            tracking_mode=tracking,
+            conf_threshold=0.3,
+            output_format="normalized",
+            device="cpu",
+        )
 
 
 def _detect_persons(
@@ -42,16 +72,9 @@ def _detect_persons(
         return None, gr.update(choices=[], value=None), [], "⚠️ Загрузите видео."
 
     try:
-        extractor = RTMPoseExtractor(
-            mode="balanced",
-            tracking_backend="rtmlib",
-            tracking_mode=tracking,
-            conf_threshold=0.3,
-            output_format="normalized",
-            device="cuda",
-        )
+        extractor = _create_extractor(tracking)
 
-        persons, preview_path = extractor.preview_persons(video_path, num_frames=30)
+        persons, preview_path = extractor.preview_persons(Path(video_path), num_frames=30)
 
         if not persons:
             return None, gr.update(choices=[], value=None), [], "⚠️ Люди не найдены. Попробуйте другое видео."
@@ -100,7 +123,7 @@ def _on_image_select(
         return "⚠️ Сначала обнаружьте людей в видео.", None, None
 
     # Get video dimensions for coordinate normalization
-    meta = get_video_meta(video_path)
+    meta = get_video_meta(Path(video_path))
     w, h = meta.width, meta.height
 
     # Convert pixel click to normalized coordinates
@@ -158,7 +181,7 @@ def _on_person_select(
     if not choice or not persons_state:
         return None, None
 
-    meta = get_video_meta(video_path)
+    meta = get_video_meta(Path(video_path))
     person_click = choice_to_person_click(choice, persons_state, meta.width, meta.height)
 
     # Find the index
@@ -214,7 +237,7 @@ def _run_pipeline(
     # Resolve PersonClick (prefer image click, fallback to radio)
     person_click = person_click_state
     if person_click is None and person_choice and persons_state:
-        meta = get_video_meta(video_path)
+        meta = get_video_meta(Path(video_path))
         person_click = choice_to_person_click(person_choice, persons_state, meta.width, meta.height)
 
     if person_click is None:
