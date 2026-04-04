@@ -140,60 +140,20 @@ class HUDPanel:
         width: int,
         height: int,
     ) -> None:
-        """Draw panel background with border.
+        """Draw panel background with optional border.
 
-        Args:
-            frame: OpenCV image to draw on.
-            x: Top-left X position.
-            y: Top-left Y position.
-            width: Panel width.
-            height: Panel height.
+        Uses ROI-scoped blending — no full-frame copy.
         """
-        # Create overlay for transparency
-        overlay = frame.copy()
+        from src.visualization.core.overlay import draw_overlay_rect
 
-        # Draw rounded rectangle
-        if self.corner_radius > 0:
-            cv2.rectangle(
-                overlay,
-                (x, y),
-                (x + width, y + height),
-                self.bg_color,
-                -1,
-                cv2.LINE_AA,
-            )
-            # Round corners manually (OpenCV doesn't support rounded rectangle fill)
-            # Just use regular rectangle for now
-        else:
-            cv2.rectangle(
-                overlay,
-                (x, y),
-                (x + width, y + height),
-                self.bg_color,
-                -1,
-                cv2.LINE_AA,
-            )
-
-        # Blend overlay
-        if self.bg_alpha > 0:
-            frame[:] = cv2.addWeighted(
-                overlay,
-                self.bg_alpha,
-                frame,
-                1 - self.bg_alpha,
-                0,
-            )
-
-        # Draw border
-        if self.border_thickness > 0:
-            cv2.rectangle(
-                frame,
-                (x, y),
-                (x + width, y + height),
-                self.border_color,
-                self.border_thickness,
-                cv2.LINE_AA,
-            )
+        draw_overlay_rect(
+            frame,
+            (x, y, width, height),
+            color=self.bg_color,
+            alpha=self.bg_alpha,
+            border_color=self.border_color if self.border_thickness > 0 else None,
+            border_thickness=self.border_thickness,
+        )
 
     def draw_title(
         self,
