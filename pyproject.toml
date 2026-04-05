@@ -122,6 +122,7 @@ pythonVersion = "3.11"
 exclude = [
     "Sports2D/",
     "TCPFormer/",
+    "src/models/",
 ]
 
 [tool.vulture]
