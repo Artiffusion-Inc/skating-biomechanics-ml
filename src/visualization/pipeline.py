@@ -300,7 +300,7 @@ def prepare_poses(
     use_corrective_lens: bool = True,
     model_3d_path: Path | str | None = None,
     blend_threshold: float = 0.5,
-    smooth: bool = True,
+    smooth: bool = False,
     device: str = "auto",
     progress_cb=None,
 ) -> PreparedPoses:
