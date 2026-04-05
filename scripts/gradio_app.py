@@ -331,6 +331,10 @@ def _on_frame_change(
 
     glb_path = poses_to_glb(poses_3d_state, frame_idx)
 
+    # Skip empty/NaN frames
+    if not glb_path:
+        return None, f"Кадр {frame_idx}/{n - 1} — нет данных"
+
     # Show key angles for this frame
     angles = compute_joint_angles(poses_3d_state[frame_idx])
     parts = []

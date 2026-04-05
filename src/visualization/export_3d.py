@@ -89,6 +89,10 @@ def poses_to_glb(
 
     pose = poses_3d[frame_idx]  # (17, 3)
 
+    # Skip frames where all keypoints are NaN
+    if np.isnan(pose).all():
+        return ""
+
     scene = trimesh.Scene()
 
     # Compute joint angles for coloring
@@ -160,7 +164,10 @@ def poses_to_glb(
     # Add ground plane grid
     _add_ground_grid(scene, pose)
 
-    # Export to .glb
+    # Export to .glb (skip empty scenes)
+    if len(scene.geometry) == 0:
+        return ""
+
     tmpdir = tempfile.mkdtemp()
     glb_path = Path(tmpdir) / "skeleton.glb"
     scene.export(str(glb_path), file_type="glb")
