@@ -327,7 +327,6 @@ def prepare_poses(
         PreparedPoses with all data needed for VizPipeline construction.
     """
     from src.device import DeviceConfig
-    from src.utils.gap_filling import GapFiller
     from src.utils.smoothing import get_skating_optimized_config
 
     video_path = Path(video_path)
@@ -359,17 +358,35 @@ def prepare_poses(
     nan_mask = np.isnan(raw_poses[:, 0, 0])
     n_valid = int((~nan_mask).sum())
 
-    # --- Step 2: Fill NaN gaps ---
+    # --- Step 2: Fill NaN gaps (linear interp, preserves array length) ---
+    # GapFiller splits at long gaps, breaking 1:1 frame mapping.
+    # Use plain np.interp — safe for all gap sizes, keeps N frames.
     if nan_mask.any() and n_valid >= 2:
-        filler = GapFiller(fps=meta.fps)
-        filled, report = filler.fill_gaps(raw_poses, ~nan_mask)
-        raw_poses = filled
-        if report.gaps:
-            logger.info("Filled %d gap(s): %s", len(report.gaps), report.strategy_used)
+        valid_indices = np.where(~nan_mask)[0]
+        n_frames = len(raw_poses)
+        for kp in range(raw_poses.shape[1]):
+            for dim in range(raw_poses.shape[2]):
+                raw_poses[:, kp, dim] = np.interp(
+                    np.arange(n_frames),
+                    valid_indices,
+                    raw_poses[valid_indices, kp, dim],
+                )
+        logger.info(
+            "Filled %d NaN frame(s) via linear interpolation (%d valid)",
+            int(nan_mask.sum()),
+            n_valid,
+        )
         if raw_foot_kps is not None:
             foot_nan = np.isnan(raw_foot_kps[:, 0, 0])
             if foot_nan.any() and (~foot_nan).sum() >= 2:
-                raw_foot_kps, _ = filler.fill_gaps(raw_foot_kps, ~foot_nan)
+                foot_valid = np.where(~foot_nan)[0]
+                for kp in range(raw_foot_kps.shape[1]):
+                    for dim in range(raw_foot_kps.shape[2]):
+                        raw_foot_kps[:, kp, dim] = np.interp(
+                            np.arange(len(raw_foot_kps)),
+                            foot_valid,
+                            raw_foot_kps[foot_valid, kp, dim],
+                        )
 
     poses_norm = raw_poses[:, :, :2].copy()
     confs = raw_poses[:, :, 2].copy()
