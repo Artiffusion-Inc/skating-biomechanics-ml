@@ -1,6 +1,8 @@
 """Tests for unified visualization pipeline."""
 
 from pathlib import Path
+from types import SimpleNamespace
+from unittest import mock
 
 import numpy as np
 
@@ -8,8 +10,6 @@ from src.visualization.pipeline import VizPipeline
 
 
 def _fake_meta(w=640, h=480, fps=30, num_frames=10):
-    from types import SimpleNamespace
-
     return SimpleNamespace(width=w, height=h, fps=fps, num_frames=num_frames)
 
 
@@ -117,3 +117,158 @@ class TestVizPipelineIntegration:
 
         # Only frames 0 and 3 had poses
         assert len(pipe.export_frames) <= 2
+
+
+# ------------------------------------------------------------------
+# Tests for unified pose preparation pipeline
+# ------------------------------------------------------------------
+
+
+def _fake_extraction(n=10):
+    """Create a fake TrackedExtraction result."""
+    extraction = mock.MagicMock()
+    extraction.poses = np.random.rand(n, 17, 3).astype(np.float32)
+    extraction.foot_keypoints = None
+    extraction.frame_indices = np.arange(n)
+    extraction.valid_mask.return_value = np.ones(n, dtype=bool)
+    return extraction
+
+
+class TestPreparePoses:
+    def test_returns_prepared_poses(self):
+        """prepare_poses returns PreparedPoses with correct shapes."""
+        from src.visualization.pipeline import PreparedPoses, prepare_poses
+
+        with (
+            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
+            mock.patch("src.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
+            mock.patch(
+                "src.visualization.pipeline._resolve_model_3d", return_value=Path("model.onnx")
+            ),
+        ):
+            MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
+            MockLens.return_value.correct_sequence.return_value = (
+                np.random.rand(10, 17, 2).astype(np.float32) * 0.5 + 0.25,
+                np.random.rand(10, 17, 3).astype(np.float32),
+            )
+
+            result = prepare_poses(Path("test.mp4"))
+
+        assert isinstance(result, PreparedPoses)
+        assert result.poses_norm.shape == (10, 17, 2)
+        assert result.poses_px.shape == (10, 17, 3)
+        assert result.poses_3d is not None
+        assert result.poses_3d.shape == (10, 17, 3)
+        assert result.n_valid == 10
+        assert result.n_total == 10
+
+    def test_no_corrective_lens_when_disabled(self):
+        """When use_corrective_lens=False, CorrectiveLens is not called."""
+        from src.visualization.pipeline import prepare_poses
+
+        with (
+            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
+            mock.patch("src.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
+            mock.patch("src.visualization.pipeline.ONNXPoseExtractor") as MockONNX,
+            mock.patch(
+                "src.visualization.pipeline._resolve_model_3d", return_value=Path("model.onnx")
+            ),
+        ):
+            MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
+            MockONNX.return_value.estimate_3d.return_value = np.random.rand(10, 17, 3).astype(
+                np.float32
+            )
+
+            result = prepare_poses(Path("test.mp4"), use_corrective_lens=False)
+
+        MockLens.assert_not_called()
+        assert result.poses_3d is not None
+
+    def test_no_3d_when_model_missing(self):
+        """When model not found, poses_3d is None but poses_norm is still valid."""
+        from src.visualization.pipeline import prepare_poses
+
+        with (
+            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
+            mock.patch("src.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline._resolve_model_3d", return_value=None),
+        ):
+            MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
+
+            result = prepare_poses(Path("test.mp4"))
+
+        assert result.poses_3d is None
+        assert result.poses_norm.shape == (10, 17, 2)
+
+    def test_gap_filling_when_frame_skip(self):
+        """NaN frames from frame_skip are filled."""
+        from src.visualization.pipeline import prepare_poses
+
+        extraction = _fake_extraction(20)
+        raw = np.full((20, 17, 3), np.nan, dtype=np.float32)
+        for i in [0, 4, 8, 12, 16]:
+            raw[i] = np.random.rand(17, 3).astype(np.float32)
+        extraction.poses = raw
+        extraction.valid_mask.return_value = np.array([i in [0, 4, 8, 12, 16] for i in range(20)])
+
+        with (
+            mock.patch(
+                "src.visualization.pipeline.get_video_meta", return_value=_fake_meta(num_frames=20)
+            ),
+            mock.patch("src.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
+            mock.patch(
+                "src.visualization.pipeline._resolve_model_3d", return_value=Path("model.onnx")
+            ),
+        ):
+            MockExt.return_value.extract_video_tracked.return_value = extraction
+            MockLens.return_value.correct_sequence.return_value = (
+                np.random.rand(20, 17, 2).astype(np.float32) * 0.5 + 0.25,
+                np.random.rand(20, 17, 3).astype(np.float32),
+            )
+
+            result = prepare_poses(Path("test.mp4"), frame_skip=4)
+
+        assert not np.isnan(result.poses_norm).any()
+        assert result.n_valid == 5
+
+    def test_smooth_disabled(self):
+        """When smooth=False, PoseSmoother is not called."""
+        from src.visualization.pipeline import prepare_poses
+
+        with (
+            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
+            mock.patch("src.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
+            mock.patch("src.visualization.pipeline.PoseSmoother") as MockSmooth,
+            mock.patch(
+                "src.visualization.pipeline._resolve_model_3d", return_value=Path("model.onnx")
+            ),
+        ):
+            MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
+            MockLens.return_value.correct_sequence.return_value = (
+                np.random.rand(10, 17, 2).astype(np.float32) * 0.5 + 0.25,
+                np.random.rand(10, 17, 3).astype(np.float32),
+            )
+
+            prepare_poses(Path("test.mp4"), smooth=False)
+
+        MockSmooth.assert_not_called()
+
+
+class TestResolveModel3d:
+    def test_explicit_path_returned(self, tmp_path):
+        from src.visualization.pipeline import _resolve_model_3d
+
+        model = tmp_path / "model.onnx"
+        model.touch()
+        result = _resolve_model_3d(model)
+        assert result == model
+
+    def test_none_when_not_found(self, tmp_path):
+        from src.visualization.pipeline import _resolve_model_3d
+
+        result = _resolve_model_3d(tmp_path / "nonexistent.onnx")
+        assert result is None

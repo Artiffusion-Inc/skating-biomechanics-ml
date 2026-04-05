@@ -7,11 +7,14 @@ per-frame rendering, and data export. Callers provide video I/O.
 from __future__ import annotations
 
 import csv as _csv
+import logging
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import numpy as np
 
+from src.utils.video import get_video_meta
 from src.visualization import (
     LayerContext,
     VerticalAxisLayer,
@@ -20,8 +23,6 @@ from src.visualization import (
 )
 
 if TYPE_CHECKING:
-    from pathlib import Path
-
     from numpy.typing import NDArray
 
     from src.visualization.layers.base import Frame
@@ -231,3 +232,196 @@ class VizPipeline:
             else:
                 break
         return None, pose_idx
+
+
+# ------------------------------------------------------------------
+# Unified pose preparation
+# ------------------------------------------------------------------
+
+logger = logging.getLogger(__name__)
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_DEFAULT_MODEL_3D_CANDIDATES = [
+    _PROJECT_ROOT / "data" / "models" / "motionagformer-s-ap3d.onnx",
+    _PROJECT_ROOT / "data" / "models" / "motionagformer-s-ap3d.pth.tr",
+    Path("data/models/motionagformer-s-ap3d.onnx"),
+    Path("data/models/motionagformer-s-ap3d.pth.tr"),
+]
+
+# Module-level imports for testability (mock.patch targets module-level names).
+from src.pose_3d import CorrectiveLens  # noqa: E402
+from src.pose_3d.onnx_extractor import ONNXPoseExtractor  # noqa: E402
+from src.pose_estimation.rtmlib_extractor import RTMPoseExtractor  # noqa: E402
+from src.utils.smoothing import PoseSmoother  # noqa: E402
+
+
+@dataclass
+class PreparedPoses:
+    """Output of the unified pose preparation pipeline.
+
+    Constructed by ``prepare_poses()`` and consumed by ``VizPipeline``.
+    """
+
+    poses_norm: NDArray[np.float32]  # (N, 17, 2) corrected normalized [0,1]
+    poses_px: NDArray[np.float32]  # (N, 17, 3) pixel coords (x, y, confidence)
+    poses_3d: NDArray[np.float32] | None  # (N, 17, 3) 3D poses for GLB export
+    foot_kps: NDArray[np.float32] | None  # (N, 6, 3) foot keypoints or None
+    confs: NDArray[np.float32]  # (N, 17) per-keypoint confidence
+    frame_indices: NDArray[np.intp]  # (N,) frame index mapping
+    meta: object  # video metadata (width, height, fps, num_frames)
+    n_valid: int  # valid (non-interpolated) frames
+    n_total: int  # total video frames
+
+
+def _resolve_model_3d(path: Path | str | None = None) -> Path | None:
+    """Find the 3D pose model.
+
+    Args:
+        path: Explicit path, or None to auto-detect.
+
+    Returns:
+        Path to model file, or None if not found.
+    """
+    if path is not None:
+        p = Path(path)
+        return p if p.exists() else None
+    for candidate in _DEFAULT_MODEL_3D_CANDIDATES:
+        if candidate.exists():
+            return candidate
+    return None
+
+
+def prepare_poses(
+    video_path: Path | str,
+    person_click: object | None = None,
+    *,
+    frame_skip: int = 1,
+    tracking: str = "auto",
+    use_corrective_lens: bool = True,
+    model_3d_path: Path | str | None = None,
+    blend_threshold: float = 0.5,
+    smooth: bool = True,
+    device: str = "auto",
+    progress_cb=None,
+) -> PreparedPoses:
+    """Unified pose preparation pipeline.
+
+    Extract 2D poses -> fill gaps -> smooth -> 3D lift + CorrectiveLens.
+
+    Both CLI and Gradio call this function. Any improvement here
+    automatically applies to all frontends.
+
+    Args:
+        video_path: Path to input video.
+        person_click: PersonClick to select target person, or None.
+        frame_skip: Process every Nth frame (default 1 = every frame).
+        tracking: Tracking mode ("auto", "sports2d", "deepsort").
+        use_corrective_lens: Apply 3D-corrected 2D overlay (default True).
+        model_3d_path: Path to 3D model, or None to auto-detect.
+        blend_threshold: CorrectiveLens confidence blend threshold.
+        smooth: Apply One-Euro Filter smoothing (default True).
+        device: Device string ("auto", "cuda", "cpu").
+        progress_cb: Optional callback ``(progress_0_to_1, message)``.
+
+    Returns:
+        PreparedPoses with all data needed for VizPipeline construction.
+    """
+    from src.device import DeviceConfig
+    from src.utils.gap_filling import GapFiller
+    from src.utils.smoothing import get_skating_optimized_config
+
+    video_path = Path(video_path)
+    meta = get_video_meta(video_path)
+    cfg = DeviceConfig(device=device)
+
+    if progress_cb:
+        progress_cb(0.0, "Extracting poses...")
+
+    # --- Step 1: Extract 2D poses ---
+    extractor = RTMPoseExtractor(
+        output_format="normalized",
+        conf_threshold=0.3,
+        det_frequency=max(1, frame_skip),
+        frame_skip=frame_skip,
+        device=cfg.device,
+        tracking_mode=tracking,
+    )
+    extraction = extractor.extract_video_tracked(
+        str(video_path),
+        person_click=person_click,
+        progress_cb=progress_cb,
+    )
+
+    raw_poses = extraction.poses  # (N, 17, 3) — may have NaN from frame_skip
+    raw_foot_kps = extraction.foot_keypoints
+    frame_indices = extraction.frame_indices
+
+    nan_mask = np.isnan(raw_poses[:, 0, 0])
+    n_valid = int((~nan_mask).sum())
+
+    # --- Step 2: Fill NaN gaps ---
+    if nan_mask.any() and n_valid >= 2:
+        filler = GapFiller(fps=meta.fps)
+        filled, report = filler.fill_gaps(raw_poses, ~nan_mask)
+        raw_poses = filled
+        if report.gaps:
+            logger.info("Filled %d gap(s): %s", len(report.gaps), report.strategy_used)
+        if raw_foot_kps is not None:
+            foot_nan = np.isnan(raw_foot_kps[:, 0, 0])
+            if foot_nan.any() and (~foot_nan).sum() >= 2:
+                raw_foot_kps, _ = filler.fill_gaps(raw_foot_kps, ~foot_nan)
+
+    poses_norm = raw_poses[:, :, :2].copy()
+    confs = raw_poses[:, :, 2].copy()
+
+    # --- Step 3: Smooth ---
+    if smooth and len(poses_norm) > 2:
+        smooth_config = get_skating_optimized_config(meta.fps)
+        smoother = PoseSmoother(smooth_config, freq=meta.fps)
+        poses_norm = smoother.smooth(poses_norm)
+
+    if progress_cb:
+        progress_cb(0.4, "3D pose estimation...")
+
+    # --- Step 4: 3D lift + CorrectiveLens ---
+    poses_3d = None
+    model_path = _resolve_model_3d(model_3d_path)
+
+    if model_path is not None and use_corrective_lens:
+        lens = CorrectiveLens(model_path=model_path, device=cfg.device)
+        poses_norm_corrected, poses_3d = lens.correct_sequence(
+            poses_2d_norm=poses_norm,
+            fps=meta.fps,
+            width=meta.width,
+            height=meta.height,
+            confidences=confs,
+            blend_threshold=blend_threshold,
+        )
+        poses_norm = np.clip(poses_norm_corrected, 0.0, 1.0)
+        logger.info("CorrectiveLens applied (blend_threshold=%.2f)", blend_threshold)
+    elif model_path is not None:
+        onnx = ONNXPoseExtractor(model_path, device=cfg.device)
+        poses_3d = onnx.estimate_3d(poses_norm)
+        logger.info("3D poses estimated (no CorrectiveLens)")
+    else:
+        logger.warning("No 3D model found. Skeleton will use raw 2D poses without correction.")
+
+    # --- Step 5: Build pixel coordinates ---
+    poses_px = raw_poses.copy()
+    poses_px[:, :, 0] *= meta.width
+    poses_px[:, :, 1] *= meta.height
+
+    if progress_cb:
+        progress_cb(0.6, "Poses ready.")
+
+    return PreparedPoses(
+        poses_norm=poses_norm,
+        poses_px=poses_px,
+        poses_3d=poses_3d,
+        foot_kps=raw_foot_kps,
+        confs=confs,
+        frame_indices=frame_indices,
+        meta=meta,
+        n_valid=n_valid,
+        n_total=meta.num_frames,
+    )
