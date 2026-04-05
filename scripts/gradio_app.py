@@ -211,7 +211,6 @@ def _run_pipeline(
     frame_skip: int,
     layer: int,
     tracking: str,
-    use_3d: bool,
     export: bool,
     progress=gr.Progress(),  # noqa: B008
 ) -> tuple[str, str, str, str, np.ndarray | None, int]:
@@ -263,7 +262,6 @@ def _run_pipeline(
             frame_skip=frame_skip,
             layer=layer,
             tracking=tracking,
-            use_3d=use_3d,
             blade_3d=False,  # Disabled for now
             export=export,
             output_path=str(output_path),
@@ -401,12 +399,6 @@ def build_app() -> gr.Blocks:
                         info="0=скелет, 1=скорость+следы+углы, 2=+ось, 3=полный HUD",
                     )
 
-                    use_3d_checkbox = gr.Checkbox(
-                        label="3D-коррекция позы",
-                        value=False,
-                        info="CorrectiveLens для обработки окклюзий",
-                    )
-
                     export_checkbox = gr.Checkbox(
                         label="Экспорт поз и CSV",
                         value=True,
@@ -426,7 +418,7 @@ def build_app() -> gr.Blocks:
 
                     with gr.Tab("3D Скелет"):
                         model_3d = gr.Model3D(
-                            label="3D модель (включите «3D-коррекция позы» в настройках)",
+                            label="3D 043c043e04340435043b044c (043a044004430442043804420435 043c044b0448043a043e0439, 04370443043c 043a043e043b045104410438043a043e043c)",
                             height=500,
                             clear_color=[0.1, 0.1, 0.15, 1],
                             camera_position=(45, 45, 3),
@@ -492,7 +484,6 @@ def build_app() -> gr.Blocks:
                 frame_skip_slider,
                 layer_slider,
                 tracking_dropdown,
-                use_3d_checkbox,
                 export_checkbox,
             ],
             outputs=[

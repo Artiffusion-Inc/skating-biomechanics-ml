@@ -267,45 +267,36 @@ def main() -> int:
 
     # Initialize 3D pose extraction if requested
     poses_3d = None
-    if args.blade_3d and not args.use_3d:
-        print("Note: --blade-3d requires 3D poses, auto-enabling --3d")
-        args.use_3d = True
-
-    if args.use_3d:
-        if args.model_3d and args.model_3d.exists():
-            print(f"Loading 3D model: {args.model_3d}")
-            from src.pose_3d import AthletePose3DExtractor
-
-            extractor = AthletePose3DExtractor(
-                model_path=args.model_3d, model_type="motionagformer-s"
-            )
-            poses_3d = extractor.extract_sequence(poses_viz)
-            print(f"3D poses extracted: {poses_3d.shape}")
+    if not (args.model_3d and args.model_3d.exists()):
+        default_model = Path("data/models/motionagformer-s-ap3d.onnx")
+        if default_model.exists():
+            args.model_3d = default_model
         else:
-            print("Using biomechanics-based 3D estimation...")
-            from src.pose_3d.biomechanics_estimator import Biomechanics3DEstimator
+            print("Error: 3D model not found. Download motionagformer-s-ap3d to data/models/")
+            return 1
 
-            estimator = Biomechanics3DEstimator()
-            poses_3d = estimator.estimate_3d(poses_viz)
-            print(f"3D poses estimated: {poses_3d.shape}")
+    print(f"Loading 3D model: {args.model_3d}")
+    from src.pose_3d import AthletePose3DExtractor
 
-    # 3D corrective lens: lift → constrain → project → blend
-    poses_viz_corrected = None
-    if args.use_3d and poses_3d is not None:
-        from src.pose_3d import CorrectiveLens
+    extractor = AthletePose3DExtractor(model_path=args.model_3d, model_type="motionagformer-s")
+    poses_3d = extractor.extract_sequence(poses_viz)
+    print(f"3D poses extracted: {poses_3d.shape}")
 
-        lens = CorrectiveLens(model_path=args.model_3d if args.model_3d else None)
-        poses_viz_corrected, _ = lens.correct_sequence(
-            poses_2d_norm=poses_viz,
-            fps=meta.fps,
-            width=meta.width,
-            height=meta.height,
-            confidences=confs,
-            blend_threshold=args.blend_threshold,
-        )
-        # Clip to valid range
-        poses_viz_corrected = np.clip(poses_viz_corrected, 0.0, 1.0)
-        print(f"3D-corrected poses: {poses_viz_corrected.shape}")
+    # 3D corrective lens: lift → constrain → project → blend (always on)
+    from src.pose_3d import CorrectiveLens
+
+    lens = CorrectiveLens(model_path=args.model_3d)
+    poses_viz_corrected, _ = lens.correct_sequence(
+        poses_2d_norm=poses_viz,
+        fps=meta.fps,
+        width=meta.width,
+        height=meta.height,
+        confidences=confs,
+        blend_threshold=args.blend_threshold,
+    )
+    # Clip to valid range
+    poses_viz_corrected = np.clip(poses_viz_corrected, 0.0, 1.0)
+    print(f"3D-corrected poses: {poses_viz_corrected.shape}")
 
     # Initialize 3D blade detector if requested
     blade_detector_3d = None

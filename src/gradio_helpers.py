@@ -122,7 +122,6 @@ def process_video_pipeline(
     frame_skip: int,
     layer: int,
     tracking: str,
-    use_3d: bool,
     blade_3d: bool,
     export: bool,
     output_path: str | Path,
@@ -198,25 +197,19 @@ def process_video_pipeline(
 
     poses_viz = poses_norm
 
-    poses_3d = None
-    if use_3d:
-        from src.pose_3d.onnx_extractor import ONNXPoseExtractor
+    from src.pose_3d.onnx_extractor import ONNXPoseExtractor
 
-        onnx_model = (
-            Path(__file__).resolve().parent.parent
-            / "data"
-            / "models"
-            / "motionagformer-s-ap3d.onnx"
+    onnx_model = (
+        Path(__file__).resolve().parent.parent / "data" / "models" / "motionagformer-s-ap3d.onnx"
+    )
+    if not onnx_model.exists():
+        raise FileNotFoundError(
+            f"ONNX model not found: {onnx_model}. "
+            "Download motionagformer-s-ap3d.onnx to data/models/"
         )
-        if onnx_model.exists():
-            cfg = DeviceConfig.default()
-            extractor = ONNXPoseExtractor(onnx_model, device=cfg.device)
-            poses_3d = extractor.estimate_3d(poses_viz)
-        else:
-            from src.pose_3d.biomechanics_estimator import Biomechanics3DEstimator
-
-            estimator = Biomechanics3DEstimator()
-            poses_3d = estimator.estimate_3d(poses_viz)
+    cfg = DeviceConfig.default()
+    extractor = ONNXPoseExtractor(onnx_model, device=cfg.device)
+    poses_3d = extractor.estimate_3d(poses_viz)
 
     if progress_cb:
         progress_cb(0.3, "Poses extracted. Rendering...")
