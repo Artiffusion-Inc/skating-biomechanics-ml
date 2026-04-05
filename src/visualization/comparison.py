@@ -306,7 +306,12 @@ class ComparisonRenderer:
             cap_a.set(cv2.CAP_PROP_POS_FRAMES, self.config.start_frame)
             cap_r.set(cv2.CAP_PROP_POS_FRAMES, self.config.start_frame)
 
-        # Pre-allocate buffers for side-by-side
+        # Pre-allocate buffers for side-by-side (initialize outside conditional)
+        out_buf: np.ndarray | None = None
+        divider: np.ndarray | None = None
+        pad_a: np.ndarray | None = None
+        pad_r: np.ndarray | None = None
+
         if self.config.mode == ComparisonMode.SIDE_BY_SIDE:
             out_buf = np.empty((out_h, out_w, 3), dtype=np.uint8)
             divider = np.full((out_h, self.config.divider_width, 3), 128, dtype=np.uint8)
@@ -370,7 +375,7 @@ class ComparisonRenderer:
             ctx.pose_2d = pose_a
             ctx.pose_3d = None
             if pose_a is not None:
-                draw_skeleton(frame_a, pose_a, a_h, target_w)
+                draw_skeleton(frame_a, pose_a, a_h, target_w)  # type: ignore[arg-type]
             if pose_a is not None and self._sorted_layers:
                 for layer in self._sorted_layers:
                     if layer.is_visible():
@@ -379,7 +384,7 @@ class ComparisonRenderer:
             # Render skeleton + overlays on reference frame
             ctx.pose_2d = pose_r
             if pose_r is not None:
-                draw_skeleton(frame_r, pose_r, r_h, target_w)
+                draw_skeleton(frame_r, pose_r, r_h, target_w)  # type: ignore[arg-type]
             if pose_r is not None and self._sorted_layers:
                 for layer in self._sorted_layers:
                     if layer.is_visible():
@@ -388,6 +393,8 @@ class ComparisonRenderer:
             # Compose output
             if self.config.mode == ComparisonMode.SIDE_BY_SIDE:
                 # Assemble side-by-side buffer
+                assert out_buf is not None
+                assert divider is not None
                 if pad_a is not None:
                     out_buf[:a_h, :target_w] = frame_a
                     out_buf[a_h:, :target_w] = pad_a
@@ -407,7 +414,7 @@ class ComparisonRenderer:
                 # Overlay mode: blend reference skeleton onto athlete frame
                 overlay = frame_a.copy()
                 if pose_r is not None:
-                    draw_skeleton(overlay, pose_r, a_h, target_w)
+                    draw_skeleton(overlay, pose_r, a_h, target_w)  # type: ignore[arg-type]
                 frame_a = cv2.addWeighted(overlay, self.config.reference_alpha, frame_a, 1.0, 0)
                 writer.write(frame_a)
 
