@@ -167,6 +167,17 @@ def process_video_pipeline(
 
     raw_poses = extraction.poses
     raw_foot_kps = extraction.foot_keypoints
+
+    # Map pose indices to real video frame indices
+    # extractor returns poses only for processed frames (every frame_skip-th)
+    # but frame_indices are sequential [0..N-1], not actual video frame numbers
+    n_poses = len(raw_poses)
+    if n_poses > 0 and n_poses < meta.num_frames:
+        # Real frame indices when frame_skip > 1
+        pose_frame_indices = np.arange(n_poses) * frame_skip
+        pose_frame_indices = np.clip(pose_frame_indices, 0, meta.num_frames - 1)
+    else:
+        pose_frame_indices = extraction.frame_indices
     n_valid = int(extraction.valid_mask().sum())
 
     poses_norm = raw_poses[:, :, :2].copy()
@@ -174,7 +185,6 @@ def process_video_pipeline(
     poses = raw_poses.copy()
     poses[:, :, 0] *= meta.width
     poses[:, :, 1] *= meta.height
-    pose_frame_indices = np.arange(len(poses))
 
     if len(poses_norm) > 2:
         smooth_config = get_skating_optimized_config(meta.fps)
