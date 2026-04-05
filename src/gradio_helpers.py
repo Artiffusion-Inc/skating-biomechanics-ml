@@ -237,9 +237,15 @@ def process_video_pipeline(
 
         if layer >= 0 and current_pose_idx is not None:
             foot_kp = raw_foot_kps[current_pose_idx] if raw_foot_kps is not None else None
+            # Scale pixel poses to match downscaled frame
+            skel_pose = poses[current_pose_idx]
+            skel_foot_kp = foot_kp
+            if render_scale != 1.0:
+                skel_pose = skel_pose * render_scale
+                skel_foot_kp = foot_kp * render_scale if foot_kp is not None else None
             frame = draw_skeleton(
-                frame, poses[current_pose_idx], draw_h, draw_w,
-                line_width=1, joint_radius=3, foot_keypoints=foot_kp,
+                frame, skel_pose, draw_h, draw_w,
+                line_width=1, joint_radius=3, foot_keypoints=skel_foot_kp,
             )
             context.pose_2d = poses_viz[current_pose_idx]
             if poses_3d is not None and current_pose_idx < len(poses_3d):
