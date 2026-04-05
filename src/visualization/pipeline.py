@@ -406,10 +406,11 @@ def prepare_poses(
     else:
         logger.warning("No 3D model found. Skeleton will use raw 2D poses without correction.")
 
-    # --- Step 5: Build pixel coordinates ---
-    poses_px = raw_poses.copy()
-    poses_px[:, :, 0] *= meta.width
-    poses_px[:, :, 1] *= meta.height
+    # --- Step 5: Build pixel coordinates from FINAL poses_norm ---
+    poses_px = np.zeros((*poses_norm.shape[:2], 3), dtype=np.float32)
+    poses_px[:, :, 0] = poses_norm[:, :, 0] * meta.width
+    poses_px[:, :, 1] = poses_norm[:, :, 1] * meta.height
+    poses_px[:, :, 2] = confs
 
     if progress_cb:
         progress_cb(0.6, "Poses ready.")
