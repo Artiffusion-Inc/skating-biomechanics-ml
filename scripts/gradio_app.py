@@ -5,6 +5,7 @@ Provides a browser-based interface for:
 - Video upload and preview
 - Interactive person selection (click on image or radio buttons)
 - Real-time analysis with configurable options
+- Side-by-side video + animated 3D skeleton viewer
 - Downloadable results (video, poses, CSV)
 """
 
@@ -15,7 +16,6 @@ from pathlib import Path
 
 import cv2
 import gradio as gr
-import numpy as np
 
 from src.device import DeviceConfig
 from src.gradio_helpers import (
@@ -33,7 +33,7 @@ logger = logging.getLogger(__name__)
 
 
 def _create_extractor(tracking: str) -> RTMPoseExtractor:
-    """Create RTMPoseExtractor with GPU→CPU fallback."""
+    """Create RTMPoseExtractor with GPU->CPU fallback."""
     cfg = DeviceConfig.default()
     return RTMPoseExtractor(
         mode="balanced",
@@ -53,7 +53,7 @@ def _detect_persons(
 
     Args:
         video_path: Path to uploaded video file.
-        tracking: Tracking mode ("rtmlib", "sports2d", "deepsort").
+        tracking: Tracking mode ("auto", "sports2d", "deepsort").
 
     Returns:
         (annotated_image, radio_choices, persons_state, status)
@@ -75,8 +75,6 @@ def _detect_persons(
             )
 
         # Load the preview frame (first frame with detections)
-        import cv2
-
         cap = cv2.VideoCapture(video_path)
         ret, frame = cap.read()
         cap.release()
@@ -88,7 +86,6 @@ def _detect_persons(
         annotated = render_person_preview(frame, persons, selected_idx=None)
 
         # Convert BGR to RGB for Gradio
-
         annotated = cv2.cvtColor(annotated, cv2.COLOR_BGR2RGB)
 
         choices = persons_to_choices(persons)
@@ -141,7 +138,6 @@ def _on_image_select(
     idx = persons_state.index(matched)
 
     # Re-render preview with green highlight
-
     cap = cv2.VideoCapture(video_path)
     ret, frame = cap.read()
     cap.release()
@@ -189,7 +185,6 @@ def _on_person_select(
     idx = int(choice.split("#")[1].split(" ", maxsplit=1)[0]) - 1
 
     # Re-render preview with green highlight
-
     cap = cv2.VideoCapture(video_path)
     ret, frame = cap.read()
     cap.release()
@@ -213,7 +208,7 @@ def _run_pipeline(
     tracking: str,
     export: bool,
     progress=gr.Progress(),  # noqa: B008
-) -> tuple[str, str, str, str, np.ndarray | None, int]:
+) -> tuple[str, str, str, str, str]:
     """Run the full analysis pipeline.
 
     Args:
@@ -221,17 +216,17 @@ def _run_pipeline(
         person_click_state: Selected person click (from image click).
         persons_state: List of detected persons.
         person_choice: Selected person from Radio (fallback).
+        frame_skip: Frame skip for pose extraction.
         layer: HUD layer (0-3).
         tracking: Tracking mode.
-        use_3d: Enable 3D-corrected overlay.
         export: Export poses/CSV.
         progress: Gradio progress callback.
 
     Returns:
-        (output_video_path, poses_path, csv_path, status_text, poses_3d)
+        (output_video_path, poses_path, csv_path, status_text, glb_path)
     """
     if not video_path:
-        return None, None, None, "⚠️ Загрузите видео.", None, 0
+        return None, None, None, "⚠️ Загрузите видео.", None
 
     # Resolve PersonClick (prefer image click, fallback to radio)
     person_click = person_click_state
@@ -246,7 +241,6 @@ def _run_pipeline(
             None,
             "⚠️ Выберите человека (нажмите на изображение или выберите из списка).",
             None,
-            0,
         )
 
     # Generate output path
@@ -269,7 +263,7 @@ def _run_pipeline(
         )
 
         stats = result["stats"]
-        poses_3d = result.get("poses_3d")
+        glb_path = result.get("glb_path")
         status = (
             f"✅ Анализ завершён!\n"
             f"   Разрешение: {stats['resolution']}\n"
@@ -283,66 +277,100 @@ def _run_pipeline(
             result["poses_path"],
             result["csv_path"],
             status,
-            poses_3d,
-            stats["total_frames"],
+            glb_path,
         )
 
     except Exception as e:
-        return None, None, None, f"❌ Ошибка обработки: {e}", None, 0
-
-
-def _on_frame_change(
-    frame_idx: int,
-    poses_3d_state: np.ndarray | None,
-) -> tuple[str | None, str]:
-    """Update 3D model when frame slider changes.
-
-    Args:
-        frame_idx: Frame index from slider.
-        poses_3d_state: Stored (N, 17, 3) 3D poses array.
-
-    Returns:
-        (glb_path, angle_info_text)
-    """
-    if poses_3d_state is None:
-        return None, "Обработайте видео для просмотра 3D"
-
-    frame_idx = int(frame_idx)
-    n = len(poses_3d_state)
-    if frame_idx >= n:
-        frame_idx = n - 1
-
-    from src.analysis.angles import compute_joint_angles
-    from src.visualization.export_3d import poses_to_glb
-
-    glb_path = poses_to_glb(poses_3d_state, frame_idx)
-
-    # Skip empty/NaN frames
-    if not glb_path:
-        return None, f"Кадр {frame_idx}/{n - 1} — нет данных"
-
-    # Show key angles for this frame
-    angles = compute_joint_angles(poses_3d_state[frame_idx])
-    parts = []
-    for name, val in angles.items():
-        if not np.isnan(val) and "Knee" in name:
-            parts.append(f"{name}: {val:.0f}°")
-    angle_info = " | ".join(parts) if parts else f"Кадр {frame_idx}/{n - 1}"
-
-    return glb_path, angle_info
+        return None, None, None, f"❌ Ошибка обработки: {e}", None
 
 
 def build_app() -> gr.Blocks:
     """Build and return the Gradio app interface."""
-    with gr.Blocks(title="AI Тренер по фигурному катанию") as app:
+
+    # HTML template for animated 3D skeleton viewer
+    model_viewer_template = """
+    <div class="viewer-container">
+        <model-viewer
+            id="mv-3d"
+            src="${value}"
+            autoplay
+            camera-controls
+            shadow-intensity="0"
+            interaction-prompt="none"
+            style="width:100%; height:500px; background:#1a1a2e; border-radius:8px;">
+        </model-viewer>
+        <div class="viewer-controls">
+            <button id="mv-play" onclick="document.getElementById('mv-3d').play()">▶ Play</button>
+            <button id="mv-pause" onclick="document.getElementById('mv-3d').pause()">⏸ Pause</button>
+            <input
+                type="range"
+                id="mv-seek"
+                min="0"
+                max="1"
+                step="0.001"
+                value="0"
+                style="flex:1;">
+            <span id="mv-time" style="font-family:monospace; font-size:13px; color:#aaa; min-width:80px;">0:00.000</span>
+        </div>
+    </div>
+    """
+
+    # CSS for 3D viewer controls
+    viewer_css = """
+    .viewer-container { display:flex; flex-direction:column; gap:8px; }
+    .viewer-controls { display:flex; align-items:center; gap:8px; padding:4px 0; }
+    .viewer-controls button {
+        width:80px; height:36px; border-radius:6px; border:none; cursor:pointer;
+        font-size:14px; background:#333; color:#fff; transition:background 0.2s;
+    }
+    .viewer-controls button:hover { background:#555; }
+    .viewer-controls input[type=range] { flex:1; cursor:pointer; }
+    """
+
+    # JavaScript for syncing seek bar with model-viewer playback
+    viewer_js = """
+        const viewer = element.querySelector('#mv-3d');
+        const seek = element.querySelector('#mv-seek');
+        const timeDisplay = element.querySelector('#mv-time');
+
+        if (viewer) {
+            // Wait for model to load
+            viewer.addEventListener('load', () => {
+                const dur = viewer.duration || 1;
+                seek.max = dur;
+
+                // Update seek bar during playback
+                const updateSeek = () => {
+                    if (viewer.currentTime !== undefined) {
+                        seek.value = viewer.currentTime;
+                        const m = Math.floor(viewer.currentTime / 60);
+                        const s = (viewer.currentTime % 60).toFixed(3);
+                        timeDisplay.textContent = m + ':' + s.padStart(6, '0');
+                    }
+                    requestAnimationFrame(updateSeek);
+                };
+                updateSeek();
+            });
+
+            // Seek bar input
+            seek.addEventListener('input', () => {
+                viewer.currentTime = parseFloat(seek.value);
+            });
+        }
+    """
+
+    with gr.Blocks(
+        title="AI Тренер по фигурному катанию",
+        head="""
+        <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
+        """,
+    ) as app:
         gr.Markdown("# AI Тренер по фигурному катанию")
         gr.Markdown("Загрузите видео, выберите фигуриста и получите биомеханический анализ.")
 
         # State
         persons_state = gr.State()
         person_click_state = gr.State(None)
-        poses_3d_state = gr.State(None)
-        total_frames_state = gr.State(0)
 
         with gr.Row():
             # Left column: Controls
@@ -407,36 +435,21 @@ def build_app() -> gr.Blocks:
 
                 process_btn = gr.Button("Обработать видео", variant="primary", size="lg")
 
-            # Right column: Outputs
+            # Right column: Outputs (side-by-side video + 3D)
             with gr.Column(scale=1):
-                with gr.Tabs():
-                    with gr.Tab("Видео"):
-                        output_video = gr.Video(
-                            label="Результат анализа",
-                            autoplay=True,
-                        )
+                output_video = gr.Video(
+                    label="Видео с анализом",
+                    autoplay=True,
+                    height=300,
+                )
 
-                    with gr.Tab("3D Скелет"):
-                        model_3d = gr.Model3D(
-                            label="3D 043c043e04340435043b044c (043a044004430442043804420435 043c044b0448043a043e0439, 04370443043c 043a043e043b045104410438043a043e043c)",
-                            height=500,
-                            clear_color=[0.1, 0.1, 0.15, 1],
-                            camera_position=(45, 45, 3),
-                            zoom_speed=1.5,
-                        )
-                        frame_slider = gr.Slider(
-                            label="Кадр",
-                            minimum=0,
-                            maximum=100,
-                            step=1,
-                            value=0,
-                            info="Переключайте кадры для 3D просмотра",
-                        )
-                        frame_info = gr.Textbox(
-                            label="Угол",
-                            interactive=False,
-                            lines=1,
-                        )
+                model_3d_viewer = gr.HTML(
+                    value=None,
+                    label="3D Анимированный скелет",
+                    html_template=model_viewer_template,
+                    css_template=viewer_css,
+                    js_on_load=viewer_js,
+                )
 
                 poses_download = gr.File(
                     label="Скачать позы (.npy)",
@@ -491,28 +504,8 @@ def build_app() -> gr.Blocks:
                 poses_download,
                 csv_download,
                 output_status,
-                poses_3d_state,
-                total_frames_state,
+                model_3d_viewer,
             ],
-        )
-
-        # Frame slider → update 3D model
-        frame_slider.change(
-            fn=_on_frame_change,
-            inputs=[frame_slider, poses_3d_state],
-            outputs=[model_3d, frame_info],
-        )
-
-        # After pipeline completes, update frame slider range
-        def _update_slider_range(total_frames):
-            if total_frames > 0:
-                return gr.update(maximum=total_frames - 1, value=0)
-            return gr.update()
-
-        total_frames_state.change(
-            fn=_update_slider_range,
-            inputs=[total_frames_state],
-            outputs=[frame_slider],
         )
 
     return app
