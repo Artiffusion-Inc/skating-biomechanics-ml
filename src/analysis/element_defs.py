@@ -196,7 +196,7 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
     "axel": ElementDef(
         name="axel",
         name_ru="аксель",
-        rotations=1.5,
+        rotations=int(1.5),
         has_toe_pick=False,
         key_joints=[
             H36Key.LHIP,

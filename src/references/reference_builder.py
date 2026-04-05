@@ -72,9 +72,11 @@ class ReferenceBuilder:
 
         return ReferenceData(
             element_type=element_type,
+            name=video_path.name,
             poses=normalized,
-            meta=meta,
             phases=phases,
+            fps=meta.fps,
+            meta=meta,
             source=str(video_path),
         )
 
@@ -91,7 +93,8 @@ class ReferenceBuilder:
         output_dir.mkdir(parents=True, exist_ok=True)
 
         # Create filename from element type and source
-        filename = f"{ref.element_type}_{ref.source.name}.npz"
+        source_path = Path(ref.source)
+        filename = f"{ref.element_type}_{source_path.name}.npz"
         output_path = output_dir / filename
 
         # Save to .npz format
@@ -99,11 +102,11 @@ class ReferenceBuilder:
             output_path,
             element_type=ref.element_type,
             poses=ref.poses,
-            meta_fps=ref.meta.fps,
-            meta_width=ref.meta.width,
-            meta_height=ref.meta.height,
-            meta_num_frames=ref.meta.num_frames,
-            meta_path=str(ref.meta.path),
+            meta_fps=ref.meta.fps if ref.meta else 30.0,
+            meta_width=ref.meta.width if ref.meta else 1920,
+            meta_height=ref.meta.height if ref.meta else 1080,
+            meta_num_frames=ref.meta.num_frames if ref.meta else len(ref.poses),
+            meta_path=str(ref.meta.path) if ref.meta else "",
             phases_name=ref.phases.name,
             phases_start=ref.phases.start,
             phases_takeoff=ref.phases.takeoff,
@@ -147,8 +150,10 @@ class ReferenceBuilder:
 
         return ReferenceData(
             element_type=str(data["element_type"]),
+            name=str(data["source"]),
             poses=data["poses"],
-            meta=meta,
             phases=phases,
+            fps=float(data.get("fps", meta.fps if meta else 30.0)),
+            meta=meta,
             source=str(data["source"]),
         )

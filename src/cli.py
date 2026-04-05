@@ -173,6 +173,7 @@ def cmd_analyze(args: argparse.Namespace) -> int:
             print(pipeline.format_report(report))
 
         # Save to file if requested
+        output = None
         if args.output:
             if args.json:
                 with Path(args.output).open("w") as f:
