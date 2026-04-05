@@ -143,7 +143,7 @@ class BladeEdgeDetector3D:
 
         # Detect blade type (edge + zone)
         blade_type = self._detect_blade_type(
-            foot_angle, knee_angle, velocity_magnitude, vertical_accel=0
+            foot_angle, knee_angle, float(velocity_magnitude), vertical_accel=0
         )
 
         # Store in history
@@ -198,7 +198,7 @@ class BladeEdgeDetector3D:
 
         return velocity * self.fps  # Convert to units/s
 
-    def _detect_motion_direction(self, velocity: NDArray, _foot: str) -> MotionDirection:
+    def _detect_motion_direction(self, velocity: NDArray, _foot: str) -> MotionDirection:  # noqa: PLR0911
         """Detect motion direction from velocity vector.
 
         Uses smoothed velocity from history.
@@ -215,23 +215,33 @@ class BladeEdgeDetector3D:
         # Determine direction (assume facing +Z initially)
         angle = np.degrees(np.arctan2(vx, vz))
 
-        # Classify direction
-        if abs(angle) < 22.5:
+        # Classify direction using angle ranges
+        # Format: (min_angle, max_angle): direction
+        # Using ranges ordered to reduce early returns
+        abs_angle = abs(angle)
+
+        # Forward/backward (highest priority)
+        if abs_angle < 22.5:
             return MotionDirection.FORWARD
-        elif abs(angle) > 157.5:
+        if abs_angle > 157.5:
             return MotionDirection.BACKWARD
-        elif angle > 22.5 and angle < 67.5:
-            return MotionDirection.LEFT
-        elif angle < -22.5 and angle > -67.5:
-            return MotionDirection.RIGHT
-        elif angle >= 67.5 and angle <= 112.5:
+
+        # Rotations
+        if 67.5 <= angle <= 112.5:
             return MotionDirection.ROTATION_LEFT
-        elif angle <= -67.5 and angle >= -112.5:
+        if -112.5 <= angle <= -67.5:
             return MotionDirection.ROTATION_RIGHT
-        elif angle > 0:
+
+        # Cardinal directions
+        if 22.5 < angle < 67.5:
+            return MotionDirection.LEFT
+        if -67.5 < angle < -22.5:
+            return MotionDirection.RIGHT
+
+        # Diagonal fallback
+        if angle > 0:
             return MotionDirection.DIAGONAL_LEFT
-        else:
-            return MotionDirection.DIAGONAL_RIGHT
+        return MotionDirection.DIAGONAL_RIGHT
 
     def _detect_blade_type(
         self, foot_angle: float, knee_angle: float, velocity_mag: float, vertical_accel: float

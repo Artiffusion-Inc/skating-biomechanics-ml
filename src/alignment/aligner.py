@@ -60,7 +60,7 @@ class MotionAligner:
         # Warp user sequence to reference timeline
         aligned_user = self._warp_sequence(
             user,
-            alignment.index1,
+            alignment.index1,  # type: ignore[attr-defined]
             alignment.index2,  # type: ignore[attr-defined]
         )
 

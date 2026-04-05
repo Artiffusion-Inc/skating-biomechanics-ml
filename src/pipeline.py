@@ -32,6 +32,7 @@ if TYPE_CHECKING:
     from .pose_3d import AthletePose3DExtractor
     from .pose_estimation import H36MExtractor
     from .pose_estimation.normalizer import PoseNormalizer
+    from .pose_estimation.rtmlib_extractor import RTMPoseExtractor
     from .references import ReferenceStore
     from .utils.smoothing import OneEuroFilterConfig, PoseSmoother
 
@@ -67,6 +68,9 @@ class AnalysisPipeline:
             pose_backend: 2D pose estimation backend — ``"rtmlib"`` (default)
                 or ``"yolo"`` (deprecated).
         """
+        if TYPE_CHECKING:
+            from .pose_estimation.rtmlib_extractor import RTMPoseExtractor
+
         self._reference_store = reference_store
         self._use_gpu = use_gpu
         self._enable_smoothing = enable_smoothing
@@ -77,7 +81,7 @@ class AnalysisPipeline:
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
-        self._pose_2d_extractor: H36MExtractor | None = None  # type: ignore[valid-type]
+        self._pose_2d_extractor: RTMPoseExtractor | H36MExtractor | None = None  # type: ignore[valid-type]
         self._pose_3d_extractor: AthletePose3DExtractor | None = None  # type: ignore[valid-type]
         self._normalizer: PoseNormalizer | None = None  # type: ignore[valid-type]
         self._smoother: PoseSmoother | None = None  # type: ignore[valid-type]
@@ -101,9 +105,10 @@ class AnalysisPipeline:
             frame_offset = first_detection_frame index.
         """
         # 1. Tracked extraction
-        extraction = self._get_pose_2d_extractor().extract_video_tracked(
-            video_path, person_click=self._person_click
-        )
+        extractor = self._get_pose_2d_extractor()
+        if extractor is None:
+            raise RuntimeError("2D pose extractor not initialized")
+        extraction = extractor.extract_video_tracked(video_path, person_click=self._person_click)
 
         # 2. Skip pre-roll (trim leading NaN frames before first detection)
         frame_offset = extraction.first_detection_frame
@@ -134,7 +139,7 @@ class AnalysisPipeline:
             # Single-frame estimation (existing behavior)
             import cv2
 
-            from .detection.spatial_reference import SpatialReferenceDetector
+            from .detection.spatial_reference import CameraPose, SpatialReferenceDetector
 
             spatial_detector = SpatialReferenceDetector()
             cap = cv2.VideoCapture(str(video_path))
@@ -142,7 +147,7 @@ class AnalysisPipeline:
             if ret:
                 camera_pose = spatial_detector.estimate_pose(first_frame)
             else:
-                camera_pose = SpatialReferenceDetector.CameraPose()
+                camera_pose = CameraPose()
             cap.release()
 
             if camera_pose.confidence > 0.1:
@@ -274,7 +279,7 @@ class AnalysisPipeline:
             physics_dict: dict = {}
             if poses_3d is not None:
                 try:
-                    from .analysis import PhysicsEngine
+                    from .analysis.physics_engine import PhysicsEngine
 
                     physics_engine = PhysicsEngine(body_mass=60.0)
 
@@ -302,7 +307,7 @@ class AnalysisPipeline:
             overall_score = self._compute_overall_score(metrics)
         else:
             # No element type specified — poses + visualization only
-            phases = None
+            phases = ElementPhase(name="unknown", start=0, takeoff=0, peak=0, landing=0, end=0)
             metrics = []
             recommendations = []
             overall_score = None
@@ -311,13 +316,13 @@ class AnalysisPipeline:
 
         return AnalysisReport(
             element_type=element_type or "unknown",
-            phases=[phases] if phases else [],
+            phases=phases,
             metrics=metrics,
             recommendations=recommendations,
-            overall_score=overall_score,
-            dtw_distance=dtw_distance if dtw_distance else 0.0,
-            blade_summary_left=blade_summary_left,
-            blade_summary_right=blade_summary_right,
+            overall_score=overall_score if overall_score is not None else 0.0,
+            dtw_distance=dtw_distance if dtw_distance is not None else 0.0,
+            blade_summary_left=blade_summary_left if blade_summary_left is not None else {},
+            blade_summary_right=blade_summary_right if blade_summary_right is not None else {},
             physics=physics_dict,
         )
 
@@ -369,7 +374,7 @@ class AnalysisPipeline:
             self._detector = PersonDetector(model_size="n", confidence=0.5)
         return self._detector
 
-    def _get_pose_2d_extractor(self):  # type: ignore[valid-type]
+    def _get_pose_2d_extractor(self) -> "RTMPoseExtractor | H36MExtractor":  # type: ignore[valid-type]
         """Lazy-load 2D pose extractor based on configured backend."""
         if self._pose_2d_extractor is None:
             if self._pose_backend == "rtmlib":
@@ -384,7 +389,7 @@ class AnalysisPipeline:
                 self._pose_2d_extractor = H36MExtractor(
                     output_format="normalized",
                 )
-        return self._pose_2d_extractor
+        return self._pose_2d_extractor  # type: ignore[return-value]
 
     def _get_pose_3d_extractor(self) -> "AthletePose3DExtractor":  # type: ignore[valid-type]
         """Lazy-load 3D pose lifter (MotionAGFormer)."""
@@ -505,7 +510,8 @@ class AnalysisPipeline:
 
         # Phases
         lines.append("\n--- Фазы элемента ---")
-        for phase in report.phases:
+        phase = report.phases
+        if phase and (phase.takeoff > 0 or phase.start > 0):  # Only show if valid
             lines.append(f"  Начало:     {phase.start}")
             lines.append(f"  Отрыв:      {phase.takeoff}")
             lines.append(f"  Пик:        {phase.peak}")
