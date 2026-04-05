@@ -5,7 +5,6 @@ All functions are stateless and testable without a running Gradio server.
 
 from __future__ import annotations
 
-import csv as _csv
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -131,19 +130,8 @@ def process_video_pipeline(
     progress_cb=None,
 ) -> dict:
     """Run the full visualization pipeline (mirrors visualize_with_skeleton.py)."""
-    from src.analysis.angles import compute_joint_angles
-    from src.pose_estimation import H36Key
     from src.pose_estimation.rtmlib_extractor import RTMPoseExtractor
     from src.utils.smoothing import PoseSmoother, get_skating_optimized_config
-    from src.visualization import (
-        JointAngleLayer,
-        LayerContext,
-        TrailLayer,
-        VelocityLayer,
-        VerticalAxisLayer,
-        draw_skeleton,
-        render_layers,
-    )
 
     video_path = Path(video_path) if isinstance(video_path, str) else video_path
     output_path = Path(output_path) if isinstance(output_path, str) else output_path
@@ -228,24 +216,25 @@ def process_video_pipeline(
     if progress_cb:
         progress_cb(0.3, "Poses extracted. Rendering...")
 
+    # --- Build pipeline ---
+    from src.visualization.pipeline import VizPipeline
+
+    pipe = VizPipeline(
+        meta=meta,
+        poses_norm=poses_norm,
+        poses_px=poses,
+        foot_kps=raw_foot_kps,
+        poses_3d=poses_3d,
+        layer=layer,
+        confs=confs,
+        frame_indices=pose_frame_indices,
+    )
+
     out_w = int(meta.width * render_scale)
     out_h = int(meta.height * render_scale)
     writer = H264Writer(output_path, out_w, out_h, meta.fps)
 
-    layers: list = []
-    if layer >= 1:
-        layers.append(VelocityLayer(scale=3.0, max_length=30, color_mode="solid"))
-        layers.append(TrailLayer(length=20, joint=H36Key.LFOOT, width=1, color=(200, 80, 80)))
-        layers.append(JointAngleLayer())
-    if layer >= 2:
-        layers.append(VerticalAxisLayer())
-
-    export_frames: list[int] = []
-    export_timestamps: list[float] = []
-    export_floor_angles: list[float] = []
-    export_joint_angles: list[dict[str, float]] = []
-    export_poses_list: list[np.ndarray] = []
-
+    # --- Render loop ---
     frame_idx = 0
     pose_idx = 0
     total = meta.num_frames
@@ -257,70 +246,14 @@ def process_video_pipeline(
 
         if render_scale != 1.0:
             frame = cv2.resize(frame, (out_w, out_h), interpolation=cv2.INTER_LINEAR)
-            draw_h, draw_w = out_h, out_w
-        else:
-            draw_h, draw_w = meta.height, meta.width
 
-        current_pose_idx = None
-        while pose_idx < len(pose_frame_indices):
-            if pose_frame_indices[pose_idx] == frame_idx:
-                current_pose_idx = pose_idx
-                pose_idx += 1
-                break
-            elif pose_frame_indices[pose_idx] < frame_idx:
-                pose_idx += 1
-            else:
-                break
+        current_pose_idx, pose_idx = pipe.find_pose_idx(frame_idx, pose_idx)
+        frame, _ = pipe.render_frame(frame, frame_idx, current_pose_idx)
 
-        context = LayerContext(
-            frame_width=draw_w,
-            frame_height=draw_h,
-            fps=meta.fps,
-            frame_idx=frame_idx,
-            total_frames=total,
-            normalized=True,
-        )
+        pipe.draw_frame_counter(frame, frame_idx)
 
-        if layer >= 0 and current_pose_idx is not None:
-            foot_kp = raw_foot_kps[current_pose_idx] if raw_foot_kps is not None else None
-            # Scale pixel poses to match downscaled frame (preserve confidence)
-            skel_pose = poses[current_pose_idx].copy()
-            skel_foot_kp = foot_kp.copy() if foot_kp is not None else None
-            if render_scale != 1.0:
-                skel_pose[:, :2] *= render_scale  # only x,y, NOT confidence
-                if skel_foot_kp is not None:
-                    skel_foot_kp[:, :2] *= render_scale
-            frame = draw_skeleton(
-                frame,  # type: ignore[arg-type]
-                skel_pose,
-                draw_h,
-                draw_w,
-                line_width=1,
-                joint_radius=3,
-                foot_keypoints=skel_foot_kp,
-            )
-            context.pose_2d = poses_viz[current_pose_idx]
-            if poses_3d is not None and current_pose_idx < len(poses_3d):
-                context.pose_3d = poses_3d[current_pose_idx]
-
-        if layer >= 1 and current_pose_idx is not None:
-            frame = render_layers(frame, layers, context)  # type: ignore[arg-type]
-
-        minutes = int(frame_idx / meta.fps) // 60
-        seconds = int(frame_idx / meta.fps) % 60
-        ms = int((frame_idx / meta.fps - int(frame_idx / meta.fps)) * 100)
-        frame_text = f"{frame_idx}/{total}  {minutes:02d}:{seconds:02d}.{ms:02d}"
-        from src.visualization.core.text import draw_text_box
-
-        draw_text_box(frame, frame_text, (draw_w - 220, 10), font_scale=0.5)  # type: ignore[arg-type]
-
-        if export and current_pose_idx is not None:
-            export_frames.append(frame_idx)
-            export_timestamps.append(round(frame_idx / meta.fps, 3))
-            export_floor_angles.append(0.0)
-            ja = compute_joint_angles(poses_viz[current_pose_idx])
-            export_joint_angles.append(ja)
-            export_poses_list.append(poses[current_pose_idx].copy())
+        if export:
+            pipe.collect_export_data(frame_idx, current_pose_idx)
 
         writer.write(frame)
         frame_idx += 1
@@ -334,48 +267,14 @@ def process_video_pipeline(
     if progress_cb:
         progress_cb(0.95, "Saving exports...")
 
-    poses_path = None
-    csv_path = None
-    if export and export_poses_list:
-        out_dir = output_path.parent  # type: ignore[attr-defined]
-        stem = output_path.stem  # type: ignore[attr-defined]
-
-        poses_path = out_dir / f"{stem}_poses.npy"
-        np.save(str(poses_path), np.array(export_poses_list))
-
-        csv_path = out_dir / f"{stem}_biomechanics.csv"
-        angle_keys = [
-            "R Ankle",
-            "L Ankle",
-            "R Knee",
-            "L Knee",
-            "R Hip",
-            "L Hip",
-            "R Shoulder",
-            "L Shoulder",
-            "R Elbow",
-            "L Elbow",
-            "R Wrist",
-            "L Wrist",
-        ]
-        header = [*["frame", "timestamp_s", "floor_angle_deg"], *angle_keys]
-        with csv_path.open("w", newline="") as f:
-            w = _csv.writer(f)
-            w.writerow(header)
-            for idx in range(len(export_frames)):
-                ja = export_joint_angles[idx]
-                row = [
-                    export_frames[idx],
-                    export_timestamps[idx],
-                    export_floor_angles[idx],
-                    *(round(ja.get(k, float("nan")), 1) for k in angle_keys),
-                ]
-                w.writerow(row)
+    export_result = (
+        pipe.save_exports(output_path) if export else {"poses_path": None, "csv_path": None}
+    )
 
     return {
         "video_path": str(output_path),
-        "poses_path": str(poses_path) if poses_path else None,
-        "csv_path": str(csv_path) if csv_path else None,
+        "poses_path": export_result["poses_path"],
+        "csv_path": export_result["csv_path"],
         "poses_3d": poses_3d,
         "stats": {
             "total_frames": total,
