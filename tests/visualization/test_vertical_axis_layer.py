@@ -11,9 +11,7 @@ from src.visualization.layers.vertical_axis_layer import (
 )
 
 
-def _make_context(
-    pose_2d=None, pose_3d=None, w=640, h=480, normalized=False, frame_idx=0
-):
+def _make_context(pose_2d=None, pose_3d=None, w=640, h=480, normalized=False, frame_idx=0):
     return LayerContext(
         frame_width=w,
         frame_height=h,

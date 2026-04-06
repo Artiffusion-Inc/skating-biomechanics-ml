@@ -252,7 +252,6 @@ _DEFAULT_MODEL_3D_CANDIDATES = [
 from src.pose_3d import CorrectiveLens  # noqa: E402
 from src.pose_3d.onnx_extractor import ONNXPoseExtractor  # noqa: E402
 from src.pose_estimation.rtmlib_extractor import RTMPoseExtractor  # noqa: E402
-from src.utils.smoothing import PoseSmoother  # noqa: E402
 
 
 @dataclass
@@ -297,10 +296,9 @@ def prepare_poses(
     *,
     frame_skip: int = 1,
     tracking: str = "auto",
-    use_corrective_lens: bool = True,
+    use_corrective_lens: bool = False,
     model_3d_path: Path | str | None = None,
     blend_threshold: float = 0.5,
-    smooth: bool = False,
     device: str = "auto",
     progress_cb=None,
 ) -> PreparedPoses:
@@ -319,7 +317,6 @@ def prepare_poses(
         use_corrective_lens: Apply 3D-corrected 2D overlay (default True).
         model_3d_path: Path to 3D model, or None to auto-detect.
         blend_threshold: CorrectiveLens confidence blend threshold.
-        smooth: Apply One-Euro Filter smoothing (default True).
         device: Device string ("auto", "cuda", "cpu").
         progress_cb: Optional callback ``(progress_0_to_1, message)``.
 
@@ -327,7 +324,6 @@ def prepare_poses(
         PreparedPoses with all data needed for VizPipeline construction.
     """
     from src.device import DeviceConfig
-    from src.utils.smoothing import get_skating_optimized_config
 
     video_path = Path(video_path)
     meta = get_video_meta(video_path)
@@ -390,12 +386,6 @@ def prepare_poses(
 
     poses_norm = raw_poses[:, :, :2].copy()
     confs = raw_poses[:, :, 2].copy()
-
-    # --- Step 3: Smooth ---
-    if smooth and len(poses_norm) > 2:
-        smooth_config = get_skating_optimized_config(meta.fps)
-        smoother = PoseSmoother(smooth_config, freq=meta.fps)
-        poses_norm = smoother.smooth(poses_norm)
 
     if progress_cb:
         progress_cb(0.4, "3D pose estimation...")

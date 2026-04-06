@@ -234,29 +234,6 @@ class TestPreparePoses:
         assert not np.isnan(result.poses_norm).any()
         assert result.n_valid == 5
 
-    def test_smooth_disabled(self):
-        """When smooth=False, PoseSmoother is not called."""
-        from src.visualization.pipeline import prepare_poses
-
-        with (
-            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
-            mock.patch("src.visualization.pipeline.RTMPoseExtractor") as MockExt,
-            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
-            mock.patch("src.visualization.pipeline.PoseSmoother") as MockSmooth,
-            mock.patch(
-                "src.visualization.pipeline._resolve_model_3d", return_value=Path("model.onnx")
-            ),
-        ):
-            MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
-            MockLens.return_value.correct_sequence.return_value = (
-                np.random.rand(10, 17, 2).astype(np.float32) * 0.5 + 0.25,
-                np.random.rand(10, 17, 3).astype(np.float32),
-            )
-
-            prepare_poses(Path("test.mp4"), smooth=False)
-
-        MockSmooth.assert_not_called()
-
 
 class TestResolveModel3d:
     def test_explicit_path_returned(self, tmp_path):

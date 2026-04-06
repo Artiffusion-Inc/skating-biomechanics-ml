@@ -260,7 +260,6 @@ def main() -> int:
             use_corrective_lens=True,
             model_3d_path=model_3d,
             blend_threshold=args.blend_threshold,
-            smooth=True,
             device="auto",
         )
 
