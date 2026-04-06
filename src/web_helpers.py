@@ -193,19 +193,10 @@ def process_video_pipeline(
         pipe.save_exports(output_path) if export else {"poses_path": None, "csv_path": None}
     )
 
-    # Generate animated GLB for 3D viewer
-    glb_path = None
-    if prepared.poses_3d is not None:
-        from src.visualization.export_3d_animated import poses_to_animated_glb
-
-        glb_path = poses_to_animated_glb(prepared.poses_3d, fps=meta.fps)
-
     return {
         "video_path": str(output_path),
         "poses_path": export_result["poses_path"],
         "csv_path": export_result["csv_path"],
-        "glb_path": glb_path,
-        "poses_3d": prepared.poses_3d,
         "stats": {
             "total_frames": total,
             "valid_frames": prepared.n_valid,
