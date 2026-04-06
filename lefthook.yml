@@ -35,6 +35,11 @@ pre-commit:
       run: uv run ruff format {staged_files}
       stage_fixed: true
 
+    biome-check:
+      glob: "*.{ts,tsx,js,jsx,json,css}"
+      run: cd src/frontend && bunx biome check --write {staged_files}
+      stage_fixed: true
+
 commit-msg:
   commands:
     lint-commit-msg:
