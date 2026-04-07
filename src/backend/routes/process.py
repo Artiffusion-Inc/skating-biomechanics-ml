@@ -12,7 +12,7 @@ from pathlib import Path
 
 from arq import create_pool
 from arq.connections import RedisSettings
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from sse_starlette.sse import EventSourceResponse
 
 from src.backend.schemas import (
@@ -31,6 +31,7 @@ from src.task_manager import (
 )
 from src.types import PersonClick
 from src.web_helpers import PipelineCancelled, process_video_pipeline
+from src.worker import MLModelFlags
 
 logger = logging.getLogger(__name__)
 
@@ -167,6 +168,15 @@ async def enqueue_process(req: ProcessRequest):
     finally:
         await valkey.close()
 
+    ml_flags = MLModelFlags(
+        depth=req.depth,
+        optical_flow=req.optical_flow,
+        segment=req.segment,
+        foot_track=req.foot_track,
+        matting=req.matting,
+        inpainting=req.inpainting,
+    )
+
     arq_pool = await create_pool(
         RedisSettings(
             host=settings.valkey_host,
@@ -185,12 +195,7 @@ async def enqueue_process(req: ProcessRequest):
             layer=req.layer,
             tracking=req.tracking,
             export=req.export,
-            depth=req.depth,
-            optical_flow=req.optical_flow,
-            segment=req.segment,
-            foot_track=req.foot_track,
-            matting=req.matting,
-            inpainting=req.inpainting,
+            ml_flags=ml_flags,
         )
     finally:
         await arq_pool.close()
@@ -208,8 +213,6 @@ async def get_process_status(task_id: str):
         await valkey.close()
 
     if state is None:
-        from fastapi import HTTPException
-
         raise HTTPException(status_code=404, detail="Task not found")
 
     result = None

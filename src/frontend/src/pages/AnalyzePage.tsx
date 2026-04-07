@@ -22,6 +22,7 @@ export default function AnalyzePage() {
   // Guard: prevent double-call in StrictMode
   const startedRef = useRef(false)
   const taskIdRef = useRef<string | null>(null)
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const videoPath = params.get("video_path") || ""
   const clickParts = (params.get("person_click") || "0,0").split(",")
@@ -97,17 +98,11 @@ export default function AnalyzePage() {
     setProgress(0)
     setMessage("Queuing analysis...")
 
-    const cancelled = false
-
     enqueueProcess(processRequest)
       .then(res => {
         taskIdRef.current = res.task_id
         setMessage("Waiting for worker...")
         const poll = setInterval(async () => {
-          if (cancelled) {
-            clearInterval(poll)
-            return
-          }
           try {
             const status = await pollTaskStatus(res.task_id)
             setProgress(Math.round(status.progress * 100))
@@ -115,15 +110,18 @@ export default function AnalyzePage() {
 
             if (status.status === "completed" && status.result) {
               clearInterval(poll)
+              pollIntervalRef.current = null
               setResult(status.result)
               setPhase("done")
             } else if (status.status === "failed") {
               clearInterval(poll)
+              pollIntervalRef.current = null
               setError(status.error || "Unknown error")
               setPhase("error")
               startedRef.current = false
             } else if (status.status === "cancelled") {
               clearInterval(poll)
+              pollIntervalRef.current = null
               setPhase("cancelled")
               startedRef.current = false
             }
@@ -131,6 +129,7 @@ export default function AnalyzePage() {
             // Network error — keep polling
           }
         }, 1000)
+        pollIntervalRef.current = poll
       })
       .catch(err => {
         setError(err.message)
@@ -141,6 +140,14 @@ export default function AnalyzePage() {
 
   useEffect(() => {
     if (videoPath) startProcessing()
+
+    // Cleanup: clear polling interval on unmount
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current)
+        pollIntervalRef.current = null
+      }
+    }
   }, [videoPath, startProcessing])
 
   const videoUrl = result ? `/api/outputs/${result.video_path}` : ""
