@@ -45,6 +45,7 @@ class ProcessRequest(BaseModel):
     segment: bool = False
     foot_track: bool = False
     matting: bool = False
+    inpainting: bool = False
 
 
 class ProcessStats(BaseModel):

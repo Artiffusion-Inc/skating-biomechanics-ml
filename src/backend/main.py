@@ -9,7 +9,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.logging_config import configure_logging
-from src.backend.routes import detect, process
+from src.backend.routes import detect, models, process
 
 configure_logging()
 logger = structlog.get_logger()
@@ -25,6 +25,7 @@ app.add_middleware(
 )
 
 app.include_router(detect.router)
+app.include_router(models.router)
 app.include_router(process.router)
 
 # Serve output files (videos, NPY, CSV)

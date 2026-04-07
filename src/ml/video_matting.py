@@ -4,6 +4,7 @@ Uses ONNX Runtime. Input: RGB frame + optional mask. Output: alpha matte.
 
 Model: RobustVideoMatting MobileNetV3 (~40MB VRAM)
 Source: https://github.com/PeterL1n/RobustVideoMatting
+ONNX: https://huggingface.co/LPDoctor/video_matting
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MODEL_ID = "video_matting"
+NUM_RECURRENT = 4  # r1, r2, r3, r4
 
 
 class VideoMatting:
@@ -31,10 +33,9 @@ class VideoMatting:
 
     def __init__(self, registry: ModelRegistry) -> None:
         self._session = registry.get(MODEL_ID)
-        details = self._session.get_input_details()
-        self._input_names = [d["name"] for d in details]
-        self._r1 = None  # Recurrent state frame 1
-        self._r2 = None  # Recurrent state frame 2
+        self._input_names = [i.name for i in self._session.get_inputs()]
+        self._output_names = [o.name for o in self._session.get_outputs()]
+        self._rec_states: list[np.ndarray] = []
         self._downsample_ratio = 0.25
 
     def matting(self, frame: np.ndarray, mask: np.ndarray | None = None) -> np.ndarray:
@@ -48,59 +49,46 @@ class VideoMatting:
             Alpha matte (H, W) float32 in [0, 1].
         """
         h, w = frame.shape[:2]
-        # RVM expects RGB
+
+        # RVM expects RGB, NCHW, float32 [0, 1]
         src = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-        src = src[np.newaxis]  # (1, H, W, 3)
+        src = src.transpose(2, 0, 1)[np.newaxis]  # (1, 3, H, W)
 
-        inputs = {}
-        for _i, name in enumerate(self._input_names):
-            if "src" in name.lower() and "r1" not in name:
+        inputs: dict[str, np.ndarray] = {}
+        for name in self._input_names:
+            if name == "src":
                 inputs[name] = src
-            elif "r1" in name.lower():
-                inputs[name] = (
-                    self._r1
-                    if self._r1 is not None
-                    else np.zeros((1, 1, h // 4, w // 4), dtype=np.float32)
-                )
-            elif "r2" in name.lower():
-                inputs[name] = (
-                    self._r2
-                    if self._r2 is not None
-                    else np.zeros((1, 1, h // 4, w // 4), dtype=np.float32)
-                )
-            elif "downsample" in name.lower():
+            elif name == "downsample_ratio":
                 inputs[name] = np.array([self._downsample_ratio], dtype=np.float32)
+            elif name.startswith("r") and name.endswith("i"):
+                idx = int(name[1]) - 1
+                if idx < len(self._rec_states):
+                    inputs[name] = self._rec_states[idx]
+                else:
+                    inputs[name] = np.zeros((1, 1, 1, 1), dtype=np.float32)
 
-        outputs = self._session.run(None, inputs)
+        outputs = self._session.run(self._output_names, inputs)
+
+        # Extract outputs by name
+        output_map = dict(zip(self._output_names, outputs, strict=True))
 
         # Update recurrent states
-        r1_idx, r2_idx = None, None
-        for i, name in enumerate(self._input_names):
-            if "r1" in name.lower():
-                r1_idx = i
-            elif "r2" in name.lower():
-                r2_idx = i
-        # Outputs typically include fgr, pha, r1, r2
-        for out in outputs:
-            if out.shape == (1, 1, h // 4, w // 4):
-                if self._r1 is None:
-                    self._r1 = out
-                elif self._r2 is None:
-                    self._r2 = out
+        self._rec_states = []
+        for i in range(NUM_RECURRENT):
+            key = f"r{i + 1}o"
+            if key in output_map:
+                self._rec_states.append(output_map[key].copy())
 
-        # Find alpha output
+        # Extract alpha matte
         alpha = np.ones((h, w), dtype=np.float32)
-        for out in outputs:
-            if out.ndim == 4 and out.shape[1] == 1:
-                a = out[0, 0]  # (H, W)
-                if a.shape[0] != h or a.shape[1] != w:
-                    a = cv2.resize(a, (w, h), interpolation=cv2.INTER_LINEAR)
-                alpha = np.clip(a, 0, 1)
-                break
+        if "pha" in output_map:
+            a = output_map["pha"][0, 0]  # (H, W)
+            if a.shape[0] != h or a.shape[1] != w:
+                a = cv2.resize(a, (w, h), interpolation=cv2.INTER_LINEAR)
+            alpha = np.clip(a, 0, 1)
 
         return alpha
 
     def reset(self) -> None:
         """Reset recurrent states (call when starting a new video)."""
-        self._r1 = None
-        self._r2 = None
+        self._rec_states = []

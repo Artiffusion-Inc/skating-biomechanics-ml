@@ -1,5 +1,5 @@
 import { AlertCircle, CheckCircle, Loader2, Upload } from "lucide-react"
-import { useCallback, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -13,6 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
+import { getModels, type ModelStatus } from "@/lib/api"
 import type { DetectResponse, PersonClick } from "@/types"
 
 type Status = "idle" | "uploading" | "detecting" | "ready" | "error"
@@ -39,6 +40,18 @@ export default function UploadPage() {
   const [enableSegment, setEnableSegment] = useState(false)
   const [enableFootTrack, setEnableFootTrack] = useState(false)
   const [enableMatting, setEnableMatting] = useState(false)
+  const [enableInpainting, setEnableInpainting] = useState(false)
+  const [modelStatus, setModelStatus] = useState<Record<string, ModelStatus>>({})
+
+  useEffect(() => {
+    getModels()
+      .then(models => {
+        const map: Record<string, ModelStatus> = {}
+        for (const m of models) map[m.id] = m
+        setModelStatus(map)
+      })
+      .catch(() => {})
+  }, [])
 
   // Derived: selected person's bbox as CSS percentage
   const selectedPersonData =
@@ -187,9 +200,10 @@ export default function UploadPage() {
       export: String(doExport),
       depth: String(enableDepth),
       optical_flow: String(enableOpticalFlow),
-      segment: String(enableSegment),
+      segment: String(enableSegment || enableInpainting),
       foot_track: String(enableFootTrack),
       matting: String(enableMatting),
+      inpainting: String(enableInpainting),
     })
     navigate(`/analyze?${params.toString()}`)
   }
@@ -390,58 +404,108 @@ export default function UploadPage() {
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 ${!modelStatus.depth?.available ? "opacity-50" : ""}`}
+                >
                   <Checkbox
                     id="depth"
                     checked={enableDepth}
                     onCheckedChange={v => setEnableDepth(v === true)}
+                    disabled={!modelStatus.depth?.available}
                   />
                   <label htmlFor="depth" className="text-sm">
                     Глубина (Depth)
+                    {!modelStatus.depth?.available && (
+                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                    )}
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 ${!modelStatus.optical_flow?.available ? "opacity-50" : ""}`}
+                >
                   <Checkbox
                     id="optical-flow"
                     checked={enableOpticalFlow}
                     onCheckedChange={v => setEnableOpticalFlow(v === true)}
+                    disabled={!modelStatus.optical_flow?.available}
                   />
                   <label htmlFor="optical-flow" className="text-sm">
                     Оптический поток
+                    {!modelStatus.optical_flow?.available && (
+                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                    )}
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 ${!modelStatus.segment?.available ? "opacity-50" : ""}`}
+                >
                   <Checkbox
                     id="segment"
                     checked={enableSegment}
                     onCheckedChange={v => setEnableSegment(v === true)}
+                    disabled={!modelStatus.segment?.available}
                   />
                   <label htmlFor="segment" className="text-sm">
                     Сегментация (SAM2)
+                    {!modelStatus.segment?.available && (
+                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                    )}
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 ${!modelStatus.foot_track?.available ? "opacity-50" : ""}`}
+                >
                   <Checkbox
                     id="foot-track"
                     checked={enableFootTrack}
                     onCheckedChange={v => setEnableFootTrack(v === true)}
+                    disabled={!modelStatus.foot_track?.available}
                   />
                   <label htmlFor="foot-track" className="text-sm">
                     Трекинг стоп
+                    {!modelStatus.foot_track?.available && (
+                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                    )}
                   </label>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div
+                  className={`flex items-center gap-2 ${!modelStatus.matting?.available ? "opacity-50" : ""}`}
+                >
                   <Checkbox
                     id="matting"
                     checked={enableMatting}
                     onCheckedChange={v => setEnableMatting(v === true)}
+                    disabled={!modelStatus.matting?.available}
                   />
                   <label htmlFor="matting" className="text-sm">
                     Удаление фона
+                    {!modelStatus.matting?.available && (
+                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                    )}
+                  </label>
+                </div>
+
+                <div
+                  className={`flex items-center gap-2 ${!modelStatus.inpainting?.available ? "opacity-50" : ""}`}
+                >
+                  <Checkbox
+                    id="inpainting"
+                    checked={enableInpainting}
+                    onCheckedChange={v => {
+                      setEnableInpainting(v === true)
+                      if (v === true) setEnableSegment(true)
+                    }}
+                    disabled={!modelStatus.inpainting?.available}
+                  />
+                  <label htmlFor="inpainting" className="text-sm">
+                    Инпейтинг фона (LAMA)
+                    {!modelStatus.inpainting?.available && (
+                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                    )}
                   </label>
                 </div>
               </CardContent>

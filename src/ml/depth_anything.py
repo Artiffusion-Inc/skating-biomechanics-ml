@@ -4,17 +4,19 @@ Uses ONNX Runtime for inference. Input: RGB frame. Output: relative depth map (H
 
 Model: Depth Anything V2 Small (24.8M params, ~200MB VRAM)
 Source: https://github.com/DepthAnything/Depth-Anything-V2
-ONNX: https://huggingface.co/DepthAnything/Depth-Anything-V2-Small
+ONNX: https://huggingface.co/onnx-community/depth-anything-v2-small
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
-from src.ml.model_registry import ModelRegistry  # noqa: TC001 — used at runtime
+if TYPE_CHECKING:
+    from src.ml.model_registry import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
@@ -36,9 +38,7 @@ class DepthEstimator:
     def __init__(self, registry: ModelRegistry) -> None:
         self._session = registry.get(MODEL_ID)
         self._input_size = INPUT_SIZE
-        # Infer input name from session
-        details = self._session.get_input_details()
-        self._input_name = details[0]["name"]
+        self._input_name = self._session.get_inputs()[0].name
 
     def estimate(self, frame: np.ndarray) -> np.ndarray:
         """Estimate depth map for a single frame.
@@ -51,7 +51,7 @@ class DepthEstimator:
         """
         h, w = frame.shape[:2]
 
-        # Resize to model input, keep aspect ratio with padding
+        # Resize to model input (518x518)
         img = cv2.resize(
             frame, (self._input_size, self._input_size), interpolation=cv2.INTER_LINEAR
         )
@@ -64,7 +64,7 @@ class DepthEstimator:
         # Inference
         output = self._session.run(None, {self._input_name: blob})[0]
 
-        # Output shape: (1, H_out, W_out) -> (H_out, W_out)
+        # Output shape: (1, H_out, W_out) where H_out = 14 * floor(518/14) = 14*37 = 518
         depth = output[0].astype(np.float32)
 
         # Normalize to [0, 1]

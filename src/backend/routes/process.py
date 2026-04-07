@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
@@ -13,7 +14,7 @@ from sse_starlette.sse import EventSourceResponse
 
 from src.backend.schemas import ProcessRequest, ProcessResponse, ProcessStats
 from src.types import PersonClick
-from src.web_helpers import process_video_pipeline
+from src.web_helpers import PipelineCancelled, process_video_pipeline
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,9 @@ OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 _executor = ThreadPoolExecutor(max_workers=1)
 
+# Shared cancel event — one concurrent pipeline at a time
+_cancel_event = threading.Event()
+
 
 @router.post("/api/process")
 async def process_video(req: ProcessRequest) -> EventSourceResponse:
@@ -32,6 +36,8 @@ async def process_video(req: ProcessRequest) -> EventSourceResponse:
     async def event_generator():
         progress_queue: asyncio.Queue = asyncio.Queue()
         done_event = asyncio.Event()
+
+        _cancel_event.clear()
 
         def progress_cb(fraction: float, message: str) -> None:
             progress_queue.put_nowait({"progress": round(fraction, 3), "message": message})
@@ -52,11 +58,13 @@ async def process_video(req: ProcessRequest) -> EventSourceResponse:
                     export=req.export,
                     output_path=str(out_path),
                     progress_cb=progress_cb,
+                    cancel_event=_cancel_event,
                     depth=req.depth,
                     optical_flow=req.optical_flow,
                     segment=req.segment,
                     foot_track=req.foot_track,
                     matting=req.matting,
+                    inpainting=req.inpainting,
                 )
 
                 stats = result["stats"]
@@ -95,6 +103,10 @@ async def process_video(req: ProcessRequest) -> EventSourceResponse:
                     status="Анализ завершён!",
                 )
                 progress_queue.put_nowait({"event": "result", "data": response.model_dump_json()})
+            except PipelineCancelled:
+                progress_queue.put_nowait(
+                    {"event": "cancelled", "data": json.dumps({"message": "Обработка отменена"})}
+                )
             except Exception as e:
                 logger.exception("Pipeline error")
                 progress_queue.put_nowait({"event": "error", "data": json.dumps({"error": str(e)})})
@@ -118,3 +130,10 @@ async def process_video(req: ProcessRequest) -> EventSourceResponse:
                 yield {"event": "progress", "data": json.dumps(evt)}
 
     return EventSourceResponse(event_generator())
+
+
+@router.post("/api/process/cancel")
+async def cancel_processing():
+    """Cancel the currently running pipeline."""
+    _cancel_event.set()
+    return {"status": "cancelled"}

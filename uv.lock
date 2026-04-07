@@ -21,7 +21,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-03-30T14:28:17.198412779Z"
+exclude-newer = "2026-03-31T11:34:02.462953213Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -3383,6 +3383,7 @@ dependencies = [
     { name = "dtw-python" },
     { name = "fastapi" },
     { name = "filterpy" },
+    { name = "huggingface-hub" },
     { name = "numpy" },
     { name = "onnxruntime-gpu" },
     { name = "opencv-python" },
@@ -3430,6 +3431,7 @@ requires-dist = [
     { name = "dtw-python", specifier = ">=1.5.0" },
     { name = "fastapi", specifier = ">=0.135.2" },
     { name = "filterpy", specifier = ">=1.4.5" },
+    { name = "huggingface-hub", specifier = ">=1.7.2" },
     { name = "numpy", specifier = ">=2.0.0" },
     { name = "onnxruntime-gpu", specifier = ">=1.24.4" },
     { name = "opencv-python", specifier = ">=4.10.0" },

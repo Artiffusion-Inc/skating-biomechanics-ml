@@ -21,6 +21,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+class PipelineCancelled(Exception):
+    """Raised when the user cancels video processing."""
+
+
 _PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
 
 
@@ -138,12 +143,14 @@ def process_video_pipeline(  # noqa: PLR0913
     export: bool,
     output_path: str | Path,
     progress_cb=None,
+    cancel_event=None,
     # ML flags (all default False)
     depth: bool = False,
     optical_flow: bool = False,
     segment: bool = False,
     foot_track: bool = False,
     matting: bool = False,
+    inpainting: bool = False,
 ) -> dict:
     """Run the full visualization pipeline (mirrors visualize_with_skeleton.py)."""
     from src.visualization import render_layers
@@ -167,9 +174,11 @@ def process_video_pipeline(  # noqa: PLR0913
     flow_est = None
     seg_est = None
     matting_est = None
+    foot_est = None
+    inpaint_est = None
     ml_layers: list = []
 
-    any_ml = depth or optical_flow or segment or foot_track or matting
+    any_ml = depth or optical_flow or segment or foot_track or matting or inpainting
     if any_ml:
         from src.ml.model_registry import ModelRegistry
 
@@ -192,7 +201,12 @@ def process_video_pipeline(  # noqa: PLR0913
         if segment:
             try:
                 registry.register(
-                    "segment_anything", vram_mb=200, path=_find_model("sam2_tiny.onnx")
+                    "segment_anything_ve", vram_mb=134, path=_find_model("sam2/vision_encoder.onnx")
+                )
+                registry.register(
+                    "segment_anything_pd",
+                    vram_mb=21,
+                    path=_find_model("sam2/prompt_encoder_mask_decoder.onnx"),
                 )
             except FileNotFoundError as e:
                 logger.warning("Segmentation model not found: %s", e)
@@ -208,6 +222,11 @@ def process_video_pipeline(  # noqa: PLR0913
                 )
             except FileNotFoundError as e:
                 logger.warning("Video matting model not found: %s", e)
+        if inpainting:
+            try:
+                registry.register("lama", vram_mb=300, path=_find_model("lama_fp32.onnx"))
+            except FileNotFoundError as e:
+                logger.warning("Inpainting model not found: %s", e)
 
         # Load models that will be used
         if depth and registry.is_registered("depth_anything"):
@@ -228,7 +247,7 @@ def process_video_pipeline(  # noqa: PLR0913
                 ml_layers.append(OpticalFlowLayer(opacity=0.5))
             except Exception as e:
                 logger.warning("Failed to load optical flow model: %s", e)
-        if segment and registry.is_registered("segment_anything"):
+        if segment and registry.is_registered("segment_anything_ve"):
             from src.ml.segment_anything import SegmentAnything
             from src.visualization.layers.segmentation_layer import SegmentationMaskLayer
 
@@ -246,9 +265,40 @@ def process_video_pipeline(  # noqa: PLR0913
                 ml_layers.append(MattingLayer())
             except Exception as e:
                 logger.warning("Failed to load video matting model: %s", e)
+        if foot_track and registry.is_registered("foot_tracker"):
+            from src.ml.foot_tracker import FootTracker
+            from src.visualization.layers.foot_tracker_layer import FootTrackerLayer
+
+            try:
+                foot_est = FootTracker(registry)
+                ml_layers.append(FootTrackerLayer())
+            except Exception as e:
+                logger.warning("Failed to load foot tracker model: %s", e)
+        # Inpainting requires SAM2 mask — load only if both are available
+        if inpainting and seg_est is not None and registry.is_registered("lama"):
+            from src.ml.inpainting import ImageInpainter
+
+            try:
+                inpaint_est = ImageInpainter(registry)
+            except Exception as e:
+                logger.warning("Failed to load inpainting model: %s", e)
 
     if progress_cb:
-        progress_cb(0.6, "Rendering...")
+        active_ml = []
+        if depth_est is not None:
+            active_ml.append("Depth")
+        if flow_est is not None:
+            active_ml.append("Flow")
+        if seg_est is not None:
+            active_ml.append("SAM2")
+        if foot_est is not None:
+            active_ml.append("FootTrack")
+        if matting_est is not None:
+            active_ml.append("Matting")
+        if inpaint_est is not None:
+            active_ml.append("LAMA")
+        ml_info = f" [{', '.join(active_ml)}]" if active_ml else ""
+        progress_cb(0.6, f"Рендеринг{ml_info}...")
 
     # --- Build rendering pipeline ---
     pipe = VizPipeline(
@@ -273,6 +323,11 @@ def process_video_pipeline(  # noqa: PLR0913
     total = meta.num_frames
 
     while cap.isOpened():
+        if cancel_event is not None and cancel_event.is_set():
+            cap.release()
+            writer.close()
+            raise PipelineCancelled("Processing cancelled by user")
+
         ret, frame = cap.read()
         if not ret:
             break
@@ -285,6 +340,7 @@ def process_video_pipeline(  # noqa: PLR0913
             or flow_est is not None
             or seg_est is not None
             or matting_est is not None
+            or foot_est is not None
         ):
             _, context = pipe.render_frame(frame, frame_idx, current_pose_idx)
             if depth_est is not None:
@@ -304,6 +360,15 @@ def process_video_pipeline(  # noqa: PLR0913
             if matting_est is not None:
                 alpha = matting_est.matting(frame)
                 context.custom_data["alpha_matte"] = alpha
+            if inpaint_est is not None:
+                mask = context.custom_data.get("seg_mask")
+                if mask is not None:
+                    frame = inpaint_est.inpaint(frame, mask)
+                    context.custom_data.pop("seg_mask", None)
+            if foot_est is not None:
+                detections = foot_est.detect(frame)
+                if detections:
+                    context.custom_data["foot_detections"] = detections
             # Re-render ML layers with data
             if layer >= 1 and current_pose_idx is not None:
                 frame = render_layers(frame, ml_layers, context)

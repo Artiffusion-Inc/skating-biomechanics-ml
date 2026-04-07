@@ -5,20 +5,27 @@ Uses ONNX Runtime for inference. Input: frame pair (BGR). Output: dense flow fie
 Model: NeuFlowV2 (mixed training)
 Source: https://github.com/neufieldrobotics/NeuFlow_v2
 ONNX: https://github.com/ibaiGorordo/ONNX-NeuFlowV2-Optical-Flow
+
+NOTE: The ONNX model has fixed input size 432x768. Frames are resized to this
+resolution before inference, and the flow field is resized back to the original size.
 """
 
 from __future__ import annotations
 
 import logging
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
-from src.ml.model_registry import ModelRegistry  # noqa: TC001
+if TYPE_CHECKING:
+    from src.ml.model_registry import ModelRegistry
 
 logger = logging.getLogger(__name__)
 
 MODEL_ID = "optical_flow"
+FLOW_HEIGHT = 432
+FLOW_WIDTH = 768
 
 
 class OpticalFlowEstimator:
@@ -35,9 +42,7 @@ class OpticalFlowEstimator:
     def __init__(self, registry: ModelRegistry) -> None:
         self._session = registry.get(MODEL_ID)
         self._prev_frame: np.ndarray | None = None
-        # NeuFlowV2 expects two separate images
-        details = self._session.get_input_details()
-        self._input_names = [d["name"] for d in details]
+        self._input_names = [i.name for i in self._session.get_inputs()]
 
     def estimate(self, frame1: np.ndarray, frame2: np.ndarray) -> np.ndarray:
         """Estimate optical flow between two frames.
@@ -47,7 +52,7 @@ class OpticalFlowEstimator:
             frame2: BGR image (H, W, 3) uint8, same size as frame1.
 
         Returns:
-            Flow field (H, W, 2) float32.
+            Flow field (H, W, 2) float32, resized to match input frame size.
 
         Raises:
             ValueError: If frames have different sizes.
@@ -59,25 +64,27 @@ class OpticalFlowEstimator:
 
         h, w = frame1.shape[:2]
 
-        # Prepare inputs -- NeuFlowV2 expects two separate images
-        img1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2RGB).transpose(2, 0, 1).astype(np.float32) / 255.0
-        img2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2RGB).transpose(2, 0, 1).astype(np.float32) / 255.0
+        # Resize to model input size (432x768)
+        img1 = cv2.resize(frame1, (FLOW_WIDTH, FLOW_HEIGHT), interpolation=cv2.INTER_LINEAR)
+        img2 = cv2.resize(frame2, (FLOW_WIDTH, FLOW_HEIGHT), interpolation=cv2.INTER_LINEAR)
+
+        # BGR -> RGB, HWC -> NCHW, normalize to [0, 1]
+        img1 = cv2.cvtColor(img1, cv2.COLOR_BGR2RGB).transpose(2, 0, 1).astype(np.float32) / 255.0
+        img2 = cv2.cvtColor(img2, cv2.COLOR_BGR2RGB).transpose(2, 0, 1).astype(np.float32) / 255.0
 
         inputs = {
-            self._input_names[0]: img1[np.newaxis],
+            self._input_names[0]: img1[np.newaxis],  # (1, 3, 432, 768)
             self._input_names[1]: img2[np.newaxis],
         }
 
-        # Inference
+        # Inference — output shape: (1, 2, 432, 768)
         output = self._session.run(None, inputs)[0]
 
-        # Output shape: (2, H, W) -> (H, W, 2)
-        flow = output.transpose(1, 2, 0).astype(np.float32)
+        # (1, 2, H, W) -> (H, W, 2)
+        flow = output[0].transpose(1, 2, 0).astype(np.float32)
 
-        # Resize to original frame size if needed
-        if flow.shape[:2] != (h, w):
-            flow_xy = np.stack([flow[:, :, 0], flow[:, :, 1]], axis=-1)
-            flow = cv2.resize(flow_xy, (w, h), interpolation=cv2.INTER_LINEAR).astype(np.float32)
+        # Resize flow back to original frame size
+        flow = cv2.resize(flow, (w, h), interpolation=cv2.INTER_LINEAR).astype(np.float32)
 
         return flow
 

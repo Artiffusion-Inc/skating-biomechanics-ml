@@ -49,6 +49,7 @@ export const ProcessRequestSchema = z.object({
   segment: z.boolean().default(false),
   foot_track: z.boolean().default(false),
   matting: z.boolean().default(false),
+  inpainting: z.boolean().default(false),
 })
 
 export const ProcessResponseSchema = z.object({

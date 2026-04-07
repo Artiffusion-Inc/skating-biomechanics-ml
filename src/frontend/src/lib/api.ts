@@ -2,6 +2,22 @@ import { DetectResponseSchema, ProcessRequestSchema } from "@/lib/schemas"
 
 const API_BASE = "/api"
 
+export interface ModelStatus {
+  id: string
+  available: boolean
+  size_mb: number | null
+}
+
+export async function getModels(): Promise<ModelStatus[]> {
+  const res = await fetch(`${API_BASE}/models`)
+  if (!res.ok) throw new Error("Failed to fetch model status")
+  return res.json()
+}
+
+export async function cancelProcessing(): Promise<void> {
+  await fetch(`${API_BASE}/process/cancel`, { method: "POST" })
+}
+
 export async function detectPersons(
   file: File,
   tracking = "auto",
@@ -40,6 +56,7 @@ export async function processVideo(
     segment?: boolean
     foot_track?: boolean
     matting?: boolean
+    inpainting?: boolean
   },
   callbacks: SSECallbacks,
 ): Promise<void> {

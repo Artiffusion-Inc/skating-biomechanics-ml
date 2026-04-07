@@ -14,11 +14,13 @@ class TestOpticalFlowEstimator:
         from src.ml.optical_flow import OpticalFlowEstimator
 
         mock_session = mock.MagicMock()
-        mock_session.run.return_value = [np.random.rand(2, 480, 640).astype(np.float32)]
+        # NeuFlowV2 outputs (1, 2, 432, 768)
+        mock_session.run.return_value = [np.random.rand(1, 2, 432, 768).astype(np.float32)]
 
         est = OpticalFlowEstimator.__new__(OpticalFlowEstimator)
         est._session = mock_session
-        est._input_names = ["image1", "image2"]
+        est._input_names = ["input1", "input2"]
+        est._prev_frame = None
 
         frame1 = np.zeros((480, 640, 3), dtype=np.uint8)
         frame2 = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -44,11 +46,11 @@ class TestOpticalFlowEstimator:
         from src.ml.optical_flow import OpticalFlowEstimator
 
         mock_session = mock.MagicMock()
-        mock_session.run.return_value = [np.zeros((2, 480, 640), dtype=np.float32)]
+        mock_session.run.return_value = [np.zeros((1, 2, 432, 768), dtype=np.float32)]
 
         est = OpticalFlowEstimator.__new__(OpticalFlowEstimator)
         est._session = mock_session
-        est._input_names = ["image1", "image2"]
+        est._input_names = ["input1", "input2"]
         est._prev_frame = None
 
         frame = np.zeros((480, 640, 3), dtype=np.uint8)

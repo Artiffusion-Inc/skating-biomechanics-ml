@@ -2,9 +2,13 @@
 
 Uses ONNX Runtime for inference. Input: RGB image + point prompt. Output: binary mask.
 
-Model: SAM 2 Tiny (38.9M params, ~200MB VRAM)
+Model: SAM 2.1 Tiny (38.9M params, ~200MB VRAM)
 Source: https://github.com/facebookresearch/sam2
-ONNX: https://github.com/ibaiGorordo/ONNX-SAM2-Segment-Anything
+ONNX: https://huggingface.co/onnx-community/sam2.1-hiera-tiny-ONNX
+
+The ONNX export consists of two models:
+- vision_encoder.onnx: extracts image embeddings (input: pixel_values)
+- prompt_encoder_mask_decoder.onnx: takes embeddings + prompts, produces masks
 """
 
 from __future__ import annotations
@@ -21,21 +25,30 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 MODEL_ID = "segment_anything"
+VISION_ENCODER_ID = "segment_anything_ve"
+PROMPT_DECODER_ID = "segment_anything_pd"
 INPUT_SIZE = 1024
 
 
 class SegmentAnything:
-    """Image segmentation via SAM 2.
+    """Image segmentation via SAM 2.1.
 
     Args:
-        registry: ModelRegistry with "segment_anything" registered.
+        registry: ModelRegistry with "segment_anything_ve" and
+            "segment_anything_pd" registered.
     """
 
     def __init__(self, registry: ModelRegistry) -> None:
-        self._session = registry.get(MODEL_ID)
+        self._ve_session = registry.get(VISION_ENCODER_ID)
+        self._pd_session = registry.get(PROMPT_DECODER_ID)
         self._input_size = INPUT_SIZE
-        details = self._session.get_input_details()
-        self._input_names = [d["name"] for d in details]
+
+        # Vision encoder I/O
+        self._ve_input_name = self._ve_session.get_inputs()[0].name
+        self._ve_output_names = [o.name for o in self._ve_session.get_outputs()]
+
+        # Prompt decoder I/O
+        self._pd_output_names = [o.name for o in self._pd_session.get_outputs()]
 
     def segment(
         self,
@@ -58,7 +71,7 @@ class SegmentAnything:
 
         h, w = frame.shape[:2]
 
-        # Prepare image
+        # Prepare image — SAM2 expects RGB, normalized with ImageNet stats
         img = cv2.resize(
             frame, (self._input_size, self._input_size), interpolation=cv2.INTER_LINEAR
         )
@@ -70,40 +83,66 @@ class SegmentAnything:
         ]
         img_tensor = img_norm.transpose(2, 0, 1)[np.newaxis].astype(np.float32)
 
+        # Step 1: Vision encoder — extract image embeddings
+        ve_outputs = self._ve_session.run(self._ve_output_names, {self._ve_input_name: img_tensor})
+
+        # Build embeddings dict from vision encoder outputs
+        embeddings = {}
+        for i, out in enumerate(ve_outputs):
+            name = self._ve_output_names[i]
+            embeddings[name] = out
+
+        # Step 2: Prompt encoder + mask decoder
+        pd_inputs: dict[str, np.ndarray] = {}
+
+        # Add image embeddings
+        for name, value in embeddings.items():
+            pd_inputs[name] = value
+
         # Prepare point prompt
-        point_coords = np.array([], dtype=np.float32).reshape(0, 2)
-        point_labels = np.array([], dtype=np.float32)
+        # Shape: [batch_size=1, 1, num_points, 2]
+        point_coords = np.zeros((1, 1, 0, 2), dtype=np.float32)
+        point_labels = np.zeros((1, 1, 0), dtype=np.int64)
+
         if point is not None:
-            # Scale point to model input size
             sx = self._input_size / w
             sy = self._input_size / h
-            point_coords = np.array([[point[0] * sx, point[1] * sy]], dtype=np.float32)
-            point_labels = np.array([1.0], dtype=np.float32)  # foreground
+            point_coords = np.array(
+                [[[point[0] * sx, point[1] * sy]]], dtype=np.float32
+            )  # (1, 1, 1, 2)
+            point_labels = np.array([[1]], dtype=np.int64)  # (1, 1) foreground
 
-        # Build inputs (SAM2 ONNX format — adapt to actual ONNX export)
-        inputs = {}
-        for i, name in enumerate(self._input_names):
-            if i == 0:
-                inputs[name] = img_tensor
-            elif "point_coords" in name.lower():
-                inputs[name] = point_coords
-            elif "point_labels" in name.lower():
-                inputs[name] = point_labels
+        pd_inputs["input_points"] = point_coords
+        pd_inputs["input_labels"] = point_labels
+
+        # Box prompt (optional)
+        if box is not None:
+            sx = self._input_size / w
+            sy = self._input_size / h
+            box_coords = np.array(
+                [[box[0] * sx, box[1] * sy, box[2] * sx, box[3] * sy]], dtype=np.float32
+            )  # (1, 4)
+            pd_inputs["input_boxes"] = box_coords
+        else:
+            pd_inputs["input_boxes"] = np.zeros((1, 0, 4), dtype=np.float32)
 
         try:
-            outputs = self._session.run(None, inputs)
-            # Find mask output (typically first or second output)
-            masks = None
-            for out in outputs:
-                if isinstance(out, np.ndarray) and out.ndim == 4:
-                    masks = out
+            outputs = self._pd_session.run(self._pd_output_names, pd_inputs)
+
+            # Find pred_masks output
+            pred_masks = None
+            for name, out in zip(self._pd_output_names, outputs, strict=True):
+                if "pred_masks" in name:
+                    pred_masks = out
                     break
 
-            if masks is None:
+            if pred_masks is None:
+                logger.warning("SAM2: no pred_masks in output")
                 return None
 
-            # Take best mask (highest IoU prediction)
-            mask = masks[0, 0]  # (H_in, W_in)
+            # pred_masks shape: [batch, num_prompts, num_masks, H, W]
+            # Take first prompt, first (best) mask
+            mask = pred_masks[0, 0, 0]  # (H_in, W_in)
             mask = mask > 0.0  # threshold
 
             # Resize to original frame size

@@ -33,8 +33,8 @@ class ImageInpainter:
 
     def __init__(self, registry: ModelRegistry) -> None:
         self._session = registry.get(MODEL_ID)
-        details = self._session.get_input_details()
-        self._input_names = [d["name"] for d in details]
+        self._input_names = [i.name for i in self._session.get_inputs()]
+        self._output_name = self._session.get_outputs()[0].name
 
     def inpaint(self, frame: np.ndarray, mask: np.ndarray) -> np.ndarray:
         """Inpaint masked regions of a frame.
@@ -48,28 +48,26 @@ class ImageInpainter:
         """
         h, w = frame.shape[:2]
 
-        # Resize to model input
+        # Resize to model input (512x512)
         img = cv2.resize(frame, (INPUT_SIZE, INPUT_SIZE), interpolation=cv2.INTER_LINEAR)
         msk = cv2.resize(
             mask.astype(np.uint8), (INPUT_SIZE, INPUT_SIZE), interpolation=cv2.INTER_NEAREST
         )
 
-        # Prepare inputs
+        # Prepare inputs — LAMA expects RGB [0, 1] and mask [0, 1]
         img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB).astype(np.float32) / 255.0
-        img_tensor = img_rgb.transpose(2, 0, 1)[np.newaxis]  # (1, 3, H, W)
-        mask_tensor = (msk > 0).astype(np.float32)[np.newaxis, np.newaxis]  # (1, 1, H, W)
+        img_tensor = img_rgb.transpose(2, 0, 1)[np.newaxis]  # (1, 3, 512, 512)
+        mask_tensor = (msk > 0).astype(np.float32)[np.newaxis, np.newaxis]  # (1, 1, 512, 512)
 
-        inputs = {}
-        for _i, name in enumerate(self._input_names):
-            if "image" in name.lower():
-                inputs[name] = img_tensor
-            elif "mask" in name.lower():
-                inputs[name] = mask_tensor
+        inputs = {
+            "image": img_tensor,
+            "mask": mask_tensor,
+        }
 
-        output = self._session.run(None, inputs)[0]
+        output = self._session.run([self._output_name], inputs)[0]
 
         # Convert output to BGR uint8
-        result = output[0].transpose(1, 2, 0)  # (H, W, 3)
+        result = output[0].transpose(1, 2, 0)  # (512, 512, 3)
         result = (np.clip(result, 0, 1) * 255).astype(np.uint8)
         result = cv2.cvtColor(result, cv2.COLOR_RGB2BGR)
 

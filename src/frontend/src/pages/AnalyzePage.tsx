@@ -1,13 +1,13 @@
-import { AlertCircle, ArrowLeft, CheckCircle, Download, Loader2 } from "lucide-react"
+import { AlertCircle, ArrowLeft, CheckCircle, Download, Loader2, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { processVideo } from "@/lib/api"
+import { cancelProcessing, processVideo } from "@/lib/api"
 import type { PersonClick, ProcessResponse } from "@/types"
 
-type Phase = "processing" | "done" | "error"
+type Phase = "processing" | "done" | "error" | "cancelled"
 
 export default function AnalyzePage() {
   const [params] = useSearchParams()
@@ -21,6 +21,7 @@ export default function AnalyzePage() {
 
   // Guard: prevent double-call in StrictMode
   const startedRef = useRef(false)
+  const abortRef = useRef<AbortController | null>(null)
 
   const videoPath = params.get("video_path") || ""
   const clickParts = (params.get("person_click") || "0,0").split(",")
@@ -40,6 +41,7 @@ export default function AnalyzePage() {
   const enableSegment = params.get("segment") !== "false"
   const enableFootTrack = params.get("foot_track") !== "false"
   const enableMatting = params.get("matting") !== "false"
+  const enableInpainting = params.get("inpainting") !== "false"
 
   // Stable process request — doesn't change between renders
   const processRequest = useMemo(
@@ -55,6 +57,7 @@ export default function AnalyzePage() {
       segment: enableSegment,
       foot_track: enableFootTrack,
       matting: enableMatting,
+      inpainting: enableInpainting,
     }),
     [
       videoPath,
@@ -68,8 +71,19 @@ export default function AnalyzePage() {
       enableSegment,
       enableFootTrack,
       enableMatting,
+      enableInpainting,
     ],
   )
+
+  const handleCancel = useCallback(async () => {
+    abortRef.current?.abort()
+    try {
+      await cancelProcessing()
+    } catch {
+      // ignore — pipeline will stop on its own
+    }
+    setPhase("cancelled")
+  }, [])
 
   // Only the request object matters — callback identity doesn't affect behavior
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,6 +94,9 @@ export default function AnalyzePage() {
     setPhase("processing")
     setProgress(0)
     setMessage("Подготовка конвейера...")
+
+    const abort = new AbortController()
+    abortRef.current = abort
 
     processVideo(processRequest, {
       onProgress(p, msg) {
@@ -134,6 +151,26 @@ export default function AnalyzePage() {
               <div
                 className={`h-2 w-2 rounded-full transition-colors ${progress > 75 ? "bg-primary" : "bg-muted"}`}
               />
+            </div>
+            <Button variant="outline" size="sm" onClick={handleCancel} className="gap-1">
+              <X className="h-4 w-4" />
+              Отменить
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Cancelled */}
+      {phase === "cancelled" && (
+        <Card>
+          <CardContent className="flex flex-col items-center gap-4 p-8">
+            <AlertCircle className="h-8 w-8 text-muted-foreground" />
+            <h2 className="text-lg font-medium">Обработка отменена</h2>
+            <div className="flex gap-2">
+              <Button onClick={startProcessing}>Повторить</Button>
+              <Button variant="outline" onClick={() => navigate("/")}>
+                Назад
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -195,7 +232,7 @@ export default function AnalyzePage() {
       {phase === "error" && (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8">
-            <AlertCircle className="h-8 w-8 text-destructive" />
+            <AlertCircle className="h-8 h-8 text-destructive" />
             <p className="text-destructive">{error}</p>
             <div className="flex gap-2">
               <Button onClick={startProcessing}>Повторить</Button>

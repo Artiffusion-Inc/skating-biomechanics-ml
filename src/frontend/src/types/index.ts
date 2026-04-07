@@ -30,6 +30,7 @@ export interface ProcessRequest {
   segment: boolean
   foot_track: boolean
   matting: boolean
+  inpainting: boolean
 }
 
 export interface ProcessStats {

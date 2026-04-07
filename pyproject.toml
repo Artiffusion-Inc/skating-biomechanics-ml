@@ -26,6 +26,7 @@ dependencies = [
     "python-multipart>=0.0.22",
     "sse-starlette>=3.3.4",
     "structlog>=25.5.0",
+    "huggingface-hub>=1.7.2",
 ]
 
 [build-system]
