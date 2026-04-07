@@ -1,5 +1,5 @@
 import { AlertCircle, ArrowLeft, CheckCircle, Download, Loader2 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -15,9 +15,12 @@ export default function AnalyzePage() {
 
   const [phase, setPhase] = useState<Phase>("processing")
   const [progress, setProgress] = useState(0)
-  const [message, setMessage] = useState("Начинаем...")
+  const [message, setMessage] = useState("Подготовка конвейера...")
   const [result, setResult] = useState<ProcessResponse | null>(null)
   const [error, setError] = useState("")
+
+  // Guard: prevent double-call in StrictMode
+  const startedRef = useRef(false)
 
   const videoPath = params.get("video_path") || ""
   const clickParts = (params.get("person_click") || "0,0").split(",")
@@ -32,37 +35,68 @@ export default function AnalyzePage() {
   const layer = Number(params.get("layer") || 3)
   const tracking = params.get("tracking") || "auto"
   const doExport = params.get("export") !== "false"
+  const enableDepth = params.get("depth") !== "false"
+  const enableOpticalFlow = params.get("optical_flow") !== "false"
+  const enableSegment = params.get("segment") !== "false"
+  const enableFootTrack = params.get("foot_track") !== "false"
+  const enableMatting = params.get("matting") !== "false"
 
+  // Stable process request — doesn't change between renders
+  const processRequest = useMemo(
+    () => ({
+      video_path: videoPath,
+      person_click: personClick,
+      frame_skip: frameSkip,
+      layer: layer,
+      tracking: tracking,
+      export: doExport,
+      depth: enableDepth,
+      optical_flow: enableOpticalFlow,
+      segment: enableSegment,
+      foot_track: enableFootTrack,
+      matting: enableMatting,
+    }),
+    [
+      videoPath,
+      personClick,
+      frameSkip,
+      layer,
+      tracking,
+      doExport,
+      enableDepth,
+      enableOpticalFlow,
+      enableSegment,
+      enableFootTrack,
+      enableMatting,
+    ],
+  )
+
+  // Only the request object matters — callback identity doesn't affect behavior
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   const startProcessing = useCallback(() => {
+    if (startedRef.current) return
+    startedRef.current = true
+
     setPhase("processing")
     setProgress(0)
-    setMessage("Подготовка...")
+    setMessage("Подготовка конвейера...")
 
-    processVideo(
-      {
-        video_path: videoPath,
-        person_click: personClick,
-        frame_skip: frameSkip,
-        layer: layer,
-        tracking: tracking,
-        export: doExport,
+    processVideo(processRequest, {
+      onProgress(p, msg) {
+        setProgress(Math.round(p * 100))
+        setMessage(msg)
       },
-      {
-        onProgress(p, msg) {
-          setProgress(Math.round(p * 100))
-          setMessage(msg)
-        },
-        onResult(r) {
-          setResult(r as ProcessResponse)
-          setPhase("done")
-        },
-        onError(err) {
-          setError(err)
-          setPhase("error")
-        },
+      onResult(r) {
+        setResult(r as ProcessResponse)
+        setPhase("done")
       },
-    )
-  }, [videoPath, personClick, frameSkip, layer, tracking, doExport])
+      onError(err) {
+        setError(err)
+        setPhase("error")
+        startedRef.current = false
+      },
+    })
+  }, [processRequest])
 
   useEffect(() => {
     if (videoPath) startProcessing()
@@ -83,11 +117,24 @@ export default function AnalyzePage() {
       {phase === "processing" && (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <h2 className="text-lg font-medium">Анализ видео</h2>
             <Progress value={progress} className="w-full max-w-md" />
             <p className="text-sm text-muted-foreground">{message}</p>
-            <p className="text-xs text-muted-foreground">{progress}%</p>
+            <div className="flex items-center gap-1.5">
+              <div
+                className={`h-2 w-2 rounded-full transition-colors ${progress > 0 ? "bg-primary" : "bg-muted"}`}
+              />
+              <div
+                className={`h-2 w-2 rounded-full transition-colors ${progress > 25 ? "bg-primary" : "bg-muted"}`}
+              />
+              <div
+                className={`h-2 w-2 rounded-full transition-colors ${progress > 50 ? "bg-primary" : "bg-muted"}`}
+              />
+              <div
+                className={`h-2 w-2 rounded-full transition-colors ${progress > 75 ? "bg-primary" : "bg-muted"}`}
+              />
+            </div>
           </CardContent>
         </Card>
       )}

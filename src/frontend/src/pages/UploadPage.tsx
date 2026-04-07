@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Progress } from "@/components/ui/progress"
 import {
   Select,
   SelectContent,
@@ -12,7 +13,6 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { detectPersons } from "@/lib/api"
 import type { DetectResponse, PersonClick } from "@/types"
 
 type Status = "idle" | "uploading" | "detecting" | "ready" | "error"
@@ -34,6 +34,11 @@ export default function UploadPage() {
   const [layer, setLayer] = useState(3)
   const [tracking, setTracking] = useState("auto")
   const [doExport, setDoExport] = useState(true)
+  const [enableDepth, setEnableDepth] = useState(false)
+  const [enableOpticalFlow, setEnableOpticalFlow] = useState(false)
+  const [enableSegment, setEnableSegment] = useState(false)
+  const [enableFootTrack, setEnableFootTrack] = useState(false)
+  const [enableMatting, setEnableMatting] = useState(false)
 
   // Derived: selected person's bbox as CSS percentage
   const selectedPersonData =
@@ -41,31 +46,73 @@ export default function UploadPage() {
       ? detectResult.persons.find(p => p.track_id === selectedPerson)
       : undefined
 
+  const [uploadProgress, setUploadProgress] = useState(0)
+  const [detectStage, setDetectStage] = useState("")
+
   const handleFile = useCallback(
     async (f: File) => {
       setFile(f)
       setStatus("uploading")
+      setUploadProgress(0)
+      setDetectStage("")
       setError("")
       setDetectResult(null)
       setSelectedPerson(null)
       setClickCoord(null)
 
-      const { data, error: err } = await detectPersons(f, tracking)
-      if (err) {
-        setError(err)
+      setDetectStage("Загрузка видео на сервер...")
+
+      // Track upload via XMLHttpRequest for progress
+      const formData = new FormData()
+      formData.append("video", f)
+      const trackingParam = encodeURIComponent(tracking)
+
+      try {
+        const uploadRes = await new Promise<{ data: DetectResponse; error?: string }>(
+          (resolve, reject) => {
+            const xhr = new XMLHttpRequest()
+            xhr.open("POST", `/api/detect?tracking=${trackingParam}`)
+
+            xhr.upload.addEventListener("progress", e => {
+              if (e.lengthComputable) {
+                setUploadProgress(Math.round((e.loaded / e.total) * 100))
+              }
+            })
+
+            xhr.addEventListener("load", () => {
+              if (xhr.status >= 200 && xhr.status < 300) {
+                resolve({ data: JSON.parse(xhr.responseText) })
+              } else {
+                try {
+                  const detail = JSON.parse(xhr.responseText)
+                  reject(new Error(detail.detail ?? `HTTP ${xhr.status}`))
+                } catch {
+                  reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`))
+                }
+              }
+            })
+
+            xhr.addEventListener("error", () => reject(new Error("Сетевая ошибка")))
+            xhr.send(formData)
+          },
+        )
+
+        setDetectStage("Анализ видео и обнаружение фигуристов...")
+        setUploadProgress(-1) // indeterminate
+
+        const resp = uploadRes.data
+        setDetectResult(resp)
+
+        if (resp.auto_click) {
+          setClickCoord(resp.auto_click)
+          setSelectedPerson(resp.persons[0]?.track_id ?? 0)
+        }
+
+        setStatus("ready")
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Неизвестная ошибка")
         setStatus("error")
-        return
       }
-
-      const resp = data as DetectResponse
-      setDetectResult(resp)
-
-      if (resp.auto_click) {
-        setClickCoord(resp.auto_click)
-        setSelectedPerson(resp.persons[0]?.track_id ?? 0)
-      }
-
-      setStatus("ready")
     },
     [tracking],
   )
@@ -138,6 +185,11 @@ export default function UploadPage() {
       layer: String(layer),
       tracking,
       export: String(doExport),
+      depth: String(enableDepth),
+      optical_flow: String(enableOpticalFlow),
+      segment: String(enableSegment),
+      foot_track: String(enableFootTrack),
+      matting: String(enableMatting),
     })
     navigate(`/analyze?${params.toString()}`)
   }
@@ -189,9 +241,16 @@ export default function UploadPage() {
 
       {/* Loading */}
       {isAnalyzing && (
-        <div className="flex flex-col items-center justify-center gap-4 py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Обнаружение людей...</p>
+        <div className="flex flex-col items-center justify-center gap-5 py-20">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <div className="flex flex-col items-center gap-1">
+            <p className="text-sm font-medium">{detectStage || "Обработка..."}</p>
+            {uploadProgress >= 0 && (
+              <p className="text-xs text-muted-foreground">{uploadProgress}%</p>
+            )}
+          </div>
+          <Progress value={uploadProgress >= 0 ? uploadProgress : undefined} className="w-64" />
+          {file && <p className="text-xs text-muted-foreground">{file.name}</p>}
         </div>
       )}
 
@@ -328,6 +387,61 @@ export default function UploadPage() {
                   />
                   <label htmlFor="export" className="text-sm">
                     Экспорт поз + CSV
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="depth"
+                    checked={enableDepth}
+                    onCheckedChange={v => setEnableDepth(v === true)}
+                  />
+                  <label htmlFor="depth" className="text-sm">
+                    Глубина (Depth)
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="optical-flow"
+                    checked={enableOpticalFlow}
+                    onCheckedChange={v => setEnableOpticalFlow(v === true)}
+                  />
+                  <label htmlFor="optical-flow" className="text-sm">
+                    Оптический поток
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="segment"
+                    checked={enableSegment}
+                    onCheckedChange={v => setEnableSegment(v === true)}
+                  />
+                  <label htmlFor="segment" className="text-sm">
+                    Сегментация (SAM2)
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="foot-track"
+                    checked={enableFootTrack}
+                    onCheckedChange={v => setEnableFootTrack(v === true)}
+                  />
+                  <label htmlFor="foot-track" className="text-sm">
+                    Трекинг стоп
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="matting"
+                    checked={enableMatting}
+                    onCheckedChange={v => setEnableMatting(v === true)}
+                  />
+                  <label htmlFor="matting" className="text-sm">
+                    Удаление фона
                   </label>
                 </div>
               </CardContent>
