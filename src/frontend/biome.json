@@ -36,6 +36,15 @@
       },
       "complexity": {
         "noForEach": "warn"
+      },
+      "nursery": {
+        "useSortedClasses": {
+          "level": "error",
+          "options": {
+            "attributes": ["class", "className", "classList"],
+            "functions": ["clsx", "cva", "tw", "cn"]
+          }
+        }
       }
     }
   },

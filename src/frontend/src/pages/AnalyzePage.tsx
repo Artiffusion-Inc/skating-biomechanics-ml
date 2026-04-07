@@ -166,9 +166,9 @@ export default function AnalyzePage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <h2 className="text-lg font-medium">Анализ видео</h2>
+            <h2 className="font-medium text-lg">Анализ видео</h2>
             <Progress value={progress} className="w-full max-w-md" />
-            <p className="text-sm text-muted-foreground">{message}</p>
+            <p className="text-muted-foreground text-sm">{message}</p>
             <div className="flex items-center gap-1.5">
               <div
                 className={`h-2 w-2 rounded-full transition-colors ${progress > 0 ? "bg-primary" : "bg-muted"}`}
@@ -196,7 +196,7 @@ export default function AnalyzePage() {
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8">
             <AlertCircle className="h-8 w-8 text-muted-foreground" />
-            <h2 className="text-lg font-medium">Обработка отменена</h2>
+            <h2 className="font-medium text-lg">Обработка отменена</h2>
             <div className="flex gap-2">
               <Button onClick={startProcessing}>Повторить</Button>
               <Button variant="outline" onClick={() => navigate("/")}>
@@ -216,7 +216,7 @@ export default function AnalyzePage() {
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <h2 className="font-medium">{result.status}</h2>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 text-muted-foreground text-sm sm:grid-cols-4">
                 <span>Кадров: {result.stats.total_frames}</span>
                 <span>Валидных: {result.stats.valid_frames}</span>
                 <span>FPS: {result.stats.fps}</span>

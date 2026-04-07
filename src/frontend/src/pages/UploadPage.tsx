@@ -235,11 +235,11 @@ export default function UploadPage() {
           onKeyDown={e => {
             if (e.key === "Enter" || e.key === " ") fileRef.current?.click()
           }}
-          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 transition-colors hover:border-primary"
+          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-border border-dashed p-12 transition-colors hover:border-primary"
         >
           <Upload className="mb-4 h-10 w-10 text-muted-foreground" />
-          <p className="text-lg font-medium">Перетащите видео сюда или нажмите для выбора</p>
-          <p className="mt-1 text-sm text-muted-foreground">MP4, MOV, WebM</p>
+          <p className="font-medium text-lg">Перетащите видео сюда или нажмите для выбора</p>
+          <p className="mt-1 text-muted-foreground text-sm">MP4, MOV, WebM</p>
           <input
             ref={fileRef}
             type="file"
@@ -258,13 +258,13 @@ export default function UploadPage() {
         <div className="flex flex-col items-center justify-center gap-5 py-20">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
           <div className="flex flex-col items-center gap-1">
-            <p className="text-sm font-medium">{detectStage || "Обработка..."}</p>
+            <p className="font-medium text-sm">{detectStage || "Обработка..."}</p>
             {uploadProgress >= 0 && (
-              <p className="text-xs text-muted-foreground">{uploadProgress}%</p>
+              <p className="text-muted-foreground text-xs">{uploadProgress}%</p>
             )}
           </div>
           <Progress value={uploadProgress >= 0 ? uploadProgress : undefined} className="w-64" />
-          {file && <p className="text-xs text-muted-foreground">{file.name}</p>}
+          {file && <p className="text-muted-foreground text-xs">{file.name}</p>}
         </div>
       )}
 
@@ -311,12 +311,12 @@ export default function UploadPage() {
                 />
                 {bboxStyle && (
                   <div
-                    className="pointer-events-none absolute border-2 border-green-500 rounded-sm"
+                    className="pointer-events-none absolute rounded-sm border-2 border-green-500"
                     style={bboxStyle}
                   />
                 )}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-muted-foreground text-xs">
                 Нажмите на фигуриста на превью для выбора
               </p>
             </CardContent>
@@ -328,7 +328,7 @@ export default function UploadPage() {
             {detectResult.persons.length > 1 && (
               <Card>
                 <CardContent className="p-4">
-                  <h3 className="mb-2 text-sm font-medium">Фигуристы</h3>
+                  <h3 className="mb-2 font-medium text-sm">Фигуристы</h3>
                   <div className="flex flex-col gap-1">
                     {detectResult.persons.map(p => (
                       <button
@@ -352,10 +352,10 @@ export default function UploadPage() {
             {/* Settings */}
             <Card>
               <CardContent className="space-y-4 p-4">
-                <h3 className="text-sm font-medium">Настройки</h3>
+                <h3 className="font-medium text-sm">Настройки</h3>
 
                 <div>
-                  <span className="mb-1 block text-xs text-muted-foreground">
+                  <span className="mb-1 block text-muted-foreground text-xs">
                     Frame skip: {frameSkip}
                   </span>
                   <Slider
@@ -368,7 +368,7 @@ export default function UploadPage() {
                 </div>
 
                 <div>
-                  <span className="mb-1 block text-xs text-muted-foreground">
+                  <span className="mb-1 block text-muted-foreground text-xs">
                     HUD Layer: {layer}
                   </span>
                   <Slider
@@ -381,7 +381,7 @@ export default function UploadPage() {
                 </div>
 
                 <div>
-                  <span className="mb-1 block text-xs text-muted-foreground">Трекинг</span>
+                  <span className="mb-1 block text-muted-foreground text-xs">Трекинг</span>
                   <Select value={tracking} onValueChange={setTracking}>
                     <SelectTrigger>
                       <SelectValue />
@@ -416,7 +416,7 @@ export default function UploadPage() {
                   <label htmlFor="depth" className="text-sm">
                     Глубина (Depth)
                     {!modelStatus.depth?.available && (
-                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
                     )}
                   </label>
                 </div>
@@ -433,7 +433,7 @@ export default function UploadPage() {
                   <label htmlFor="optical-flow" className="text-sm">
                     Оптический поток
                     {!modelStatus.optical_flow?.available && (
-                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
                     )}
                   </label>
                 </div>
@@ -450,7 +450,7 @@ export default function UploadPage() {
                   <label htmlFor="segment" className="text-sm">
                     Сегментация (SAM2)
                     {!modelStatus.segment?.available && (
-                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
                     )}
                   </label>
                 </div>
@@ -467,7 +467,7 @@ export default function UploadPage() {
                   <label htmlFor="foot-track" className="text-sm">
                     Трекинг стоп
                     {!modelStatus.foot_track?.available && (
-                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
                     )}
                   </label>
                 </div>
@@ -484,7 +484,7 @@ export default function UploadPage() {
                   <label htmlFor="matting" className="text-sm">
                     Удаление фона
                     {!modelStatus.matting?.available && (
-                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
                     )}
                   </label>
                 </div>
@@ -504,7 +504,7 @@ export default function UploadPage() {
                   <label htmlFor="inpainting" className="text-sm">
                     Инпейтинг фона (LAMA)
                     {!modelStatus.inpainting?.available && (
-                      <span className="ml-1 text-xs text-muted-foreground">(нет модели)</span>
+                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
                     )}
                   </label>
                 </div>
@@ -530,7 +530,7 @@ export default function UploadPage() {
             </div>
 
             {/* File info */}
-            {file && <p className="text-xs text-muted-foreground">{file.name}</p>}
+            {file && <p className="text-muted-foreground text-xs">{file.name}</p>}
           </div>
         </div>
       )}
