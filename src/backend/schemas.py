@@ -40,6 +40,11 @@ class ProcessRequest(BaseModel):
     layer: int = 3
     tracking: str = "auto"
     export: bool = True
+    depth: bool = False
+    optical_flow: bool = False
+    segment: bool = False
+    foot_track: bool = False
+    matting: bool = False
 
 
 class ProcessStats(BaseModel):

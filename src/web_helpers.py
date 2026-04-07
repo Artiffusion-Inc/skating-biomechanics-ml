@@ -5,6 +5,7 @@ All functions are stateless and testable without a running Gradio server.
 
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -16,6 +17,19 @@ from src.utils.video_writer import H264Writer
 if TYPE_CHECKING:
     import numpy as np
     from numpy.typing import NDArray
+
+
+logger = logging.getLogger(__name__)
+
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+
+
+def _find_model(filename: str) -> str:
+    """Find model file in data/models/."""
+    path = _PROJECT_ROOT / "data" / "models" / filename
+    if path.exists():
+        return str(path)
+    raise FileNotFoundError(f"Model not found: {path}")
 
 
 def match_click_to_person(
@@ -114,7 +128,7 @@ def choice_to_person_click(
     )
 
 
-def process_video_pipeline(
+def process_video_pipeline(  # noqa: PLR0913
     video_path: str | Path,
     person_click: PersonClick | None,
     frame_skip: int,
@@ -124,8 +138,15 @@ def process_video_pipeline(
     export: bool,
     output_path: str | Path,
     progress_cb=None,
+    # ML flags (all default False)
+    depth: bool = False,
+    optical_flow: bool = False,
+    segment: bool = False,
+    foot_track: bool = False,
+    matting: bool = False,
 ) -> dict:
     """Run the full visualization pipeline (mirrors visualize_with_skeleton.py)."""
+    from src.visualization import render_layers
     from src.visualization.pipeline import VizPipeline, prepare_poses
 
     video_path = Path(video_path) if isinstance(video_path, str) else video_path
@@ -139,6 +160,53 @@ def process_video_pipeline(
         tracking=tracking,
         progress_cb=progress_cb,
     )
+
+    # --- Initialize ML models (lazy-loaded) ---
+    registry = None
+    depth_est = None
+    flow_est = None
+    ml_layers: list = []
+
+    any_ml = depth or optical_flow or segment or foot_track or matting
+    if any_ml:
+        from src.ml.model_registry import ModelRegistry
+
+        registry = ModelRegistry(device="auto")
+
+        if depth:
+            try:
+                registry.register(
+                    "depth_anything", vram_mb=200, path=_find_model("depth_anything_v2_small.onnx")
+                )
+            except FileNotFoundError as e:
+                logger.warning("Depth model not found: %s", e)
+        if optical_flow:
+            try:
+                registry.register(
+                    "optical_flow", vram_mb=80, path=_find_model("neuflowv2_mixed.onnx")
+                )
+            except FileNotFoundError as e:
+                logger.warning("Optical flow model not found: %s", e)
+
+        # Load models that will be used
+        if depth and registry.is_registered("depth_anything"):
+            from src.ml.depth_anything import DepthEstimator
+            from src.visualization.layers.depth_layer import DepthMapLayer
+
+            try:
+                depth_est = DepthEstimator(registry)
+                ml_layers.append(DepthMapLayer(opacity=0.4))
+            except Exception as e:
+                logger.warning("Failed to load depth model: %s", e)
+        if optical_flow and registry.is_registered("optical_flow"):
+            from src.ml.optical_flow import OpticalFlowEstimator
+            from src.visualization.layers.optical_flow_layer import OpticalFlowLayer
+
+            try:
+                flow_est = OpticalFlowEstimator(registry)
+                ml_layers.append(OpticalFlowLayer(opacity=0.5))
+            except Exception as e:
+                logger.warning("Failed to load optical flow model: %s", e)
 
     if progress_cb:
         progress_cb(0.6, "Rendering...")
@@ -154,6 +222,7 @@ def process_video_pipeline(
         confs=prepared.confs,
         frame_indices=prepared.frame_indices,
     )
+    pipe.add_ml_layers(ml_layers)
 
     meta = prepared.meta
     cap = cv2.VideoCapture(str(video_path))
@@ -170,7 +239,22 @@ def process_video_pipeline(
             break
 
         current_pose_idx, pose_idx = pipe.find_pose_idx(frame_idx, pose_idx)
-        frame, _ = pipe.render_frame(frame, frame_idx, current_pose_idx)
+
+        # Per-frame ML inference
+        if depth_est is not None or flow_est is not None:
+            _, context = pipe.render_frame(frame, frame_idx, current_pose_idx)
+            if depth_est is not None:
+                depth_map = depth_est.estimate(frame)
+                context.custom_data["depth_map"] = depth_map
+            if flow_est is not None:
+                flow = flow_est.estimate_from_previous(frame)
+                if flow is not None:
+                    context.custom_data["flow_field"] = flow
+            # Re-render ML layers with data
+            if layer >= 1 and current_pose_idx is not None:
+                frame = render_layers(frame, ml_layers, context)
+        else:
+            frame, _ = pipe.render_frame(frame, frame_idx, current_pose_idx)
 
         pipe.draw_frame_counter(frame, frame_idx)
 

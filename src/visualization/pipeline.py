@@ -80,6 +80,10 @@ class VizPipeline:
         if self.layer >= 2:
             self.layers.append(VerticalAxisLayer())
 
+    def add_ml_layers(self, ml_layers: list) -> None:
+        """Add ML-generated layers to the pipeline."""
+        self.layers.extend(ml_layers)
+
     def render_frame(
         self,
         frame: Frame,

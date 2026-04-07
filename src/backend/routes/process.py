@@ -52,6 +52,11 @@ async def process_video(req: ProcessRequest) -> EventSourceResponse:
                     export=req.export,
                     output_path=str(out_path),
                     progress_cb=progress_cb,
+                    depth=req.depth,
+                    optical_flow=req.optical_flow,
+                    segment=req.segment,
+                    foot_track=req.foot_track,
+                    matting=req.matting,
                 )
 
                 stats = result["stats"]
