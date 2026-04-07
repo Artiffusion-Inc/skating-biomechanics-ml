@@ -10,12 +10,12 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 import cv2
+import numpy as np
 
 from src.types import PersonClick
 from src.utils.video_writer import H264Writer
 
 if TYPE_CHECKING:
-    import numpy as np
     from numpy.typing import NDArray
 
 
@@ -165,6 +165,8 @@ def process_video_pipeline(  # noqa: PLR0913
     registry = None
     depth_est = None
     flow_est = None
+    seg_est = None
+    matting_est = None
     ml_layers: list = []
 
     any_ml = depth or optical_flow or segment or foot_track or matting
@@ -187,6 +189,25 @@ def process_video_pipeline(  # noqa: PLR0913
                 )
             except FileNotFoundError as e:
                 logger.warning("Optical flow model not found: %s", e)
+        if segment:
+            try:
+                registry.register(
+                    "segment_anything", vram_mb=200, path=_find_model("sam2_tiny.onnx")
+                )
+            except FileNotFoundError as e:
+                logger.warning("Segmentation model not found: %s", e)
+        if foot_track:
+            try:
+                registry.register("foot_tracker", vram_mb=30, path=_find_model("foot_tracker.onnx"))
+            except FileNotFoundError as e:
+                logger.warning("Foot tracker model not found: %s", e)
+        if matting:
+            try:
+                registry.register(
+                    "video_matting", vram_mb=40, path=_find_model("rvm_mobilenetv3.onnx")
+                )
+            except FileNotFoundError as e:
+                logger.warning("Video matting model not found: %s", e)
 
         # Load models that will be used
         if depth and registry.is_registered("depth_anything"):
@@ -207,6 +228,24 @@ def process_video_pipeline(  # noqa: PLR0913
                 ml_layers.append(OpticalFlowLayer(opacity=0.5))
             except Exception as e:
                 logger.warning("Failed to load optical flow model: %s", e)
+        if segment and registry.is_registered("segment_anything"):
+            from src.ml.segment_anything import SegmentAnything
+            from src.visualization.layers.segmentation_layer import SegmentationMaskLayer
+
+            try:
+                seg_est = SegmentAnything(registry)
+                ml_layers.append(SegmentationMaskLayer(opacity=0.3))
+            except Exception as e:
+                logger.warning("Failed to load segmentation model: %s", e)
+        if matting and registry.is_registered("video_matting"):
+            from src.ml.video_matting import VideoMatting
+            from src.visualization.layers.matting_layer import MattingLayer
+
+            try:
+                matting_est = VideoMatting(registry)
+                ml_layers.append(MattingLayer())
+            except Exception as e:
+                logger.warning("Failed to load video matting model: %s", e)
 
     if progress_cb:
         progress_cb(0.6, "Rendering...")
@@ -241,7 +280,12 @@ def process_video_pipeline(  # noqa: PLR0913
         current_pose_idx, pose_idx = pipe.find_pose_idx(frame_idx, pose_idx)
 
         # Per-frame ML inference
-        if depth_est is not None or flow_est is not None:
+        if (
+            depth_est is not None
+            or flow_est is not None
+            or seg_est is not None
+            or matting_est is not None
+        ):
             _, context = pipe.render_frame(frame, frame_idx, current_pose_idx)
             if depth_est is not None:
                 depth_map = depth_est.estimate(frame)
@@ -250,6 +294,16 @@ def process_video_pipeline(  # noqa: PLR0913
                 flow = flow_est.estimate_from_previous(frame)
                 if flow is not None:
                     context.custom_data["flow_field"] = flow
+            if seg_est is not None and current_pose_idx is not None:
+                # Use mid-hip (index 11 in H3.6M) as SAM2 point prompt
+                mid_hip = prepared.poses_px[current_pose_idx, 11, :2]
+                if not np.any(np.isnan(mid_hip)):
+                    mask = seg_est.segment(frame, point=(int(mid_hip[0]), int(mid_hip[1])))
+                    if mask is not None:
+                        context.custom_data["seg_mask"] = mask
+            if matting_est is not None:
+                alpha = matting_est.matting(frame)
+                context.custom_data["alpha_matte"] = alpha
             # Re-render ML layers with data
             if layer >= 1 and current_pose_idx is not None:
                 frame = render_layers(frame, ml_layers, context)

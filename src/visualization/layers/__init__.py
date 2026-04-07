@@ -20,6 +20,7 @@ from src.visualization.layers.depth_layer import DepthMapLayer
 from src.visualization.layers.hud_layer import HUDLayer
 from src.visualization.layers.joint_angle_layer import JointAngleLayer
 from src.visualization.layers.optical_flow_layer import OpticalFlowLayer
+from src.visualization.layers.segmentation_layer import SegmentationMaskLayer
 from src.visualization.layers.skeleton_layer import SkeletonLayer
 from src.visualization.layers.timer_layer import TimerLayer
 from src.visualization.layers.trail_layer import TrailLayer
@@ -35,6 +36,7 @@ __all__ = [
     "Layer",
     "LayerContext",
     "OpticalFlowLayer",
+    "SegmentationMaskLayer",
     "SkeletonLayer",
     "TimerLayer",
     "TrailLayer",
