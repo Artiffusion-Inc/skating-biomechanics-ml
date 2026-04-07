@@ -1,0 +1,17 @@
+services:
+  valkey:
+    image: docker.io/valkey/valkey:alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:${VALKEY_HOST_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    volumes:
+      - valkey-data:/data
+
+volumes:
+  valkey-data:
