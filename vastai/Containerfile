@@ -1,0 +1,94 @@
+# Vast.ai Serverless GPU worker image
+# Build: podman build -f vastai/Containerfile -t ghcr.io/xpos587/skating-ml-gpu:latest .
+
+# Stage 1: Install Python deps into venv
+FROM docker.io/nvidia/cuda:12.4.1-runtime-ubuntu22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common curl \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3.11-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN curl -LsSf https://astral.sh/uv/install.sh | sh
+ENV PATH="/root/.local/bin:$PATH"
+
+RUN python3.11 -m venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+
+# Install only runtime deps — no torch, no ultralytics, no dev tools
+# rtmlib pulls onnxruntime, opencv, numpy, etc.
+ENV PYTHONDONTWRITEBYTECODE=1
+
+# Core inference deps (onnxruntime-gpu pulls nvidia-* CUDA pip packages)
+RUN uv pip install --python /opt/venv/bin/python \
+    onnxruntime-gpu>=1.24.4 \
+    opencv-python-headless>=4.10.0 \
+    numpy>=2.0.0 \
+    scipy>=1.14.0 \
+    pillow>=12.1.1 \
+    av>=17.0.0
+
+# Server deps
+RUN uv pip install --python /opt/venv/bin/python \
+    fastapi>=0.135.2 \
+    "uvicorn[standard]>=0.42.0" \
+    python-multipart>=0.0.22 \
+    structlog>=25.5.0 \
+    pydantic-settings>=2.0.0 \
+    boto3>=1.42.80 \
+    httpx>=0.28.0
+
+# rtmlib with --no-deps to prevent torch/timm from being pulled in
+# rtmlib only needs: opencv, numpy, onnxruntime, scipy (already installed)
+RUN uv pip install --python /opt/venv/bin/python --no-deps \
+    rtmlib>=0.0.7
+
+# Strip bytecode and test files from venv to reduce layer size
+RUN find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \
+    find /opt/venv -type f -name "*.pyc" -delete 2>/dev/null; \
+    find /opt/venv -type f -name "*.pyo" -delete 2>/dev/null; \
+    find /opt/venv -type d -name "tests" -exec rm -rf {} + 2>/dev/null; \
+    find /opt/venv -type d -name "test" -exec rm -rf {} + 2>/dev/null; \
+    true
+
+# Stage 2: Runtime only
+FROM docker.io/nvidia/cuda:12.4.1-runtime-ubuntu22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common curl ffmpeg \
+    && add-apt-repository -y ppa:deadsnakes/ppa \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv \
+    && rm -rf /var/lib/apt/lists/* \
+    && ln -sf /usr/bin/python3.11 /usr/bin/python3
+
+WORKDIR /app
+
+# Copy venv from builder (no torch, no triton, no nvidia cuda libs)
+COPY --from=builder /opt/venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH" \
+    PROJECT_ROOT=/app \
+    VIRTUAL_ENV=/opt/venv
+
+# Source code
+COPY src/ src/
+
+# ONNX models (~500MB)
+COPY data/models/depth_anything_v2_small.onnx data/models/
+COPY data/models/neuflowv2_mixed.onnx data/models/
+COPY data/models/rvm_mobilenetv3.onnx data/models/
+COPY data/models/lama_fp32.onnx data/models/
+COPY data/models/sam2/ data/models/sam2/
+
+# GPU worker server
+COPY vastai/server.py vastai/server.py
+
+EXPOSE 8000
+
+CMD ["python", "-m", "uvicorn", "vastai.server:app", "--host", "0.0.0.0", "--port", "8000"]

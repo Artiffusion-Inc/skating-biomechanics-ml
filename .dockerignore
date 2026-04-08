@@ -1,0 +1,64 @@
+# VCS
+.git
+.gitignore
+
+# IDE
+.idea
+.vscode
+*.swp
+
+# Python
+.venv
+__pycache__
+*.pyc
+*.pyo
+.mypy_cache
+.ruff_cache
+.pytest_cache
+
+# Docker
+Dockerfile
+Containerfile
+docker-compose*
+
+# Data we don't need in the image
+data/raw/
+data/processed/
+data/references/
+data/datasets/
+data/uploads/
+data/models/*.pth.tr
+data/models/*.pt
+data/models/moganet_*
+data/models/onnx/
+data/models/.cache/
+
+# Frontend
+src/frontend/
+
+# Research/docs
+research/
+*.md
+!README.md
+!CLAUDE.md
+
+# Build artifacts
+*.egg-info
+dist/
+build/
+
+# Environment
+.env
+.envrc
+.env.*
+
+# Misc
+.mcp.json
+vastai/
+!vastai/server.py
+!vastai/Containerfile
+scripts/
+tests/
+Taskfile.yml
+coverage/
+htmlcov/

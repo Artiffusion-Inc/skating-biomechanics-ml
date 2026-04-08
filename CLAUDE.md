@@ -24,6 +24,7 @@ ML-based AI coach for figure skating. Analyzes video, compares attempts to profe
 | **Analysis** | CoM trajectory, physics engine (Dempster tables) |
 | **GPU** | CUDA via onnxruntime-gpu (7.1x speedup) |
 | **Testing** | pytest + pytest-cov (272+ tests) |
+| **Remote GPU** | Vast.ai Serverless + Cloudflare R2 (S3-compatible) |
 
 ## Architecture
 
@@ -78,6 +79,13 @@ src/
 │   ├── gap_filling.py                # GapFiller (linear interp + velocity extrapolation)
 │   ├── geometry.py                   # Angles, distances, foot angles
 │   └── smoothing.py                  # One-Euro Filter, PoseSmoother
+├── storage.py                        # S3-compatible upload/download (Cloudflare R2)
+├── vastai/
+│   ├── __init__.py                   # Package marker
+│   └── client.py                     # Vast.ai Serverless: route → process → download
+├── worker.py                         # arq worker (remote GPU dispatch + local fallback)
+├── config.py                         # pydantic-settings (Valkey, R2, Vast.ai)
+├── web_helpers.py                    # process_video_pipeline(), ModelRegistry
 └── references/
     ├── reference_builder.py          # Build reference from expert video
     └── reference_store.py            # Save/load .npz
@@ -87,7 +95,12 @@ scripts/
 ├── compare_models.py                 # Compare pose backends side-by-side
 ├── setup_cuda_compat.sh              # CUDA 12 compat for onnxruntime on CUDA 13.x
 ├── check_all.py                      # Quality checks
-└── download_models.py                # Download model weights
+├── download_models.py                # Download model weights
+└── test_vastai_endpoint.py           # Smoke test for Vast.ai Serverless endpoint
+
+vastai/
+├── Containerfile                     # Multi-stage GPU worker image (4.9GB, no torch)
+└── server.py                         # FastAPI inference server (runs on Vast.ai worker)
 
 data/
 ├── datasets/
@@ -155,6 +168,31 @@ System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-c
 - **CorrectiveLens**: 2D → MotionAGFormer 3D lift → kinematic constraints → anchor projection → blend.
 - **CUDA compat**: standalone CUDA 12 libs in `.venv/cuda-compat/` with patched RUNPATH.
 
+## Remote GPU Processing (Vast.ai Serverless)
+
+Worker dispatches to Vast.ai Serverless GPU when `VASTAI_API_KEY` is set, falls back to local GPU.
+
+```
+Frontend → FastAPI → Valkey queue → arq worker
+  → [VASTAI_API_KEY set?]
+    → YES: upload to R2 → Vast.ai route → GPU worker → download from R2
+    → NO:  local GPU (process_video_pipeline)
+```
+
+**Env vars** (see `.env.example`):
+- `VASTAI_API_KEY` — Vast.ai API key (enables remote dispatch)
+- `VASTAI_ENDPOINT_NAME` — endpoint name (default: `skating-ml-gpu`)
+- `CF_R2_ACCESS_KEY_ID`, `CF_R2_SECRET_ACCESS_KEY`, `CF_R2_BUCKET` — Cloudflare R2 credentials
+
+**Image**: `ghcr.io/xpos587/skating-ml-gpu:latest` — multi-stage, 4.9GB, no torch/timm/triton.
+Built with `task vastai-build`, pushed with `task vastai-push`.
+
+**Worker image details**:
+- Base: `nvidia/cuda:12.4.1-runtime-ubuntu22.04`
+- Only runtime deps: onnxruntime-gpu, opencv-headless, rtmlib (--no-deps), scipy, fastapi, boto3
+- ONNX models baked in (~500MB)
+- `rtmlib` installed with `--no-deps` to prevent torch from being pulled in
+
 ## Tracking Debugging Workflow
 
 When tracking quality degrades (skeleton jumps to wrong person), follow this data-driven analysis approach. **Do NOT guess — extract data and find the exact divergence frame.**
@@ -211,7 +249,7 @@ Current working thresholds (tested on VOLODYA.MOV):
 
 - **Format**: `<type>(<scope>): <description>`
 - **Types**: `feat`, `fix`, `refactor`, `chore`, `docs`, `test`, `ci`
-- **Scopes**: `pose`, `viz`, `tracking`, `analysis`, `pipeline`, `cli`, `models`, `repo`, `frontend`, `backend`, `dev`, `ci`
+- **Scopes**: `pose`, `viz`, `tracking`, `analysis`, `pipeline`, `cli`, `models`, `repo`, `frontend`, `backend`, `dev`, `ci`, `vastai`, `infra`
 
 **Examples**:
 ```

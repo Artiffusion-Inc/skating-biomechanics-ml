@@ -187,44 +187,44 @@ def process_video_pipeline(  # noqa: PLR0913
         if depth:
             try:
                 registry.register(
-                    "depth_anything", vram_mb=200, path=_find_model("depth_anything_v2_small.onnx")
+                    "depth_anything", vram_mb=115, path=_find_model("depth_anything_v2_small.onnx")
                 )
             except FileNotFoundError as e:
                 logger.warning("Depth model not found: %s", e)
         if optical_flow:
             try:
                 registry.register(
-                    "optical_flow", vram_mb=80, path=_find_model("neuflowv2_mixed.onnx")
+                    "optical_flow", vram_mb=50, path=_find_model("neuflowv2_mixed.onnx")
                 )
             except FileNotFoundError as e:
                 logger.warning("Optical flow model not found: %s", e)
         if segment:
             try:
                 registry.register(
-                    "segment_anything_ve", vram_mb=134, path=_find_model("sam2/vision_encoder.onnx")
+                    "segment_anything_ve", vram_mb=155, path=_find_model("sam2/vision_encoder.onnx")
                 )
                 registry.register(
                     "segment_anything_pd",
-                    vram_mb=21,
+                    vram_mb=25,
                     path=_find_model("sam2/prompt_encoder_mask_decoder.onnx"),
                 )
             except FileNotFoundError as e:
                 logger.warning("Segmentation model not found: %s", e)
         if foot_track:
             try:
-                registry.register("foot_tracker", vram_mb=30, path=_find_model("foot_tracker.onnx"))
+                registry.register("foot_tracker", vram_mb=15, path=_find_model("foot_tracker.onnx"))
             except FileNotFoundError as e:
                 logger.warning("Foot tracker model not found: %s", e)
         if matting:
             try:
                 registry.register(
-                    "video_matting", vram_mb=40, path=_find_model("rvm_mobilenetv3.onnx")
+                    "video_matting", vram_mb=20, path=_find_model("rvm_mobilenetv3.onnx")
                 )
             except FileNotFoundError as e:
                 logger.warning("Video matting model not found: %s", e)
         if inpainting:
             try:
-                registry.register("lama", vram_mb=300, path=_find_model("lama_fp32.onnx"))
+                registry.register("lama", vram_mb=240, path=_find_model("lama_fp32.onnx"))
             except FileNotFoundError as e:
                 logger.warning("Inpainting model not found: %s", e)
 

@@ -121,25 +121,63 @@ async def process_video_task(
             from src.web_helpers import PipelineCancelled, process_video_pipeline
 
             click = PersonClick(x=person_click["x"], y=person_click["y"])
-            result = await asyncio.to_thread(
-                process_video_pipeline,
-                video_path=video_path,
-                person_click=click,
-                frame_skip=frame_skip,
-                layer=layer,
-                tracking=tracking,
-                blade_3d=False,
-                export=export,
-                output_path=output_path,
-                progress_cb=progress_cb,
-                cancel_event=cancel_event,
-                depth=ml_flags.depth,
-                optical_flow=ml_flags.optical_flow,
-                segment=ml_flags.segment,
-                foot_track=ml_flags.foot_track,
-                matting=ml_flags.matting,
-                inpainting=ml_flags.inpainting,
-            )
+
+            # Try remote GPU via Vast.ai, fall back to local
+            result = None
+            if settings.vastai_api_key:
+                try:
+                    from src.vastai.client import process_video_remote
+
+                    logger.info("Attempting Vast.ai remote processing for task %s", task_id)
+                    vast_result = await asyncio.to_thread(
+                        process_video_remote,
+                        video_path=video_path,
+                        person_click={"x": click.x, "y": click.y},
+                        frame_skip=frame_skip,
+                        layer=layer,
+                        tracking=tracking,
+                        export=export,
+                        ml_flags={
+                            "depth": ml_flags.depth,
+                            "optical_flow": ml_flags.optical_flow,
+                            "segment": ml_flags.segment,
+                            "foot_track": ml_flags.foot_track,
+                            "matting": ml_flags.matting,
+                            "inpainting": ml_flags.inpainting,
+                        },
+                        output_path=output_path,
+                    )
+                    result = {
+                        "video_path": vast_result.video_path,
+                        "poses_path": vast_result.poses_path,
+                        "csv_path": vast_result.csv_path,
+                        "stats": vast_result.stats,
+                    }
+                    logger.info("Vast.ai processing complete for task %s", task_id)
+                except Exception as e:
+                    logger.warning("Vast.ai failed (%s), falling back to local GPU", e)
+
+            if result is None:
+                # Local GPU fallback
+                result = await asyncio.to_thread(
+                    process_video_pipeline,
+                    video_path=video_path,
+                    person_click=click,
+                    frame_skip=frame_skip,
+                    layer=layer,
+                    tracking=tracking,
+                    blade_3d=False,
+                    export=export,
+                    output_path=output_path,
+                    progress_cb=progress_cb,
+                    cancel_event=cancel_event,
+                    depth=ml_flags.depth,
+                    optical_flow=ml_flags.optical_flow,
+                    segment=ml_flags.segment,
+                    foot_track=ml_flags.foot_track,
+                    matting=ml_flags.matting,
+                    inpainting=ml_flags.inpainting,
+                )
         finally:
             poll_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):

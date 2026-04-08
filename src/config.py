@@ -21,6 +21,16 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     task_ttl_seconds: int = 24 * 60 * 60
 
+    # Cloudflare R2 settings
+    cf_r2_access_key_id: str = ""
+    cf_r2_secret_access_key: str = ""
+    cf_r2_bucket: str = "skating-ml-pipeline"
+    cf_r2_endpoint_url: str = ""
+
+    # Vast.ai Serverless settings
+    vastai_api_key: str = ""
+    vastai_endpoint_name: str = "skating-ml-gpu"
+
     def build_valkey_url(self) -> str:
         auth = f":{self.valkey_password}@" if self.valkey_password else ""
         return f"redis://{auth}{self.valkey_host}:{self.valkey_port}/{self.valkey_db}"
