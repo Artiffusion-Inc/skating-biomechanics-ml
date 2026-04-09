@@ -25,12 +25,6 @@ export interface ProcessRequest {
   layer: number
   tracking: string
   export: boolean
-  depth: boolean
-  optical_flow: boolean
-  segment: boolean
-  foot_track: boolean
-  matting: boolean
-  inpainting: boolean
 }
 
 export interface ProcessStats {

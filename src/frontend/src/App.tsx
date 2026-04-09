@@ -5,8 +5,8 @@ import UploadPage from "./pages/UploadPage"
 function App() {
   return (
     <div className="min-h-screen bg-background text-foreground">
-      <header className="border-border border-b px-6 py-3">
-        <h1 className="font-semibold text-lg">AI Тренер — Фигурное катание</h1>
+      <header className="border-b border-border px-6 py-3">
+        <h1 className="text-lg font-semibold">AI Тренер — Фигурное катание</h1>
       </header>
       <main>
         <Routes>

@@ -1,13 +1,13 @@
-import { AlertCircle, ArrowLeft, CheckCircle, Download, Loader2, X } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { AlertCircle, ArrowLeft, CheckCircle, Download, Loader2 } from "lucide-react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useNavigate, useSearchParams } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { cancelQueuedProcess, enqueueProcess, pollTaskStatus } from "@/lib/api"
+import { processVideo } from "@/lib/api"
 import type { PersonClick, ProcessResponse } from "@/types"
 
-type Phase = "processing" | "done" | "error" | "cancelled"
+type Phase = "processing" | "done" | "error"
 
 export default function AnalyzePage() {
   const [params] = useSearchParams()
@@ -15,14 +15,9 @@ export default function AnalyzePage() {
 
   const [phase, setPhase] = useState<Phase>("processing")
   const [progress, setProgress] = useState(0)
-  const [message, setMessage] = useState("Подготовка конвейера...")
+  const [message, setMessage] = useState("Начинаем...")
   const [result, setResult] = useState<ProcessResponse | null>(null)
   const [error, setError] = useState("")
-
-  // Guard: prevent double-call in StrictMode
-  const startedRef = useRef(false)
-  const taskIdRef = useRef<string | null>(null)
-  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
   const videoPath = params.get("video_path") || ""
   const clickParts = (params.get("person_click") || "0,0").split(",")
@@ -37,117 +32,40 @@ export default function AnalyzePage() {
   const layer = Number(params.get("layer") || 3)
   const tracking = params.get("tracking") || "auto"
   const doExport = params.get("export") !== "false"
-  const enableDepth = params.get("depth") !== "false"
-  const enableOpticalFlow = params.get("optical_flow") !== "false"
-  const enableSegment = params.get("segment") !== "false"
-  const enableFootTrack = params.get("foot_track") !== "false"
-  const enableMatting = params.get("matting") !== "false"
-  const enableInpainting = params.get("inpainting") !== "false"
 
-  // Stable process request — doesn't change between renders
-  const processRequest = useMemo(
-    () => ({
-      video_path: videoPath,
-      person_click: personClick,
-      frame_skip: frameSkip,
-      layer: layer,
-      tracking: tracking,
-      export: doExport,
-      depth: enableDepth,
-      optical_flow: enableOpticalFlow,
-      segment: enableSegment,
-      foot_track: enableFootTrack,
-      matting: enableMatting,
-      inpainting: enableInpainting,
-    }),
-    [
-      videoPath,
-      personClick,
-      frameSkip,
-      layer,
-      tracking,
-      doExport,
-      enableDepth,
-      enableOpticalFlow,
-      enableSegment,
-      enableFootTrack,
-      enableMatting,
-      enableInpainting,
-    ],
-  )
-
-  const handleCancel = useCallback(async () => {
-    try {
-      if (taskIdRef.current) {
-        await cancelQueuedProcess(taskIdRef.current)
-      }
-    } catch {
-      // ignore
-    }
-    setPhase("cancelled")
-    startedRef.current = false
-  }, [])
-
-  // Only the request object matters — callback identity doesn't affect behavior
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   const startProcessing = useCallback(() => {
-    if (startedRef.current) return
-    startedRef.current = true
-
     setPhase("processing")
     setProgress(0)
-    setMessage("Queuing analysis...")
+    setMessage("Подготовка...")
 
-    enqueueProcess(processRequest)
-      .then(res => {
-        taskIdRef.current = res.task_id
-        setMessage("Waiting for worker...")
-        const poll = setInterval(async () => {
-          try {
-            const status = await pollTaskStatus(res.task_id)
-            setProgress(Math.round(status.progress * 100))
-            setMessage(status.message)
-
-            if (status.status === "completed" && status.result) {
-              clearInterval(poll)
-              pollIntervalRef.current = null
-              setResult(status.result)
-              setPhase("done")
-            } else if (status.status === "failed") {
-              clearInterval(poll)
-              pollIntervalRef.current = null
-              setError(status.error || "Unknown error")
-              setPhase("error")
-              startedRef.current = false
-            } else if (status.status === "cancelled") {
-              clearInterval(poll)
-              pollIntervalRef.current = null
-              setPhase("cancelled")
-              startedRef.current = false
-            }
-          } catch {
-            // Network error — keep polling
-          }
-        }, 1000)
-        pollIntervalRef.current = poll
-      })
-      .catch(err => {
-        setError(err.message)
-        setPhase("error")
-        startedRef.current = false
-      })
-  }, [processRequest])
+    processVideo(
+      {
+        video_path: videoPath,
+        person_click: personClick,
+        frame_skip: frameSkip,
+        layer: layer,
+        tracking: tracking,
+        export: doExport,
+      },
+      {
+        onProgress(p, msg) {
+          setProgress(Math.round(p * 100))
+          setMessage(msg)
+        },
+        onResult(r) {
+          setResult(r as ProcessResponse)
+          setPhase("done")
+        },
+        onError(err) {
+          setError(err)
+          setPhase("error")
+        },
+      },
+    )
+  }, [videoPath, personClick, frameSkip, layer, tracking, doExport])
 
   useEffect(() => {
     if (videoPath) startProcessing()
-
-    // Cleanup: clear polling interval on unmount
-    return () => {
-      if (pollIntervalRef.current) {
-        clearInterval(pollIntervalRef.current)
-        pollIntervalRef.current = null
-      }
-    }
   }, [videoPath, startProcessing])
 
   const videoUrl = result ? `/api/outputs/${result.video_path}` : ""
@@ -165,44 +83,11 @@ export default function AnalyzePage() {
       {phase === "processing" && (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <h2 className="font-medium text-lg">Анализ видео</h2>
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <h2 className="text-lg font-medium">Анализ видео</h2>
             <Progress value={progress} className="w-full max-w-md" />
-            <p className="text-muted-foreground text-sm">{message}</p>
-            <div className="flex items-center gap-1.5">
-              <div
-                className={`h-2 w-2 rounded-full transition-colors ${progress > 0 ? "bg-primary" : "bg-muted"}`}
-              />
-              <div
-                className={`h-2 w-2 rounded-full transition-colors ${progress > 25 ? "bg-primary" : "bg-muted"}`}
-              />
-              <div
-                className={`h-2 w-2 rounded-full transition-colors ${progress > 50 ? "bg-primary" : "bg-muted"}`}
-              />
-              <div
-                className={`h-2 w-2 rounded-full transition-colors ${progress > 75 ? "bg-primary" : "bg-muted"}`}
-              />
-            </div>
-            <Button variant="outline" size="sm" onClick={handleCancel} className="gap-1">
-              <X className="h-4 w-4" />
-              Отменить
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Cancelled */}
-      {phase === "cancelled" && (
-        <Card>
-          <CardContent className="flex flex-col items-center gap-4 p-8">
-            <AlertCircle className="h-8 w-8 text-muted-foreground" />
-            <h2 className="font-medium text-lg">Обработка отменена</h2>
-            <div className="flex gap-2">
-              <Button onClick={startProcessing}>Повторить</Button>
-              <Button variant="outline" onClick={() => navigate("/")}>
-                Назад
-              </Button>
-            </div>
+            <p className="text-sm text-muted-foreground">{message}</p>
+            <p className="text-xs text-muted-foreground">{progress}%</p>
           </CardContent>
         </Card>
       )}
@@ -216,7 +101,7 @@ export default function AnalyzePage() {
                 <CheckCircle className="h-4 w-4 text-green-500" />
                 <h2 className="font-medium">{result.status}</h2>
               </div>
-              <div className="grid grid-cols-2 gap-2 text-muted-foreground text-sm sm:grid-cols-4">
+              <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground sm:grid-cols-4">
                 <span>Кадров: {result.stats.total_frames}</span>
                 <span>Валидных: {result.stats.valid_frames}</span>
                 <span>FPS: {result.stats.fps}</span>
@@ -263,7 +148,7 @@ export default function AnalyzePage() {
       {phase === "error" && (
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8">
-            <AlertCircle className="h-8 h-8 text-destructive" />
+            <AlertCircle className="h-8 w-8 text-destructive" />
             <p className="text-destructive">{error}</p>
             <div className="flex gap-2">
               <Button onClick={startProcessing}>Повторить</Button>

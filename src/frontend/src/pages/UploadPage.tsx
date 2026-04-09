@@ -1,10 +1,9 @@
 import { AlertCircle, CheckCircle, Loader2, Upload } from "lucide-react"
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Progress } from "@/components/ui/progress"
 import {
   Select,
   SelectContent,
@@ -13,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Slider } from "@/components/ui/slider"
-import { getModels, type ModelStatus } from "@/lib/api"
+import { detectPersons } from "@/lib/api"
 import type { DetectResponse, PersonClick } from "@/types"
 
 type Status = "idle" | "uploading" | "detecting" | "ready" | "error"
@@ -35,23 +34,6 @@ export default function UploadPage() {
   const [layer, setLayer] = useState(3)
   const [tracking, setTracking] = useState("auto")
   const [doExport, setDoExport] = useState(true)
-  const [enableDepth, setEnableDepth] = useState(false)
-  const [enableOpticalFlow, setEnableOpticalFlow] = useState(false)
-  const [enableSegment, setEnableSegment] = useState(false)
-  const [enableFootTrack, setEnableFootTrack] = useState(false)
-  const [enableMatting, setEnableMatting] = useState(false)
-  const [enableInpainting, setEnableInpainting] = useState(false)
-  const [modelStatus, setModelStatus] = useState<Record<string, ModelStatus>>({})
-
-  useEffect(() => {
-    getModels()
-      .then(models => {
-        const map: Record<string, ModelStatus> = {}
-        for (const m of models) map[m.id] = m
-        setModelStatus(map)
-      })
-      .catch(() => {})
-  }, [])
 
   // Derived: selected person's bbox as CSS percentage
   const selectedPersonData =
@@ -59,73 +41,31 @@ export default function UploadPage() {
       ? detectResult.persons.find(p => p.track_id === selectedPerson)
       : undefined
 
-  const [uploadProgress, setUploadProgress] = useState(0)
-  const [detectStage, setDetectStage] = useState("")
-
   const handleFile = useCallback(
     async (f: File) => {
       setFile(f)
       setStatus("uploading")
-      setUploadProgress(0)
-      setDetectStage("")
       setError("")
       setDetectResult(null)
       setSelectedPerson(null)
       setClickCoord(null)
 
-      setDetectStage("Загрузка видео на сервер...")
-
-      // Track upload via XMLHttpRequest for progress
-      const formData = new FormData()
-      formData.append("video", f)
-      const trackingParam = encodeURIComponent(tracking)
-
-      try {
-        const uploadRes = await new Promise<{ data: DetectResponse; error?: string }>(
-          (resolve, reject) => {
-            const xhr = new XMLHttpRequest()
-            xhr.open("POST", `/api/detect?tracking=${trackingParam}`)
-
-            xhr.upload.addEventListener("progress", e => {
-              if (e.lengthComputable) {
-                setUploadProgress(Math.round((e.loaded / e.total) * 100))
-              }
-            })
-
-            xhr.addEventListener("load", () => {
-              if (xhr.status >= 200 && xhr.status < 300) {
-                resolve({ data: JSON.parse(xhr.responseText) })
-              } else {
-                try {
-                  const detail = JSON.parse(xhr.responseText)
-                  reject(new Error(detail.detail ?? `HTTP ${xhr.status}`))
-                } catch {
-                  reject(new Error(`HTTP ${xhr.status}: ${xhr.statusText}`))
-                }
-              }
-            })
-
-            xhr.addEventListener("error", () => reject(new Error("Сетевая ошибка")))
-            xhr.send(formData)
-          },
-        )
-
-        setDetectStage("Анализ видео и обнаружение фигуристов...")
-        setUploadProgress(-1) // indeterminate
-
-        const resp = uploadRes.data
-        setDetectResult(resp)
-
-        if (resp.auto_click) {
-          setClickCoord(resp.auto_click)
-          setSelectedPerson(resp.persons[0]?.track_id ?? 0)
-        }
-
-        setStatus("ready")
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Неизвестная ошибка")
+      const { data, error: err } = await detectPersons(f, tracking)
+      if (err) {
+        setError(err)
         setStatus("error")
+        return
       }
+
+      const resp = data as DetectResponse
+      setDetectResult(resp)
+
+      if (resp.auto_click) {
+        setClickCoord(resp.auto_click)
+        setSelectedPerson(resp.persons[0]?.track_id ?? 0)
+      }
+
+      setStatus("ready")
     },
     [tracking],
   )
@@ -198,12 +138,6 @@ export default function UploadPage() {
       layer: String(layer),
       tracking,
       export: String(doExport),
-      depth: String(enableDepth),
-      optical_flow: String(enableOpticalFlow),
-      segment: String(enableSegment || enableInpainting),
-      foot_track: String(enableFootTrack),
-      matting: String(enableMatting),
-      inpainting: String(enableInpainting),
     })
     navigate(`/analyze?${params.toString()}`)
   }
@@ -235,11 +169,11 @@ export default function UploadPage() {
           onKeyDown={e => {
             if (e.key === "Enter" || e.key === " ") fileRef.current?.click()
           }}
-          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-border border-dashed p-12 transition-colors hover:border-primary"
+          className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 transition-colors hover:border-primary"
         >
           <Upload className="mb-4 h-10 w-10 text-muted-foreground" />
-          <p className="font-medium text-lg">Перетащите видео сюда или нажмите для выбора</p>
-          <p className="mt-1 text-muted-foreground text-sm">MP4, MOV, WebM</p>
+          <p className="text-lg font-medium">Перетащите видео сюда или нажмите для выбора</p>
+          <p className="mt-1 text-sm text-muted-foreground">MP4, MOV, WebM</p>
           <input
             ref={fileRef}
             type="file"
@@ -255,16 +189,9 @@ export default function UploadPage() {
 
       {/* Loading */}
       {isAnalyzing && (
-        <div className="flex flex-col items-center justify-center gap-5 py-20">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <div className="flex flex-col items-center gap-1">
-            <p className="font-medium text-sm">{detectStage || "Обработка..."}</p>
-            {uploadProgress >= 0 && (
-              <p className="text-muted-foreground text-xs">{uploadProgress}%</p>
-            )}
-          </div>
-          <Progress value={uploadProgress >= 0 ? uploadProgress : undefined} className="w-64" />
-          {file && <p className="text-muted-foreground text-xs">{file.name}</p>}
+        <div className="flex flex-col items-center justify-center gap-4 py-20">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <p className="text-muted-foreground">Обнаружение людей...</p>
         </div>
       )}
 
@@ -311,12 +238,12 @@ export default function UploadPage() {
                 />
                 {bboxStyle && (
                   <div
-                    className="pointer-events-none absolute rounded-sm border-2 border-green-500"
+                    className="pointer-events-none absolute border-2 border-green-500 rounded-sm"
                     style={bboxStyle}
                   />
                 )}
               </div>
-              <p className="mt-2 text-muted-foreground text-xs">
+              <p className="mt-2 text-xs text-muted-foreground">
                 Нажмите на фигуриста на превью для выбора
               </p>
             </CardContent>
@@ -328,7 +255,7 @@ export default function UploadPage() {
             {detectResult.persons.length > 1 && (
               <Card>
                 <CardContent className="p-4">
-                  <h3 className="mb-2 font-medium text-sm">Фигуристы</h3>
+                  <h3 className="mb-2 text-sm font-medium">Фигуристы</h3>
                   <div className="flex flex-col gap-1">
                     {detectResult.persons.map(p => (
                       <button
@@ -352,10 +279,10 @@ export default function UploadPage() {
             {/* Settings */}
             <Card>
               <CardContent className="space-y-4 p-4">
-                <h3 className="font-medium text-sm">Настройки</h3>
+                <h3 className="text-sm font-medium">Настройки</h3>
 
                 <div>
-                  <span className="mb-1 block text-muted-foreground text-xs">
+                  <span className="mb-1 block text-xs text-muted-foreground">
                     Frame skip: {frameSkip}
                   </span>
                   <Slider
@@ -368,7 +295,7 @@ export default function UploadPage() {
                 </div>
 
                 <div>
-                  <span className="mb-1 block text-muted-foreground text-xs">
+                  <span className="mb-1 block text-xs text-muted-foreground">
                     HUD Layer: {layer}
                   </span>
                   <Slider
@@ -381,7 +308,7 @@ export default function UploadPage() {
                 </div>
 
                 <div>
-                  <span className="mb-1 block text-muted-foreground text-xs">Трекинг</span>
+                  <span className="mb-1 block text-xs text-muted-foreground">Трекинг</span>
                   <Select value={tracking} onValueChange={setTracking}>
                     <SelectTrigger>
                       <SelectValue />
@@ -401,111 +328,6 @@ export default function UploadPage() {
                   />
                   <label htmlFor="export" className="text-sm">
                     Экспорт поз + CSV
-                  </label>
-                </div>
-
-                <div
-                  className={`flex items-center gap-2 ${!modelStatus.depth?.available ? "opacity-50" : ""}`}
-                >
-                  <Checkbox
-                    id="depth"
-                    checked={enableDepth}
-                    onCheckedChange={v => setEnableDepth(v === true)}
-                    disabled={!modelStatus.depth?.available}
-                  />
-                  <label htmlFor="depth" className="text-sm">
-                    Глубина (Depth)
-                    {!modelStatus.depth?.available && (
-                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
-                    )}
-                  </label>
-                </div>
-
-                <div
-                  className={`flex items-center gap-2 ${!modelStatus.optical_flow?.available ? "opacity-50" : ""}`}
-                >
-                  <Checkbox
-                    id="optical-flow"
-                    checked={enableOpticalFlow}
-                    onCheckedChange={v => setEnableOpticalFlow(v === true)}
-                    disabled={!modelStatus.optical_flow?.available}
-                  />
-                  <label htmlFor="optical-flow" className="text-sm">
-                    Оптический поток
-                    {!modelStatus.optical_flow?.available && (
-                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
-                    )}
-                  </label>
-                </div>
-
-                <div
-                  className={`flex items-center gap-2 ${!modelStatus.segment?.available ? "opacity-50" : ""}`}
-                >
-                  <Checkbox
-                    id="segment"
-                    checked={enableSegment}
-                    onCheckedChange={v => setEnableSegment(v === true)}
-                    disabled={!modelStatus.segment?.available}
-                  />
-                  <label htmlFor="segment" className="text-sm">
-                    Сегментация (SAM2)
-                    {!modelStatus.segment?.available && (
-                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
-                    )}
-                  </label>
-                </div>
-
-                <div
-                  className={`flex items-center gap-2 ${!modelStatus.foot_track?.available ? "opacity-50" : ""}`}
-                >
-                  <Checkbox
-                    id="foot-track"
-                    checked={enableFootTrack}
-                    onCheckedChange={v => setEnableFootTrack(v === true)}
-                    disabled={!modelStatus.foot_track?.available}
-                  />
-                  <label htmlFor="foot-track" className="text-sm">
-                    Трекинг стоп
-                    {!modelStatus.foot_track?.available && (
-                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
-                    )}
-                  </label>
-                </div>
-
-                <div
-                  className={`flex items-center gap-2 ${!modelStatus.matting?.available ? "opacity-50" : ""}`}
-                >
-                  <Checkbox
-                    id="matting"
-                    checked={enableMatting}
-                    onCheckedChange={v => setEnableMatting(v === true)}
-                    disabled={!modelStatus.matting?.available}
-                  />
-                  <label htmlFor="matting" className="text-sm">
-                    Удаление фона
-                    {!modelStatus.matting?.available && (
-                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
-                    )}
-                  </label>
-                </div>
-
-                <div
-                  className={`flex items-center gap-2 ${!modelStatus.inpainting?.available ? "opacity-50" : ""}`}
-                >
-                  <Checkbox
-                    id="inpainting"
-                    checked={enableInpainting}
-                    onCheckedChange={v => {
-                      setEnableInpainting(v === true)
-                      if (v === true) setEnableSegment(true)
-                    }}
-                    disabled={!modelStatus.inpainting?.available}
-                  />
-                  <label htmlFor="inpainting" className="text-sm">
-                    Инпейтинг фона (LAMA)
-                    {!modelStatus.inpainting?.available && (
-                      <span className="ml-1 text-muted-foreground text-xs">(нет модели)</span>
-                    )}
                   </label>
                 </div>
               </CardContent>
@@ -530,7 +352,7 @@ export default function UploadPage() {
             </div>
 
             {/* File info */}
-            {file && <p className="text-muted-foreground text-xs">{file.name}</p>}
+            {file && <p className="text-xs text-muted-foreground">{file.name}</p>}
           </div>
         </div>
       )}
