@@ -40,6 +40,12 @@ class ProcessRequest(BaseModel):
     layer: int = 3
     tracking: str = "auto"
     export: bool = True
+    depth: bool = False
+    optical_flow: bool = False
+    segment: bool = False
+    foot_track: bool = False
+    matting: bool = False
+    inpainting: bool = False
 
 
 class ProcessStats(BaseModel):
@@ -59,3 +65,21 @@ class ProcessResponse(BaseModel):
     csv_path: str | None
     stats: ProcessStats
     status: str
+
+
+class QueueProcessResponse(BaseModel):
+    """Response for POST /api/process/queue."""
+
+    task_id: str
+    status: str = "pending"
+
+
+class TaskStatusResponse(BaseModel):
+    """Response for GET /api/process/{task_id}/status."""
+
+    task_id: str
+    status: str
+    progress: float
+    message: str
+    result: ProcessResponse | None = None
+    error: str | None = None

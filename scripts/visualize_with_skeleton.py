@@ -56,7 +56,7 @@ def main() -> int:
     parser.add_argument(
         "--model-3d",
         type=Path,
-        help="Path to 3D pose model (motionagformer-s-ap3d.pth.tr)",
+        help="Path to 3D pose model (motionagformer-s-ap3d.onnx)",
     )
     parser.add_argument(
         "--blade-3d",
@@ -143,6 +143,16 @@ def main() -> int:
         choices=["auto", "sports2d", "deepsort"],
         default="auto",
         help="Tracking mode: auto (rtmlib built-in), sports2d (rtmlib Sports2D), deepsort (external DeepSORT)",
+    )
+    parser.add_argument(
+        "--depth",
+        action="store_true",
+        help="Enable depth estimation (Depth Anything V2)",
+    )
+    parser.add_argument(
+        "--optical-flow",
+        action="store_true",
+        help="Enable optical flow (NeuFlowV2)",
     )
     parser.add_argument(
         "--no-render",

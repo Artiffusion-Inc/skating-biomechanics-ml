@@ -63,6 +63,7 @@ data/dataset/
 *.pt
 *.pth
 *.onnx
+*.onnx_data
 *.weights
 *.pkl
 
@@ -76,6 +77,10 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Environment variables
+.env
+.envrc
 
 # Output files
 out*.mp4

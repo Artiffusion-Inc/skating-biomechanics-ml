@@ -90,3 +90,18 @@ tasks:
   default:
     desc: Run all CI checks
     cmd: task ci
+
+  # Vast.ai Serverless tasks
+  vastai-build:
+    desc: Build GPU worker image for Vast.ai Serverless
+    cmd: podman build -f vastai/Containerfile -t ghcr.io/xpos587/skating-ml-gpu:latest .
+
+  vastai-push:
+    desc: Push GPU worker image to ghcr.io
+    cmd: podman push ghcr.io/xpos587/skating-ml-gpu:latest
+
+  vastai-deploy:
+    desc: Build and push GPU worker image
+    cmds:
+      - task: vastai-build
+      - task: vastai-push
