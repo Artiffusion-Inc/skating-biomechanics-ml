@@ -1,4 +1,4 @@
-import { Film, Framer, Grid3x3, Zap } from "lucide-react"
+import { Film, Frame, Grid3x3, Zap } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import type { ProcessStats } from "@/types"
 
@@ -28,7 +28,7 @@ const statItems = [
   {
     key: "resolution",
     label: "Разрешение",
-    icon: Framer,
+    icon: Frame,
     getValue: (s: ProcessStats) => s.resolution,
   },
 ] as const
