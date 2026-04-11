@@ -21,7 +21,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-04T05:24:41.815649005Z"
+exclude-newer = "2026-04-04T05:31:24.192249619Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -3560,6 +3560,7 @@ dev = [
     { name = "aiosqlite" },
     { name = "bandit" },
     { name = "basedpyright" },
+    { name = "httpx" },
     { name = "jupyter" },
     { name = "onnxscript" },
     { name = "pytest" },
@@ -3608,6 +3609,7 @@ dev = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "bandit", specifier = ">=1.9.4" },
     { name = "basedpyright", specifier = ">=1.37.0" },
+    { name = "httpx", specifier = ">=0.28.1" },
     { name = "jupyter", specifier = ">=1.0.0" },
     { name = "onnxscript", specifier = ">=0.6.2" },
     { name = "pytest", specifier = ">=8.0.0" },
