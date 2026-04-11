@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -89,6 +90,31 @@ class PersonClick(BaseModel):
 
 
 class DetectResponse(BaseModel):
+    persons: list[PersonInfo]
+    preview_image: str
+    video_key: str
+    auto_click: PersonClick | None = None
+    status: str
+
+
+@dataclass
+class MLModelFlags:
+    """ML model feature flags for video processing."""
+    depth: bool = False
+    optical_flow: bool = False
+    segment: bool = False
+    foot_track: bool = False
+    matting: bool = False
+    inpainting: bool = False
+
+
+class DetectQueueResponse(BaseModel):
+    task_id: str
+    video_key: str
+    status: str = "pending"
+
+
+class DetectResultResponse(BaseModel):
     persons: list[PersonInfo]
     preview_image: str
     video_key: str
