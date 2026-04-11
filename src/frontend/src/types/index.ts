@@ -13,13 +13,13 @@ export interface PersonClick {
 export interface DetectResponse {
   persons: PersonInfo[]
   preview_image: string // base64 PNG
-  video_path: string
+  video_key: string
   auto_click: PersonClick | null
   status: string
 }
 
 export interface ProcessRequest {
-  video_path: string
+  video_key: string
   person_click: PersonClick
   frame_skip: number
   layer: number

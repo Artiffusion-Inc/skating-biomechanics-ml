@@ -64,12 +64,6 @@ export async function pollTaskStatus(taskId: string): Promise<TaskStatusResponse
   return apiFetch(`/process/${taskId}/status`, TaskStatusSchema)
 }
 
-export async function cancelProcessing(): Promise<void> {
-  await apiFetch("/process/cancel", z.object({ status: z.literal("cancelled") }), {
-    method: "POST",
-  })
-}
-
 export async function cancelQueuedProcess(taskId: string): Promise<void> {
   await apiFetch(
     `/process/${taskId}/cancel`,
@@ -96,67 +90,4 @@ export async function detectPersons(
   })
   if (!res.ok) return { data: null, error: await res.text() }
   return { data: DetectResponseSchema.parse(await res.json()), error: undefined }
-}
-
-// ---------------------------------------------------------------------------
-// Process (SSE streaming — custom reader)
-// ---------------------------------------------------------------------------
-
-export interface SSECallbacks {
-  onProgress?: (progress: number, message: string) => void
-  onResult?: (result: unknown) => void
-  onError?: (error: string) => void
-}
-
-export async function processVideo(
-  request: Parameters<typeof ProcessRequestSchema.parse>[0],
-  callbacks: SSECallbacks,
-): Promise<void> {
-  const validated = ProcessRequestSchema.parse(request)
-  const res = await fetch(`${API_BASE}/process`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(validated),
-  })
-
-  if (!res.ok) {
-    callbacks.onError?.(await res.text())
-    return
-  }
-
-  const reader = res.body?.getReader()
-  if (!reader) {
-    callbacks.onError?.("No response stream")
-    return
-  }
-
-  const decoder = new TextDecoder()
-  let buffer = ""
-
-  for (;;) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-
-    const lines = buffer.split("\n")
-    buffer = lines.pop() || ""
-
-    let event = ""
-    for (const line of lines) {
-      if (line.startsWith("event:")) {
-        event = line.slice(6).trim()
-      } else if (line.startsWith("data:")) {
-        const raw = line.slice(5).trim()
-        if (!raw) continue
-        try {
-          const parsed = JSON.parse(raw)
-          if (event === "progress") callbacks.onProgress?.(parsed.progress, parsed.message)
-          else if (event === "result") callbacks.onResult?.(parsed)
-          else if (event === "error") callbacks.onError?.(parsed.error)
-        } catch {
-          // skip malformed JSON
-        }
-      }
-    }
-  }
 }
