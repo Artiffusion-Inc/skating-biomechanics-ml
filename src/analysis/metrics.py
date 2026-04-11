@@ -145,6 +145,40 @@ class BiomechanicsAnalyzer:
             )
         )
 
+        # Landing quality (OOFSkate approach: camera-independent)
+        landing_stab = self.compute_landing_knee_stability(poses, phases)
+        results.append(
+            MetricResult(
+                name="landing_knee_stability",
+                value=landing_stab,
+                unit="score",
+                is_good=False,
+                reference_range=(0, 0),
+            )
+        )
+
+        landing_trunk = self.compute_landing_trunk_recovery(poses, phases)
+        results.append(
+            MetricResult(
+                name="landing_trunk_recovery",
+                value=landing_trunk,
+                unit="score",
+                is_good=False,
+                reference_range=(0, 0),
+            )
+        )
+
+        rel_height = self.compute_relative_jump_height(poses, phases)
+        results.append(
+            MetricResult(
+                name="relative_jump_height",
+                value=rel_height,
+                unit="ratio",
+                is_good=False,
+                reference_range=(0, 0),
+            )
+        )
+
         return results
 
     def _analyze_step(

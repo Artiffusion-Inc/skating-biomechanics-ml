@@ -295,6 +295,22 @@ class TestBiomechanicsAnalyzer:
         metric_names = [m.name for m in metrics]
         assert "trunk_lean" in metric_names
 
+    def test_analyze_jump_includes_landing_metrics(self, sample_normalized_poses):
+        """Jump analysis should include new landing quality metrics."""
+        element_def = get_element_def("waltz_jump")
+        analyzer = BiomechanicsAnalyzer(element_def)
+
+        phases = ElementPhase(
+            name="waltz_jump", start=0, takeoff=0, peak=1, landing=2, end=2,
+        )
+
+        metrics = analyzer.analyze(sample_normalized_poses, phases, fps=30.0)
+        metric_names = [m.name for m in metrics]
+
+        assert "landing_knee_stability" in metric_names
+        assert "landing_trunk_recovery" in metric_names
+        assert "relative_jump_height" in metric_names
+
     def test_compute_landing_knee_stability_stable(self):
         """Should return high score for constant knee angles after landing."""
         element_def = get_element_def("waltz_jump")
