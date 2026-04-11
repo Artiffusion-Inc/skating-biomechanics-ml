@@ -72,7 +72,15 @@
     "height": "Рост (см)",
     "weight": "Вес (кг)",
     "updateSuccess": "Профиль обновлён",
-    "updateError": "Ошибка сохранения"
+    "updateError": "Ошибка сохранения",
+    "totalSessions": "Тренировок",
+    "totalPRs": "Рекордов",
+    "editProfile": "Редактировать",
+    "personalRecords": "Личные рекорды",
+    "noRecords": "Пока нет записей. Запишите первое видео!",
+    "noPRs": "Пока нет рекордов.",
+    "newPR": "Новый рекорд!",
+    "viewSession": "Открыть"
   },
   "settings": {
     "title": "Настройки",

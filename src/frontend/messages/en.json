@@ -68,11 +68,19 @@
     "title": "Profile",
     "signOut": "Sign Out",
     "name": "Name",
-    "bio": "About",
+    "bio": "Bio",
     "height": "Height (cm)",
     "weight": "Weight (kg)",
     "updateSuccess": "Profile updated",
-    "updateError": "Save error"
+    "updateError": "Save error",
+    "totalSessions": "Sessions",
+    "totalPRs": "PRs",
+    "editProfile": "Edit",
+    "personalRecords": "Personal Records",
+    "noRecords": "No sessions yet. Record your first video!",
+    "noPRs": "No personal records yet.",
+    "newPR": "New PR!",
+    "viewSession": "View"
   },
   "settings": {
     "title": "Settings",

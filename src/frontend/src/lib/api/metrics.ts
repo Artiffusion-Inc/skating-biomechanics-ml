@@ -56,4 +56,23 @@ export function useMetricRegistry() {
   })
 }
 
+const PRSchema = z.object({
+  element_type: z.string(),
+  metric_name: z.string(),
+  value: z.number(),
+  session_id: z.string(),
+})
+
+const PRListSchema = z.object({ prs: z.array(PRSchema) })
+
+export function usePRs(userId?: string, elementType?: string) {
+  const params = new URLSearchParams()
+  if (userId) params.set("user_id", userId)
+  if (elementType) params.set("element_type", elementType)
+  return useQuery({
+    queryKey: ["prs", userId, elementType],
+    queryFn: () => apiFetch("/metrics/prs?" + params.toString(), PRListSchema),
+  })
+}
+
 export type MetricDefType = z.infer<typeof MetricDefSchema>
