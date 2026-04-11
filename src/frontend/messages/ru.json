@@ -73,9 +73,9 @@
   "settings.language": "Язык",
   "settings.timezone": "Часовой пояс",
   "settings.theme": "Тема",
-  "settings.themeSystem": "Системная",
-  "settings.themeLight": "Светлая",
-  "settings.themeDark": "Тёмная",
+  "settings.system": "Системная",
+  "settings.light": "Светлая",
+  "settings.dark": "Тёмная",
 
   "stats.frames": "Кадров",
   "stats.validFrames": "Валидных",

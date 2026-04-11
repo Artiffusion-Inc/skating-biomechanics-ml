@@ -73,9 +73,9 @@
   "settings.language": "Language",
   "settings.timezone": "Timezone",
   "settings.theme": "Theme",
-  "settings.themeSystem": "System",
-  "settings.themeLight": "Light",
-  "settings.themeDark": "Dark",
+  "settings.system": "System",
+  "settings.light": "Light",
+  "settings.dark": "Dark",
 
   "stats.frames": "Frames",
   "stats.validFrames": "Valid",
