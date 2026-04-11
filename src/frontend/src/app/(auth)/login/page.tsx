@@ -7,10 +7,12 @@ import { toast } from "sonner"
 import { useAuth } from "@/components/auth-provider"
 import { FormField } from "@/components/form-field"
 import { Button } from "@/components/ui/button"
+import { useTranslations } from "@/i18n"
 
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuth()
+  const t = useTranslations("auth")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -20,10 +22,10 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
-      toast.success("Вход выполнен")
+      toast.success(t("signInSuccess"))
       router.push("/")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Ошибка входа")
+      toast.error(err instanceof Error ? err.message : t("signInError"))
     } finally {
       setLoading(false)
     }
@@ -32,8 +34,8 @@ export default function LoginPage() {
   return (
     <div className="space-y-6">
       <div className="space-y-2 text-center">
-        <h1 className="text-2xl font-bold">Вход</h1>
-        <p className="text-sm text-muted-foreground">Введите email и пароль</p>
+        <h1 className="text-2xl font-bold">{t("signIn")}</h1>
+        <p className="text-sm text-muted-foreground">{t("signInSubtitle")}</p>
       </div>
       <form onSubmit={handleSubmit} className="space-y-4">
         <FormField
@@ -46,7 +48,7 @@ export default function LoginPage() {
           placeholder="you@example.com"
         />
         <FormField
-          label="Пароль"
+          label={t("password")}
           id="password"
           type="password"
           required
@@ -55,13 +57,13 @@ export default function LoginPage() {
           placeholder="••••••••"
         />
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Вход..." : "Войти"}
+          {loading ? t("signingIn") : t("signInBtn")}
         </Button>
       </form>
       <p className="text-center text-sm text-muted-foreground">
-        Нет аккаунта?{" "}
+        {t("noAccount")}{" "}
         <Link href="/register" className="text-primary hover:underline">
-          Зарегистрироваться
+          {t("register")}
         </Link>
       </p>
     </div>

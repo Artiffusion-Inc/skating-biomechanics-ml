@@ -10,8 +10,8 @@ import { ApiError, apiFetch, clearTokens, getRefreshToken, setTokens } from "@/l
 // ---------------------------------------------------------------------------
 
 export const RegisterRequestSchema = z.object({
-  email: z.string().email("Введите корректный email"),
-  password: z.string().min(8, "Минимум 8 символов").max(128),
+  email: z.string().email(),
+  password: z.string().min(8).max(128),
   display_name: z.string().max(100).optional(),
 })
 
@@ -98,7 +98,7 @@ export async function refreshToken(refresh: string): Promise<TokenResponse> {
     })
   } catch {
     clearTokens()
-    throw new ApiError("Сессия истекла", 401)
+    throw new ApiError("Session expired", 401)
   }
 }
 
