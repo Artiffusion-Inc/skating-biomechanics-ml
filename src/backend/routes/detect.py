@@ -3,19 +3,25 @@
 from __future__ import annotations
 
 import base64
+import tempfile
+import uuid
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import cv2
-import numpy as np
 from fastapi import APIRouter, HTTPException, UploadFile
 
 from src.backend.schemas import DetectResponse, PersonClick, PersonInfo
 from src.device import DeviceConfig
 from src.pose_estimation.rtmlib_extractor import RTMPoseExtractor
+from src.storage import upload_bytes
 from src.utils.video import get_video_meta
 from src.web_helpers import (
     render_person_preview,
 )
+
+if TYPE_CHECKING:
+    import numpy as np
 
 router = APIRouter()
 
@@ -40,25 +46,29 @@ def _encode_frame_bgr(frame: np.ndarray) -> str:
     return base64.b64encode(buf).decode("ascii")
 
 
-@router.post("/api/detect", response_model=DetectResponse)
+@router.post("/detect", response_model=DetectResponse)
 async def detect_persons(
     video: UploadFile,
     tracking: str = "auto",
 ) -> DetectResponse:
     """Detect all persons in the uploaded video and return annotated preview."""
-    # Save uploaded file to temp location
     suffix = Path(video.filename or "video.mp4").suffix
-    tmp_dir = Path("data/uploads")
-    tmp_dir.mkdir(parents=True, exist_ok=True)
-    video_path = tmp_dir / f"detect_{np.random.randint(0, 999999):06d}{suffix}"
+    video_key = f"input/{uuid.uuid4().hex}{suffix}"
 
     content = await video.read()
-    video_path.write_bytes(content)
 
-    if not video_path.exists():
-        raise HTTPException(status_code=400, detail="Failed to save uploaded video")
+    # Upload to R2
+    upload_bytes(content, video_key)
 
+    # Save to /tmp for local RTMPose processing
+    tmp_file = None
     try:
+        with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as f:
+            f.write(content)
+            tmp_file = f.name
+
+        video_path = Path(tmp_file)
+
         extractor = _create_extractor(tracking)
         persons, _ = extractor.preview_persons(video_path, num_frames=30)
 
@@ -66,6 +76,7 @@ async def detect_persons(
             return DetectResponse(
                 persons=[],
                 preview_image="",
+                video_key=video_key,
                 status="Люди не найдены. Попробуйте другое видео.",
             )
 
@@ -96,8 +107,6 @@ async def detect_persons(
         else:
             status = f"Обнаружено {len(persons)} человек. Выберите на превью или из списка."
 
-        video_abs = str(video_path.resolve())
-
         persons_out = [
             PersonInfo(
                 track_id=p["track_id"],
@@ -111,10 +120,12 @@ async def detect_persons(
         return DetectResponse(
             persons=persons_out,
             preview_image=preview_b64,
-            video_path=video_abs,
+            video_key=video_key,
             auto_click=auto_click,
             status=status,
         )
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e)) from e
+    finally:
+        # Cleanup /tmp file
+        if tmp_file:
+            Path(tmp_file).unlink(missing_ok=True)

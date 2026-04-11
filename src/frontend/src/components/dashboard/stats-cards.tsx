@@ -1,39 +1,42 @@
 import { Film, Frame, Grid3x3, Zap } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { useTranslations } from "@/i18n"
 import type { ProcessStats } from "@/types"
 
 interface StatsCardsProps {
   stats: ProcessStats
 }
 
-const statItems = [
-  {
-    key: "total",
-    label: "Кадров",
-    icon: Film,
-    getValue: (s: ProcessStats) => s.total_frames,
-  },
-  {
-    key: "valid",
-    label: "Валидных",
-    icon: Grid3x3,
-    getValue: (s: ProcessStats) => s.valid_frames,
-  },
-  {
-    key: "fps",
-    label: "FPS",
-    icon: Zap,
-    getValue: (s: ProcessStats) => s.fps,
-  },
-  {
-    key: "resolution",
-    label: "Разрешение",
-    icon: Frame,
-    getValue: (s: ProcessStats) => s.resolution,
-  },
-] as const
-
 export function StatsCards({ stats }: StatsCardsProps) {
+  const t = useTranslations("stats")
+
+  const statItems = [
+    {
+      key: "total",
+      label: t("frames"),
+      icon: Film,
+      getValue: (s: ProcessStats) => s.total_frames,
+    },
+    {
+      key: "valid",
+      label: t("validFrames"),
+      icon: Grid3x3,
+      getValue: (s: ProcessStats) => s.valid_frames,
+    },
+    {
+      key: "fps",
+      label: "FPS",
+      icon: Zap,
+      getValue: (s: ProcessStats) => s.fps,
+    },
+    {
+      key: "resolution",
+      label: t("resolution"),
+      icon: Frame,
+      getValue: (s: ProcessStats) => s.resolution,
+    },
+  ] as const
+
   return (
     <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
       {statItems.map(item => {

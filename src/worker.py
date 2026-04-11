@@ -1,17 +1,17 @@
 """arq worker for video processing pipeline.
 
 Run with: uv run python -m src.worker
+
+Dispatches all processing to Vast.ai Serverless GPU.
+No local GPU fallback.
 """
 
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import logging
-import threading
 from dataclasses import dataclass
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, ClassVar
 
 from arq import Retry
@@ -21,16 +21,11 @@ from src.config import get_settings
 from src.task_manager import (
     TaskStatus,
     get_valkey_client,
-    is_cancelled,
-    mark_cancelled,
     store_error,
     store_result,
-    update_progress,
 )
 
 logger = logging.getLogger(__name__)
-
-_cancel_events: dict[str, threading.Event] = {}
 
 
 @dataclass
@@ -51,35 +46,13 @@ async def startup(ctx: dict[str, Any]) -> None:
 
 async def shutdown(ctx: dict[str, Any]) -> None:
     logger.info("Video processing worker shutting down")
-    _cancel_events.clear()
-
-
-async def _poll_cancel(task_id: str, cancel_event: threading.Event) -> None:
-    """Poll Valkey cancel signal and set threading event when detected."""
-    valkey = await get_valkey_client()
-    try:
-        while not cancel_event.is_set():
-            if await is_cancelled(task_id, valkey=valkey):
-                cancel_event.set()
-                break
-            await asyncio.sleep(0.5)
-    finally:
-        await valkey.close()
-
-
-async def _async_update_progress(task_id: str, fraction: float, message: str) -> None:
-    valkey = await get_valkey_client()
-    try:
-        await update_progress(task_id, fraction, message, valkey=valkey)
-    finally:
-        await valkey.close()
 
 
 async def process_video_task(
     ctx: dict[str, Any],
     *,
     task_id: str,
-    video_path: str,
+    video_key: str,
     person_click: dict[str, int],
     frame_skip: int = 1,
     layer: int = 3,
@@ -87,7 +60,7 @@ async def process_video_task(
     export: bool = True,
     ml_flags: MLModelFlags | None = None,
 ) -> dict[str, Any]:
-    """arq task: run process_video_pipeline() with Valkey state tracking."""
+    """arq task: dispatch video processing to Vast.ai Serverless GPU."""
     if ml_flags is None:
         ml_flags = MLModelFlags()
     settings = get_settings()
@@ -100,122 +73,37 @@ async def process_video_task(
             mapping={"status": TaskStatus.RUNNING, "started_at": now},
         )
 
-        cancel_event = threading.Event()
-        _cancel_events[task_id] = cancel_event
+        from src.vastai.client import process_video_remote
 
-        outputs_dir = Path(settings.outputs_dir)
-        outputs_dir.mkdir(parents=True, exist_ok=True)
-        output_path = str(outputs_dir / f"{Path(video_path).stem}_analyzed.mp4")
-
-        def progress_cb(fraction: float, message: str) -> None:
-            try:
-                loop = asyncio.get_event_loop()
-                loop.call_soon_threadsafe(_async_update_progress, task_id, fraction, message)
-            except RuntimeError:
-                pass
-
-        poll_task = asyncio.create_task(_poll_cancel(task_id, cancel_event))
-
-        try:
-            from src.types import PersonClick
-            from src.web_helpers import PipelineCancelled, process_video_pipeline
-
-            click = PersonClick(x=person_click["x"], y=person_click["y"])
-
-            # Try remote GPU via Vast.ai, fall back to local
-            result = None
-            if settings.vastai_api_key:
-                try:
-                    from src.vastai.client import process_video_remote
-
-                    logger.info("Attempting Vast.ai remote processing for task %s", task_id)
-                    vast_result = await asyncio.to_thread(
-                        process_video_remote,
-                        video_path=video_path,
-                        person_click={"x": click.x, "y": click.y},
-                        frame_skip=frame_skip,
-                        layer=layer,
-                        tracking=tracking,
-                        export=export,
-                        ml_flags={
-                            "depth": ml_flags.depth,
-                            "optical_flow": ml_flags.optical_flow,
-                            "segment": ml_flags.segment,
-                            "foot_track": ml_flags.foot_track,
-                            "matting": ml_flags.matting,
-                            "inpainting": ml_flags.inpainting,
-                        },
-                        output_path=output_path,
-                    )
-                    result = {
-                        "video_path": vast_result.video_path,
-                        "poses_path": vast_result.poses_path,
-                        "csv_path": vast_result.csv_path,
-                        "stats": vast_result.stats,
-                    }
-                    logger.info("Vast.ai processing complete for task %s", task_id)
-                except Exception as e:
-                    logger.warning("Vast.ai failed (%s), falling back to local GPU", e)
-
-            if result is None:
-                # Local GPU fallback
-                result = await asyncio.to_thread(
-                    process_video_pipeline,
-                    video_path=video_path,
-                    person_click=click,
-                    frame_skip=frame_skip,
-                    layer=layer,
-                    tracking=tracking,
-                    blade_3d=False,
-                    export=export,
-                    output_path=output_path,
-                    progress_cb=progress_cb,
-                    cancel_event=cancel_event,
-                    depth=ml_flags.depth,
-                    optical_flow=ml_flags.optical_flow,
-                    segment=ml_flags.segment,
-                    foot_track=ml_flags.foot_track,
-                    matting=ml_flags.matting,
-                    inpainting=ml_flags.inpainting,
-                )
-        finally:
-            poll_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await poll_task
-
-        stats = result["stats"]
-        out_path = Path(output_path)
-        video_rel = (
-            str(out_path.relative_to(outputs_dir))
-            if out_path.is_relative_to(outputs_dir)
-            else out_path.name
+        logger.info("Dispatching task %s to Vast.ai (video_key=%s)", task_id, video_key)
+        vast_result = await asyncio.to_thread(
+            process_video_remote,
+            video_key=video_key,
+            person_click={"x": person_click["x"], "y": person_click["y"]},
+            frame_skip=frame_skip,
+            layer=layer,
+            tracking=tracking,
+            export=export,
+            ml_flags={
+                "depth": ml_flags.depth,
+                "optical_flow": ml_flags.optical_flow,
+                "segment": ml_flags.segment,
+                "foot_track": ml_flags.foot_track,
+                "matting": ml_flags.matting,
+                "inpainting": ml_flags.inpainting,
+            },
         )
-        poses_rel = None
-        csv_rel = None
-        if result.get("poses_path"):
-            pp = Path(result["poses_path"])
-            poses_rel = (
-                str(pp.relative_to(outputs_dir)) if pp.is_relative_to(outputs_dir) else pp.name
-            )
-        if result.get("csv_path"):
-            cp = Path(result["csv_path"])
-            csv_rel = (
-                str(cp.relative_to(outputs_dir)) if cp.is_relative_to(outputs_dir) else cp.name
-            )
+        logger.info("Vast.ai processing complete for task %s", task_id)
 
         response_data = {
-            "video_path": video_rel,
-            "poses_path": poses_rel,
-            "csv_path": csv_rel,
-            "stats": stats,
+            "video_path": vast_result.video_key,
+            "poses_path": vast_result.poses_key,
+            "csv_path": vast_result.csv_key,
+            "stats": vast_result.stats,
             "status": "Analysis complete!",
         }
         await store_result(task_id, response_data, valkey=valkey)
         return response_data
-
-    except PipelineCancelled:
-        await mark_cancelled(task_id, valkey=valkey)
-        return {"status": "cancelled", "task_id": task_id}
 
     except Exception as e:
         logger.exception("Pipeline task %s failed", task_id)
@@ -226,7 +114,6 @@ async def process_video_task(
         raise
 
     finally:
-        _cancel_events.pop(task_id, None)
         await valkey.close()
 
 
@@ -237,9 +124,9 @@ class WorkerSettings:
     """arq worker configuration."""
 
     queue_name: str = "skating:queue"
-    max_jobs: int = _settings.worker_max_jobs
+    max_jobs: int = _settings.app.worker_max_jobs
     retry_jobs: bool = True
-    retry_delays: ClassVar[list[int]] = _settings.worker_retry_delays
+    retry_delays: ClassVar[list[int]] = _settings.app.worker_retry_delays
 
     on_startup = startup
     on_shutdown = shutdown
@@ -248,8 +135,8 @@ class WorkerSettings:
     cron_jobs: ClassVar[list] = []
 
     redis_settings = RedisSettings(
-        host=_settings.valkey_host,
-        port=_settings.valkey_port,
-        database=_settings.valkey_db,
-        password=_settings.valkey_password,
+        host=_settings.valkey.host,
+        port=_settings.valkey.port,
+        database=_settings.valkey.db,
+        password=_settings.valkey.password.get_secret_value(),
     )

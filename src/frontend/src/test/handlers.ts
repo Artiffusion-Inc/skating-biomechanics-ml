@@ -22,21 +22,9 @@ export const handlers = [
         },
       ],
       preview_image: "data:image/png;base64,mock",
-      video_path: "/tmp/mock_video.mp4",
+      video_key: "input/mock-video.mp4",
       auto_click: null,
       status: "success",
     })
-  }),
-
-  // POST /api/process (SSE - mock the initial request)
-  http.post("/api/process", async ({ request }) => {
-    const body = (await request.json()) as Record<string, unknown>
-
-    if (!body.video_path || !body.person_click) {
-      return HttpResponse.json({ detail: "Missing required fields" }, { status: 400 })
-    }
-
-    // Note: SSE is handled in src/test/server.ts
-    return HttpResponse.json({ status: "processing" })
   }),
 ]

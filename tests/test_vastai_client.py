@@ -24,11 +24,53 @@ def test_get_worker_url_success():
 
 def test_vast_result_fields():
     r = VastResult(
-        video_path="/tmp/out.mp4",
-        poses_path="/tmp/out.npy",
-        csv_path=None,
+        video_key="output/test_analyzed.mp4",
+        poses_key="output/test_poses.npy",
+        csv_key=None,
         stats={"frames": 100},
     )
-    assert r.video_path == "/tmp/out.mp4"
-    assert r.csv_path is None
+    assert r.video_key == "output/test_analyzed.mp4"
+    assert r.csv_key is None
     assert r.stats == {"frames": 100}
+
+
+@patch("src.vastai.client.httpx.post")
+def test_process_video_remote_passes_r2_key(mock_post):
+    mock_route_resp = MagicMock()
+    mock_route_resp.status_code = 200
+    mock_route_resp.json.return_value = {"url": "https://worker.vast.ai:8000"}
+    mock_route_resp.raise_for_status = MagicMock()
+
+    mock_process_resp = MagicMock()
+    mock_process_resp.status_code = 200
+    mock_process_resp.json.return_value = {
+        "video_r2_key": "output/test_analyzed.mp4",
+        "poses_r2_key": "output/test_poses.npy",
+        "csv_r2_key": None,
+        "stats": {"total_frames": 100, "valid_frames": 90, "fps": 30.0, "resolution": "1920x1080"},
+    }
+    mock_process_resp.raise_for_status = MagicMock()
+
+    mock_post.side_effect = [mock_route_resp, mock_process_resp]
+
+    with patch("src.vastai.client.get_settings") as mock_settings:
+        s = MagicMock()
+        s.vastai.api_key.get_secret_value.return_value = "test-key"
+        s.vastai.endpoint_name = "skating-ml-gpu"
+        s.r2.endpoint_url = "https://r2.example.com"
+        s.r2.access_key_id.get_secret_value.return_value = "key-id"
+        s.r2.secret_access_key.get_secret_value.return_value = "secret"
+        s.r2.bucket = "test-bucket"
+        mock_settings.return_value = s
+
+        from src.vastai.client import process_video_remote
+
+        result = process_video_remote(
+            video_key="input/test.mp4",
+            person_click={"x": 100, "y": 200},
+        )
+
+    assert result.video_key == "output/test_analyzed.mp4"
+    assert result.poses_key == "output/test_poses.npy"
+    assert result.csv_key is None
+    assert mock_post.call_count == 2

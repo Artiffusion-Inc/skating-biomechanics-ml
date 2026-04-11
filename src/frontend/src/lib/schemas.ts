@@ -25,7 +25,7 @@ export const PersonClickSchema = z.object({
 export const DetectResponseSchema = z.object({
   persons: z.array(PersonInfoSchema),
   preview_image: z.string().min(1),
-  video_path: z.string().min(1),
+  video_key: z.string().min(1),
   auto_click: PersonClickSchema.nullable(),
   status: z.string(),
 })
@@ -38,7 +38,7 @@ export const ProcessStatsSchema = z.object({
 })
 
 export const ProcessRequestSchema = z.object({
-  video_path: z.string().min(1),
+  video_key: z.string().min(1),
   person_click: PersonClickSchema,
   frame_skip: z.number().int().positive().default(1),
   layer: z.number().int().min(0).max(3).default(3),

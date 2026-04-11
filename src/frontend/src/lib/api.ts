@@ -1,7 +1,15 @@
-import type { ProcessRequest, ProcessResponse } from "@/lib/schemas"
-import { DetectResponseSchema, ProcessRequestSchema } from "@/lib/schemas"
+/**
+ * Non-auth API wrappers: models, process queue, detect, SSE streaming.
+ */
 
-const API_BASE = "/api"
+import { z } from "zod"
+import { API_BASE, apiFetch } from "@/lib/api-client"
+import type { ProcessResponse } from "@/lib/schemas"
+import { DetectResponseSchema, ProcessRequestSchema, ProcessResponseSchema } from "@/lib/schemas"
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
 
 export interface ModelStatus {
   id: string
@@ -9,29 +17,28 @@ export interface ModelStatus {
   size_mb: number | null
 }
 
+const ModelStatusListSchema = z.array(
+  z.object({ id: z.string(), available: z.boolean(), size_mb: z.number().nullable() }),
+)
+
 export async function getModels(): Promise<ModelStatus[]> {
-  const res = await fetch(`${API_BASE}/models`)
-  if (!res.ok) throw new Error("Failed to fetch model status")
-  return res.json()
+  return apiFetch("/models", ModelStatusListSchema, { auth: false })
 }
 
-export async function cancelProcessing(): Promise<void> {
-  await fetch(`${API_BASE}/process/cancel`, { method: "POST" })
-}
+// ---------------------------------------------------------------------------
+// Process queue
+// ---------------------------------------------------------------------------
 
-export async function enqueueProcess(request: ProcessRequest): Promise<{ task_id: string }> {
-  const validated = ProcessRequestSchema.parse(request)
-  const res = await fetch(`${API_BASE}/process/queue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(validated),
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text)
-  }
-  return res.json()
-}
+const QueueResponseSchema = z.object({ task_id: z.string() })
+
+const TaskStatusSchema = z.object({
+  task_id: z.string(),
+  status: z.enum(["pending", "running", "completed", "failed", "cancelled"]),
+  progress: z.number(),
+  message: z.string(),
+  result: ProcessResponseSchema.nullable(),
+  error: z.string().nullable(),
+})
 
 export interface TaskStatusResponse {
   task_id: string
@@ -42,18 +49,34 @@ export interface TaskStatusResponse {
   error: string | null
 }
 
+export async function enqueueProcess(
+  request: Parameters<typeof ProcessRequestSchema.parse>[0],
+): Promise<{ task_id: string }> {
+  const validated = ProcessRequestSchema.parse(request)
+  return apiFetch("/process/queue", QueueResponseSchema, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(validated),
+  })
+}
+
 export async function pollTaskStatus(taskId: string): Promise<TaskStatusResponse> {
-  const res = await fetch(`${API_BASE}/process/${taskId}/status`)
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text)
-  }
-  return res.json()
+  return apiFetch(`/process/${taskId}/status`, TaskStatusSchema)
 }
 
 export async function cancelQueuedProcess(taskId: string): Promise<void> {
-  await fetch(`${API_BASE}/process/${taskId}/cancel`, { method: "POST" })
+  await apiFetch(
+    `/process/${taskId}/cancel`,
+    z.object({ status: z.string(), task_id: z.string() }),
+    {
+      method: "POST",
+    },
+  )
 }
+
+// ---------------------------------------------------------------------------
+// Detect (FormData — can't use JSON apiFetch)
+// ---------------------------------------------------------------------------
 
 export async function detectPersons(
   file: File,
@@ -65,92 +88,6 @@ export async function detectPersons(
     method: "POST",
     body: form,
   })
-  if (!res.ok) {
-    const text = await res.text()
-    return { data: null, error: text }
-  }
-  const json = await res.json()
-  const data = DetectResponseSchema.parse(json) // Zod validation
-  return { data, error: undefined }
-}
-
-export interface SSECallbacks {
-  onProgress?: (progress: number, message: string) => void
-  onResult?: (result: unknown) => void
-  onError?: (error: string) => void
-}
-
-export async function processVideo(
-  request: {
-    video_path: string
-    person_click: { x: number; y: number }
-    frame_skip: number
-    layer: number
-    tracking: string
-    export: boolean
-    depth?: boolean
-    optical_flow?: boolean
-    segment?: boolean
-    foot_track?: boolean
-    matting?: boolean
-    inpainting?: boolean
-  },
-  callbacks: SSECallbacks,
-): Promise<void> {
-  // Validate request with Zod
-  const validated = ProcessRequestSchema.parse(request)
-
-  const res = await fetch(`${API_BASE}/process`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(validated),
-  })
-
-  if (!res.ok) {
-    const text = await res.text()
-    callbacks.onError?.(text)
-    return
-  }
-
-  const reader = res.body?.getReader()
-  if (!reader) {
-    callbacks.onError?.("No response stream")
-    return
-  }
-
-  const decoder = new TextDecoder()
-  let buffer = ""
-
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-
-    buffer += decoder.decode(value, { stream: true })
-
-    const lines = buffer.split("\n")
-    buffer = lines.pop() || ""
-
-    let currentEvent = ""
-    for (const line of lines) {
-      if (line.startsWith("event:")) {
-        currentEvent = line.slice(6).trim()
-      } else if (line.startsWith("data:")) {
-        const data = line.slice(5).trim()
-        if (!data) continue
-
-        try {
-          const parsed = JSON.parse(data)
-          if (currentEvent === "progress") {
-            callbacks.onProgress?.(parsed.progress, parsed.message)
-          } else if (currentEvent === "result") {
-            callbacks.onResult?.(parsed)
-          } else if (currentEvent === "error") {
-            callbacks.onError?.(parsed.error)
-          }
-        } catch {
-          // skip malformed JSON
-        }
-      }
-    }
-  }
+  if (!res.ok) return { data: null, error: await res.text() }
+  return { data: DetectResponseSchema.parse(await res.json()), error: undefined }
 }
