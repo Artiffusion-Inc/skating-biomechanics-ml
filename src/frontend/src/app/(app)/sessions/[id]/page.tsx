@@ -18,7 +18,7 @@ export default function SessionDetailPage() {
   if (!session) return <div className="py-20 text-center text-muted-foreground">Сессия не найдена</div>
 
   return (
-    <div className="max-w-lg mx-auto space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6 sm:max-w-3xl">
       <div>
         <h1 className="text-xl font-semibold">{ELEMENT_NAMES[session.element_type] ?? session.element_type}</h1>
         <p className="text-sm text-muted-foreground">{new Date(session.created_at).toLocaleDateString("ru-RU")}</p>
@@ -29,7 +29,7 @@ export default function SessionDetailPage() {
       )}
 
       {session.metrics.length > 0 && (
-        <div className="rounded-2xl border border-border p-4">
+        <div className="rounded-2xl border border-border p-3 sm:p-4">
           <h2 className="text-sm font-medium mb-2">Метрики</h2>
           {session.metrics.map((m) => (
             <MetricRow
@@ -48,7 +48,7 @@ export default function SessionDetailPage() {
       )}
 
       {session.recommendations && session.recommendations.length > 0 && (
-        <div className="rounded-2xl border border-border p-4">
+        <div className="rounded-2xl border border-border p-3 sm:p-4">
           <h2 className="text-sm font-medium mb-2">Рекомендации</h2>
           <ul className="space-y-1 text-sm text-muted-foreground">
             {session.recommendations.map((r, i) => (

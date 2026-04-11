@@ -26,7 +26,7 @@ export default function StudentProfilePage() {
   const { data: diag } = useDiagnostics(id)
 
   return (
-    <div className="max-w-2xl mx-auto space-y-4">
+    <div className="mx-auto max-w-2xl space-y-4 sm:max-w-3xl">
       <div className="flex gap-2">
         <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">&larr; Назад</Link>
       </div>
@@ -42,14 +42,14 @@ export default function StudentProfilePage() {
 
       {tab === "progress" && (
         <div className="space-y-4">
-          <div className="grid grid-cols-4 gap-2">
+          <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
             {ELEMENTS.map((el) => (
-              <button key={el.id} onClick={() => setElement(el.id)} className={`rounded-xl border p-2 text-center text-xs ${element === el.id ? "border-primary bg-primary/10" : "border-border"}`}>
+              <button key={el.id} onClick={() => setElement(el.id)} className={`truncate rounded-xl border p-1.5 text-center text-[11px] sm:p-2 sm:text-xs ${element === el.id ? "border-primary bg-primary/10" : "border-border"}`}>
                 {el.label}
               </button>
             ))}
           </div>
-          <select value={metric} onChange={(e) => setMetric(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm">
+          <select value={metric} onChange={(e) => setMetric(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm">
             <option value="max_height">Высота прыжка</option>
             <option value="airtime">Время полёта</option>
             <option value="landing_knee_stability">Стабильность приземления</option>

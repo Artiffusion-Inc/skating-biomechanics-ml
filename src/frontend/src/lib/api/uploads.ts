@@ -22,6 +22,7 @@ export class ChunkedUploader {
     const init = await apiFetch(
       `/uploads/init?file_name=${encodeURIComponent(this.file.name)}&content_type=${this.file.type}&total_size=${this.file.size}`,
       InitResponseSchema,
+      { method: "POST" },
     )
 
     const CHUNK_SIZE = init.chunk_size

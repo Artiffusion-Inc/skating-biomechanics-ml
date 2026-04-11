@@ -24,7 +24,7 @@ export default function RegisterPage() {
     try {
       await register(email, password, displayName || undefined)
       toast.success(t("signUpSuccess"))
-      router.push("/")
+      router.push("/feed")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("signUpError"))
     } finally {

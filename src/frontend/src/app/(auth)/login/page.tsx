@@ -23,7 +23,7 @@ export default function LoginPage() {
     try {
       await login(email, password)
       toast.success(t("signInSuccess"))
-      router.push("/")
+      router.push("/feed")
     } catch (err) {
       toast.error(err instanceof Error ? err.message : t("signInError"))
     } finally {

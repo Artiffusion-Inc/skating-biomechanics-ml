@@ -156,7 +156,7 @@ function AnalyzeContent() {
             <p className="text-destructive">{error}</p>
             <div className="flex gap-2">
               <Button onClick={startProcessing}>{t("retry")}</Button>
-              <Button variant="outline" onClick={() => router.push("/")}>
+              <Button variant="outline" onClick={() => router.push("/feed")}>
                 {t("back")}
               </Button>
             </div>

@@ -26,11 +26,13 @@ export function getRefreshToken(): string | null {
 export function setTokens(access: string, refresh: string) {
   localStorage.setItem(TOKEN_KEY, access)
   localStorage.setItem(REFRESH_KEY, refresh)
+  document.cookie = "sb_auth=1; path=/; max-age=31536000; SameSite=Lax"
 }
 
 export function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_KEY)
+  document.cookie = "sb_auth=; path=/; max-age=0"
 }
 
 // ---------------------------------------------------------------------------

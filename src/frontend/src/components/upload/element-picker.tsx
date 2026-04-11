@@ -13,12 +13,12 @@ const ELEMENTS = [
 
 export function ElementPicker({ value, onChange }: { value: string | null; onChange: (id: string) => void }) {
   return (
-    <div className="grid grid-cols-4 gap-2">
+    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
       {ELEMENTS.map((el) => (
         <button
           key={el.id}
           onClick={() => onChange(el.id)}
-          className={`rounded-xl border p-3 text-center text-sm transition-colors ${
+          className={`truncate rounded-xl border px-2 py-2.5 text-center text-xs transition-colors sm:p-3 sm:text-sm ${
             value === el.id ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent/50"
           }`}
         >

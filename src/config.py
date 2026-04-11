@@ -95,7 +95,7 @@ class R2Config(BaseSettings):
     presign_expires: int = 3600
 
     class Config:
-        env_prefix = "R2_"
+        env_prefix = "CF_R2_"
 
 
 class VastAIConfig(BaseSettings):
