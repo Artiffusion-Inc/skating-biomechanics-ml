@@ -47,8 +47,10 @@ export class ChunkedUploader {
     while (queue.length > 0 || inFlight.size > 0) {
       while (inFlight.size < CONCURRENCY && queue.length > 0) {
         const part = queue.shift()!
-        const p = processPart(part).then(() => inFlight.delete(p))
-        inFlight.add(p)
+        const promise = processPart(part).then(() => {
+          inFlight.delete(promise)
+        })
+        inFlight.add(promise)
       }
       if (inFlight.size > 0) {
         await Promise.race(inFlight)

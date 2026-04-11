@@ -21,7 +21,7 @@ export function CameraRecorder({ onRecorded }: { onRecorded: (blob: Blob) => voi
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment", width: { ideal: 1920 }, fps: { ideal: 60 } },
+        video: { facingMode: "environment", width: { ideal: 1920 }, frameRate: { ideal: 60 } },
         audio: false,
       })
       if (videoRef.current) videoRef.current.srcObject = stream
@@ -50,11 +50,13 @@ export function CameraRecorder({ onRecorded }: { onRecorded: (blob: Blob) => voi
   const stopRecording = useCallback(() => {
     mediaRecorderRef.current?.stop()
     setRecording(false)
-    clearInterval(timerRef.current)
+    if (timerRef.current) clearInterval(timerRef.current)
   }, [])
 
   useEffect(() => {
-    return () => clearInterval(timerRef.current)
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
   }, [])
 
   const fmt = (s: number) => `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`

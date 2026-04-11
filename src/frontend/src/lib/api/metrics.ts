@@ -51,7 +51,7 @@ export function useDiagnostics(userId?: string) {
 export function useMetricRegistry() {
   return useQuery({
     queryKey: ["metric-registry"],
-    queryFn: () => apiFetch("/metrics/registry", z.record(z.any())),
+    queryFn: () => apiFetch("/metrics/registry", z.record(z.string(), MetricDefSchema)),
     staleTime: Infinity,
   })
 }

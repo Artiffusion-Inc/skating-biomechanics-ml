@@ -37,7 +37,7 @@ export default function SessionDetailPage() {
               name={m.metric_name}
               label={m.metric_name}
               value={m.metric_value}
-              unit={m.metric_name === "score" ? "" : m.metric_name === "deg" ? "°" : m.unit}
+              unit={m.unit ?? (m.metric_name === "score" ? "" : m.metric_name === "deg" ? "°" : "")}
               isInRange={m.is_in_range}
               isPr={m.is_pr}
               prevBest={m.prev_best}

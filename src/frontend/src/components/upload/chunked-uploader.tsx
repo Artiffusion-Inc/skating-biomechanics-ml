@@ -1,13 +1,13 @@
 "use client"
 
 import { useState } from "react"
-import { ChunkedUploader } from "@/lib/api/uploads"
+import { ChunkedUploader as ChunkedUploaderClass } from "@/lib/api/uploads"
 
 export function ChunkedUploader({ file, onUploaded }: { file: File; onUploaded: (key: string) => void }) {
   const [progress, setProgress] = useState(0)
 
   const upload = async () => {
-    const uploader = new ChunkedUploader(file, (loaded, total) => {
+    const uploader = new ChunkedUploaderClass(file, (loaded, total) => {
       setProgress(Math.round((loaded / total) * 100))
     })
     const key = await uploader.upload()

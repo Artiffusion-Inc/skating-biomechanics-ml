@@ -7,17 +7,20 @@ const SessionMetricSchema = z.object({
   id: z.string(), metric_name: z.string(), metric_value: z.number(),
   is_pr: z.boolean(), prev_best: z.number().nullable(), reference_value: z.number().nullable(),
   is_in_range: z.boolean().nullable(),
+  unit: z.string().optional(),
 })
 
 const SessionSchema = z.object({
   id: z.string(), user_id: z.string(), element_type: z.string(),
   video_url: z.string().nullable(), processed_video_url: z.string().nullable(),
   status: z.string(), error_message: z.string().nullable(),
-  phases: z.record(z.number()).nullable(),
+  phases: z.record(z.string(), z.number()).nullable(),
   recommendations: z.array(z.string()).nullable(),
   overall_score: z.number().nullable(),
   created_at: z.string(), processed_at: z.string().nullable(),
   metrics: z.array(SessionMetricSchema),
+  poses_url: z.string().nullable(),
+  csv_url: z.string().nullable(),
 })
 
 const SessionListSchema = z.object({ sessions: z.array(SessionSchema), total: z.number() })

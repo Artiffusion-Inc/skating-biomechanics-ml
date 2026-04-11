@@ -2,14 +2,14 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Camera, Feed, Link2, Settings, Users } from "lucide-react"
+import { BarChart3, Camera, Link2, Newspaper, Settings, Users } from "lucide-react"
 
 interface SidebarProps {
   hasStudents: boolean
 }
 
 const commonLinks = [
-  { href: "/feed", icon: Feed, label: "Лента" },
+  { href: "/feed", icon: Newspaper, label: "Лента" },
   { href: "/upload", icon: Camera, label: "Загрузить" },
   { href: "/progress", icon: BarChart3, label: "Прогресс" },
   { href: "/connections", icon: Link2, label: "Связи" },

@@ -20,7 +20,7 @@ export default function ProgressPage() {
   const { data: trend } = useTrend(undefined, element, metric, period)
 
   const availableMetrics = registry
-    ? Object.entries(registry).filter(([, v]) => v.element_types.includes(element))
+    ? Object.entries(registry).filter(([, v]) => (v as any).element_types.includes(element))
     : []
 
   return (
@@ -44,7 +44,7 @@ export default function ProgressPage() {
           className="w-full rounded-xl border border-border bg-background px-3 py-2 text-sm"
         >
           {availableMetrics.map(([name, def]) => (
-            <option key={name} value={name}>{def.label_ru}</option>
+            <option key={name} value={name}>{(def as any).label_ru}</option>
           ))}
         </select>
         <PeriodSelector value={period} onChange={setPeriod} />

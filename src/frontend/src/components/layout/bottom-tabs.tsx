@@ -2,10 +2,10 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { BarChart3, Camera, Feed, Users } from "lucide-react"
+import { BarChart3, Camera, Newspaper, Users } from "lucide-react"
 
 const skaterTabs = [
-  { href: "/feed", icon: Feed, label: "Лента" },
+  { href: "/feed", icon: Newspaper, label: "Лента" },
   { href: "/upload", icon: Camera, label: "Запись" },
   { href: "/progress", icon: BarChart3, label: "Прогресс" },
   { href: "/profile", icon: Users, label: "Профиль" },
