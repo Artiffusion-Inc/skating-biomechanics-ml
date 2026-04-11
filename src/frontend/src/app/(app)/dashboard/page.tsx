@@ -1,5 +1,6 @@
 "use client"
 
+import Link from "next/link"
 import { useRelationships } from "@/lib/api/relationships"
 import { StudentCard } from "@/components/coach/student-card"
 
@@ -14,16 +15,19 @@ export default function DashboardPage() {
 
   if (!students.length) {
     return (
-      <div className="text-center py-20">
+      <div className="flex flex-col items-center gap-4 py-20">
         <p className="text-muted-foreground">Нет учеников</p>
-        <p className="text-sm text-muted-foreground mt-1">Пригласите первого ученика</p>
+        <p className="text-sm text-muted-foreground">Пригласите фигуриста для отслеживания прогресса</p>
+        <Link href="/connections" className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+          Пригласить ученика
+        </Link>
       </div>
     )
   }
 
   return (
-    <div className="max-w-lg mx-auto space-y-3">
-      <h1 className="text-lg font-semibold">Ученики</h1>
+    <div className="mx-auto max-w-2xl space-y-3 sm:max-w-3xl">
+      <h1 className="nike-h3">Ученики</h1>
       {students.map((rel) => (
         <StudentCard key={rel.id} rel={rel} />
       ))}

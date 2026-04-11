@@ -20,9 +20,10 @@ export function RecentActivity({ userId }: { userId?: string }) {
   const sessions = sessionsData.sessions.slice(0, 5)
   if (sessions.length === 0) {
     return (
-      <div className="rounded-xl border border-border p-6 text-center text-sm text-muted-foreground">
-        Пока нет записей. Запишите первое видео!
-      </div>
+      <Link href="/upload" className="block rounded-xl border border-border p-6 text-center transition-colors hover:bg-accent">
+        <p className="text-sm text-muted-foreground">Пока нет записей</p>
+        <p className="mt-1 text-sm font-medium text-primary">Записать видео →</p>
+      </Link>
     )
   }
 

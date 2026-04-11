@@ -16,7 +16,7 @@ export function PersonalRecords({ userId }: { userId?: string }) {
   if (prs.length === 0) {
     return (
       <div className="rounded-xl border border-border p-6 text-center text-sm text-muted-foreground">
-        Пока нет рекордов.
+        Рекорды появятся после первой успешной тренировки
       </div>
     )
   }
