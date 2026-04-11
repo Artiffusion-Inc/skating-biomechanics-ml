@@ -1,4 +1,4 @@
-# src/frontend/CLAUDE.md — Next.js App
+# frontend/CLAUDE.md — Next.js App
 
 ## Tech Stack
 
@@ -6,7 +6,7 @@
 - **Language**: TypeScript, React 19
 - **Styling**: Tailwind CSS v4, shadcn/ui, OKLCH color system
 - **State**: React Query (@tanstack/react-query) + Zod schema validation
-- **i18n**: next-intl (messages in `src/frontend/messages/ru.json`, `en.json`)
+- **i18n**: next-intl (messages in `frontend/messages/ru.json`, `en.json`)
 - **Icons**: Lucide React
 - **Charts**: Recharts
 - **Runtime**: bun (NOT npm/npx)
@@ -14,7 +14,7 @@
 ## Project Structure
 
 ```
-src/frontend/
+frontend/
 ├── app/
 │   ├── layout.tsx                    # Root layout (providers, toaster)
 │   ├── page.tsx                      # Cookie-based redirect (feed or login)

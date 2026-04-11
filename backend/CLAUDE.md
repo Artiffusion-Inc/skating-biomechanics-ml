@@ -1,31 +1,44 @@
-# src/backend/CLAUDE.md — FastAPI Backend
+# backend/CLAUDE.md — FastAPI Backend
 
 ## Project Structure
 
 ```
-src/backend/
-├── routes/                           # FastAPI routers
-│   ├── auth.py                      # POST register/login/refresh
-│   ├── users.py                     # GET/PATCH /users/me
-│   ├── sessions.py                  # CRUD /sessions
-│   ├── metrics.py                   # GET /metrics/trend, /prs, /diagnostics, /registry
-│   ├── uploads.py                   # POST init/chunk/complete
-│   ├── detect.py                    # POST /detect
-│   ├── process.py                   # POST /process
-│   ├── relationships.py             # GET/POST/PATCH /relationships
-│   └── misc.py                      # Health check, etc.
-├── models/                           # SQLAlchemy ORM models
-│   ├── base.py                      # Base, TimestampMixin
-│   ├── user.py                      # User
-│   ├── session.py                   # Session, SessionMetric
-│   └── relationship.py              # Coach-Skater relationship
-├── schemas.py                        # Pydantic request/response schemas (all in one file)
-├── crud/                             # Database CRUD operations
-├── services/                         # Business logic (diagnostics rules, etc.)
-├── metrics_registry.py               # MetricDef definitions (12+ metrics, Russian labels, ideal ranges)
-├── auth/                             # JWT auth (deps.py — CurrentUser, DbDep)
-└── migrations/                       # Alembic migrations
+backend/
+├── app/                              # Python package (backend.app.*)
+│   ├── routes/                       # FastAPI routers
+│   │   ├── auth.py                  # POST register/login/refresh
+│   │   ├── users.py                 # GET/PATCH /users/me
+│   │   ├── sessions.py              # CRUD /sessions
+│   │   ├── metrics.py               # GET /metrics/trend, /prs, /diagnostics, /registry
+│   │   ├── uploads.py               # POST init/chunk/complete
+│   │   ├── detect.py                # POST/GET /detect (async queue)
+│   │   ├── process.py               # POST /process (async queue)
+│   │   ├── relationships.py         # GET/POST/PATCH /relationships
+│   │   └── misc.py                  # Health check, etc.
+│   ├── models/                       # SQLAlchemy ORM models
+│   │   ├── base.py                  # Base, TimestampMixin
+│   │   ├── user.py                  # User
+│   │   ├── session.py               # Session, SessionMetric
+│   │   └── relationship.py          # Coach-Skater relationship
+│   ├── schemas.py                    # Pydantic request/response schemas (all in one file)
+│   ├── crud/                         # Database CRUD operations
+│   ├── services/                     # Business logic (diagnostics rules, etc.)
+│   ├── config.py                     # Settings (Pydantic BaseSettings)
+│   ├── storage.py                    # R2/S3 client
+│   ├── task_manager.py               # Valkey task queue helpers
+│   ├── database.py                   # SQLAlchemy async engine
+│   ├── logging_config.py             # structlog configuration
+│   ├── metrics_registry.py           # MetricDef definitions (12+ metrics, Russian labels, ideal ranges)
+│   ├── auth/                         # JWT auth (deps.py — CurrentUser, DbDep)
+│   └── main.py                       # FastAPI app factory
+├── alembic/                          # Database migrations
+├── tests/                            # Backend tests
+└── pyproject.toml                    # Backend-only dependencies
 ```
+
+## Architectural Constraint
+
+**ZERO ML imports.** All ML runs in `ml/skating_ml/worker.py` (arq worker). Routes like `/detect` and `/process` enqueue jobs to Valkey; results are polled via status/result endpoints.
 
 ## API Routes
 
@@ -49,8 +62,10 @@ src/backend/
 | POST | `/uploads/init` | Start chunked upload (returns presigned URL) |
 | POST | `/uploads/chunk` | Upload chunk to R2 |
 | POST | `/uploads/complete` | Finalize upload, trigger processing |
-| POST | `/detect` | Run person detection on uploaded video |
-| POST | `/process` | Start ML pipeline processing |
+| POST | `/detect` | Enqueue person detection job (async) |
+| GET | `/detect/{task_id}/status` | Poll detection job status |
+| GET | `/detect/{task_id}/result` | Get detection result |
+| POST | `/process` | Start ML pipeline processing (async) |
 | GET | `/relationships` | List relationships |
 | POST | `/relationships/invite` | Invite skater |
 | PATCH | `/relationships/{id}` | Accept/reject invitation |
@@ -59,12 +74,12 @@ src/backend/
 
 - **JWT**: access token (15min) + refresh token (7d), stored in localStorage
 - **Cookie sync**: `sb_auth=1` cookie set by frontend for server-side gating
-- **CurrentUser**: dependency injection via `src/backend/auth/deps.py` (reads JWT from Authorization header)
+- **CurrentUser**: dependency injection via `backend.app.auth.deps` (reads JWT from Authorization header)
 - **Coach access**: coaches can view students' sessions/metrics via `is_coach_for_student()` check
 
 ## Metrics System
 
-`src/backend/metrics_registry.py` defines 12+ metrics per element:
+`backend.app.metrics_registry` defines 12+ metrics per element:
 
 | Metric | Unit | Direction | Elements |
 |--------|------|-----------|----------|
@@ -85,7 +100,7 @@ Each `MetricDef` has `label_ru`, `unit`, `format`, `direction`, `element_types`,
 
 ## Diagnostic Rules
 
-`src/backend/services/diagnostics.py` implements 5 rules:
+`backend.app.services.diagnostics` implements 5 rules:
 1. `check_consistently_below_range` — metric below ideal range in majority of sessions
 2. `check_declining_trend` — linear regression shows decline (slope < 0, r² > 0.3)
 3. `check_stagnation` — values flat with low variance
@@ -94,14 +109,17 @@ Each `MetricDef` has `label_ru`, `unit`, `format`, `direction`, `element_types`,
 
 ## Schemas
 
-All schemas in `src/backend/schemas.py` (single file). Key types:
+All schemas in `backend.app.schemas` (single file). Key types:
 - `UserResponse`: id, email, display_name, avatar_url, bio, height_cm, weight_kg, language, timezone, theme
 - `SessionResponse`: includes nested `SessionMetricResponse[]`
 - `TrendResponse`: metric_name, data_points, trend (improving/stable/declining), current_pr, reference_range
 - `DiagnosticsResponse`: user_id, findings[]
+- `DetectQueueResponse`: task_id, video_key, status
+- `DetectResultResponse`: persons, preview_image, video_key, auto_click, status
+- `MLModelFlags`: depth, optical_flow, segment, foot_track, matting, inpainting
 
 ## Before Committing
 
-1. **Tests**: `lefthook run test`
-2. **Type check**: `lefthook run typecheck`
-3. **Lint**: `lefthook run format`
+1. **Tests**: `go-task test` or `uv run pytest backend/tests/`
+2. **Type check**: `uv run basedpyright backend/app/`
+3. **Lint**: `go-task lint` or `uv run ruff check backend/app/`
