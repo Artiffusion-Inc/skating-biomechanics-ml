@@ -1,5 +1,6 @@
 import { Download, FileSpreadsheet, Table2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { useTranslations } from "@/i18n"
 
 interface DownloadItem {
   href: string
@@ -14,10 +15,12 @@ interface DownloadSectionProps {
 }
 
 export function DownloadSection({ videoUrl, posesUrl, csvUrl }: DownloadSectionProps) {
+  const t = useTranslations("download")
+
   const items: DownloadItem[] = [
-    { href: videoUrl, label: "Видео", icon: Download },
-    ...(posesUrl ? [{ href: posesUrl, label: "Позы (.npy)", icon: FileSpreadsheet }] : []),
-    ...(csvUrl ? [{ href: csvUrl, label: "Биомеханика (.csv)", icon: Table2 }] : []),
+    { href: videoUrl, label: t("video"), icon: Download },
+    ...(posesUrl ? [{ href: posesUrl, label: t("poses"), icon: FileSpreadsheet }] : []),
+    ...(csvUrl ? [{ href: csvUrl, label: t("biomech"), icon: Table2 }] : []),
   ]
 
   return (
