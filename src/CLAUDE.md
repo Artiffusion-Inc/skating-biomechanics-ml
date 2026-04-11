@@ -1,8 +1,6 @@
-# src/CLAUDE.md — ML Pipeline & Backend
+# src/CLAUDE.md — ML Pipeline
 
-## ML Pipeline
-
-### Project Structure
+## Project Structure
 
 ```
 src/
@@ -49,16 +47,6 @@ src/
     ├── reference_builder.py          # Build reference from expert video
     └── reference_store.py            # Save/load .npz
 
-src/backend/
-├── routes/                           # FastAPI routers (auth, sessions, metrics, uploads, users, relationships)
-├── models/                           # SQLAlchemy ORM models (User, Session, SessionMetric)
-├── schemas.py                        # Pydantic request/response schemas
-├── crud/                             # Database CRUD operations
-├── services/                         # Business logic (diagnostics, etc.)
-├── metrics_registry.py               # MetricDef definitions (12+ metrics, Russian labels)
-├── auth/                             # JWT auth (deps.py, middleware-free)
-└── migrations/                       # Alembic migrations
-
 tests/
 ├── pose_3d/                          # Corrective pipeline tests
 ├── detection/                        # Tracker tests
@@ -66,7 +54,7 @@ tests/
 └── alignment/                        # DTW aligner
 ```
 
-### CLI Usage
+## CLI Usage
 
 ```bash
 uv run python -m src.cli analyze video.mp4 --element waltz_jump
@@ -112,19 +100,6 @@ System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-c
 - **RTMPose (rtmlib)** is the sole pose estimation backend. HALPE26 26kp extracted, converted to H3.6M 17kp for downstream analysis.
 - **CorrectiveLens**: 2D → MotionAGFormer 3D lift → kinematic constraints → anchor projection → blend.
 - **CUDA compat**: standalone CUDA 12 libs in `.venv/cuda-compat/` with patched RUNPATH.
-
-## Backend API
-
-FastAPI routes under `src/backend/routes/`:
-- `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`
-- `GET /users/me`, `PATCH /users/me`, `PATCH /users/me/settings`
-- `POST /sessions`, `GET /sessions`, `GET /sessions/{id}`, `PATCH /sessions/{id}`, `DELETE /sessions/{id}`
-- `GET /metrics/registry`, `GET /metrics/trend`, `GET /metrics/prs`, `GET /metrics/diagnostics`
-- `POST /uploads/init`, `POST /uploads/chunk`, `POST /uploads/complete`
-- `POST /detect`, `POST /process`
-- `GET /relationships`, `POST /relationships/invite`, `PATCH /relationships/{id}`
-
-Auth: JWT with access (15min) + refresh (7d) tokens. `sb_auth` cookie for server-side gating.
 
 ## Remote GPU Processing (Vast.ai Serverless)
 
