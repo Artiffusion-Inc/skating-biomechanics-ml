@@ -27,8 +27,6 @@ The system has been migrated to use H3.6M 17-keypoint 3D format as the primary p
 - ✅ Pipeline: 3D-first architecture
 - ✅ Tests: 279+ passing
 
-**See `MIGRATION_NOTES.md` for full migration details.**
-
 ## 🎉 Major Milestone: RTMPose + GPU Pipeline (2026-04-01)
 
 **Migration:** YOLO26-Pose → RTMPose via rtmlib (default), GPU acceleration enabled
@@ -129,7 +127,6 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] All metrics updated for 17kp format
 
 **Files:** `pose_3d/`, `src/types.py`, `src/normalizer.py`
-**Migration:** See `MIGRATION_NOTES.md` for full details
 **Tests:** 263 tests passing, 59% coverage
 
 ---

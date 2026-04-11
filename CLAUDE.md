@@ -286,4 +286,3 @@ docs(analysis): update physics engine API docs
 - @ROADMAP.md — project status (SINGLE SOURCE OF TRUTH)
 - @research/RESEARCH_SUMMARY_2026-03-28.md — research findings (41 papers)
 - @research/RESEARCH.md — research memory bank (index)
-- @MIGRATION_NOTES.md — BlazePose 33kp → H3.6M 17kp migration details
