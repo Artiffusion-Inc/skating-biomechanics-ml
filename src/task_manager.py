@@ -39,7 +39,7 @@ async def get_valkey_client() -> aioredis.Redis:
 
 async def create_task_state(
     task_id: str,
-    video_path: str,
+    video_key: str,
     valkey: aioredis.Redis | None = None,
 ) -> None:
     close = valkey is None
@@ -53,7 +53,7 @@ async def create_task_state(
             mapping={
                 "task_id": task_id,
                 "status": TaskStatus.PENDING,
-                "video_path": video_path,
+                "video_key": video_key,
                 "progress": "0.0",
                 "message": "Queued",
                 "created_at": now,
