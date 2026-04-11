@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Slider } from "@/components/ui/slider"
+import { useTranslations } from "@/i18n"
 import { detectPersons } from "@/lib/api"
 import { toastError, toastSuccess } from "@/lib/toast"
 import type { DetectResponse, PersonClick } from "@/types"
@@ -30,6 +31,7 @@ type Status = "idle" | "uploading" | "detecting" | "ready" | "error"
 
 export default function UploadPage() {
   const router = useRouter()
+  const t = useTranslations("home")
   const fileRef = useRef<HTMLInputElement>(null)
   const imgRef = useRef<HTMLImageElement>(null)
 
@@ -55,7 +57,7 @@ export default function UploadPage() {
   const handleFile = useCallback(
     async (f: File) => {
       if (!isValidVideoFile(f)) {
-        toastError("Файл должен быть видео (MP4, MOV, WebM) до 500 МБ")
+        toastError(t("videoError"))
         return
       }
       setFile(f)
@@ -81,9 +83,9 @@ export default function UploadPage() {
       }
 
       setStatus("ready")
-      toastSuccess(`Обнаружено людей: ${resp.persons.length}`)
+      toastSuccess(t("personsDetected", { count: resp.persons.length }))
     },
-    [tracking],
+    [tracking, t],
   )
 
   const handleDrop = useCallback(
@@ -188,7 +190,7 @@ export default function UploadPage() {
           className="flex cursor-pointer flex-col items-center justify-center rounded-lg border-2 border-dashed border-border p-12 transition-colors hover:border-primary"
         >
           <Upload className="mb-4 h-10 w-10 text-muted-foreground" />
-          <p className="text-lg font-medium">Перетащите видео сюда или нажмите для выбора</p>
+          <p className="text-lg font-medium">{t("dropVideo")}</p>
           <p className="mt-1 text-sm text-muted-foreground">MP4, MOV, WebM</p>
           <input
             ref={fileRef}
@@ -237,7 +239,7 @@ export default function UploadPage() {
           <AlertCircle className="h-8 w-8 text-destructive" />
           <p className="text-destructive">{error}</p>
           <Button variant="outline" onClick={() => setStatus("idle")}>
-            Попробовать снова
+            {t("retry")}
           </Button>
         </div>
       )}
@@ -269,7 +271,7 @@ export default function UploadPage() {
                 <img
                   ref={imgRef}
                   src={previewSrc}
-                  alt="Превью"
+                  alt={t("preview")}
                   className="w-full rounded border border-border"
                   draggable={false}
                 />
@@ -280,9 +282,7 @@ export default function UploadPage() {
                   />
                 )}
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
-                Нажмите на фигуриста на превью для выбора
-              </p>
+              <p className="mt-2 text-xs text-muted-foreground">{t("clickSkater")}</p>
             </CardContent>
           </Card>
 
@@ -292,7 +292,7 @@ export default function UploadPage() {
             {detectResult.persons.length > 1 && (
               <Card>
                 <CardContent className="p-4">
-                  <h3 className="mb-2 text-sm font-medium">Фигуристы</h3>
+                  <h3 className="mb-2 text-sm font-medium">{t("skaters")}</h3>
                   <div className="flex flex-col gap-1">
                     {detectResult.persons.map(p => (
                       <button
@@ -305,7 +305,7 @@ export default function UploadPage() {
                             : "hover:bg-muted"
                         }`}
                       >
-                        #{p.track_id} — {p.hits} кадров
+                        {t("skaterTrack", { trackId: p.track_id, hits: p.hits })}
                       </button>
                     ))}
                   </div>
@@ -316,7 +316,7 @@ export default function UploadPage() {
             {/* Settings */}
             <Card>
               <CardContent className="space-y-4 p-4">
-                <h3 className="text-sm font-medium">Настройки</h3>
+                <h3 className="text-sm font-medium">{t("settings")}</h3>
 
                 <div>
                   <span className="mb-1 block text-xs text-muted-foreground">
@@ -345,14 +345,14 @@ export default function UploadPage() {
                 </div>
 
                 <div>
-                  <span className="mb-1 block text-xs text-muted-foreground">Трекинг</span>
+                  <span className="mb-1 block text-xs text-muted-foreground">{t("tracking")}</span>
                   <Select value={tracking} onValueChange={setTracking}>
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="auto">Авто</SelectItem>
-                      <SelectItem value="none">Без трекинга</SelectItem>
+                      <SelectItem value="auto">{t("trackingAuto")}</SelectItem>
+                      <SelectItem value="none">{t("trackingNone")}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -364,7 +364,7 @@ export default function UploadPage() {
                     onCheckedChange={v => setDoExport(v === true)}
                   />
                   <label htmlFor="export" className="text-sm">
-                    Экспорт поз + CSV
+                    {t("exportPoses")}
                   </label>
                 </div>
               </CardContent>
@@ -373,7 +373,7 @@ export default function UploadPage() {
             {/* Actions */}
             <div className="flex flex-col gap-2">
               <Button onClick={handleAnalyze} disabled={clickCoord === null} size="lg">
-                Анализировать
+                {t("analyze")}
               </Button>
               <Button
                 variant="outline"
@@ -384,7 +384,7 @@ export default function UploadPage() {
                   setSelectedPerson(null)
                 }}
               >
-                Другое видео
+                {t("anotherVideo")}
               </Button>
             </div>
 
