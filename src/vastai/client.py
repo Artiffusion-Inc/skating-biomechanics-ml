@@ -66,8 +66,8 @@ def process_video_remote(
     if ml_flags is None:
         ml_flags = {}
 
-    api_key = settings.vastai_api_key
-    endpoint_name = settings.vastai_endpoint_name
+    api_key = settings.vastai.api_key.get_secret_value()
+    endpoint_name = settings.vastai.endpoint_name
 
     # 1. Upload input video to R2
     r2_key = f"input/{Path(video_path).stem}_{int(time.time())}.mp4"

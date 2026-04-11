@@ -30,14 +30,14 @@ def create_access_token(user_id: str, expires_delta_seconds: int | None = None) 
     """Create a short-lived JWT access token."""
     settings = get_settings()
     if expires_delta_seconds is None:
-        expires_delta_seconds = settings.jwt_access_token_expire_minutes * 60
+        expires_delta_seconds = settings.jwt.access_token_expire_minutes * 60
 
     payload = {
         "sub": user_id,
         "type": "access",
         "exp": int(__import__("time").time() + expires_delta_seconds),
     }
-    return pyjwt.encode(payload, settings.jwt_secret_key, algorithm="HS256")
+    return pyjwt.encode(payload, settings.jwt.secret_key.get_secret_value(), algorithm="HS256")
 
 
 def create_refresh_token() -> str:

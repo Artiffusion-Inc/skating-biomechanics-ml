@@ -17,7 +17,7 @@ app = FastAPI(title="AI Тренер — Фигурное катание")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=get_settings().cors_origins,
+    allow_origins=get_settings().cors.origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

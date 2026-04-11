@@ -39,7 +39,7 @@ async def _issue_token_pair(db: DbDep, user_id: str, family_id: str | None = Non
         user_id=user_id,
         token_hash=hash_token(refresh_str),
         family_id=fam,
-        expires_at=datetime.now(UTC) + timedelta(days=settings.jwt_refresh_token_expire_days),
+        expires_at=datetime.now(UTC) + timedelta(days=settings.jwt.refresh_token_expire_days),
     )
     return TokenResponse(access_token=access, refresh_token=refresh_str)
 

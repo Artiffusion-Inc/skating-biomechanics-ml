@@ -59,7 +59,7 @@ def test_create_access_token_custom_expiry():
 
     settings = get_settings()
     with pytest.raises(pyjwt.ExpiredSignatureError):
-        pyjwt.decode(token, settings.jwt_secret_key, algorithms=["HS256"])
+        pyjwt.decode(token, settings.jwt.secret_key.get_secret_value(), algorithms=["HS256"])
 
 
 def test_create_refresh_token():

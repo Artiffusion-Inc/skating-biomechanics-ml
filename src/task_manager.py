@@ -29,10 +29,10 @@ class TaskStatus(StrEnum):
 async def get_valkey_client() -> aioredis.Redis:
     settings = get_settings()
     return aioredis.Redis(
-        host=settings.valkey_host,
-        port=settings.valkey_port,
-        db=settings.valkey_db,
-        password=settings.valkey_password,
+        host=settings.valkey.host,
+        port=settings.valkey.port,
+        db=settings.valkey.db,
+        password=settings.valkey.password.get_secret_value(),
         decode_responses=True,
     )
 
@@ -46,7 +46,7 @@ async def create_task_state(
     if valkey is None:
         valkey = await get_valkey_client()
     try:
-        ttl = get_settings().task_ttl_seconds
+        ttl = get_settings().app.task_ttl_seconds
         now = datetime.now(UTC).isoformat()
         await valkey.hset(
             f"{TASK_KEY_PREFIX}{task_id}",
@@ -189,7 +189,7 @@ async def set_cancel_signal(task_id: str, valkey: aioredis.Redis | None = None) 
     if valkey is None:
         valkey = await get_valkey_client()
     try:
-        ttl = get_settings().task_ttl_seconds
+        ttl = get_settings().app.task_ttl_seconds
         await valkey.setex(f"{TASK_CANCEL_PREFIX}{task_id}", ttl, "1")
     finally:
         if close:

@@ -14,10 +14,10 @@ if TYPE_CHECKING:
 settings = get_settings()
 
 engine = create_async_engine(
-    settings.database_url,
+    settings.database.url,
     pool_size=10,
     max_overflow=20,
-    echo=settings.log_level == "DEBUG",
+    echo=settings.app.log_level == "DEBUG",
 )
 
 async_session_factory = async_sessionmaker(engine, expire_on_commit=False)

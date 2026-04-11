@@ -179,10 +179,10 @@ async def enqueue_process(req: ProcessRequest):
 
     arq_pool = await create_pool(
         RedisSettings(
-            host=settings.valkey_host,
-            port=settings.valkey_port,
-            database=settings.valkey_db,
-            password=settings.valkey_password,
+            host=settings.valkey.host,
+            port=settings.valkey.port,
+            database=settings.valkey.db,
+            password=settings.valkey.password.get_secret_value(),
         )
     )
     try:

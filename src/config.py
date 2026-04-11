@@ -1,62 +1,156 @@
-"""Application settings for the skating biomechanics web API and worker."""
+"""Application settings (single source of truth).
 
-from __future__ import annotations
+Uses pydantic-settings with nested config groups and env prefixes.
+All services read configuration from one .env file.
 
-from pydantic_settings import BaseSettings
+Env prefixes:
+  VALKEY_     — queue / cache
+  DATABASE_   — PostgreSQL
+  JWT_        — authentication tokens
+  CORS_       — cross-origin policy
+  R2_         — Cloudflare R2 object storage
+  VASTAI_     — remote GPU
+  APP_        — general (host, port, dirs, logging)
+"""
+
+from functools import lru_cache
+
+from pydantic import Field, SecretStr
+from pydantic_settings import BaseSettings as _BaseSettings
+from pydantic_settings import SettingsConfigDict
+
+# ---------------------------------------------------------------------------
+# Base
+# ---------------------------------------------------------------------------
 
 
-class Settings(BaseSettings):
-    """Central settings, loaded from environment variables or .env file."""
+class BaseSettings(_BaseSettings):
+    """Shared model_config for all nested groups."""
 
-    valkey_host: str = "localhost"
-    valkey_port: int = 6379
-    valkey_db: int = 0
-    valkey_password: str | None = None
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+    )
 
+
+# ---------------------------------------------------------------------------
+# Nested groups
+# ---------------------------------------------------------------------------
+
+
+class ValkeyConfig(BaseSettings):
+    """Valkey / Redis queue settings."""
+
+    host: str = "localhost"
+    port: int = 6379
+    db: int = 0
+    password: SecretStr = SecretStr("")
+
+    def build_url(self) -> str:
+        auth = f":{self.password.get_secret_value()}@" if self.password.get_secret_value() else ""
+        return f"redis://{auth}{self.host}:{self.port}/{self.db}"
+
+    class Config:
+        env_prefix = "VALKEY_"
+
+
+class DatabaseConfig(BaseSettings):
+    """PostgreSQL connection settings."""
+
+    url: str = "postgresql+asyncpg://skating:skating_dev@localhost:5432/skating_ml"
+
+    class Config:
+        env_prefix = "DATABASE_"
+
+
+class JWTConfig(BaseSettings):
+    """JWT authentication settings."""
+
+    secret_key: SecretStr = SecretStr("change-me-to-a-random-secret")
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+
+    class Config:
+        env_prefix = "JWT_"
+
+
+class CORSConfig(BaseSettings):
+    """Cross-origin resource sharing."""
+
+    origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+    class Config:
+        env_prefix = "CORS_"
+
+
+class R2Config(BaseSettings):
+    """Cloudflare R2 object storage (S3-compatible)."""
+
+    access_key_id: SecretStr = SecretStr("")
+    secret_access_key: SecretStr = SecretStr("")
+    bucket: str = "skating-ml-pipeline"
+    endpoint_url: str = ""
+
+    class Config:
+        env_prefix = "R2_"
+
+
+class VastAIConfig(BaseSettings):
+    """Vast.ai Serverless GPU settings."""
+
+    api_key: SecretStr = SecretStr("")
+    endpoint_name: str = "skating-ml-gpu"
+
+    class Config:
+        env_prefix = "VASTAI_"
+
+
+class AppConfig(BaseSettings):
+    """General application settings."""
+
+    host: str = "127.0.0.1"
+    port: int = 8000
     outputs_dir: str = "data/uploads"
     worker_max_jobs: int = 1
     worker_retry_delays: list[int] = [30, 120]
-    api_host: str = "127.0.0.1"
-    api_port: int = 8000
     log_level: str = "INFO"
-    task_ttl_seconds: int = 24 * 60 * 60
+    task_ttl_seconds: int = 86400
 
-    # PostgreSQL
-    database_url: str = "postgresql+asyncpg://skating:skating_dev@localhost:5432/skating_ml"
-
-    # JWT Authentication
-    jwt_secret_key: str = "change-me-to-a-random-secret"
-    jwt_access_token_expire_minutes: int = 15
-    jwt_refresh_token_expire_days: int = 7
-
-    # CORS
-    cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:3000"]
-
-    # Cloudflare R2 settings
-    cf_r2_access_key_id: str = ""
-    cf_r2_secret_access_key: str = ""
-    cf_r2_bucket: str = "skating-ml-pipeline"
-    cf_r2_endpoint_url: str = ""
-
-    # Vast.ai Serverless settings
-    vastai_api_key: str = ""
-    vastai_endpoint_name: str = "skating-ml-gpu"
-
-    def build_valkey_url(self) -> str:
-        auth = f":{self.valkey_password}@" if self.valkey_password else ""
-        return f"redis://{auth}{self.valkey_host}:{self.valkey_port}/{self.valkey_db}"
-
-    model_config = {
-        "env_file": ".env",
-        "case_sensitive": False,
-        "extra": "ignore",
-    }
+    class Config:
+        env_prefix = "APP_"
 
 
+# ---------------------------------------------------------------------------
+# Root settings
+# ---------------------------------------------------------------------------
+
+
+class Settings(BaseSettings):
+    """Application settings — single source of truth."""
+
+    valkey: ValkeyConfig = Field(default_factory=ValkeyConfig)
+    database: DatabaseConfig = Field(default_factory=DatabaseConfig)
+    jwt: JWTConfig = Field(default_factory=JWTConfig)
+    cors: CORSConfig = Field(default_factory=CORSConfig)
+    r2: R2Config = Field(default_factory=R2Config)
+    vastai: VastAIConfig = Field(default_factory=VastAIConfig)
+    app: AppConfig = Field(default_factory=AppConfig)
+
+    model_config = SettingsConfigDict(
+        extra="ignore",
+        env_file=".env",
+        env_file_encoding="utf-8",
+        case_sensitive=False,
+        env_nested_delimiter="__",
+    )
+
+
+@lru_cache
 def get_settings() -> Settings:
-    if get_settings._instance is None:  # type: ignore[attr-defined]
-        get_settings._instance = Settings()  # type: ignore[attr-defined]
-    return get_settings._instance  # type: ignore[attr-defined]
+    """Get cached settings instance (singleton)."""
+    return Settings()
 
 
-get_settings._instance = None  # type: ignore[attr-defined]
+settings = get_settings()

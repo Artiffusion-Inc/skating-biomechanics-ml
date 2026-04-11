@@ -103,7 +103,7 @@ async def process_video_task(
         cancel_event = threading.Event()
         _cancel_events[task_id] = cancel_event
 
-        outputs_dir = Path(settings.outputs_dir)
+        outputs_dir = Path(settings.app.outputs_dir)
         outputs_dir.mkdir(parents=True, exist_ok=True)
         output_path = str(outputs_dir / f"{Path(video_path).stem}_analyzed.mp4")
 
@@ -124,7 +124,7 @@ async def process_video_task(
 
             # Try remote GPU via Vast.ai, fall back to local
             result = None
-            if settings.vastai_api_key:
+            if settings.vastai.api_key.get_secret_value():
                 try:
                     from src.vastai.client import process_video_remote
 
@@ -237,9 +237,9 @@ class WorkerSettings:
     """arq worker configuration."""
 
     queue_name: str = "skating:queue"
-    max_jobs: int = _settings.worker_max_jobs
+    max_jobs: int = _settings.app.worker_max_jobs
     retry_jobs: bool = True
-    retry_delays: ClassVar[list[int]] = _settings.worker_retry_delays
+    retry_delays: ClassVar[list[int]] = _settings.app.worker_retry_delays
 
     on_startup = startup
     on_shutdown = shutdown
@@ -248,8 +248,8 @@ class WorkerSettings:
     cron_jobs: ClassVar[list] = []
 
     redis_settings = RedisSettings(
-        host=_settings.valkey_host,
-        port=_settings.valkey_port,
-        database=_settings.valkey_db,
-        password=_settings.valkey_password,
+        host=_settings.valkey.host,
+        port=_settings.valkey.port,
+        database=_settings.valkey.db,
+        password=_settings.valkey.password.get_secret_value(),
     )
