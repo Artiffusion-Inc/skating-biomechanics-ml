@@ -1,83 +1,113 @@
-import type { LoginRequest, RegisterRequest, TokenResponse, UserResponse } from "@/lib/auth-schemas"
-import { TokenResponseSchema, UserResponseSchema } from "@/lib/auth-schemas"
+/**
+ * Auth API: schemas, token helpers, and endpoint wrappers.
+ */
 
-const API_BASE = "/api/v1"
+import { z } from "zod"
+import { ApiError, apiFetch, clearTokens, getRefreshToken, setTokens } from "@/lib/api-client"
 
-const TOKEN_KEY = "access_token"
-const REFRESH_KEY = "refresh_token"
+// ---------------------------------------------------------------------------
+// Schemas
+// ---------------------------------------------------------------------------
 
-export function getAccessToken(): string | null {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem(TOKEN_KEY)
-}
+export const RegisterRequestSchema = z.object({
+  email: z.string().email("Введите корректный email"),
+  password: z.string().min(8, "Минимум 8 символов").max(128),
+  display_name: z.string().max(100).optional(),
+})
 
-export function getRefreshToken(): string | null {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem(REFRESH_KEY)
-}
+export const LoginRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+})
 
-export function setTokens(access: string, refresh: string) {
-  localStorage.setItem(TOKEN_KEY, access)
-  localStorage.setItem(REFRESH_KEY, refresh)
-}
+export const TokenResponseSchema = z.object({
+  access_token: z.string(),
+  refresh_token: z.string(),
+  token_type: z.literal("bearer"),
+})
 
-export function clearTokens() {
-  localStorage.removeItem(TOKEN_KEY)
-  localStorage.removeItem(REFRESH_KEY)
-}
+export const UserResponseSchema = z.object({
+  id: z.string(),
+  email: z.string().email(),
+  display_name: z.string().nullable(),
+  avatar_url: z.string().nullable(),
+  bio: z.string().nullable(),
+  height_cm: z.number().int().nullable(),
+  weight_kg: z.number().nullable(),
+  language: z.string(),
+  timezone: z.string(),
+  theme: z.string(),
+  is_active: z.boolean(),
+  created_at: z.string(),
+})
 
-export function authHeaders(): Record<string, string> {
-  const token = getAccessToken()
-  return token ? { Authorization: `Bearer ${token}` } : {}
-}
+export const UpdateProfileRequestSchema = z.object({
+  display_name: z.string().max(100).optional().nullable(),
+  bio: z.string().optional().nullable(),
+  height_cm: z.number().int().min(50).max(250).optional().nullable(),
+  weight_kg: z.number().min(20).max(300).optional().nullable(),
+})
+
+export const UpdateSettingsRequestSchema = z.object({
+  language: z.string().max(10).optional().nullable(),
+  timezone: z.string().max(50).optional().nullable(),
+  theme: z.enum(["light", "dark", "system"]).optional().nullable(),
+})
+
+export type RegisterRequest = z.infer<typeof RegisterRequestSchema>
+export type LoginRequest = z.infer<typeof LoginRequestSchema>
+export type TokenResponse = z.infer<typeof TokenResponseSchema>
+export type UserResponse = z.infer<typeof UserResponseSchema>
+export type UpdateProfileRequest = z.infer<typeof UpdateProfileRequestSchema>
+export type UpdateSettingsRequest = z.infer<typeof UpdateSettingsRequestSchema>
+
+// Re-export token helpers for consumers
+export { clearTokens, getAccessToken, getRefreshToken, setTokens } from "@/lib/api-client"
+
+// ---------------------------------------------------------------------------
+// Auth API
+// ---------------------------------------------------------------------------
+
+const JSON_POST = { "Content-Type": "application/json" }
 
 export async function register(data: RegisterRequest): Promise<TokenResponse> {
-  const res = await fetch(`${API_BASE}/auth/register`, {
+  return apiFetch("/auth/register", TokenResponseSchema, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    auth: false,
+    headers: JSON_POST,
     body: JSON.stringify(data),
   })
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ detail: "Registration failed" }))
-    throw new Error(err.detail)
-  }
-  const json = await res.json()
-  return TokenResponseSchema.parse(json)
 }
 
 export async function login(data: LoginRequest): Promise<TokenResponse> {
-  const res = await fetch(`${API_BASE}/auth/login`, {
+  return apiFetch("/auth/login", TokenResponseSchema, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    auth: false,
+    headers: JSON_POST,
     body: JSON.stringify(data),
   })
-  if (!res.ok) {
-    throw new Error("Неверный email или пароль")
-  }
-  const json = await res.json()
-  return TokenResponseSchema.parse(json)
 }
 
 export async function refreshToken(refresh: string): Promise<TokenResponse> {
-  const res = await fetch(`${API_BASE}/auth/refresh`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ refresh_token: refresh }),
-  })
-  if (!res.ok) {
+  try {
+    return await apiFetch("/auth/refresh", TokenResponseSchema, {
+      method: "POST",
+      auth: false,
+      headers: JSON_POST,
+      body: JSON.stringify({ refresh_token: refresh }),
+    })
+  } catch {
     clearTokens()
-    throw new Error("Сессия истекла")
+    throw new ApiError("Сессия истекла", 401)
   }
-  const json = await res.json()
-  return TokenResponseSchema.parse(json)
 }
 
 export async function logout(): Promise<void> {
   const refresh = getRefreshToken()
   if (refresh) {
-    await fetch(`${API_BASE}/auth/logout`, {
+    await fetch("/api/v1/auth/logout", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: JSON_POST,
       body: JSON.stringify({ refresh_token: refresh }),
     }).catch(() => {})
   }
@@ -85,38 +115,21 @@ export async function logout(): Promise<void> {
 }
 
 export async function fetchMe(): Promise<UserResponse> {
-  const res = await fetch(`${API_BASE}/users/me`, {
-    headers: { ...authHeaders() },
-  })
-  if (!res.ok) throw new Error("Unauthorized")
-  const json = await res.json()
-  return UserResponseSchema.parse(json)
+  return apiFetch("/users/me", UserResponseSchema)
 }
 
-export async function updateProfile(
-  data: Partial<RegisterRequest> & { height_cm?: number; weight_kg?: number; bio?: string },
-): Promise<UserResponse> {
-  const res = await fetch(`${API_BASE}/users/me`, {
+export async function updateProfile(data: UpdateProfileRequest): Promise<UserResponse> {
+  return apiFetch("/users/me", UserResponseSchema, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: JSON_POST,
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error("Update failed")
-  const json = await res.json()
-  return UserResponseSchema.parse(json)
 }
 
-export async function updateSettings(data: {
-  language?: string
-  timezone?: string
-  theme?: string
-}): Promise<UserResponse> {
-  const res = await fetch(`${API_BASE}/users/me/settings`, {
+export async function updateSettings(data: UpdateSettingsRequest): Promise<UserResponse> {
+  return apiFetch("/users/me/settings", UserResponseSchema, {
     method: "PATCH",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: JSON_POST,
     body: JSON.stringify(data),
   })
-  if (!res.ok) throw new Error("Update failed")
-  const json = await res.json()
-  return UserResponseSchema.parse(json)
 }

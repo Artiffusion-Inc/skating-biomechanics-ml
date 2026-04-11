@@ -1,8 +1,8 @@
 "use client"
 
 import { createContext, type ReactNode, useContext, useEffect, useState } from "react"
+import type { UserResponse } from "@/lib/auth"
 import * as auth from "@/lib/auth"
-import type { UserResponse } from "@/lib/auth-schemas"
 
 interface AuthContextValue {
   user: UserResponse | null

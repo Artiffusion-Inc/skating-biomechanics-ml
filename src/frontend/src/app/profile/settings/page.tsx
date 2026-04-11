@@ -10,7 +10,7 @@ const LANGUAGES = [
   { value: "en", label: "English" },
 ]
 
-const THEMES = [
+const THEMES: { value: "light" | "dark" | "system"; label: string }[] = [
   { value: "system", label: "Системная" },
   { value: "light", label: "Светлая" },
   { value: "dark", label: "Тёмная" },
@@ -22,7 +22,9 @@ export default function SettingsPage() {
 
   const [language, setLanguage] = useState(user?.language ?? "ru")
   const [timezone, setTimezone] = useState(user?.timezone ?? "Europe/Moscow")
-  const [theme, setTheme] = useState(user?.theme ?? "system")
+  const [theme, setTheme] = useState<"light" | "dark" | "system">(
+    (user?.theme as "light" | "dark" | "system") ?? "system",
+  )
   const [saving, setSaving] = useState(false)
 
   if (isLoading) return <div className="text-center text-muted-foreground">Загрузка...</div>

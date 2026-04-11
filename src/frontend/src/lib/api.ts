@@ -1,8 +1,15 @@
-import { authHeaders } from "@/lib/auth"
-import type { ProcessRequest, ProcessResponse } from "@/lib/schemas"
-import { DetectResponseSchema, ProcessRequestSchema } from "@/lib/schemas"
+/**
+ * Non-auth API wrappers: models, process queue, detect, SSE streaming.
+ */
 
-const API_BASE = "/api/v1"
+import { z } from "zod"
+import { API_BASE, apiFetch } from "@/lib/api-client"
+import type { ProcessResponse } from "@/lib/schemas"
+import { DetectResponseSchema, ProcessRequestSchema, ProcessResponseSchema } from "@/lib/schemas"
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
 
 export interface ModelStatus {
   id: string
@@ -10,29 +17,28 @@ export interface ModelStatus {
   size_mb: number | null
 }
 
+const ModelStatusListSchema = z.array(
+  z.object({ id: z.string(), available: z.boolean(), size_mb: z.number().nullable() }),
+)
+
 export async function getModels(): Promise<ModelStatus[]> {
-  const res = await fetch(`${API_BASE}/models`)
-  if (!res.ok) throw new Error("Failed to fetch model status")
-  return res.json()
+  return apiFetch("/models", ModelStatusListSchema, { auth: false })
 }
 
-export async function cancelProcessing(): Promise<void> {
-  await fetch(`${API_BASE}/process/cancel`, { method: "POST", headers: { ...authHeaders() } })
-}
+// ---------------------------------------------------------------------------
+// Process queue
+// ---------------------------------------------------------------------------
 
-export async function enqueueProcess(request: ProcessRequest): Promise<{ task_id: string }> {
-  const validated = ProcessRequestSchema.parse(request)
-  const res = await fetch(`${API_BASE}/process/queue`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
-    body: JSON.stringify(validated),
-  })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text)
-  }
-  return res.json()
-}
+const QueueResponseSchema = z.object({ task_id: z.string() })
+
+const TaskStatusSchema = z.object({
+  task_id: z.string(),
+  status: z.enum(["pending", "running", "completed", "failed", "cancelled"]),
+  progress: z.number(),
+  message: z.string(),
+  result: ProcessResponseSchema.nullable(),
+  error: z.string().nullable(),
+})
 
 export interface TaskStatusResponse {
   task_id: string
@@ -43,23 +49,40 @@ export interface TaskStatusResponse {
   error: string | null
 }
 
-export async function pollTaskStatus(taskId: string): Promise<TaskStatusResponse> {
-  const res = await fetch(`${API_BASE}/process/${taskId}/status`, {
-    headers: { ...authHeaders() },
+export async function enqueueProcess(
+  request: Parameters<typeof ProcessRequestSchema.parse>[0],
+): Promise<{ task_id: string }> {
+  const validated = ProcessRequestSchema.parse(request)
+  return apiFetch("/process/queue", QueueResponseSchema, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(validated),
   })
-  if (!res.ok) {
-    const text = await res.text()
-    throw new Error(text)
-  }
-  return res.json()
+}
+
+export async function pollTaskStatus(taskId: string): Promise<TaskStatusResponse> {
+  return apiFetch(`/process/${taskId}/status`, TaskStatusSchema)
+}
+
+export async function cancelProcessing(): Promise<void> {
+  await apiFetch("/process/cancel", z.object({ status: z.literal("cancelled") }), {
+    method: "POST",
+  })
 }
 
 export async function cancelQueuedProcess(taskId: string): Promise<void> {
-  await fetch(`${API_BASE}/process/${taskId}/cancel`, {
-    method: "POST",
-    headers: { ...authHeaders() },
-  })
+  await apiFetch(
+    `/process/${taskId}/cancel`,
+    z.object({ status: z.string(), task_id: z.string() }),
+    {
+      method: "POST",
+    },
+  )
 }
+
+// ---------------------------------------------------------------------------
+// Detect (FormData — can't use JSON apiFetch)
+// ---------------------------------------------------------------------------
 
 export async function detectPersons(
   file: File,
@@ -69,17 +92,15 @@ export async function detectPersons(
   form.append("video", file)
   const res = await fetch(`${API_BASE}/detect?tracking=${encodeURIComponent(tracking)}`, {
     method: "POST",
-    headers: { ...authHeaders() },
     body: form,
   })
-  if (!res.ok) {
-    const text = await res.text()
-    return { data: null, error: text }
-  }
-  const json = await res.json()
-  const data = DetectResponseSchema.parse(json) // Zod validation
-  return { data, error: undefined }
+  if (!res.ok) return { data: null, error: await res.text() }
+  return { data: DetectResponseSchema.parse(await res.json()), error: undefined }
 }
+
+// ---------------------------------------------------------------------------
+// Process (SSE streaming — custom reader)
+// ---------------------------------------------------------------------------
 
 export interface SSECallbacks {
   onProgress?: (progress: number, message: string) => void
@@ -88,34 +109,18 @@ export interface SSECallbacks {
 }
 
 export async function processVideo(
-  request: {
-    video_path: string
-    person_click: { x: number; y: number }
-    frame_skip: number
-    layer: number
-    tracking: string
-    export: boolean
-    depth?: boolean
-    optical_flow?: boolean
-    segment?: boolean
-    foot_track?: boolean
-    matting?: boolean
-    inpainting?: boolean
-  },
+  request: Parameters<typeof ProcessRequestSchema.parse>[0],
   callbacks: SSECallbacks,
 ): Promise<void> {
-  // Validate request with Zod
   const validated = ProcessRequestSchema.parse(request)
-
   const res = await fetch(`${API_BASE}/process`, {
     method: "POST",
-    headers: { "Content-Type": "application/json", ...authHeaders() },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(validated),
   })
 
   if (!res.ok) {
-    const text = await res.text()
-    callbacks.onError?.(text)
+    callbacks.onError?.(await res.text())
     return
   }
 
@@ -128,32 +133,26 @@ export async function processVideo(
   const decoder = new TextDecoder()
   let buffer = ""
 
-  while (true) {
+  for (;;) {
     const { done, value } = await reader.read()
     if (done) break
-
     buffer += decoder.decode(value, { stream: true })
 
     const lines = buffer.split("\n")
     buffer = lines.pop() || ""
 
-    let currentEvent = ""
+    let event = ""
     for (const line of lines) {
       if (line.startsWith("event:")) {
-        currentEvent = line.slice(6).trim()
+        event = line.slice(6).trim()
       } else if (line.startsWith("data:")) {
-        const data = line.slice(5).trim()
-        if (!data) continue
-
+        const raw = line.slice(5).trim()
+        if (!raw) continue
         try {
-          const parsed = JSON.parse(data)
-          if (currentEvent === "progress") {
-            callbacks.onProgress?.(parsed.progress, parsed.message)
-          } else if (currentEvent === "result") {
-            callbacks.onResult?.(parsed)
-          } else if (currentEvent === "error") {
-            callbacks.onError?.(parsed.error)
-          }
+          const parsed = JSON.parse(raw)
+          if (event === "progress") callbacks.onProgress?.(parsed.progress, parsed.message)
+          else if (event === "result") callbacks.onResult?.(parsed)
+          else if (event === "error") callbacks.onError?.(parsed.error)
         } catch {
           // skip malformed JSON
         }
