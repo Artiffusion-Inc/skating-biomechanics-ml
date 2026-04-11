@@ -109,3 +109,6 @@ src/frontend/dist/
 # Coverage
 coverage/
 package-lock.json
+
+# Alembic (keep versions/, ignore __pycache__)
+alembic/__pycache__/
