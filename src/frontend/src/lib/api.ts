@@ -1,3 +1,4 @@
+import { authHeaders } from "@/lib/auth"
 import type { ProcessRequest, ProcessResponse } from "@/lib/schemas"
 import { DetectResponseSchema, ProcessRequestSchema } from "@/lib/schemas"
 
@@ -16,14 +17,14 @@ export async function getModels(): Promise<ModelStatus[]> {
 }
 
 export async function cancelProcessing(): Promise<void> {
-  await fetch(`${API_BASE}/process/cancel`, { method: "POST" })
+  await fetch(`${API_BASE}/process/cancel`, { method: "POST", headers: { ...authHeaders() } })
 }
 
 export async function enqueueProcess(request: ProcessRequest): Promise<{ task_id: string }> {
   const validated = ProcessRequestSchema.parse(request)
   const res = await fetch(`${API_BASE}/process/queue`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(validated),
   })
   if (!res.ok) {
@@ -43,7 +44,9 @@ export interface TaskStatusResponse {
 }
 
 export async function pollTaskStatus(taskId: string): Promise<TaskStatusResponse> {
-  const res = await fetch(`${API_BASE}/process/${taskId}/status`)
+  const res = await fetch(`${API_BASE}/process/${taskId}/status`, {
+    headers: { ...authHeaders() },
+  })
   if (!res.ok) {
     const text = await res.text()
     throw new Error(text)
@@ -52,7 +55,10 @@ export async function pollTaskStatus(taskId: string): Promise<TaskStatusResponse
 }
 
 export async function cancelQueuedProcess(taskId: string): Promise<void> {
-  await fetch(`${API_BASE}/process/${taskId}/cancel`, { method: "POST" })
+  await fetch(`${API_BASE}/process/${taskId}/cancel`, {
+    method: "POST",
+    headers: { ...authHeaders() },
+  })
 }
 
 export async function detectPersons(
@@ -63,6 +69,7 @@ export async function detectPersons(
   form.append("video", file)
   const res = await fetch(`${API_BASE}/detect?tracking=${encodeURIComponent(tracking)}`, {
     method: "POST",
+    headers: { ...authHeaders() },
     body: form,
   })
   if (!res.ok) {
@@ -102,7 +109,7 @@ export async function processVideo(
 
   const res = await fetch(`${API_BASE}/process`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", ...authHeaders() },
     body: JSON.stringify(validated),
   })
 
