@@ -2,14 +2,12 @@
 
 from __future__ import annotations
 
-from pathlib import Path
-
 import structlog
-from fastapi import FastAPI
+from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.logging_config import configure_logging
-from src.backend.routes import auth, detect, models, process, users
+from src.backend.routes import auth, detect, misc, models, process, users
 from src.config import get_settings
 
 configure_logging()
@@ -25,29 +23,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(auth.router, prefix="/api/v1/auth")
-app.include_router(users.router, prefix="/api/v1/users")
-app.include_router(detect.router, prefix="/api/v1")
-app.include_router(models.router, prefix="/api/v1")
-app.include_router(process.router, prefix="/api/v1")
-
-# Serve output files (videos, NPY, CSV)
-OUTPUTS_DIR = Path("data/uploads")
-OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
-
-
-@app.get("/api/v1/outputs/{filename:path}")
-async def serve_output(filename: str):
-    from fastapi.responses import FileResponse
-
-    file_path = OUTPUTS_DIR / filename
-    if not file_path.exists():
-        from fastapi import HTTPException
-
-        raise HTTPException(status_code=404, detail="File not found")
-    return FileResponse(str(file_path))
-
-
-@app.get("/api/v1/health")
-async def health():
-    return {"status": "ok"}
+api_v1 = APIRouter(prefix="/api/v1")
+api_v1.include_router(auth.router, prefix="/auth")
+api_v1.include_router(users.router, prefix="/users")
+api_v1.include_router(detect.router)
+api_v1.include_router(models.router)
+api_v1.include_router(process.router)
+api_v1.include_router(misc.router)
+app.include_router(api_v1)
