@@ -29,6 +29,9 @@ class VastResult:
     poses_key: str | None
     csv_key: str | None
     stats: dict
+    metrics: list | None
+    phases: object | None
+    recommendations: list | None
 
 
 def _get_worker_url(endpoint_name: str, api_key: str) -> str:
@@ -52,6 +55,7 @@ def process_video_remote(
     tracking: str = "auto",
     export: bool = True,
     ml_flags: dict[str, bool] | None = None,
+    element_type: str | None = None,
 ) -> VastResult:
     """Send video processing to Vast.ai Serverless GPU.
 
@@ -81,6 +85,7 @@ def process_video_remote(
         "tracking": tracking,
         "export": export,
         "ml_flags": ml_flags,
+        "element_type": element_type,
         "r2_endpoint_url": settings.r2.endpoint_url,
         "r2_access_key_id": settings.r2.access_key_id.get_secret_value(),
         "r2_secret_access_key": settings.r2.secret_access_key.get_secret_value(),
@@ -100,4 +105,7 @@ def process_video_remote(
         poses_key=result.get("poses_r2_key"),
         csv_key=result.get("csv_r2_key"),
         stats=result["stats"],
+        metrics=result.get("metrics"),
+        phases=result.get("phases"),
+        recommendations=result.get("recommendations"),
     )

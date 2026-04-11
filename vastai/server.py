@@ -32,6 +32,7 @@ class ProcessRequest(BaseModel):
     tracking: str = "auto"
     export: bool = True
     ml_flags: dict[str, bool] = {}
+    element_type: str | None = None
     # R2 credentials passed per-request (worker doesn't store them)
     r2_endpoint_url: str = ""
     r2_access_key_id: str = ""
@@ -44,6 +45,9 @@ class ProcessResponse(BaseModel):
     poses_r2_key: str | None = None
     csv_r2_key: str | None = None
     stats: dict
+    metrics: list | None = None
+    phases: object | None = None
+    recommendations: list | None = None
 
 
 def _s3(req: ProcessRequest):
@@ -95,6 +99,7 @@ async def process(req: ProcessRequest):
             foot_track=ml.get("foot_track", False),
             matting=ml.get("matting", False),
             inpainting=ml.get("inpainting", False),
+            element_type=req.element_type,
         )
 
         out_key = req.video_r2_key.replace("input/", "output/")
@@ -116,6 +121,9 @@ async def process(req: ProcessRequest):
             poses_r2_key=poses_key,
             csv_r2_key=csv_key,
             stats=result["stats"],
+            metrics=result.get("metrics"),
+            phases=result.get("phases"),
+            recommendations=result.get("recommendations"),
         )
 
 

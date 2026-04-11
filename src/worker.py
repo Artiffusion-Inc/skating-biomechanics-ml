@@ -59,6 +59,7 @@ async def process_video_task(
     tracking: str = "auto",
     export: bool = True,
     ml_flags: MLModelFlags | None = None,
+    session_id: str | None = None,
 ) -> dict[str, Any]:
     """arq task: dispatch video processing to Vast.ai Serverless GPU."""
     if ml_flags is None:
@@ -73,7 +74,17 @@ async def process_video_task(
             mapping={"status": TaskStatus.RUNNING, "started_at": now},
         )
 
+        from src.backend.database import async_session
+        from src.backend.crud.session import get_by_id
         from src.vastai.client import process_video_remote
+
+        # Fetch element_type from session if session_id provided
+        element_type = None
+        if session_id:
+            async with async_session() as db:
+                session = await get_by_id(db, session_id)
+                if session:
+                    element_type = session.element_type
 
         logger.info("Dispatching task %s to Vast.ai (video_key=%s)", task_id, video_key)
         vast_result = await asyncio.to_thread(
@@ -92,6 +103,7 @@ async def process_video_task(
                 "matting": ml_flags.matting,
                 "inpainting": ml_flags.inpainting,
             },
+            element_type=element_type,
         )
         logger.info("Vast.ai processing complete for task %s", task_id)
 
@@ -103,6 +115,25 @@ async def process_video_task(
             "status": "Analysis complete!",
         }
         await store_result(task_id, response_data, valkey=valkey)
+
+        # Save analysis results to Postgres if session_id was provided
+        if session_id and vast_result.metrics:
+            try:
+                from src.backend.database import async_session
+                from src.backend.services.session_saver import save_analysis_results
+
+                async with async_session() as db:
+                    await save_analysis_results(
+                        db,
+                        session_id=session_id,
+                        metrics=vast_result.metrics,
+                        phases=vast_result.phases,
+                        recommendations=vast_result.recommendations or [],
+                    )
+                    await db.commit()
+            except Exception as save_err:
+                logger.warning("Failed to save session results: %s", save_err)
+
         return response_data
 
     except Exception as e:

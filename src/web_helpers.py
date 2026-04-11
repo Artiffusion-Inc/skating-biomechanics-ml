@@ -151,6 +151,7 @@ def process_video_pipeline(  # noqa: PLR0913
     foot_track: bool = False,
     matting: bool = False,
     inpainting: bool = False,
+    element_type: str | None = None,
 ) -> dict:
     """Run the full visualization pipeline (mirrors visualize_with_skeleton.py)."""
     from src.visualization import render_layers
@@ -396,6 +397,38 @@ def process_video_pipeline(  # noqa: PLR0913
         pipe.save_exports(output_path) if export else {"poses_path": None, "csv_path": None}
     )
 
+    # Run biomechanics analysis if element_type was provided
+    analysis_metrics = []
+    analysis_phases = None
+    analysis_recommendations = []
+
+    if element_type and prepared.n_valid > 0:
+        from src.analysis.metrics import BiomechanicsAnalyzer
+        from src.analysis.recommender import Recommender
+        from src.analysis.phase_detector import PhaseDetector
+        from src.analysis.element_defs import get_element_def
+
+        elem_def = get_element_def(element_type)
+        if elem_def:
+            # Phase detection
+            phase_det = PhaseDetector()
+            phase_result = phase_det.detect_phases(
+                prepared.poses_norm, meta.fps, element_type
+            )
+            analysis_phases = phase_result.phases
+
+            # Biomechanics analysis
+            analyzer = BiomechanicsAnalyzer(element_def=elem_def)
+            analysis_metrics = analyzer.analyze(
+                prepared.poses_norm, analysis_phases, meta.fps
+            )
+
+            # Recommendations
+            recommender = Recommender()
+            analysis_recommendations = recommender.recommend(
+                analysis_metrics, element_type
+            )
+
     return {
         "video_path": str(output_path),
         "poses_path": export_result["poses_path"],
@@ -406,4 +439,7 @@ def process_video_pipeline(  # noqa: PLR0913
             "fps": meta.fps,
             "resolution": f"{meta.width}x{meta.height}",
         },
+        "metrics": analysis_metrics,
+        "phases": analysis_phases,
+        "recommendations": analysis_recommendations,
     }
