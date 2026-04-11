@@ -73,6 +73,9 @@ data/uploads/
 .ipynb_checkpoints/
 *.ipynb
 
+# Experiment checkpoints
+experiments/checkpoints/
+
 # OS
 .DS_Store
 Thumbs.db

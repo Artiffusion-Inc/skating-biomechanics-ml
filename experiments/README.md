@@ -453,7 +453,7 @@ Same architecture as above, with training improvements:
 ## Files
 
 ```
-data/experiments/
+experiments/
 ├── README.md                      ← This file (master report)
 ├── 2026-04-11-experiments.md      ← Original experiment log (superseded)
 ├── exp_2b_2c_2d.py               ← Experiments 2b, 2c, 2d (CNN + BiGRU + MMFS)
@@ -466,10 +466,10 @@ data/experiments/
 cd /home/michael/Github/skating-biomechanics-ml
 
 # Experiments 2b, 2c, 2d (GPU, ~5 min)
-uv run python data/experiments/exp_2b_2c_2d.py
+uv run python experiments/exp_2b_2c_2d.py
 
 # Experiment 3 — augmentation ablation (GPU, ~35 min)
-uv run python data/experiments/exp_augmentation.py
+uv run python experiments/exp_augmentation.py
 ```
 
 ### Dependencies
