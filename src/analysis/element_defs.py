@@ -77,6 +77,9 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_angle": (90, 130),  # Knee angle at landing (shock absorption)
             "arm_position_score": (0.6, 1.0),  # Arms controlled (close to body)
             "takeoff_angle": (70, 85),  # Takeoff angle relative to ice
+            "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
+            "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
+            "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
         },
     ),
     "toe_loop": ElementDef(
@@ -100,6 +103,9 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_angle": (90, 125),  # Knee angle at landing
             "edge_quality": (0.7, 1.0),  # Clean edge on landing
             "toe_pick_timing": (0.1, 0.3),  # Time from toe pick to takeoff
+            "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
+            "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
+            "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
         },
     ),
     "flip": ElementDef(
@@ -123,6 +129,9 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_angle": (90, 125),  # Knee angle at landing
             "pick_quality": (0.7, 1.0),  # Clean toe pick
             "air_position": (0.7, 1.0),  # Body position in air (tight vs loose)
+            "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
+            "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
+            "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
         },
     ),
     "salchow": ElementDef(
@@ -146,6 +155,9 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_angle": (90, 130),
             "rotation_speed": (300, 500),
             "takeoff_angle": (65, 85),
+            "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
+            "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
+            "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
         },
     ),
     "loop": ElementDef(
@@ -168,6 +180,9 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "max_height": (0.15, 0.4),
             "landing_knee_angle": (90, 130),
             "rotation_speed": (300, 500),
+            "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
+            "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
+            "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
         },
     ),
     "lutz": ElementDef(
@@ -191,6 +206,9 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_angle": (90, 125),
             "pick_quality": (0.7, 1.0),
             "rotation_speed": (350, 550),
+            "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
+            "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
+            "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
         },
     ),
     "axel": ElementDef(
@@ -214,6 +232,9 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_angle": (90, 130),
             "rotation_speed": (350, 550),
             "takeoff_angle": (65, 85),
+            "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
+            "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
+            "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
         },
     ),
 }
