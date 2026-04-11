@@ -1,5 +1,7 @@
+import { getTranslations } from "next-intl/server"
 import { PlaceholderPage } from "@/components/placeholder-page"
 
-export default function SettingsPage() {
-  return <PlaceholderPage title="Настройки" />
+export default async function SettingsPage() {
+  const t = await getTranslations("settings")
+  return <PlaceholderPage title={t("title")} />
 }

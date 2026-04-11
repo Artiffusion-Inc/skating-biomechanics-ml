@@ -19,6 +19,7 @@ export async function generateMetadata(): Promise<Metadata> {
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const locale = await getLocale()
   const messages = await getMessages()
+  const t = await getTranslations("app")
 
   return (
     <html lang={locale} suppressHydrationWarning>
@@ -29,14 +30,14 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <div className="mx-auto flex h-12 max-w-6xl items-center justify-between px-4">
                 <Link href="/" className="flex items-center gap-2 font-semibold">
                   <Activity className="h-5 w-5" />
-                  <span className="hidden sm:inline">AI Тренер</span>
+                  <span className="hidden sm:inline">{t("title")}</span>
                 </Link>
                 <AppNav />
               </div>
             </header>
             <main className="mx-auto w-full max-w-6xl p-4 sm:p-6">{children}</main>
             <footer className="border-t border-border px-4 py-3 text-center text-xs text-muted-foreground">
-              AI Тренер — Фигурное катание • Биомеханический анализ
+              {t("footer")}
             </footer>
             <Toaster richColors position="bottom-right" />
           </Providers>
