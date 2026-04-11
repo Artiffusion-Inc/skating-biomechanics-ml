@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import uuid
 
+from pydantic import BaseModel
+
 from fastapi import APIRouter, HTTPException, Query, status
 
 from src.backend.auth.deps import CurrentUser
@@ -60,21 +62,21 @@ async def init_upload(
     }
 
 
+class CompleteUploadRequest(BaseModel):
+    upload_id: str
+    key: str
+    parts: list[dict]
+
+
 @router.post("/uploads/complete")
-async def complete_upload(
-    user: CurrentUser,
-    upload_id: str = Query(...),
-    key: str = Query(...),
-    parts: list[dict] = Query(...),
-):
+async def complete_upload(user: CurrentUser, body: CompleteUploadRequest):
     """Complete a multipart upload. Returns the final object key."""
     r2 = _client()
     bucket = get_settings().r2.bucket
 
-    # parts should be [{"part_number": 1, "etag": "..."}, ...]
     multipart_parts = [
         {"PartNumber": p["part_number"], "ETag": p["etag"]}
-        for p in sorted(parts, key=lambda x: x["part_number"])
+        for p in sorted(body.parts, key=lambda x: x["part_number"])
     ]
 
     if not multipart_parts:
@@ -82,9 +84,9 @@ async def complete_upload(
 
     r2.complete_multipart_upload(
         Bucket=bucket,
-        Key=key,
-        UploadId=upload_id,
+        Key=body.key,
+        UploadId=body.upload_id,
         MultipartUpload={"Parts": multipart_parts},
     )
 
-    return {"status": "completed", "key": key}
+    return {"status": "completed", "key": body.key}
