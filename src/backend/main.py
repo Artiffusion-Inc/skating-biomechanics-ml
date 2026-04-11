@@ -7,7 +7,7 @@ from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from src.backend.logging_config import configure_logging
-from src.backend.routes import auth, detect, misc, models, process, users
+from src.backend.routes import auth, detect, misc, models, process, sessions, users
 from src.config import get_settings
 
 configure_logging()
@@ -30,4 +30,5 @@ api_v1.include_router(detect.router)
 api_v1.include_router(models.router)
 api_v1.include_router(process.router)
 api_v1.include_router(misc.router)
+api_v1.include_router(sessions.router)
 app.include_router(api_v1)
