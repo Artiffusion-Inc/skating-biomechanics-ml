@@ -76,9 +76,9 @@ function AnalyzeContent() {
     if (videoPath) startProcessing()
   }, [videoPath, startProcessing])
 
-  const videoUrl = result ? `/api/outputs/${result.video_path}` : ""
-  const posesUrl = result?.poses_path ? `/api/outputs/${result.poses_path}` : null
-  const csvUrl = result?.csv_path ? `/api/outputs/${result.csv_path}` : null
+  const videoUrl = result ? `/api/v1/outputs/${result.video_path}` : ""
+  const posesUrl = result?.poses_path ? `/api/v1/outputs/${result.poses_path}` : null
+  const csvUrl = result?.csv_path ? `/api/v1/outputs/${result.csv_path}` : null
 
   return (
     <div>

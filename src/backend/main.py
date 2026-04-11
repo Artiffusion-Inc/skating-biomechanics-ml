@@ -36,7 +36,7 @@ OUTPUTS_DIR = Path("data/uploads")
 OUTPUTS_DIR.mkdir(parents=True, exist_ok=True)
 
 
-@app.get("/api/outputs/{filename:path}")
+@app.get("/api/v1/outputs/{filename:path}")
 async def serve_output(filename: str):
     from fastapi.responses import FileResponse
 
@@ -48,6 +48,6 @@ async def serve_output(filename: str):
     return FileResponse(str(file_path))
 
 
-@app.get("/api/health")
+@app.get("/api/v1/health")
 async def health():
     return {"status": "ok"}
