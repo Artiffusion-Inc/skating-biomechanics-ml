@@ -9,6 +9,7 @@ import { VideoPlayer } from "@/components/dashboard/video-player"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
+import { useTranslations } from "@/i18n"
 import { processVideo } from "@/lib/api"
 import { toastError, toastSuccess } from "@/lib/toast"
 import type { PersonClick, ProcessResponse } from "@/types"
@@ -18,10 +19,11 @@ type Phase = "processing" | "done" | "error"
 function AnalyzeContent() {
   const params = useSearchParams()
   const router = useRouter()
+  const t = useTranslations("analyze")
 
   const [phase, setPhase] = useState<Phase>("processing")
   const [progress, setProgress] = useState(0)
-  const [message, setMessage] = useState("Начинаем...")
+  const [message, setMessage] = useState(t("starting"))
   const [result, setResult] = useState<ProcessResponse | null>(null)
   const [error, setError] = useState("")
 
@@ -42,7 +44,7 @@ function AnalyzeContent() {
   const startProcessing = useCallback(() => {
     setPhase("processing")
     setProgress(0)
-    setMessage("Подготовка...")
+    setMessage(t("preparing"))
 
     processVideo(
       {
@@ -61,7 +63,7 @@ function AnalyzeContent() {
         onResult(r) {
           setResult(r as ProcessResponse)
           setPhase("done")
-          toastSuccess("Анализ завершён")
+          toastSuccess(t("complete"))
         },
         onError(err) {
           setError(err)
@@ -70,7 +72,7 @@ function AnalyzeContent() {
         },
       },
     )
-  }, [videoPath, personClick, frameSkip, layer, tracking, doExport])
+  }, [videoPath, personClick, frameSkip, layer, tracking, doExport, t])
 
   useEffect(() => {
     if (videoPath) startProcessing()
@@ -87,7 +89,7 @@ function AnalyzeContent() {
         <Card>
           <CardContent className="flex flex-col items-center gap-4 p-8">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <h2 className="text-lg font-medium">Анализ видео</h2>
+            <h2 className="text-lg font-medium">{t("title")}</h2>
             <Progress value={progress} className="w-full max-w-md" />
             <p className="text-sm text-muted-foreground">{message}</p>
             <p className="text-xs text-muted-foreground">{progress}%</p>
@@ -111,9 +113,9 @@ function AnalyzeContent() {
             <AlertCircle className="h-8 w-8 text-destructive" />
             <p className="text-destructive">{error}</p>
             <div className="flex gap-2">
-              <Button onClick={startProcessing}>Повторить</Button>
+              <Button onClick={startProcessing}>{t("retry")}</Button>
               <Button variant="outline" onClick={() => router.push("/")}>
-                Назад
+                {t("back")}
               </Button>
             </div>
           </CardContent>
