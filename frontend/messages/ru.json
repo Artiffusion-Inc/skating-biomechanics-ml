@@ -40,6 +40,7 @@
     "feed": "Лента",
     "upload": "Запись",
     "progress": "Прогресс",
+    "planner": "Планировщик",
     "students": "Ученики",
     "dashboard": "Ученики"
   },
@@ -194,5 +195,44 @@
   },
   "coach": {
     "noProblems": "Проблем не обнаружено"
+  },
+  "choreography": {
+    "title": "Планировщик программ",
+    "uploadMusic": "Загрузить музыку",
+    "analyzing": "Анализ музыки...",
+    "analyzingHint": "Определяем BPM, структуру и пики энергии",
+    "selectProgram": "Тип программы",
+    "shortProgram": "Произвольная программа (КП)",
+    "freeSkate": "Произвольный прокат",
+    "mensSingles": "Мужское одиночное",
+    "womensSingles": "Женское одиночное",
+    "inventory": "Инвентарь",
+    "jumps": "Прыжки",
+    "spins": "Вращения",
+    "combinations": "Комбинации",
+    "generate": "Сгенерировать",
+    "generating": "Генерация...",
+    "selectLayout": "Выберите раскладку",
+    "score": {
+      "tes": "TES",
+      "goe": "GOE",
+      "pcs": "PCS",
+      "total": "Итого",
+      "duration": "Время",
+      "jumps": "Прыжки",
+      "spins": "Вращения"
+    },
+    "rink": {
+      "loading": "Загрузка...",
+      "empty": "Раскладка не выбрана"
+    },
+    "elements": "Элементы",
+    "noPrograms": "Нет сохранённых программ",
+    "save": "Сохранить",
+    "export": "Экспорт",
+    "validate": "Проверить",
+    "valid": "Валидно",
+    "errors": "Ошибки",
+    "warnings": "Предупреждения"
   }
 }

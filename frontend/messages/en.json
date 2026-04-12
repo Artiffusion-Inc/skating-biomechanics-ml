@@ -40,6 +40,7 @@
     "feed": "Feed",
     "upload": "Record",
     "progress": "Progress",
+    "planner": "Planner",
     "students": "Students",
     "dashboard": "Students"
   },
@@ -194,5 +195,44 @@
   },
   "coach": {
     "noProblems": "No problems detected"
+  },
+  "choreography": {
+    "title": "Program Planner",
+    "uploadMusic": "Upload Music",
+    "analyzing": "Analyzing music...",
+    "analyzingHint": "Detecting BPM, structure and energy peaks",
+    "selectProgram": "Program Type",
+    "shortProgram": "Short Program",
+    "freeSkate": "Free Skate",
+    "mensSingles": "Men's Singles",
+    "womensSingles": "Women's Singles",
+    "inventory": "Inventory",
+    "jumps": "Jumps",
+    "spins": "Spins",
+    "combinations": "Combinations",
+    "generate": "Generate",
+    "generating": "Generating...",
+    "selectLayout": "Select Layout",
+    "score": {
+      "tes": "TES",
+      "goe": "GOE",
+      "pcs": "PCS",
+      "total": "Total",
+      "duration": "Duration",
+      "jumps": "Jumps",
+      "spins": "Spins"
+    },
+    "rink": {
+      "loading": "Loading...",
+      "empty": "No layout selected"
+    },
+    "elements": "Elements",
+    "noPrograms": "No saved programs",
+    "save": "Save",
+    "export": "Export",
+    "validate": "Validate",
+    "valid": "Valid",
+    "errors": "Errors",
+    "warnings": "Warnings"
   }
 }

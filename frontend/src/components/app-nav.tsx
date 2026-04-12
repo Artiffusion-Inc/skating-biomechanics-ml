@@ -1,7 +1,7 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { BarChart3, Camera, LogOut, Newspaper, User, Users } from "lucide-react"
+import { BarChart3, Camera, LogOut, Music, Newspaper, User, Users } from "lucide-react"
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { z } from "zod"
@@ -30,6 +30,7 @@ export function AppNav() {
   const tabs = [
     { href: "/feed", icon: Newspaper, label: t("feed") },
     { href: "/upload", icon: Camera, label: t("upload") },
+    { href: "/choreography", icon: Music, label: t("planner") },
     { href: "/progress", icon: BarChart3, label: t("progress") },
     ...(hasStudents ? [{ href: "/dashboard", icon: Users, label: t("students") }] : []),
   ] as const
