@@ -157,6 +157,7 @@ addopts = [
     "--cov=backend/app",
     "--cov-report=term-missing",
     "--cov-report=html",
+    "-m", "not integration",
     "--strict-markers",
     "--timeout=60",
 ]

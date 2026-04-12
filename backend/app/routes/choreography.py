@@ -5,10 +5,10 @@ from __future__ import annotations
 
 import tempfile
 import uuid
-from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 
+from backend.app.auth.deps import CurrentUser, DbDep
 from backend.app.crud.choreography import (
     create_music_analysis,
     create_program,
@@ -37,9 +37,6 @@ from backend.app.services.choreography.music_analyzer import extract_features_fo
 from backend.app.services.choreography.rink_renderer import render_rink
 from backend.app.services.choreography.rules_engine import validate_layout as validate_layout_engine
 from backend.app.storage import upload_file
-
-if TYPE_CHECKING:
-    from backend.app.auth.deps import CurrentUser, DbDep
 
 router = APIRouter(tags=["choreography"])
 

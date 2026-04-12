@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
-from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
+from backend.app.auth.deps import CurrentUser, DbDep
 from backend.app.crud.relationship import is_coach_for_student
 from backend.app.metrics_registry import METRIC_REGISTRY
 from backend.app.models.session import Session, SessionMetric
@@ -25,9 +25,6 @@ from backend.app.services.diagnostics import (
     check_new_pr,
     check_stagnation,
 )
-
-if TYPE_CHECKING:
-    from backend.app.auth.deps import CurrentUser, DbDep
 
 router = APIRouter(tags=["metrics"])
 

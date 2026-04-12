@@ -1,21 +1,36 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { useRef, useState } from "react"
 import { RinkDiagram } from "@/components/choreography/rink-diagram"
 import { ScoreBar } from "@/components/choreography/score-bar"
 import { useTranslations } from "@/i18n"
-import { useProgram, useRenderRink } from "@/lib/api/choreography"
+import { useProgram, useRenderRink, useSaveProgram } from "@/lib/api/choreography"
 
 export default function ProgramEditorPage() {
   const { id } = useParams<{ id: string }>()
   const tc = useTranslations("common")
+  const t = useTranslations("choreography")
   const { data: program, isLoading } = useProgram(id)
+  const saveProgram = useSaveProgram()
+  const [title, setTitle] = useState<string | null>(null)
+  const saveTimer = useRef<ReturnType<typeof setTimeout>>(null)
+
+  const displayTitle = title ?? program?.title ?? ""
 
   const elements = program?.layout?.elements ?? []
 
   const renderRink = useRenderRink()
 
   const svgHtml = renderRink.data?.image_url ?? null
+
+  function handleTitleChange(newTitle: string) {
+    setTitle(newTitle)
+    clearTimeout(saveTimer.current)
+    saveTimer.current = setTimeout(() => {
+      saveProgram.mutate({ id, title: newTitle })
+    }, 500)
+  }
 
   if (isLoading) {
     return (
@@ -36,7 +51,13 @@ export default function ProgramEditorPage() {
       <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
         {/* Timeline panel */}
         <div className="flex flex-1 flex-col border-b border-border p-4 lg:border-b-0 lg:border-r">
-          <h2 className="mb-3 nike-h3">{program.title || "Program"}</h2>
+          <input
+            type="text"
+            value={displayTitle}
+            onChange={e => handleTitleChange(e.target.value)}
+            placeholder={t("untitled")}
+            className="mb-3 bg-transparent text-lg font-semibold outline-none placeholder:text-muted-foreground"
+          />
           <div className="flex-1 space-y-1.5 overflow-y-auto">
             {elements.map((el, i) => (
               <div

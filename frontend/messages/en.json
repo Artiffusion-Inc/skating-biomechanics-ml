@@ -198,21 +198,32 @@
   },
   "choreography": {
     "title": "Program Planner",
-    "uploadMusic": "Upload Music",
-    "analyzing": "Analyzing music...",
-    "analyzingHint": "Detecting BPM, structure and energy peaks",
-    "selectProgram": "Program Type",
-    "shortProgram": "Short Program",
-    "freeSkate": "Free Skate",
-    "mensSingles": "Men's Singles",
-    "womensSingles": "Women's Singles",
-    "inventory": "Inventory",
-    "jumps": "Jumps",
-    "spins": "Spins",
-    "combinations": "Combinations",
+    "newProgram": "New Program",
+    "noPrograms": "No programs",
+    "untitled": "Untitled",
+    "short_program": "Short Program",
+    "free_skate": "Free Skate",
+    "mens_singles": "Men's Singles",
+    "womens_singles": "Women's Singles",
     "generate": "Generate",
     "generating": "Generating...",
-    "selectLayout": "Select Layout",
+    "selectLayout": "Select layout",
+    "music": {
+      "title": "Music",
+      "dropzone": "Drop audio file or click to browse",
+      "dropzoneHint": "MP3, WAV, OGG up to 50 MB",
+      "analyzing": "Analyzing music..."
+    },
+    "inventory": {
+      "title": "Element inventory",
+      "jumps": "Jumps",
+      "spins": "Spins",
+      "combinations": "Combinations"
+    },
+    "layout": {
+      "title": "Layout options",
+      "option": "Option {n}"
+    },
     "score": {
       "tes": "TES",
       "goe": "GOE",

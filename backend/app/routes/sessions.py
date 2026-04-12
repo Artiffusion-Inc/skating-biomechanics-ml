@@ -3,10 +3,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
 from fastapi import APIRouter, HTTPException, Query, status
 
+from backend.app.auth.deps import CurrentUser, DbDep
 from backend.app.crud.relationship import is_coach_for_student
 from backend.app.crud.session import create, get_by_id, list_by_user, soft_delete, update
 from backend.app.schemas import (
@@ -15,9 +14,6 @@ from backend.app.schemas import (
     SessionListResponse,
     SessionResponse,
 )
-
-if TYPE_CHECKING:
-    from backend.app.auth.deps import CurrentUser, DbDep
 
 router = APIRouter(tags=["sessions"])
 

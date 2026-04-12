@@ -70,6 +70,11 @@ export async function apiFetch<T>(
   })
 
   if (!res.ok) {
+    if (res.status === 401) {
+      clearTokens()
+      window.location.href = "/login"
+      throw new ApiError("Unauthorized", res.status)
+    }
     const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
     throw new ApiError(body.detail, res.status)
   }

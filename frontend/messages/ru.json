@@ -198,21 +198,32 @@
   },
   "choreography": {
     "title": "Планировщик программ",
-    "uploadMusic": "Загрузить музыку",
-    "analyzing": "Анализ музыки...",
-    "analyzingHint": "Определяем BPM, структуру и пики энергии",
-    "selectProgram": "Тип программы",
-    "shortProgram": "Произвольная программа (КП)",
-    "freeSkate": "Произвольный прокат",
-    "mensSingles": "Мужское одиночное",
-    "womensSingles": "Женское одиночное",
-    "inventory": "Инвентарь",
-    "jumps": "Прыжки",
-    "spins": "Вращения",
-    "combinations": "Комбинации",
+    "newProgram": "Новая программа",
+    "noPrograms": "Нет программ",
+    "untitled": "Без названия",
+    "short_program": "Короткая программа",
+    "free_skate": "Произвольная программа",
+    "mens_singles": "Мужское одиночное",
+    "womens_singles": "Женское одиночное",
     "generate": "Сгенерировать",
     "generating": "Генерация...",
     "selectLayout": "Выберите раскладку",
+    "music": {
+      "title": "Музыка",
+      "dropzone": "Перетащите аудиофайл или нажмите",
+      "dropzoneHint": "MP3, WAV, OGG до 50 МБ",
+      "analyzing": "Анализ музыки..."
+    },
+    "inventory": {
+      "title": "Инвентарь элементов",
+      "jumps": "Прыжки",
+      "spins": "Вращения",
+      "combinations": "Комбинации"
+    },
+    "layout": {
+      "title": "Варианты раскладки",
+      "option": "Вариант {n}"
+    },
     "score": {
       "tes": "TES",
       "goe": "GOE",
