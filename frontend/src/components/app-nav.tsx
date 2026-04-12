@@ -1,11 +1,10 @@
 "use client"
 
 import { useQuery } from "@tanstack/react-query"
-import { BarChart3, Camera, LogOut, Music, Newspaper, User, Users } from "lucide-react"
+import { BarChart3, Camera, Music, Newspaper, User, Users } from "lucide-react"
 import Link from "next/link"
-import { usePathname, useRouter } from "next/navigation"
+import { usePathname } from "next/navigation"
 import { z } from "zod"
-import { useAuth } from "@/components/auth-provider"
 import { ThemeToggle } from "@/components/theme-toggle"
 import { useTranslations } from "@/i18n"
 import { apiFetch } from "@/lib/api-client"
@@ -16,10 +15,7 @@ const RelationshipListSchema = z.object({
 
 export function AppNav() {
   const pathname = usePathname()
-  const router = useRouter()
-  const { logout } = useAuth()
   const t = useTranslations("nav")
-  const tp = useTranslations("profile")
 
   const { data: relsData } = useQuery({
     queryKey: ["relationships"],
@@ -36,12 +32,6 @@ export function AppNav() {
   ] as const
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`)
-
-  async function handleLogout() {
-    await logout()
-    document.cookie = "sb_auth=; path=/; max-age=0"
-    router.push("/login")
-  }
 
   return (
     <nav className="flex items-center gap-0.5">
@@ -78,14 +68,6 @@ export function AppNav() {
         >
           <User className="h-4 w-4" />
         </Link>
-        <button
-          type="button"
-          onClick={handleLogout}
-          aria-label={tp("signOut")}
-          className="flex items-center p-2 text-muted-foreground transition-colors hover:text-foreground"
-        >
-          <LogOut className="h-4 w-4" />
-        </button>
       </div>
     </nav>
   )
