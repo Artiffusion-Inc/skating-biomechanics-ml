@@ -134,17 +134,17 @@ export default function UploadPage() {
     )
   }
 
-  // Initial state — camera fills width with negative margins
+  // Initial state — camera fills available space
   return (
-    <div className="-mx-4 -mt-4 sm:-mx-6 sm:-mt-6">
+    <div className="-mx-4 -mt-4 flex h-[calc(100dvh-52px-64px)] flex-col sm:-mx-6 sm:-mt-6">
       <CameraRecorder
         onRecorded={blob =>
           handleFile(new File([blob], `recording_${Date.now()}.webm`, { type: blob.type }))
         }
       />
 
-      {/* File upload + hint strip below camera */}
-      <div className="flex items-center justify-between px-4 py-3 sm:px-6">
+      {/* File upload hint */}
+      <div className="flex shrink-0 items-center justify-between px-4 py-3 sm:px-6">
         <p className="text-xs text-muted-foreground">{t("recordHint")}</p>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{tc("or")}</span>
