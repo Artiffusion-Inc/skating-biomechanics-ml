@@ -10,6 +10,7 @@ from backend.app.config import get_settings
 from backend.app.logging_config import configure_logging
 from backend.app.routes import (
     auth,
+    choreography,
     detect,
     metrics,
     misc,
@@ -45,4 +46,5 @@ api_v1.include_router(sessions.router)
 api_v1.include_router(metrics.router)
 api_v1.include_router(relationships.router)
 api_v1.include_router(uploads.router)
+api_v1.include_router(choreography.router)
 app.include_router(api_v1)
