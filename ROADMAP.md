@@ -496,7 +496,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
    - Train on Figure-Skating-Classification dataset (5168 seq, 64 classes, COCO 17kp → H3.6M mapping needed)
    - SAFSAR-style few-shot for rare elements
    - Hierarchical rules for complex combinations
-   - **Data available:** MMFS (26198 seq), Figure-Skating-Classification (5168 seq), AthletePose3D (71GB)
+   - **Data available:** Figure-Skating-Classification (5168 seq, includes MMFS), MCFS (2668 seg), AthletePose3D (71GB)
    - **Estimated:** 1-2 weeks (data prep + training + evaluation)
 
 10. **Two-Stream Blade Detection** ❌ DEPRIORITIZED
@@ -639,7 +639,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - Per-element average metrics from elite skaters
     - Store in `data/references/` as .npz with metadata
     - Enable automatic comparison: "Your jump height is 85% of elite average"
-    - **Data available:** AthletePose3D (71GB, 5154 videos), MMFS, Figure-Skating-Classification
+    - **Data available:** AthletePose3D (71GB, 5154 videos), Figure-Skating-Classification (5168 seq)
     - **Estimated:** 1-2 days (extraction + normalization + storage)
 
 33. **GCN Element Classifier** 📝 RESEARCH
@@ -730,8 +730,9 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 | Dataset | Content | Link | Status |
 |---------|---------|------|--------|
 | AthletePose3D | 1.3M frames, 12 sports, 71GB | github.com/calvinyeungck/AthletePose3D | ✅ Downloaded |
-| MMFS | 26198 skeleton seq, 256 categories, 1.7GB | github.com/dingyn-Reno/MMFS | ✅ Downloaded |
 | Figure-Skating-Classification | 5168 seq, 64 classes, 340MB | huggingface.co/datasets/Mercity/... | ✅ Downloaded |
+| MCFS | 2668 segments, 129 classes, 103MB | github.com/shenglanliu/mcfs-dataset | ✅ Downloaded |
+| SkatingVerse | 28K videos, 28 classes, 46GB | skatingverse.163.com | ✅ Downloaded |
 | FS-Jump3D | Subset of AthletePose3D | github.com/ryota-skating/FS-Jump3D | ❌ Duplicate (skip) |
 | FSBench | 783 videos, 76h+, 3D+audio+text | arXiv:2504.19514 | 📝 Temporarily closed |
 | YourSkatingCoach | BIOES-tagged elements | arXiv:2410.20427 | 📝 Supplementary only |
