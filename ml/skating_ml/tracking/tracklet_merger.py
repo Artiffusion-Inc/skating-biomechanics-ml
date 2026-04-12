@@ -28,7 +28,6 @@ class Tracklet:
     track_id: int
     frames: list[int] = field(default_factory=list)
     poses: dict[int, np.ndarray] = field(default_factory=dict)
-    foot_keypoints: dict[int, np.ndarray] = field(default_factory=dict)
 
     @property
     def start_frame(self) -> int:
@@ -62,20 +61,20 @@ class Tracklet:
 
 
 def build_tracklets(
-    frame_track_data: dict[int, dict[int, tuple[np.ndarray, np.ndarray]]],
+    frame_track_data: dict[int, dict[int, np.ndarray]],
 ) -> list[Tracklet]:
     """Build Tracklet objects from frame_track_data.
 
     Args:
-        frame_track_data: {frame_idx: {track_id: (pose (17,3), foot_kps (6,3))}}
+        frame_track_data: {frame_idx: {track_id: pose (17,3)}}
 
     Returns:
         List of Tracklet objects, one per unique track_id.
     """
-    track_data: dict[int, list[tuple[int, np.ndarray, np.ndarray]]] = {}
+    track_data: dict[int, list[tuple[int, np.ndarray]]] = {}
     for frame_idx, tid_map in frame_track_data.items():
-        for tid, (pose, foot_kps) in tid_map.items():
-            track_data.setdefault(tid, []).append((frame_idx, pose, foot_kps))
+        for tid, pose in tid_map.items():
+            track_data.setdefault(tid, []).append((frame_idx, pose))
 
     tracklets: list[Tracklet] = []
     for tid, entries in track_data.items():
@@ -85,7 +84,6 @@ def build_tracklets(
                 track_id=tid,
                 frames=[e[0] for e in entries],
                 poses={e[0]: e[1] for e in entries},
-                foot_keypoints={e[0]: e[2] for e in entries},
             )
         )
     return tracklets
@@ -176,7 +174,6 @@ class TrackletMerger:
             track_id=target.track_id,
             frames=target.frames + match.frames,
             poses={**target.poses, **match.poses},
-            foot_keypoints={**target.foot_keypoints, **match.foot_keypoints},
         )
 
     def _compute_match_score(
