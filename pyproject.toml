@@ -40,6 +40,9 @@ dependencies = [
 requires = ["hatchling"]
 build-backend = "hatchling.build"
 
+[tool.uv.workspace]
+exclude = ["backend", "ml"]
+
 [tool.hatch.build.targets.wheel]
 packages = ["backend/app", "ml/skating_ml"]
 
@@ -159,6 +162,7 @@ exclude_dirs = ["Sports2D/", "TCPFormer/", "tests/"]
 
 [tool.pytest.ini_options]
 testpaths = ["backend/tests", "ml/tests"]
+pythonpath = ["."]
 addopts = [
     "--cov=backend/app",
     "--cov-report=term-missing",
