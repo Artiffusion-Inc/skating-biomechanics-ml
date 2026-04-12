@@ -78,9 +78,9 @@ jobs:
           [ "$ARCH" = "x86_64" ] && ARCH="x64"
           OS=$(uname -s)
           gh release download --repo gitleaks/gitleaks \
-            --pattern "gitleaks_${OS}_${ARCH}.tar.gz" \
+            --pattern "gitleaks_*_${OS}_${ARCH}.tar.gz" \
             --clobber -D /tmp
-          tar xzf "/tmp/gitleaks_${OS}_${ARCH}.tar.gz" -C /usr/local/bin gitleaks
+          tar xzf /tmp/gitleaks_*_${OS}_${ARCH}.tar.gz -C /usr/local/bin gitleaks
 
       - name: Scan for secrets
         run: gitleaks detect --source . --no-banner --config .gitleaks.toml -v
