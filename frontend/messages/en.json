@@ -161,7 +161,10 @@
     "startUpload": "Upload and start analysis",
     "uploadError": "Upload failed",
     "videoUploaded": "Video uploaded!",
-    "analyzingHint": "Analysis will start automatically..."
+    "analyzingHint": "Analysis will start automatically...",
+    "cameraUnavailable": "Camera unavailable",
+    "recordHint": "Record an element for analysis",
+    "retake": "Retake"
   },
   "connections": {
     "title": "Connections",

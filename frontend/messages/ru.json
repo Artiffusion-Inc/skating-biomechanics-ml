@@ -161,7 +161,10 @@
     "startUpload": "Загрузить и начать анализ",
     "uploadError": "Ошибка загрузки",
     "videoUploaded": "Видео загружено!",
-    "analyzingHint": "Анализ начнётся автоматически..."
+    "analyzingHint": "Анализ начнётся автоматически...",
+    "cameraUnavailable": "Камера недоступна",
+    "recordHint": "Запишите элемент для анализа",
+    "retake": "Перезаписать"
   },
   "connections": {
     "title": "Связи",

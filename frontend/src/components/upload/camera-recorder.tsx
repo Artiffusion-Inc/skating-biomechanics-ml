@@ -1,6 +1,8 @@
 "use client"
 
+import { VideoOff } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
+import { useTranslations } from "@/i18n"
 import { useMountEffect } from "@/lib/useMountEffect"
 
 const MIME_TYPES = ["video/webm; codecs=vp9", "video/mp4"]
@@ -13,6 +15,7 @@ function getSupportedMimeType(): string {
 }
 
 export function CameraRecorder({ onRecorded }: { onRecorded: (blob: Blob) => void }) {
+  const t = useTranslations("upload")
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const [recording, setRecording] = useState(false)
@@ -67,13 +70,11 @@ export function CameraRecorder({ onRecorded }: { onRecorded: (blob: Blob) => voi
   useMountEffect(() => {
     initCamera()
     return () => {
-      // Cleanup: stop camera stream
       if (streamRef.current) {
         for (const track of streamRef.current.getTracks()) {
           track.stop()
         }
       }
-      // Cleanup: stop timer
       if (timerRef.current) {
         clearInterval(timerRef.current)
       }
@@ -81,54 +82,50 @@ export function CameraRecorder({ onRecorded }: { onRecorded: (blob: Blob) => voi
   })
 
   return (
-    <div className="relative">
+    <div className="relative min-h-[60dvh] overflow-hidden rounded-2xl bg-black">
       {/* Full-screen viewfinder */}
-      <video
-        ref={videoRef}
-        autoPlay
-        playsInline
-        muted
-        className="w-full rounded-xl bg-black aspect-video object-cover"
-      />
+      <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover" />
 
-      {/* Recording indicator */}
-      {recording && (
-        <div className="absolute top-3 left-3 flex items-center gap-2 rounded-lg bg-black/60 px-2.5 py-1">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-          <span className="font-mono text-xs text-white">{fmt(elapsed)}</span>
+      {/* Camera not available */}
+      {!cameraReady && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-muted">
+          <VideoOff className="h-10 w-10 text-muted-foreground" />
+          <p className="text-sm text-muted-foreground">{t("cameraUnavailable")}</p>
         </div>
       )}
 
-      {/* Camera not available fallback */}
-      {!cameraReady && (
-        <div className="absolute inset-0 flex items-center justify-center rounded-xl bg-muted">
-          <p className="text-sm text-muted-foreground">Camera unavailable</p>
+      {/* Recording indicator */}
+      {recording && (
+        <div className="absolute left-4 top-4 flex items-center gap-2 rounded-xl bg-black/50 px-3 py-1.5 backdrop-blur-sm">
+          <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
+          <span className="font-mono text-sm text-white">{fmt(elapsed)}</span>
         </div>
       )}
 
       {/* Floating record button */}
-      <div className="mt-3 flex items-center justify-center">
-        {cameraReady &&
-          (recording ? (
+      {cameraReady && (
+        <div className="absolute inset-x-0 bottom-0 flex justify-center pb-6">
+          {recording ? (
             <button
               type="button"
               onClick={stopRecording}
-              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-white bg-red-500 transition-transform hover:scale-95 active:scale-90"
+              className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-white bg-red-500 shadow-lg transition-transform hover:scale-95 active:scale-90"
               aria-label="Stop recording"
             >
-              <div className="h-6 w-6 rounded-sm bg-white" />
+              <div className="h-7 w-7 rounded-sm bg-white" />
             </button>
           ) : (
             <button
               type="button"
               onClick={startRecording}
-              className="flex h-16 w-16 items-center justify-center rounded-full border-4 border-red-500 bg-red-500/20 transition-transform hover:scale-105"
+              className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-4 border-red-500 bg-red-500/20 shadow-lg transition-transform hover:scale-105"
               aria-label="Start recording"
             >
-              <div className="h-7 w-7 rounded-full bg-red-500" />
+              <div className="h-8 w-8 rounded-full bg-red-500" />
             </button>
-          ))}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

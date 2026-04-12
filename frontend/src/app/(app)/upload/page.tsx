@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircle2, Film, Loader2, Upload } from "lucide-react"
+import { CheckCircle2, Film, Loader2, RotateCcw, Upload } from "lucide-react"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { CameraRecorder } from "@/components/upload/camera-recorder"
@@ -14,17 +14,26 @@ type Step = "ready" | "picked" | "uploading" | "done"
 export default function UploadPage() {
   const createSession = useCreateSession()
   const t = useTranslations("upload")
-  const tc = useTranslations("common")
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   const [step, setStep] = useState<Step>("ready")
   const [elementType, setElementType] = useState<string | null>(null)
   const [progress, setProgress] = useState(0)
 
   function handleFile(f: File) {
     setFile(f)
+    setPreviewUrl(URL.createObjectURL(f))
     setStep("picked")
+  }
+
+  function handleRetake() {
+    if (previewUrl) URL.revokeObjectURL(previewUrl)
+    setFile(null)
+    setPreviewUrl(null)
+    setElementType(null)
+    setStep("ready")
   }
 
   async function handleUpload() {
@@ -46,7 +55,7 @@ export default function UploadPage() {
     }
   }
 
-  // Done state — success, redirect after delay
+  // Done state
   if (step === "done") {
     return (
       <div className="flex flex-col items-center justify-center gap-4 px-4 py-20">
@@ -58,21 +67,19 @@ export default function UploadPage() {
     )
   }
 
-  // File picked — show preview + element picker + upload
-  if (step === "picked" && file) {
+  // File picked — video preview + element picker + upload
+  if (step === "picked" && file && previewUrl) {
     return (
       <div className="mx-auto max-w-lg space-y-5 px-4 py-4">
-        {/* File preview */}
-        <div className="flex items-center gap-3 rounded-xl border border-border p-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-muted">
-            <Film className="h-5 w-5 text-muted-foreground" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{file.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {(file.size / 1024 / 1024).toFixed(1)} MB
-            </p>
-          </div>
+        {/* Video preview */}
+        <div className="relative overflow-hidden rounded-2xl bg-black">
+          {/* biome-ignore lint/a11y/useMediaCaption: user recording, no captions needed */}
+          <video
+            src={previewUrl}
+            controls
+            playsInline
+            className="aspect-video w-full object-contain"
+          />
         </div>
 
         {/* Element picker */}
@@ -82,15 +89,25 @@ export default function UploadPage() {
           <p className="mt-1.5 text-xs text-muted-foreground">{t("autoDetectHint")}</p>
         </div>
 
-        {/* Upload button */}
-        <button
-          type="button"
-          onClick={handleUpload}
-          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-        >
-          <Upload className="h-5 w-5" />
-          {t("startUpload")}
-        </button>
+        {/* Action buttons */}
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleRetake}
+            className="flex flex-1 items-center justify-center gap-2 rounded-2xl border border-border px-4 py-3 font-medium text-muted-foreground transition-colors hover:bg-accent"
+          >
+            <RotateCcw className="h-4 w-4" />
+            {t("retake")}
+          </button>
+          <button
+            type="button"
+            onClick={handleUpload}
+            className="flex flex-[2] items-center justify-center gap-2 rounded-2xl bg-primary px-4 py-3 font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+          >
+            <Upload className="h-5 w-5" />
+            {t("startUpload")}
+          </button>
+        </div>
       </div>
     )
   }
@@ -104,7 +121,7 @@ export default function UploadPage() {
           <p className="mt-3 nike-h3">{t("uploadingVideo")}</p>
         </div>
         <div className="space-y-2">
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div className="h-2 overflow-hidden rounded-full bg-muted">
             <div
               className="h-full rounded-full bg-primary transition-all duration-300"
               style={{ width: `${progress}%` }}
@@ -116,36 +133,36 @@ export default function UploadPage() {
     )
   }
 
-  // Initial state — camera + file upload option
+  // Initial state — full-screen camera with floating file button
   return (
-    <div className="mx-auto max-w-lg space-y-4 px-4 py-4">
+    <div className="relative mx-auto max-w-lg px-4 py-4">
       <CameraRecorder
         onRecorded={blob =>
           handleFile(new File([blob], `recording_${Date.now()}.webm`, { type: blob.type }))
         }
       />
 
-      <div className="flex items-center gap-3">
-        <div className="h-px flex-1 bg-border" />
-        <span className="text-xs text-muted-foreground">{tc("or")}</span>
-        <div className="h-px flex-1 bg-border" />
+      {/* Floating file upload button — top-right corner, overlapping camera */}
+      <div className="pointer-events-none absolute right-6 top-8 z-10">
+        <button
+          type="button"
+          onClick={() => fileRef.current?.click()}
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-xl bg-black/50 text-white backdrop-blur-sm transition-colors hover:bg-black/70"
+          aria-label={t("chooseFile")}
+        >
+          <Film className="h-5 w-5" />
+        </button>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="video/*"
+          className="hidden"
+          onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
+        />
       </div>
 
-      <input
-        ref={fileRef}
-        type="file"
-        accept="video/*"
-        className="hidden"
-        onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
-      />
-      <button
-        type="button"
-        onClick={() => fileRef.current?.click()}
-        className="mx-auto flex items-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm text-muted-foreground transition-colors hover:bg-accent/50"
-      >
-        <Film className="h-4 w-4" />
-        {t("chooseFile")}
-      </button>
+      {/* Hint below camera */}
+      <p className="mt-3 text-center text-xs text-muted-foreground">{t("recordHint")}</p>
     </div>
   )
 }
