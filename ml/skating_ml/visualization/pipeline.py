@@ -39,7 +39,6 @@ class VizPipeline:
         meta: Video metadata object with ``width``, ``height``, ``fps``, ``num_frames``.
         poses_norm: Normalized [0,1] poses (N, 17, 2).
         poses_px: Pixel-coordinate poses (N, 17, 2 or 17, 3). Used for skeleton drawing.
-        foot_kps: Foot keypoints (N, 6, 3) normalized, or None.
         poses_3d: 3D poses (N, 17, 3) or None.
         layer: HUD layer level (0-3).
         confs: Per-keypoint confidence (N, 17) or None.
@@ -49,7 +48,6 @@ class VizPipeline:
     meta: object
     poses_norm: NDArray[np.float32]
     poses_px: NDArray[np.float32] | None = None
-    foot_kps: NDArray[np.float32] | None = None
     poses_3d: NDArray[np.float32] | None = None
     layer: int = 0
     confs: NDArray[np.float32] | None = None
@@ -115,7 +113,6 @@ class VizPipeline:
         # Skeleton (always drawn when pose available)
         if pose_idx is not None and pose_idx < len(self.poses_norm):
             skel_pose = self.poses_px[pose_idx].copy()
-            foot_kp = self.foot_kps[pose_idx].copy() if self.foot_kps is not None else None
             frame = draw_skeleton(
                 frame,
                 skel_pose,
@@ -123,7 +120,6 @@ class VizPipeline:
                 w,
                 line_width=1,
                 joint_radius=3,
-                foot_keypoints=foot_kp,
             )
             context.pose_2d = self.poses_norm[pose_idx]
             if self.poses_3d is not None and pose_idx < len(self.poses_3d):
@@ -266,7 +262,6 @@ class PreparedPoses:
     poses_norm: NDArray[np.float32]  # (N, 17, 2) corrected normalized [0,1]
     poses_px: NDArray[np.float32]  # (N, 17, 3) pixel coords (x, y, confidence)
     poses_3d: NDArray[np.float32] | None  # (N, 17, 3) 3D poses for GLB export
-    foot_kps: NDArray[np.float32] | None  # (N, 6, 3) foot keypoints or None
     confs: NDArray[np.float32]  # (N, 17) per-keypoint confidence
     frame_indices: NDArray[np.intp]  # (N,) frame index mapping
     meta: object  # video metadata (width, height, fps, num_frames)
@@ -350,7 +345,6 @@ def prepare_poses(
     )
 
     raw_poses = extraction.poses  # (N, 17, 3) — may have NaN from frame_skip
-    raw_foot_kps = extraction.foot_keypoints
     frame_indices = extraction.frame_indices
 
     nan_mask = np.isnan(raw_poses[:, 0, 0])
@@ -374,17 +368,6 @@ def prepare_poses(
             int(nan_mask.sum()),
             n_valid,
         )
-        if raw_foot_kps is not None:
-            foot_nan = np.isnan(raw_foot_kps[:, 0, 0])
-            if foot_nan.any() and (~foot_nan).sum() >= 2:
-                foot_valid = np.where(~foot_nan)[0]
-                for kp in range(raw_foot_kps.shape[1]):
-                    for dim in range(raw_foot_kps.shape[2]):
-                        raw_foot_kps[:, kp, dim] = np.interp(
-                            np.arange(len(raw_foot_kps)),
-                            foot_valid,
-                            raw_foot_kps[foot_valid, kp, dim],
-                        )
 
     poses_norm = raw_poses[:, :, :2].copy()
     confs = raw_poses[:, :, 2].copy()
@@ -428,7 +411,6 @@ def prepare_poses(
         poses_norm=poses_norm,
         poses_px=poses_px,
         poses_3d=poses_3d,
-        foot_kps=raw_foot_kps,
         confs=confs,
         frame_indices=frame_indices,
         meta=meta,
