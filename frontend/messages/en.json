@@ -95,7 +95,10 @@
     "recentActivity": "Recent Activity",
     "noActivity": "No sessions yet",
     "recordVideo": "Record video",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "addBio": "Tap to add bio",
+    "bodyMeasurements": "Body measurements",
+    "saving": "Saving..."
   },
   "settings": {
     "title": "Settings",
@@ -106,7 +109,8 @@
     "theme": "Theme",
     "system": "System",
     "light": "Light",
-    "dark": "Dark"
+    "dark": "Dark",
+    "save": "Save"
   },
   "stats": {
     "frames": "Frames",
@@ -150,7 +154,14 @@
   },
   "upload": {
     "uploadingVideo": "Uploading video...",
-    "uploadFile": "Upload file"
+    "uploadFile": "Upload file",
+    "chooseFile": "Choose file",
+    "selectElement": "Select element (or auto-detect)",
+    "autoDetectHint": "Leave empty for auto-detection",
+    "startUpload": "Upload and start analysis",
+    "uploadError": "Upload failed",
+    "videoUploaded": "Video uploaded!",
+    "analyzingHint": "Analysis will start automatically..."
   },
   "connections": {
     "title": "Connections",
@@ -199,7 +210,6 @@
   "choreography": {
     "title": "Program Planner",
     "newProgram": "New Program",
-    "noPrograms": "No programs",
     "untitled": "Untitled",
     "short_program": "Short Program",
     "free_skate": "Free Skate",

@@ -95,7 +95,10 @@
     "recentActivity": "Последние записи",
     "noActivity": "Пока нет записей",
     "recordVideo": "Записать видео",
-    "cancel": "Отмена"
+    "cancel": "Отмена",
+    "addBio": "Нажмите, чтобы добавить описание",
+    "bodyMeasurements": "Параметры тела",
+    "saving": "Сохранение..."
   },
   "settings": {
     "title": "Настройки",
@@ -106,7 +109,8 @@
     "theme": "Тема",
     "system": "Системная",
     "light": "Светлая",
-    "dark": "Тёмная"
+    "dark": "Тёмная",
+    "save": "Сохранить"
   },
   "stats": {
     "frames": "Кадров",
@@ -150,7 +154,14 @@
   },
   "upload": {
     "uploadingVideo": "Загрузка видео...",
-    "uploadFile": "Загрузить файл"
+    "uploadFile": "Загрузить файл",
+    "chooseFile": "Выбрать файл",
+    "selectElement": "Выберите элемент (или авто-определение)",
+    "autoDetectHint": "Оставьте пустым для авто-определения",
+    "startUpload": "Загрузить и начать анализ",
+    "uploadError": "Ошибка загрузки",
+    "videoUploaded": "Видео загружено!",
+    "analyzingHint": "Анализ начнётся автоматически..."
   },
   "connections": {
     "title": "Связи",
@@ -199,7 +210,6 @@
   "choreography": {
     "title": "Планировщик программ",
     "newProgram": "Новая программа",
-    "noPrograms": "Нет программ",
     "untitled": "Без названия",
     "short_program": "Короткая программа",
     "free_skate": "Произвольная программа",
