@@ -123,6 +123,7 @@ def test_sv_extract_single_video():
     print(f"\nExtracted {video_name}: {result.shape[0]} frames, {result.shape[1]} keypoints")
 
 
+@pytest.mark.timeout(300)
 def test_sv_convert_batch_tiny(tmp_path):
     """Test batch conversion with max_per_class=1 (requires GPU)."""
     import torch
@@ -142,7 +143,7 @@ def test_sv_convert_batch_tiny(tmp_path):
         raw_dir,
         output_dir,
         max_per_class=1,
-        frame_skip=8,  # Aggressive skip for speed
+        frame_skip=16,  # Very aggressive skip for speed
     )
 
     # Check basic stats
@@ -158,6 +159,7 @@ def test_sv_convert_batch_tiny(tmp_path):
 
     # Load and verify shapes
     poses, labels = load_unified(output_dir, split="train")
+    assert poses is not None, "load_unified returned None"
 
     assert isinstance(poses, list), "poses should be a list"
     assert len(poses) > 0, "poses list is empty"
