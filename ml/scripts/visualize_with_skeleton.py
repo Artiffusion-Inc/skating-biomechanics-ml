@@ -189,9 +189,9 @@ def main() -> int:
         print(f"Using click point: ({person_click.x}, {person_click.y})")
     elif args.select_person:
         # Need an extractor just for the preview
-        from skating_ml.pose_estimation.rtmlib_extractor import RTMPoseExtractor
+        from skating_ml.pose_estimation.pose_extractor import PoseExtractor
 
-        _preview_extractor = RTMPoseExtractor(
+        _preview_extractor = PoseExtractor(
             output_format="normalized",
             conf_threshold=0.3,
             det_frequency=1,

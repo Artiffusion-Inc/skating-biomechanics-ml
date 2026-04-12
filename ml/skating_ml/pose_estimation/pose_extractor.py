@@ -45,7 +45,7 @@ from .h36m import _biometric_distance, coco_to_h36m
 logger = logging.getLogger(__name__)
 
 
-class RTMPoseExtractor:
+class PoseExtractor:
     """COCO pose extractor using rtmlib Body model (RTMO).
 
     Provides H3.6M 17-keypoint poses. Uses rtmlib's built-in tracking
@@ -778,7 +778,7 @@ class RTMPoseExtractor:
                     if len(valid) >= 3:
                         persons_for_grid.append(data)
             if persons_for_grid:
-                preview_path = RTMPoseExtractor._build_person_grid(best_frame, persons_for_grid)
+                preview_path = PoseExtractor._build_person_grid(best_frame, persons_for_grid)
 
         # Build output with deduplication
         output: list[dict] = []
@@ -906,7 +906,7 @@ class RTMPoseExtractor:
         self.close()
 
 
-def extract_rtmpose_poses(
+def extract_poses(
     video_path: Path | str,
     mode: str = "balanced",
     output_format: str = "normalized",
@@ -914,7 +914,7 @@ def extract_rtmpose_poses(
 ) -> TrackedExtraction:
     """Extract H3.6M poses from video using rtmlib.
 
-    Convenience function that creates an RTMPoseExtractor and runs
+    Convenience function that creates an PoseExtractor and runs
     tracked extraction.
 
     Args:
@@ -926,5 +926,5 @@ def extract_rtmpose_poses(
     Returns:
         TrackedExtraction with poses populated.
     """
-    extractor = RTMPoseExtractor(mode=mode, output_format=output_format)
+    extractor = PoseExtractor(mode=mode, output_format=output_format)
     return extractor.extract_video_tracked(video_path, person_click=person_click)

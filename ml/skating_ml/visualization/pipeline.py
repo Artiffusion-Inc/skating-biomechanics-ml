@@ -249,7 +249,7 @@ _DEFAULT_MODEL_3D_CANDIDATES = [
 # Module-level imports for testability (mock.patch targets module-level names).
 from skating_ml.pose_3d import CorrectiveLens  # noqa: E402
 from skating_ml.pose_3d.onnx_extractor import ONNXPoseExtractor  # noqa: E402
-from skating_ml.pose_estimation.rtmlib_extractor import RTMPoseExtractor  # noqa: E402
+from skating_ml.pose_estimation.pose_extractor import PoseExtractor  # noqa: E402
 
 
 @dataclass
@@ -330,7 +330,7 @@ def prepare_poses(
         progress_cb(0.0, "Extracting poses...")
 
     # --- Step 1: Extract 2D poses ---
-    extractor = RTMPoseExtractor(
+    extractor = PoseExtractor(
         output_format="normalized",
         conf_threshold=0.3,
         det_frequency=max(1, frame_skip),

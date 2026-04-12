@@ -97,7 +97,7 @@ def extract_3d_poses(
     if poses_2d.shape[1] != 17:
         raise ValueError(
             f"poses_2d must have 17 keypoints in H3.6M format, got {poses_2d.shape[1]}. "
-            f"Use RTMPoseExtractor for new pose extraction."
+            f"Use PoseExtractor for new pose extraction."
         )
 
     extractor = AthletePose3DExtractor(model_path, device, model_type)

@@ -48,6 +48,31 @@ def distance(a: NDArray[np.float64], b: NDArray[np.float64]) -> float:
     return float(np.linalg.norm(np.asarray(a) - np.asarray(b)))
 
 
+def segment_angle(start: NDArray[np.float64], end: NDArray[np.float64]) -> float:
+    """Calculate angle of a segment relative to horizontal.
+
+    Args:
+        start: Start point coordinates (x, y).
+        end: End point coordinates (x, y).
+
+    Returns:
+        Angle in degrees [-180, 180], where 0° = horizontal right,
+        90° = vertical up, -90° = vertical down.
+    """
+    start = np.asarray(start)
+    end = np.asarray(end)
+
+    # Vector from start to end
+    dx = end[0] - start[0]
+    dy = end[1] - start[1]
+
+    # Angle in radians, then convert to degrees
+    angle_rad = np.arctan2(dy, dx)
+    angle_deg = float(np.degrees(angle_rad))
+
+    return angle_deg
+
+
 def normalize_poses(
     raw: FrameKeypoints,
     spine_indices: tuple[int, int] = (H36Key.LSHOULDER, H36Key.LHIP),

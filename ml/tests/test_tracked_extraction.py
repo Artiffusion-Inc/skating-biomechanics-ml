@@ -1,4 +1,4 @@
-"""Tests for RTMPoseExtractor.extract_video_tracked().
+"""Tests for PoseExtractor.extract_video_tracked().
 
 Tests cover:
 - Output shape matches video length
@@ -26,7 +26,7 @@ def _make_video_meta(num_frames: int = 100) -> VideoMeta:
 
 
 class TestExtractVideoTracked:
-    """Tests for RTMPoseExtractor.extract_video_tracked()."""
+    """Tests for PoseExtractor.extract_video_tracked()."""
 
     def test_output_shape_matches_video(self) -> None:
         """Output shape is always (num_frames, 17, 3) regardless of gaps."""

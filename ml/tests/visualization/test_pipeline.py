@@ -142,7 +142,7 @@ class TestPreparePoses:
             mock.patch(
                 "skating_ml.visualization.pipeline.get_video_meta", return_value=_fake_meta()
             ),
-            mock.patch("skating_ml.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
             mock.patch("skating_ml.visualization.pipeline.CorrectiveLens") as MockLens,
             mock.patch("skating_ml.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
             mock.patch(
@@ -177,7 +177,7 @@ class TestPreparePoses:
             mock.patch(
                 "skating_ml.visualization.pipeline.get_video_meta", return_value=_fake_meta()
             ),
-            mock.patch("skating_ml.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
             mock.patch("skating_ml.visualization.pipeline.CorrectiveLens") as MockLens,
             mock.patch("skating_ml.visualization.pipeline.ONNXPoseExtractor") as MockONNX,
             mock.patch(
@@ -203,7 +203,7 @@ class TestPreparePoses:
             mock.patch(
                 "skating_ml.visualization.pipeline.get_video_meta", return_value=_fake_meta()
             ),
-            mock.patch("skating_ml.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
             mock.patch("skating_ml.visualization.pipeline._resolve_model_3d", return_value=None),
         ):
             MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
@@ -229,7 +229,7 @@ class TestPreparePoses:
                 "skating_ml.visualization.pipeline.get_video_meta",
                 return_value=_fake_meta(num_frames=20),
             ),
-            mock.patch("skating_ml.visualization.pipeline.RTMPoseExtractor") as MockExt,
+            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
             mock.patch("skating_ml.visualization.pipeline.CorrectiveLens") as MockLens,
             mock.patch("skating_ml.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
             mock.patch(

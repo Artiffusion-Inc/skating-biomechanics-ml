@@ -1,6 +1,6 @@
 """H3.6M 17-keypoint constants, skeleton, and COCO-to-H3.6M conversion.
 
-This is a pure data/conversion module shared by both RTMPoseExtractor and
+This is a pure data/conversion module shared by both PoseExtractor and
 other modules that need H3.6M definitions (visualization, metrics, etc.).
 
 No pose estimation classes live here -- only constants and utility functions.

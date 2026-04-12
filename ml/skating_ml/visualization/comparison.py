@@ -23,7 +23,7 @@ import cv2
 import numpy as np
 
 from skating_ml.device import DeviceConfig
-from skating_ml.pose_estimation import RTMPoseExtractor
+from skating_ml.pose_estimation import PoseExtractor
 from skating_ml.utils.smoothing import PoseSmoother, get_skating_optimized_config
 from skating_ml.utils.video import get_video_meta
 from skating_ml.utils.video_writer import H264Writer
@@ -91,10 +91,10 @@ class ComparisonRenderer:
         self.layers = _build_layers(self.config.overlays)
         self._sorted_layers = sorted(self.layers, key=lambda ly: ly.z_index)
 
-    def _create_extractor(self, device: str = "auto") -> RTMPoseExtractor:
-        """Create RTMPoseExtractor using DeviceConfig."""
+    def _create_extractor(self, device: str = "auto") -> PoseExtractor:
+        """Create PoseExtractor using DeviceConfig."""
         cfg = DeviceConfig(device=device)
-        return RTMPoseExtractor(conf_threshold=0.3, device=cfg.device)
+        return PoseExtractor(conf_threshold=0.3, device=cfg.device)
 
     # -- Pose caching --------------------------------------------------------
 
@@ -423,13 +423,13 @@ class ComparisonRenderer:
     def _extract_poses_streaming(
         self,
         video_path: Path,
-        extractor: RTMPoseExtractor,
+        extractor: PoseExtractor,
         target_w: int,
         target_h: int,
         max_frames: int = 0,
         start_frame: int = 0,
     ) -> list[np.ndarray]:
-        """Extract poses from video using RTMPoseExtractor."""
+        """Extract poses from video using PoseExtractor."""
         result = extractor.extract_video_tracked(str(video_path))
         poses_3d = result.poses  # (N, 17, 3) normalized
 

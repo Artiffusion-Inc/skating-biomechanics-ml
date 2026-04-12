@@ -2,11 +2,11 @@
 
 H3.6M Architecture:
     This pipeline uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: RTMPoseExtractor (rtmlib RTMO Body)
+    2D extraction: PoseExtractor (rtmlib RTMO Body)
     3D lifting: AthletePose3DExtractor (MotionAGFormer)
 
 Pipeline stages:
-    1. Extract & track: RTMPoseExtractor.extract_video_tracked() + gap fill + spatial ref
+    1. Extract & track: PoseExtractor.extract_video_tracked() + gap fill + spatial ref
     2. Normalization
     3. Temporal smoothing (One-Euro Filter)
     4. Phase detection
@@ -32,7 +32,7 @@ if TYPE_CHECKING:
     from .detection import PersonDetector
     from .pose_3d import AthletePose3DExtractor
     from .pose_estimation.normalizer import PoseNormalizer
-    from .pose_estimation.rtmlib_extractor import RTMPoseExtractor
+    from .pose_estimation.pose_extractor import PoseExtractor
     from .references import ReferenceStore
     from .utils.smoothing import OneEuroFilterConfig, PoseSmoother
 
@@ -41,7 +41,7 @@ class AnalysisPipeline:
     """Main pipeline for skating technique analysis.
 
     H3.6M Architecture:
-        - 2D poses: RTMPoseExtractor (17 keypoints, normalized [0,1], rtmlib backend)
+        - 2D poses: PoseExtractor (17 keypoints, normalized [0,1], rtmlib backend)
         - 3D poses: AthletePose3DExtractor (MotionAGFormer)
     """
 
@@ -74,7 +74,7 @@ class AnalysisPipeline:
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
-        self._pose_2d_extractor: RTMPoseExtractor | None = None  # type: ignore[valid-type]
+        self._pose_2d_extractor: PoseExtractor | None = None  # type: ignore[valid-type]
         self._pose_3d_extractor: AthletePose3DExtractor | None = None  # type: ignore[valid-type]
         self._normalizer: PoseNormalizer | None = None  # type: ignore[valid-type]
         self._smoother: PoseSmoother | None = None  # type: ignore[valid-type]
@@ -367,12 +367,12 @@ class AnalysisPipeline:
             self._detector = PersonDetector(model_size="n", confidence=0.5)
         return self._detector
 
-    def _get_pose_2d_extractor(self) -> "RTMPoseExtractor":  # type: ignore[valid-type]
-        """Lazy-load RTMPoseExtractor (sole 2D pose backend)."""
+    def _get_pose_2d_extractor(self) -> "PoseExtractor":  # type: ignore[valid-type]
+        """Lazy-load PoseExtractor (sole 2D pose backend)."""
         if self._pose_2d_extractor is None:
-            from .pose_estimation.rtmlib_extractor import RTMPoseExtractor
+            from .pose_estimation.pose_extractor import PoseExtractor
 
-            self._pose_2d_extractor = RTMPoseExtractor(
+            self._pose_2d_extractor = PoseExtractor(
                 output_format="normalized",
                 device=self._device_config.device,
             )
