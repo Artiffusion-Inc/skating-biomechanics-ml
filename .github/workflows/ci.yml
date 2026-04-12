@@ -176,11 +176,21 @@ jobs:
     if: always()
     steps:
       - name: Check results
+        env:
+          LINT: ${{ needs.lint.result }}
+          TYPECHECK: ${{ needs.typecheck.result }}
+          GITLEAKS: ${{ needs.gitleaks.result }}
+          TEST: ${{ needs.test.result }}
+          FE_LINT: ${{ needs.fe-lint.result }}
+          FE_TYPECHECK: ${{ needs.fe-typecheck.result }}
+          FE_TEST: ${{ needs.fe-test.result }}
+          FE_BUILD: ${{ needs.fe-build.result }}
         run: |
           FAILED=0
-          for job in lint typecheck gitleaks test fe-lint fe-typecheck fe-test fe-build; do
-            if [[ "${{ needs.${job}.result }}" != "success" ]]; then
-              echo "::error::${job} failed"
+          for job in LINT TYPECHECK GITLEAKS TEST FE_LINT FE_TYPECHECK FE_TEST FE_BUILD; do
+            RESULT="${!job}"
+            if [[ "$RESULT" != "success" ]]; then
+              echo "::error::${job} failed (${RESULT})"
               FAILED=1
             fi
           done
