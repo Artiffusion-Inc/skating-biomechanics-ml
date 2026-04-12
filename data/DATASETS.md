@@ -11,8 +11,7 @@ data/datasets/
 │   ├── mcfs-129/             # MCFS 129 classes (2617 samples, no split)
 │   └── skatingverse-28/      # SkatingVerse 28 classes (pending extraction)
 ├── raw/                       # Original files (read-only, do not modify)
-│   ├── figure-skating-classification/  # FSC source (pkl)
-│   ├── mmfs/                           # MMFS (redundant, subset of FSC)
+│   ├── figure-skating-classification/  # FSC source (pkl) + merged MMFS quality scores
 │   ├── mcfs/                           # MCFS (segments.pkl + splits)
 │   ├── skatingverse/                   # SkatingVerse (mp4 videos, 46GB)
 │   ├── athletepose3d/                  # AthletePose3D (71GB, 12 sports)
@@ -43,7 +42,7 @@ MCFS (129 cls) ──different granularity──> not directly mappable to FSC
 AthletePose3D (12 sports) ──contains──> FS-Jump3D (figure skating subset)
 ```
 
-**FSC = MMFS + mocap.** MMFS stored in `raw/mmfs/` for reference but is redundant.
+**FSC = MMFS + mocap.** MMFS quality scores merged into FSC (`train_scores.npy`, `test_scores.npy`). MMFS directory deleted — data is redundant (verified: first sample bit-identical, labels match exactly for first 3959 train samples).
 
 ## PyTorch Dataset
 
@@ -98,6 +97,7 @@ convert_skatingverse(Path('data/datasets/raw/skatingverse'), Path('data/datasets
 | Size | 340MB |
 | Format | pkl: `(150, 17, 3, 1)` float32, normalized [-1,1] |
 | Classes | 64: single jumps (0-20), combos (21-30), spins (31-58), steps (59-63) |
+| Quality scores | `train_scores.npy`, `test_scores.npy` — merged from MMFS (NaN for 253 mocap samples) |
 
 ### MCFS
 
