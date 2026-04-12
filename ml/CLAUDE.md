@@ -17,9 +17,9 @@ ml/
 │   ├── worker.py                     # arq worker (process_video_task, detect_video_task)
 │   ├── web_helpers.py                # Preview rendering for detect endpoint
 │   ├── pose_estimation/              # 2D pose extraction
-│   │   ├── rtmlib_extractor.py       # RTMPose via rtmlib (HALPE26, 26kp) — PRIMARY
+│   │   ├── rtmlib_extractor.py       # RTMO via rtmlib (COCO 17kp) — PRIMARY
 │   │   ├── h36m.py                   # H3.6M 17kp format handling
-│   │   ├── halpe26.py                # HALPE26 26kp format + foot angles
+│   │   ├── halpe26.py                # DELETED - no longer used (RTMO uses COCO 17kp)
 │   │   ├── normalizer.py             # Root-centering + scale normalization
 │   │   └── person_selector.py        # Interactive person selection
 │   ├── pose_3d/                      # 3D pose lifting
@@ -114,8 +114,7 @@ ml/
 ## Pipeline Flow
 
 ```
-Video → RTMPoseExtractor (HALPE26 26kp)
-     → halpe26_to_h36m() (17kp)
+Video → RTMPoseExtractor (RTMO COCO 17kp)
      → GapFiller → Smoothing (One-Euro)
      → [Optional] CorrectiveLens (3D lift → constraints → project back)
      → PhaseDetector (CoM-based)

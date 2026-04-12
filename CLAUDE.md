@@ -68,8 +68,8 @@ Frontend → FastAPI (backend/) → Valkey queue → arq worker (ml/skating_ml/)
     → NO:  local GPU (process_video_pipeline)
 
 ML Pipeline:
-  Video → RTMPose (rtmlib, CUDA) → HALPE26 (26kp)
-    → H3.6M (17kp) conversion → GapFiller → Smoothing
+  Video → RTMPose (rtmlib, CUDA) → RTMO (COCO 17kp)
+    → GapFiller → Smoothing
     → [Optional] CorrectiveLens (3D lift → kinematic constraints → project back to 2D)
     → Phase Detection → Biomechanics Metrics → DTW (vs reference)
     → Rule-based Recommender → Russian Text Report
@@ -78,8 +78,8 @@ ML Pipeline:
 **Key architectural constraint:** Backend (`backend/`) has **ZERO ML imports**. All ML runs in the arq worker (`ml/skating_ml/worker.py`). The worker depends on `backend` for DB/storage access, but never the reverse.
 
 **Key decisions:**
-- **rtmlib**: sole pose estimation backend — HALPE26 (26kp), ONNX (CPU+GPU), foot keypoints
-- **HALPE26 (26kp)** as intermediate format, converted to H3.6M (17kp) for downstream
+- **rtmlib**: sole pose estimation backend — RTMO (COCO 17kp), ONNX (CPU+GPU)
+- **RTMO (COCO 17kp)** as primary format, directly compatible with H3.6M 17kp
 - **CorrectiveLens**: 3D lifting as corrective layer for 2D skeleton (Kinovea-style angles)
 - **PoseTracker**: anatomical biometric Re-ID instead of color (solves black clothing on ice)
 - **CoM trajectory** instead of flight time (eliminates 60% error for low jumps)
@@ -126,7 +126,7 @@ System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-c
 ## Key Concepts
 
 - `poses_norm` — Normalized [0,1], `poses_px` — Pixel coordinates. Validate with `assert_pose_format()`.
-- `halpe26_to_h36m()`: 26kp (COCO 17 + 6 foot + 3 face) → 17kp H3.6M. Foot keypoints preserved separately.
+- RTMO directly outputs H3.6M 17kp format (no conversion needed)
 - **CorrectiveLens**: 2D → MotionAGFormer 3D lift → kinematic constraints → anchor projection → blend.
 - **CUDA compat**: standalone CUDA 12 libs in `.venv/cuda-compat/` with patched RUNPATH.
 

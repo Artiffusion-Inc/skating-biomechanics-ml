@@ -3,7 +3,7 @@
 
 H3.6M Architecture:
     Uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: RTMPoseExtractor (rtmlib BodyWithFeet)
+    2D extraction: RTMPoseExtractor (rtmlib RTMO Body)
 
 Usage:
     python -m skating_ml.cli analyze video.mp4 --element waltz_jump
@@ -410,7 +410,7 @@ def main() -> None:
   %(prog)s segment coach_tutorial.mp4 --export-dir data/references
 
 Архитектура:
-  2D Pose: RTMPose (rtmlib, HALPE26 26kp) → H3.6M 17-keypoint format
+  2D Pose: RTMO (rtmlib, COCO 17kp) → H3.6M 17-keypoint format
   3D Pose: MotionAGFormer-S (59MB) or TCPFormer (422MB)
         """,
     )

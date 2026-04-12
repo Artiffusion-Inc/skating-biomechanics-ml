@@ -2,7 +2,7 @@
 
 H3.6M Architecture:
     This pipeline uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: RTMPoseExtractor (rtmlib BodyWithFeet)
+    2D extraction: RTMPoseExtractor (rtmlib RTMO Body)
     3D lifting: AthletePose3DExtractor (MotionAGFormer)
 
 Pipeline stages:
