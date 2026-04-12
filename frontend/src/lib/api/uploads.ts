@@ -1,9 +1,12 @@
 // src/frontend/src/lib/api/uploads.ts
-import { apiFetch } from "@/lib/api-client"
+
 import { z } from "zod"
+import { apiFetch } from "@/lib/api-client"
 
 const InitResponseSchema = z.object({
-  upload_id: z.string(), key: z.string(), chunk_size: z.number(),
+  upload_id: z.string(),
+  key: z.string(),
+  chunk_size: z.number(),
   part_count: z.number(),
   parts: z.array(z.object({ part_number: z.number(), url: z.string() })),
 })
@@ -59,7 +62,9 @@ export class ChunkedUploader {
     }
 
     // Complete upload
-    await apiFetch(`/uploads/${init.upload_id}/complete`, z.object({ status: z.string() }), { method: "POST" })
+    await apiFetch(`/uploads/${init.upload_id}/complete`, z.object({ status: z.string() }), {
+      method: "POST",
+    })
 
     return init.key
   }

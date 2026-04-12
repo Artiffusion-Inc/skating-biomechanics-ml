@@ -1,7 +1,7 @@
 "use client"
 
-import Link from "next/link"
 import { Clock } from "lucide-react"
+import Link from "next/link"
 import type { Relationship } from "@/types"
 
 export function StudentCard({ rel }: { rel: Relationship }) {

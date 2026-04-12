@@ -1,11 +1,14 @@
 "use client"
 
 import { AlertTriangle, Info } from "lucide-react"
+import { useTranslations } from "@/i18n"
 import type { DiagnosticsFinding } from "@/types"
 
 export function DiagnosticsList({ findings }: { findings: DiagnosticsFinding[] }) {
+  const t = useTranslations("coach")
+
   if (!findings.length) {
-    return <p className="text-sm text-muted-foreground">Проблем не обнаружено</p>
+    return <p className="text-sm text-muted-foreground">{t("noProblems")}</p>
   }
 
   return (
@@ -14,14 +17,28 @@ export function DiagnosticsList({ findings }: { findings: DiagnosticsFinding[] }
         <div
           key={i}
           className={`rounded-xl border p-3 ${
-            f.severity === "warning" ? "border-amber-300 bg-amber-50 dark:bg-amber-950/20" : "border-border bg-muted/30"
+            f.severity === "warning" ? "border-border" : "border-border bg-muted/30"
           }`}
+          style={
+            f.severity === "warning"
+              ? {
+                  borderColor: "oklch(var(--score-mid) / 0.5)",
+                  backgroundColor: "oklch(var(--score-mid) / 0.08)",
+                }
+              : undefined
+          }
         >
           <div className="flex items-start gap-2">
             {f.severity === "warning" ? (
-              <AlertTriangle className="h-4 w-4 text-amber-500 mt-0.5 shrink-0" />
+              <AlertTriangle
+                className="h-4 w-4 mt-0.5 shrink-0"
+                style={{ color: "oklch(var(--score-mid))" }}
+              />
             ) : (
-              <Info className="h-4 w-4 text-blue-500 mt-0.5 shrink-0" />
+              <Info
+                className="h-4 w-4 mt-0.5 shrink-0"
+                style={{ color: "oklch(var(--primary))" }}
+              />
             )}
             <div>
               <p className="text-sm font-medium">{f.message}</p>

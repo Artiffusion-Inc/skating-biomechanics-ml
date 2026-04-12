@@ -1,27 +1,31 @@
 "use client"
 
 import { useParams } from "next/navigation"
-import { useSession } from "@/lib/api/sessions"
 import { MetricRow } from "@/components/session/metric-row"
-
-const ELEMENT_NAMES: Record<string, string> = {
-  three_turn: "Тройка", waltz_jump: "Вальсовый", toe_loop: "Перекидной",
-  flip: "Флип", salchow: "Сальхов", loop: "Петля",
-  lutz: "Лютц", axel: "Аксель",
-}
+import { useTranslations } from "@/i18n"
+import { useSession } from "@/lib/api/sessions"
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: session, isLoading } = useSession(id)
+  const te = useTranslations("elements")
+  const tc = useTranslations("common")
+  const ts = useTranslations("sessions")
 
-  if (isLoading) return <div className="py-20 text-center text-muted-foreground">Загрузка...</div>
-  if (!session) return <div className="py-20 text-center text-muted-foreground">Сессия не найдена</div>
+  if (isLoading)
+    return <div className="py-20 text-center text-muted-foreground">{tc("loading")}</div>
+  if (!session)
+    return <div className="py-20 text-center text-muted-foreground">{ts("notFound")}</div>
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 sm:max-w-3xl">
       <div>
-        <h1 className="text-xl font-semibold">{ELEMENT_NAMES[session.element_type] ?? session.element_type}</h1>
-        <p className="text-sm text-muted-foreground">{new Date(session.created_at).toLocaleDateString("ru-RU")}</p>
+        <h1 className="text-xl font-semibold">
+          {te(session.element_type) ?? session.element_type}
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          {new Date(session.created_at).toLocaleDateString("ru-RU")}
+        </p>
       </div>
 
       {session.processed_video_url && (
@@ -30,8 +34,8 @@ export default function SessionDetailPage() {
 
       {session.metrics.length > 0 && (
         <div className="rounded-2xl border border-border p-3 sm:p-4">
-          <h2 className="text-sm font-medium mb-2">Метрики</h2>
-          {session.metrics.map((m) => (
+          <h2 className="text-sm font-medium mb-2">{ts("metrics")}</h2>
+          {session.metrics.map(m => (
             <MetricRow
               key={m.id}
               name={m.metric_name}
@@ -49,7 +53,7 @@ export default function SessionDetailPage() {
 
       {session.recommendations && session.recommendations.length > 0 && (
         <div className="rounded-2xl border border-border p-3 sm:p-4">
-          <h2 className="text-sm font-medium mb-2">Рекомендации</h2>
+          <h2 className="text-sm font-medium mb-2">{ts("recommendations")}</h2>
           <ul className="space-y-1 text-sm text-muted-foreground">
             {session.recommendations.map((r, i) => (
               <li key={i}>{r}</li>

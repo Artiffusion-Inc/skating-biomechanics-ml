@@ -1,11 +1,11 @@
 "use client"
 
 import { useState } from "react"
-import { useMetricRegistry, useTrend } from "@/lib/api/metrics"
-import { TrendChart } from "@/components/progress/trend-chart"
 import { PeriodSelector } from "@/components/progress/period-selector"
-import { ELEMENT_TYPE_KEYS } from "@/lib/constants"
+import { TrendChart } from "@/components/progress/trend-chart"
 import { useTranslations } from "@/i18n"
+import { useMetricRegistry, useTrend } from "@/lib/api/metrics"
+import { ELEMENT_TYPE_KEYS } from "@/lib/constants"
 
 export default function ProgressPage() {
   const { data: registry } = useMetricRegistry()
@@ -17,13 +17,13 @@ export default function ProgressPage() {
   const ELEMENTS = ELEMENT_TYPE_KEYS.map(id => ({ id, label: te(id) }))
 
   const availableMetrics = registry
-    ? Object.entries(registry).filter(([, v]) => (v as any).element_types.includes(element))
+    ? Object.entries(registry).filter(([, v]) => v.element_types.includes(element))
     : []
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 sm:max-w-3xl">
       <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-        {ELEMENTS.map((el) => (
+        {ELEMENTS.map(el => (
           <button
             key={el.id}
             onClick={() => setElement(el.id)}
@@ -37,11 +37,13 @@ export default function ProgressPage() {
       <div className="space-y-2">
         <select
           value={metric}
-          onChange={(e) => setMetric(e.target.value)}
+          onChange={e => setMetric(e.target.value)}
           className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
         >
           {availableMetrics.map(([name, def]) => (
-            <option key={name} value={name}>{(def as any).label_ru}</option>
+            <option key={name} value={name}>
+              {def.label_ru}
+            </option>
           ))}
         </select>
         <PeriodSelector value={period} onChange={setPeriod} />

@@ -1,19 +1,24 @@
 "use client"
 
-import { useState } from "react"
-import { useParams } from "next/navigation"
 import Link from "next/link"
-import { useDiagnostics, useTrend } from "@/lib/api/metrics"
+import { useParams } from "next/navigation"
+import { useState } from "react"
 import { DiagnosticsList } from "@/components/coach/diagnostics-list"
-import { TrendChart } from "@/components/progress/trend-chart"
 import { PeriodSelector } from "@/components/progress/period-selector"
+import { TrendChart } from "@/components/progress/trend-chart"
+import { useTranslations } from "@/i18n"
+import { useDiagnostics, useTrend } from "@/lib/api/metrics"
 
-const ELEMENTS = [
-  { id: "three_turn", label: "Тройка" }, { id: "waltz_jump", label: "Вальсовый" },
-  { id: "toe_loop", label: "Перекидной" }, { id: "flip", label: "Флип" },
-  { id: "salchow", label: "Сальхов" }, { id: "loop", label: "Петля" },
-  { id: "lutz", label: "Лютц" }, { id: "axel", label: "Аксель" },
-]
+const ELEMENT_IDS = [
+  "three_turn",
+  "waltz_jump",
+  "toe_loop",
+  "flip",
+  "salchow",
+  "loop",
+  "lutz",
+  "axel",
+] as const
 
 export default function StudentProfilePage() {
   const { id } = useParams<{ id: string }>()
@@ -21,6 +26,9 @@ export default function StudentProfilePage() {
   const [element, setElement] = useState("waltz_jump")
   const [metric, setMetric] = useState("max_height")
   const [period, setPeriod] = useState("30d")
+  const te = useTranslations("elements")
+  const tc = useTranslations("common")
+  const ts = useTranslations("students")
 
   const { data: trend } = useTrend(id, element, metric, period)
   const { data: diag } = useDiagnostics(id)
@@ -28,32 +36,48 @@ export default function StudentProfilePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4 sm:max-w-3xl">
       <div className="flex gap-2">
-        <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">&larr; Назад</Link>
+        <Link href="/dashboard" className="text-sm text-muted-foreground hover:underline">
+          &larr; {tc("back")}
+        </Link>
       </div>
 
       <div className="flex gap-1 rounded-lg bg-muted p-1">
-        <button onClick={() => setTab("progress")} className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "progress" ? "bg-background shadow-sm" : ""}`}>
-          Прогресс
+        <button
+          onClick={() => setTab("progress")}
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "progress" ? "bg-background shadow-sm" : ""}`}
+        >
+          {ts("progress")}
         </button>
-        <button onClick={() => setTab("diagnostics")} className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "diagnostics" ? "bg-background shadow-sm" : ""}`}>
-          Диагностика
+        <button
+          onClick={() => setTab("diagnostics")}
+          className={`flex-1 rounded-md px-3 py-2 text-sm font-medium ${tab === "diagnostics" ? "bg-background shadow-sm" : ""}`}
+        >
+          {ts("diagnostics")}
         </button>
       </div>
 
       {tab === "progress" && (
         <div className="space-y-4">
           <div className="grid grid-cols-4 gap-1.5 sm:gap-2">
-            {ELEMENTS.map((el) => (
-              <button key={el.id} onClick={() => setElement(el.id)} className={`truncate rounded-xl border p-1.5 text-center text-[11px] sm:p-2 sm:text-xs ${element === el.id ? "border-primary bg-primary/10" : "border-border"}`}>
-                {el.label}
+            {ELEMENT_IDS.map(elId => (
+              <button
+                key={elId}
+                onClick={() => setElement(elId)}
+                className={`truncate rounded-xl border p-1.5 text-center text-[11px] sm:p-2 sm:text-xs ${element === elId ? "border-primary bg-primary/10" : "border-border"}`}
+              >
+                {te(elId)}
               </button>
             ))}
           </div>
-          <select value={metric} onChange={(e) => setMetric(e.target.value)} className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm">
-            <option value="max_height">Высота прыжка</option>
-            <option value="airtime">Время полёта</option>
-            <option value="landing_knee_stability">Стабильность приземления</option>
-            <option value="rotation_speed">Скорость вращения</option>
+          <select
+            value={metric}
+            onChange={e => setMetric(e.target.value)}
+            className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm"
+          >
+            <option value="max_height">{ts("metrics.max_height")}</option>
+            <option value="airtime">{ts("metrics.airtime")}</option>
+            <option value="landing_knee_stability">{ts("metrics.landing_knee_stability")}</option>
+            <option value="rotation_speed">{ts("metrics.rotation_speed")}</option>
           </select>
           <PeriodSelector value={period} onChange={setPeriod} />
           {trend && <TrendChart data={trend} />}

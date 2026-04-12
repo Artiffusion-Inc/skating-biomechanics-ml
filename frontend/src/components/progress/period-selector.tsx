@@ -1,22 +1,29 @@
-const periods = [
-  { value: "7d", label: "7 дн" },
-  { value: "30d", label: "30 дн" },
-  { value: "90d", label: "90 дн" },
-  { value: "all", label: "Всё" },
-]
+"use client"
 
-export function PeriodSelector({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+import { useTranslations } from "@/i18n"
+
+const PERIOD_KEYS = ["7d", "30d", "90d", "all"] as const
+
+export function PeriodSelector({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (v: string) => void
+}) {
+  const t = useTranslations("progress")
+
   return (
     <div className="flex gap-1 rounded-lg bg-muted p-1">
-      {periods.map((p) => (
+      {PERIOD_KEYS.map(p => (
         <button
-          key={p.value}
-          onClick={() => onChange(p.value)}
+          key={p}
+          onClick={() => onChange(p)}
           className={`rounded-md px-3 py-1 text-xs font-medium transition-colors ${
-            value === p.value ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
+            value === p ? "bg-background shadow-sm" : "text-muted-foreground hover:text-foreground"
           }`}
         >
-          {p.label}
+          {t(`periods.${p}`)}
         </button>
       ))}
     </div>

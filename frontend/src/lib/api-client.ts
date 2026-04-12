@@ -83,11 +83,19 @@ export async function apiFetch<T>(
 // ---------------------------------------------------------------------------
 
 export async function apiPost<T>(path: string, schema: z.ZodSchema<T>, body: unknown): Promise<T> {
-  return apiFetch<T>(path, schema, { method: "POST", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } })
+  return apiFetch<T>(path, schema, {
+    method: "POST",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  })
 }
 
 export async function apiPatch<T>(path: string, schema: z.ZodSchema<T>, body: unknown): Promise<T> {
-  return apiFetch<T>(path, schema, { method: "PATCH", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } })
+  return apiFetch<T>(path, schema, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+    headers: { "Content-Type": "application/json" },
+  })
 }
 
 export async function apiDelete(path: string): Promise<void> {

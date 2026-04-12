@@ -4,10 +4,15 @@ import { z } from "zod"
 import { apiFetch, apiPost } from "@/lib/api-client"
 
 const RelationshipSchema = z.object({
-  id: z.string(), coach_id: z.string(), skater_id: z.string(),
+  id: z.string(),
+  coach_id: z.string(),
+  skater_id: z.string(),
   status: z.enum(["invited", "active", "ended"]),
-  initiated_by: z.string().nullable(), created_at: z.string(), ended_at: z.string().nullable(),
-  coach_name: z.string().nullable(), skater_name: z.string().nullable(),
+  initiated_by: z.string().nullable(),
+  created_at: z.string(),
+  ended_at: z.string().nullable(),
+  coach_name: z.string().nullable(),
+  skater_name: z.string().nullable(),
 })
 
 const RelationshipListSchema = z.object({ relationships: z.array(RelationshipSchema) })
@@ -47,8 +52,7 @@ export function useAcceptInvite() {
 export function useEndRelationship() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (relId: string) =>
-      apiPost(`/relationships/${relId}/end`, RelationshipSchema, {}),
+    mutationFn: (relId: string) => apiPost(`/relationships/${relId}/end`, RelationshipSchema, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["relationships"] }),
   })
 }

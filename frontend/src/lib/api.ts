@@ -3,9 +3,14 @@
  */
 
 import { z } from "zod"
-import { API_BASE, apiFetch, ApiError, getAccessToken } from "@/lib/api-client"
-import type { ProcessResponse, PersonInfo } from "@/lib/schemas"
-import { DetectQueueResponseSchema, DetectResultResponseSchema, ProcessRequestSchema, ProcessResponseSchema } from "@/lib/schemas"
+import { API_BASE, ApiError, apiFetch, getAccessToken } from "@/lib/api-client"
+import type { PersonInfo, ProcessResponse } from "@/lib/schemas"
+import {
+  DetectQueueResponseSchema,
+  DetectResultResponseSchema,
+  ProcessRequestSchema,
+  ProcessResponseSchema,
+} from "@/lib/schemas"
 
 // ---------------------------------------------------------------------------
 // Models
@@ -91,20 +96,33 @@ export async function detectEnqueue(
     body: form,
     headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
-  if (!res.ok) throw new ApiError((await res.json().catch(() => ({}))).detail ?? `HTTP ${res.status}`, res.status)
+  if (!res.ok)
+    throw new ApiError(
+      (await res.json().catch(() => ({}))).detail ?? `HTTP ${res.status}`,
+      res.status,
+    )
   return DetectQueueResponseSchema.parse(await res.json())
 }
 
-export async function detectStatus(
-  taskId: string,
-): Promise<{ task_id: string; status: string; progress: number; message: string; result: unknown | null; error: string | null }> {
+export async function detectStatus(taskId: string): Promise<{
+  task_id: string
+  status: string
+  progress: number
+  message: string
+  result: unknown | null
+  error: string | null
+}> {
   const data = await apiFetch(`/detect/${taskId}/status`, TaskStatusSchema)
   return data
 }
 
-export async function detectResult(
-  taskId: string,
-): Promise<{ persons: PersonInfo[]; preview_image: string; video_key: string; auto_click: { x: number; y: number } | null; status: string }> {
+export async function detectResult(taskId: string): Promise<{
+  persons: PersonInfo[]
+  preview_image: string
+  video_key: string
+  auto_click: { x: number; y: number } | null
+  status: string
+}> {
   const data = await apiFetch(`/detect/${taskId}/result`, DetectResultResponseSchema)
   return data
 }

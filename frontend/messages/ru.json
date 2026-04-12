@@ -3,7 +3,11 @@
     "save": "Сохранить",
     "saving": "Сохранение...",
     "error": "Ошибка сохранения",
-    "loading": "Загрузка..."
+    "loading": "Загрузка...",
+    "noData": "Нет данных",
+    "cancel": "Отмена",
+    "or": "или",
+    "back": "Назад"
   },
   "auth": {
     "signIn": "Вход",
@@ -32,7 +36,12 @@
     "analysis": "Анализ",
     "training": "Тренировки",
     "profile": "Профиль",
-    "signIn": "Войти"
+    "signIn": "Войти",
+    "feed": "Лента",
+    "upload": "Запись",
+    "progress": "Прогресс",
+    "students": "Ученики",
+    "dashboard": "Ученики"
   },
   "app": {
     "title": "AI Тренер",
@@ -80,7 +89,12 @@
     "noRecords": "Пока нет записей. Запишите первое видео!",
     "noPRs": "Пока нет рекордов.",
     "newPR": "Новый рекорд!",
-    "viewSession": "Открыть"
+    "viewSession": "Открыть",
+    "noRecordsHint": "Рекорды появятся после первой успешной тренировки",
+    "recentActivity": "Последние записи",
+    "noActivity": "Пока нет записей",
+    "recordVideo": "Записать видео",
+    "cancel": "Отмена"
   },
   "settings": {
     "title": "Настройки",
@@ -121,5 +135,64 @@
     "loop": "Петля",
     "lutz": "Лютц",
     "axel": "Аксель"
+  },
+  "toast": {
+    "videoUploaded": "Видео загружено, анализ начат",
+    "sessionCreateError": "Ошибка создания сессии",
+    "invitationSent": "Приглашение отправлено",
+    "inviteSendError": "Ошибка отправки"
+  },
+  "feed": {
+    "noSessions": "Нет записей",
+    "noSessionsHint": "Запишите видео для анализа",
+    "recordVideo": "Записать видео"
+  },
+  "upload": {
+    "uploadingVideo": "Загрузка видео...",
+    "uploadFile": "Загрузить файл"
+  },
+  "connections": {
+    "title": "Связи",
+    "inviteStudent": "Пригласить ученика",
+    "invite": "Пригласить",
+    "incomingInvites": "Входящие приглашения",
+    "accept": "Принять",
+    "activeConnections": "Активные связи",
+    "endConnection": "Завершить"
+  },
+  "sessions": {
+    "notFound": "Сессия не найдена",
+    "metrics": "Метрики",
+    "recommendations": "Рекомендации"
+  },
+  "students": {
+    "title": "Ученики",
+    "noStudents": "Нет учеников",
+    "noStudentsHint": "Пригласите фигуриста для отслеживания прогресса",
+    "inviteStudent": "Пригласить ученика",
+    "progress": "Прогресс",
+    "diagnostics": "Диагностика",
+    "metrics": {
+      "max_height": "Высота прыжка",
+      "airtime": "Время полёта",
+      "landing_knee_stability": "Стабильность приземления",
+      "rotation_speed": "Скорость вращения"
+    }
+  },
+  "progress": {
+    "trends": {
+      "improving": "Улучшение",
+      "stable": "Стабильно",
+      "declining": "Ухудшение"
+    },
+    "periods": {
+      "7d": "7 дн",
+      "30d": "30 дн",
+      "90d": "90 дн",
+      "all": "Всё"
+    }
+  },
+  "coach": {
+    "noProblems": "Проблем не обнаружено"
   }
 }

@@ -15,7 +15,12 @@ interface MetricRowProps {
 
 function rangeColor(inRange: boolean | null): string {
   if (inRange === null) return "text-muted-foreground"
-  return inRange ? "text-green-500" : "text-red-500"
+  return "" // color set via style prop
+}
+
+function rangeStyle(inRange: boolean | null) {
+  if (inRange === null) return undefined
+  return { color: inRange ? "oklch(var(--score-good))" : "oklch(var(--score-bad))" }
 }
 
 export function MetricRow({ label, value, unit, isInRange, isPr, prevBest }: MetricRowProps) {
@@ -28,7 +33,7 @@ export function MetricRow({ label, value, unit, isInRange, isPr, prevBest }: Met
         <span className="text-sm">{label}</span>
         {deltaStr && <MetricBadge text={deltaStr} />}
       </div>
-      <span className={`text-sm font-mono ${rangeColor(isInRange)}`}>
+      <span className={`text-sm font-mono ${rangeColor(isInRange)}`} style={rangeStyle(isInRange)}>
         {value.toFixed(2)} {unit}
       </span>
     </div>

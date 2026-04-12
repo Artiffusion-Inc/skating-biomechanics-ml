@@ -90,9 +90,7 @@ export default function ProfilePage() {
                   <p className="truncate text-base font-semibold">
                     {user.display_name ?? user.email}
                   </p>
-                  {user.bio && (
-                    <p className="truncate text-sm text-muted-foreground">{user.bio}</p>
-                  )}
+                  {user.bio && <p className="truncate text-sm text-muted-foreground">{user.bio}</p>}
                 </div>
               </div>
               <button
@@ -113,15 +111,44 @@ export default function ProfilePage() {
           </>
         ) : (
           <form onSubmit={handleSave} className="space-y-3">
-            <FormField label={t("name")} id="name" type="text" value={displayName} onChange={e => setDisplayName(e.target.value)} />
-            <FormTextarea label={t("bio")} id="bio" value={bio} onChange={e => setBio(e.target.value)} rows={3} />
+            <FormField
+              label={t("name")}
+              id="name"
+              type="text"
+              value={displayName}
+              onChange={e => setDisplayName(e.target.value)}
+            />
+            <FormTextarea
+              label={t("bio")}
+              id="bio"
+              value={bio}
+              onChange={e => setBio(e.target.value)}
+              rows={3}
+            />
             <div className="grid grid-cols-2 gap-3 sm:gap-4">
-              <FormField label={t("height")} id="height" type="number" value={height} onChange={e => setHeight(e.target.value)} min={50} max={250} />
-              <FormField label={t("weight")} id="weight" type="number" value={weight} onChange={e => setWeight(e.target.value)} min={20} max={300} step={0.1} />
+              <FormField
+                label={t("height")}
+                id="height"
+                type="number"
+                value={height}
+                onChange={e => setHeight(e.target.value)}
+                min={50}
+                max={250}
+              />
+              <FormField
+                label={t("weight")}
+                id="weight"
+                type="number"
+                value={weight}
+                onChange={e => setWeight(e.target.value)}
+                min={20}
+                max={300}
+                step={0.1}
+              />
             </div>
             <div className="flex justify-end gap-2 pt-1">
               <Button type="button" variant="ghost" size="sm" onClick={() => setEditing(false)}>
-                Отмена
+                {t("cancel")}
               </Button>
               <Button type="submit" size="sm" disabled={saving}>
                 {saving ? tc("saving") : tc("save")}
@@ -142,7 +169,7 @@ export default function ProfilePage() {
 
       {/* Recent Activity */}
       <div>
-        <h2 className="mb-3 text-sm font-medium">Последние записи</h2>
+        <h2 className="mb-3 text-sm font-medium">{t("recentActivity")}</h2>
         <RecentActivity />
       </div>
     </div>

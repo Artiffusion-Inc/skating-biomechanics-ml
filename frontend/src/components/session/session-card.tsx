@@ -1,10 +1,10 @@
 "use client"
 
-import type React from "react"
-import Link from "next/link"
 import { Award, Clock, Loader2 } from "lucide-react"
-import type { Session } from "@/types"
+import Link from "next/link"
+import type React from "react"
 import { useTranslations } from "@/i18n"
+import type { Session } from "@/types"
 
 function relativeTime(dateStr: string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
@@ -25,7 +25,7 @@ function scoreStyle(score: number | null): React.CSSProperties {
 }
 
 export function SessionCard({ session }: { session: Session }) {
-  const hasPR = session.metrics.some((m) => m.is_pr)
+  const hasPR = session.metrics.some(m => m.is_pr)
   const t = useTranslations("elements")
 
   return (
@@ -56,8 +56,10 @@ export function SessionCard({ session }: { session: Session }) {
           </div>
         ) : (
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-            {session.metrics.slice(0, 3).map((m) => (
-              <span key={m.metric_name}>{m.metric_name}: {m.metric_value.toFixed(2)}</span>
+            {session.metrics.slice(0, 3).map(m => (
+              <span key={m.metric_name}>
+                {m.metric_name}: {m.metric_value.toFixed(2)}
+              </span>
             ))}
           </div>
         )}

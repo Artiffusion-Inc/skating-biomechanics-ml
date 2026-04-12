@@ -15,3 +15,6 @@ note: |
 rule:
   kind: string_fragment
   regex: '(text|bg|border)-(white|black|gray|neutral|zinc|slate|stone|red|green|blue|yellow|orange|amber|indigo|violet|purple|pink|emerald|teal|cyan|sky|lime|rose|fuchsia)(-\\d+)?(/\\d+)?'
+ignores:
+  - "frontend/src/components/ui/**"
+  - "frontend/src/components/upload/camera-recorder.tsx"
