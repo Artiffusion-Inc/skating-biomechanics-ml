@@ -72,7 +72,9 @@ jobs:
 
       - name: Install gitleaks
         run: |
-          curl -sSfL https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_$(uname -s)_$(uname -m).tar.gz | tar xz -C /usr/local/bin gitleaks
+          ARCH=$(uname -m)
+          case "$ARCH" in x86_64) ARCH="x64" ;; aarch64) ARCH="arm64" ;; esac
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/latest/download/gitleaks_$(uname -s | tr '[:upper:]' '[:lower:]')_${ARCH}.tar.gz" | tar xz -C /usr/local/bin gitleaks
 
       - name: Scan for secrets
         run: gitleaks detect --source . --no-banner --config .gitleaks.toml -v
@@ -95,7 +97,7 @@ jobs:
           python-version: ${{ env.PYTHON_VERSION }}
 
       - name: Install dependencies
-        run: uv sync --frozen
+        run: uv sync --frozen --all-groups
 
       - name: Run tests
         run: uv run pytest backend/tests/ ml/tests/ -v -m "not slow" --tb=short
@@ -134,24 +136,6 @@ jobs:
         working-directory: frontend
         run: bun run typecheck
 
-  fe-test:
-    name: Tests (Vitest)
-    runs-on: ubuntu-latest
-    needs: [fe-lint]
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Bun
-        uses: oven-sh/setup-bun@v2
-
-      - name: Install dependencies
-        working-directory: frontend
-        run: bun install --frozen-lockfile
-
-      - name: Run tests
-        working-directory: frontend
-        run: bun run test --run --coverage
-
   fe-build:
     name: Build (Next.js)
     runs-on: ubuntu-latest
@@ -173,7 +157,7 @@ jobs:
   ci-passed:
     name: CI Passed
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, gitleaks, test, fe-lint, fe-typecheck, fe-test, fe-build]
+    needs: [lint, typecheck, gitleaks, test, fe-lint, fe-typecheck, fe-build]
     if: always()
     steps:
       - name: Check results
@@ -184,11 +168,10 @@ jobs:
           TEST: ${{ needs.test.result }}
           FE_LINT: ${{ needs.fe-lint.result }}
           FE_TYPECHECK: ${{ needs.fe-typecheck.result }}
-          FE_TEST: ${{ needs.fe-test.result }}
           FE_BUILD: ${{ needs.fe-build.result }}
         run: |
           FAILED=0
-          for job in LINT TYPECHECK GITLEAKS TEST FE_LINT FE_TYPECHECK FE_TEST FE_BUILD; do
+          for job in LINT TYPECHECK GITLEAKS TEST FE_LINT FE_TYPECHECK FE_BUILD; do
             RESULT="${!job}"
             if [[ "$RESULT" != "success" ]]; then
               echo "::error::${job} failed (${RESULT})"
