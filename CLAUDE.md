@@ -58,6 +58,7 @@ skating-biomechanics-ml/
 └── pyproject.toml                    # Root config (shared dev deps)
 ```
 
+
 ## Architecture
 
 ```
@@ -134,6 +135,7 @@ System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-c
 Worker dispatches to Vast.ai Serverless GPU when `VASTAI_API_KEY` is set, falls back to local GPU. Worker code lives in `ml/skating_ml/worker.py`, Vast.ai server in `ml/gpu_server/`.
 
 **Image**: `ghcr.io/xpos587/skating-ml-gpu:latest` — multi-stage, 4.9GB, no torch/timm/triton.
+
 
 ## Tracking Debugging Workflow
 
