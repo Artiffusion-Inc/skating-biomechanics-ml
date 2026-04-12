@@ -1,6 +1,6 @@
 "use client"
 
-import { CheckCircle2, Film, Loader2, RotateCcw, Upload } from "lucide-react"
+import { CheckCircle2, Loader2, RotateCcw, Upload } from "lucide-react"
 import { useRef, useState } from "react"
 import { toast } from "sonner"
 import { CameraRecorder } from "@/components/upload/camera-recorder"
@@ -14,7 +14,6 @@ type Step = "ready" | "picked" | "uploading" | "done"
 export default function UploadPage() {
   const createSession = useCreateSession()
   const t = useTranslations("upload")
-  const tc = useTranslations("common")
 
   const fileRef = useRef<HTMLInputElement>(null)
   const [file, setFile] = useState<File | null>(null)
@@ -56,6 +55,15 @@ export default function UploadPage() {
     }
   }
 
+  function handleFileUploadClick() {
+    fileRef.current?.click()
+  }
+
+  function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0]
+    if (f) handleFile(f)
+  }
+
   // Done state
   if (step === "done") {
     return (
@@ -93,7 +101,6 @@ export default function UploadPage() {
   if (step === "picked" && file && previewUrl) {
     return (
       <div className="mx-auto max-w-lg space-y-5 px-4 py-4">
-        {/* Video preview */}
         <div className="relative overflow-hidden rounded-2xl bg-black">
           {/* biome-ignore lint/a11y/useMediaCaption: user recording, no captions */}
           <video
@@ -104,14 +111,12 @@ export default function UploadPage() {
           />
         </div>
 
-        {/* Element picker */}
         <div>
           <p className="mb-2 text-sm font-medium">{t("selectElement")}</p>
           <ElementPicker value={elementType} onChange={setElementType} />
           <p className="mt-1.5 text-xs text-muted-foreground">{t("autoDetectHint")}</p>
         </div>
 
-        {/* Action buttons */}
         <div className="flex gap-3">
           <button
             type="button"
@@ -134,37 +139,23 @@ export default function UploadPage() {
     )
   }
 
-  // Initial state — camera fills available space
+  // Camera view — fills viewport, standard camera UX
   return (
     <div className="-mx-4 -mt-4 flex h-[calc(100dvh-52px-64px)] flex-col sm:-mx-6 sm:-mt-6">
       <CameraRecorder
         onRecorded={blob =>
           handleFile(new File([blob], `recording_${Date.now()}.webm`, { type: blob.type }))
         }
+        onFileUpload={handleFileUploadClick}
+        previewUrl={previewUrl}
       />
-
-      {/* File upload hint */}
-      <div className="flex shrink-0 items-center justify-between px-4 py-3 sm:px-6">
-        <p className="text-xs text-muted-foreground">{t("recordHint")}</p>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{tc("or")}</span>
-          <button
-            type="button"
-            onClick={() => fileRef.current?.click()}
-            className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-accent"
-          >
-            <Film className="h-3.5 w-3.5" />
-            {t("chooseFile")}
-          </button>
-          <input
-            ref={fileRef}
-            type="file"
-            accept="video/*"
-            className="hidden"
-            onChange={e => e.target.files?.[0] && handleFile(e.target.files[0])}
-          />
-        </div>
-      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        onChange={handleFileChange}
+      />
     </div>
   )
 }

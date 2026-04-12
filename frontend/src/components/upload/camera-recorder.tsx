@@ -1,6 +1,6 @@
 "use client"
 
-import { VideoOff } from "lucide-react"
+import { Image, RotateCcw, VideoOff } from "lucide-react"
 import { useCallback, useRef, useState } from "react"
 import { useTranslations } from "@/i18n"
 import { useMountEffect } from "@/lib/useMountEffect"
@@ -14,7 +14,15 @@ function getSupportedMimeType(): string {
   return "video/webm"
 }
 
-export function CameraRecorder({ onRecorded }: { onRecorded: (blob: Blob) => void }) {
+export function CameraRecorder({
+  onRecorded,
+  onFileUpload,
+  previewUrl,
+}: {
+  onRecorded: (blob: Blob) => void
+  onFileUpload?: () => void
+  previewUrl?: string | null
+}) {
   const t = useTranslations("upload")
   const videoRef = useRef<HTMLVideoElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -92,34 +100,75 @@ export function CameraRecorder({ onRecorded }: { onRecorded: (blob: Blob) => voi
         </div>
       )}
 
+      {/* Recording indicator — top center */}
       {recording && (
-        <div className="absolute left-3 top-3 flex items-center gap-2 rounded-xl bg-black/50 px-3 py-1.5 backdrop-blur-sm">
-          <div className="h-2 w-2 animate-pulse rounded-full bg-red-500" />
-          <span className="font-mono text-sm text-white">{fmt(elapsed)}</span>
+        <div className="absolute left-1/2 top-4 flex -translate-x-1/2 items-center gap-2 rounded-full bg-black/50 px-4 py-1.5 backdrop-blur-sm">
+          <div className="h-2.5 w-2.5 animate-pulse rounded-full bg-red-500" />
+          <span className="font-mono text-sm font-medium tabular-nums text-white">
+            {fmt(elapsed)}
+          </span>
         </div>
       )}
 
+      {/* Bottom bar — floating over camera */}
       {cameraReady && (
-        <div className="flex shrink-0 justify-center py-4">
-          {recording ? (
-            <button
-              type="button"
-              onClick={stopRecording}
-              className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-[6px] border-white bg-red-500 shadow-lg transition-transform hover:scale-95 active:scale-90"
-              aria-label="Stop recording"
-            >
-              <div className="h-7 w-7 rounded-sm bg-white" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={startRecording}
-              className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-[6px] border-white/40 bg-red-500/80 shadow-lg transition-transform hover:scale-105"
-              aria-label="Start recording"
-            >
-              <div className="h-8 w-8 rounded-full bg-red-500" />
-            </button>
-          )}
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between px-6 pb-8">
+          {/* Gallery / file upload — bottom left */}
+          <button
+            type="button"
+            onClick={onFileUpload}
+            className="pointer-events-auto flex h-12 w-12 items-center justify-center overflow-hidden rounded-xl border-2 border-white/30 bg-white/10 backdrop-blur-sm transition-colors active:scale-95"
+            aria-label={t("chooseFile")}
+          >
+            {previewUrl ? (
+              <img src={previewUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <Image className="h-5 w-5 text-white" />
+            )}
+          </button>
+
+          {/* Shutter button — center */}
+          <div className="pointer-events-auto">
+            {recording ? (
+              <button
+                type="button"
+                onClick={stopRecording}
+                className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-[6px] border-white bg-red-500 shadow-lg transition-transform active:scale-90"
+                aria-label="Stop"
+              >
+                <div className="h-7 w-7 rounded-sm bg-white" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startRecording}
+                className="flex h-[72px] w-[72px] items-center justify-center rounded-full border-[6px] border-white/30 bg-red-500 shadow-lg transition-transform active:scale-90"
+                aria-label="Record"
+              >
+                <div className="h-8 w-8 rounded-full bg-red-500" />
+              </button>
+            )}
+          </div>
+
+          {/* Retake / switch camera — bottom right */}
+          <button
+            type="button"
+            onClick={() => {
+              if (streamRef.current) {
+                const track = streamRef.current.getVideoTracks()[0]
+                if (track) {
+                  const current = track.getSettings().facingMode
+                  track.applyConstraints({
+                    facingMode: current === "environment" ? "user" : "environment",
+                  })
+                }
+              }
+            }}
+            className="pointer-events-auto flex h-12 w-12 items-center justify-center rounded-full bg-white/10 backdrop-blur-sm transition-transform active:scale-90"
+            aria-label="Flip camera"
+          >
+            <RotateCcw className="h-5 w-5 text-white" />
+          </button>
         </div>
       )}
     </div>
