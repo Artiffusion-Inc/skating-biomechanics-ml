@@ -106,17 +106,31 @@ class PoseExtractor:
             if Body is None:
                 raise ImportError("rtmlib Body model not available")
             # Create a local tracker variable with proper type
-            from rtmlib import Body as RTMBody
+            from functools import partial
+
+            from rtmlib import Custom
             from rtmlib import PoseTracker as RTMPoseTracker
 
-            self._tracker = RTMPoseTracker(
-                RTMBody,
-                tracking=True,
-                tracking_thr=0.3,
-                mode=self._mode,
+            rtmo_urls = {
+                "performance": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211.zip",
+                "lightweight": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-s_8xb32-600e_body7-640x640-dac2bf74_20231211.zip",
+                "balanced": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-m_16xb16-600e_body7-640x640-39e78cc4_20231211.zip",
+            }
+
+            RTMOSolution = partial(
+                Custom,
+                pose_class="RTMO",
+                pose=rtmo_urls[self._mode],
+                pose_input_size=(640, 640),
                 to_openpose=False,
                 backend=self._backend,
                 device=self._device,
+            )
+
+            self._tracker = RTMPoseTracker(
+                RTMOSolution,
+                tracking=True,
+                tracking_thr=0.3,
             )
         return self._tracker
 
