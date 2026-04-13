@@ -35,7 +35,7 @@ from skating_ml.utils.video_writer import H264Writer
 from skating_ml.visualization.skeleton.drawer import draw_skeleton
 
 if TYPE_CHECKING:
-    from skating_ml.pose_estimation.rtmlib_extractor import TrackedExtraction
+    from skating_ml.pose_estimation.pose_extractor import TrackedExtraction
 
 # ---------------------------------------------------------------------------
 # Backend factory
@@ -51,9 +51,9 @@ BACKEND_CLI_CHOICES: dict[str, str] = {}
 def _create_extractor(backend: str, conf_threshold: float = 0.3):
     """Create a pose extractor for the given backend name."""
     if backend == "rtmlib":
-        from skating_ml.pose_estimation.rtmlib_extractor import RTMPoseExtractor
+        from skating_ml.pose_estimation.pose_extractor import PoseExtractor
 
-        return RTMPoseExtractor(
+        return PoseExtractor(
             output_format="normalized",
             conf_threshold=conf_threshold,
             det_frequency=1,

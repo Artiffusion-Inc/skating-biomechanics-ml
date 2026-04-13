@@ -160,7 +160,7 @@ async def detect_video_task(
 
         from backend.app.storage import download_file
         from skating_ml.device import DeviceConfig
-        from skating_ml.pose_estimation.rtmlib_extractor import RTMPoseExtractor
+        from skating_ml.pose_estimation.pose_extractor import PoseExtractor
         from skating_ml.utils.video import get_video_meta
         from skating_ml.web_helpers import render_person_preview
 
@@ -169,7 +169,7 @@ async def detect_video_task(
             download_file(video_key, str(video_path))
 
             cfg = DeviceConfig.default()
-            extractor = RTMPoseExtractor(
+            extractor = PoseExtractor(
                 mode="balanced",
                 tracking_backend="rtmlib",
                 tracking_mode=tracking,

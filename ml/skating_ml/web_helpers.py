@@ -306,7 +306,6 @@ def process_video_pipeline(  # noqa: PLR0913
         meta=prepared.meta,
         poses_norm=prepared.poses_norm,
         poses_px=prepared.poses_px,
-        foot_kps=prepared.foot_kps,
         poses_3d=prepared.poses_3d,
         layer=layer,
         confs=prepared.confs,

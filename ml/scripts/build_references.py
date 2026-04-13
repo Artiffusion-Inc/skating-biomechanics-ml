@@ -10,7 +10,7 @@ import argparse
 import traceback
 from pathlib import Path
 
-from skating_ml.pose_estimation import RTMPoseExtractor
+from skating_ml.pose_estimation import PoseExtractor
 from skating_ml.pose_estimation.normalizer import PoseNormalizer
 from skating_ml.references import ReferenceBuilder, ReferenceStore
 from skating_ml.types import ElementPhase
@@ -84,7 +84,7 @@ def main() -> None:
         return 1
 
     # Initialize components
-    pose_extractor = RTMPoseExtractor(mode="balanced")
+    pose_extractor = PoseExtractor(mode="balanced")
     normalizer = PoseNormalizer(target_spine_length=0.4)
     builder = ReferenceBuilder(pose_extractor, normalizer)
 

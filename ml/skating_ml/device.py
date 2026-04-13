@@ -15,7 +15,7 @@ Usage:
     cfg = DeviceConfig(device="cpu")
 
     # Pass to components
-    extractor = RTMPoseExtractor(device=cfg.device)
+    extractor = PoseExtractor(device=cfg.device)
     session = ort.InferenceSession(path, providers=cfg.onnx_providers)
 """
 

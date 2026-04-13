@@ -2,7 +2,7 @@
 
 H3.6M Architecture:
     Pipeline uses H3.6M 17-keypoint format as primary.
-    2D: RTMPoseExtractor (rtmlib), 3D: AthletePose3DExtractor
+    2D: PoseExtractor (rtmlib), 3D: AthletePose3DExtractor
 """
 
 import pytest
@@ -182,7 +182,7 @@ class TestPipelineLazyLoading:
         assert pipeline._detector is not None
 
     def test_pose_2d_extractor_lazy_load(self):
-        """Should lazy-load RTMPoseExtractor."""
+        """Should lazy-load PoseExtractor."""
         from pathlib import Path
 
         # Skip if rtmlib model not available

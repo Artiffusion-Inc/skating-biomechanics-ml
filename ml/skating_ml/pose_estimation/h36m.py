@@ -1,6 +1,6 @@
 """H3.6M 17-keypoint constants, skeleton, and COCO-to-H3.6M conversion.
 
-This is a pure data/conversion module shared by both RTMPoseExtractor and
+This is a pure data/conversion module shared by both PoseExtractor and
 other modules that need H3.6M definitions (visualization, metrics, etc.).
 
 No pose estimation classes live here -- only constants and utility functions.
@@ -103,7 +103,7 @@ H36M_KEYPOINT_NAMES = [
 ]
 
 
-def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
+def coco_to_h36m(coco_pose: np.ndarray) -> np.ndarray:
     """Convert COCO 17 keypoints to H3.6M 17 keypoints (single frame).
 
     Args:
@@ -172,6 +172,10 @@ def _coco_to_h36m_single(coco_pose: np.ndarray) -> np.ndarray:
     h36m_pose[H36Key.RWRIST] = coco_pose[_COCOKey.RIGHT_WRIST]
 
     return h36m_pose
+
+
+# Backward compatibility alias
+_coco_to_h36m_single = coco_to_h36m
 
 
 def _biometric_distance(pose_a: np.ndarray, pose_b: np.ndarray) -> float:

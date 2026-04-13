@@ -54,6 +54,7 @@
 | **YOLO11-Pose** | 17 | No | 100+ FPS | Medium | Fastest, one-pass |
 | **DETRPose** (Jun 2025) | - | - | Slow | SOTA COCO | New, untested |
 | **CIGPose** (CVPR 2026) | - | - | - | Sports-specific | See above |
+| **MogaNet** (ICLR 2024) | 17 | No | ~20 FPS | 77.3 AP | No foot kp, mmpose only |
 
 ### CIGPose Deep Dive (CVPR 2026)
 
@@ -68,6 +69,40 @@
 - **NOT trained on sports data** — general COCO-WholeBody + UBody
 - **ONNX ready:** 14 pre-exported models, 54-230MB, GPU via onnxruntime-gpu
 - **Not in rtmlib** — separate ONNX wrapper
+
+
+### MogaNet Deep Dive (ICLR 2024)
+
+**Model file:** `data/models/moganet_b_ap2d_384x288.pth` (544MB)
+**Source:** Sports2D project, fine-tuned on AthletePose3D (20 epochs from COCO pretrained)
+
+| Parameter | Value |
+|-----------|-------|
+| Architecture | MogaNet-B, multi-order gated convolution |
+| Keypoints | COCO 17 (no foot keypoints) |
+| Accuracy | 77.3 AP on COCO |
+| Format | mmpose checkpoint (.pth) — NOT ONNX |
+| Fine-tuned on | AthletePose3D |
+
+**Limitations:**
+- No ONNX export — requires mmpose infrastructure
+- No foot keypoints (only 17 body keypoints)
+- Inferior to RTMPose for our use case (HALPE26 has 26kp with feet)
+
+### MediaPipe Pose — Not Viable
+
+- **No "v2" exists** — current version is still BlazePose (33 keypoints)
+- NOT fine-tunable (closed Google model)
+- 33 keypoints in BlazePose format (not COCO 17)
+- Accuracy inferior to RTMPose
+- Dead end for our pipeline
+
+### GEM-X (NVIDIA, Mar 2026) — Wrong Problem
+
+- Generative 3D motion estimation, SOMA 77 joints
+- Diffusion-based — too slow for real-time inference
+- Solves 3D reconstruction, not 2D keypoint detection
+- Not applicable to our pipeline
 
 ### Keypoint Formats
 
