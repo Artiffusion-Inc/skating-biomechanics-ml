@@ -1,6 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
 import { useTranslations } from "@/i18n"
@@ -33,6 +34,7 @@ export default function SessionDetailPage() {
         </p>
       </div>
 
+      {/* 2D Video + Skeleton */}
       {session.processed_video_url && session.pose_data && (
         <VideoWithSkeleton
           videoUrl={session.processed_video_url}
@@ -47,6 +49,15 @@ export default function SessionDetailPage() {
         <video src={session.processed_video_url} controls className="w-full rounded-xl">
           <track kind="captions" />
         </video>
+      )}
+
+      {/* 3D Skeleton Viewer */}
+      {session.pose_data && session.frame_metrics && (
+        <ThreeJSkeletonViewer
+          poseData={session.pose_data}
+          frameMetrics={session.frame_metrics}
+          className="rounded-xl"
+        />
       )}
 
       {session.metrics.length > 0 && (

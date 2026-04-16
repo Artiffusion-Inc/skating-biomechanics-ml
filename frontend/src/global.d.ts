@@ -1,10 +1,4 @@
-/// <reference types="next" />
-/// <reference types="next/image-types/global" />
 /// <reference types="@react-three/fiber" />
-import "./.next/dev/types/routes.d.ts";
-
-// NOTE: This file should not be edited
-// see https://nextjs.org/docs/app/api-reference/config/typescript for more information.
 
 import { Object3DNode } from "@react-three/fiber"
 import {
@@ -28,9 +22,7 @@ declare global {
       sphereGeometry: Object3DNode<SphereGeometry, typeof SphereGeometry>
       cylinderGeometry: Object3DNode<CylinderGeometry, typeof CylinderGeometry>
       meshStandardMaterial: Object3DNode<MeshStandardMaterial, typeof MeshStandardMaterial>
-      primitive: { object?: Object3D; [key: string]: any }
+      primitive: { object?: Object3D }
     }
   }
 }
-
-export {}
