@@ -29,8 +29,12 @@ class Session(TimestampMixin, Base):
     element_type: Mapped[str] = mapped_column(String(50), index=True)
     video_url: Mapped[str | None] = mapped_column(String(500))
     processed_video_url: Mapped[str | None] = mapped_column(String(500))
+    # Deprecated: poses_url and csv_url replaced by pose_data and frame_metrics
     poses_url: Mapped[str | None] = mapped_column(String(500))
     csv_url: Mapped[str | None] = mapped_column(String(500))
+    # New JSON columns for direct pose data storage
+    pose_data: Mapped[dict | None] = mapped_column(JSON, nullable=True)
+    frame_metrics: Mapped[dict | None] = mapped_column(JSON, nullable=True)
     status: Mapped[str] = mapped_column(String(20), default="uploading")
     error_message: Mapped[str | None] = mapped_column(Text)
     phases: Mapped[dict | None] = mapped_column(JSON, nullable=True)
