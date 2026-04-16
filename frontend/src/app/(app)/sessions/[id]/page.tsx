@@ -1,6 +1,7 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { PhaseTimeline } from "@/components/analysis/phase-timeline"
 import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
@@ -43,6 +44,11 @@ export default function SessionDetailPage() {
           totalFrames={totalFrames}
           className="rounded-xl"
         />
+      )}
+
+      {/* Timeline */}
+      {session.pose_data && (
+        <PhaseTimeline totalFrames={totalFrames} phases={session.phases ?? {}} />
       )}
 
       {session.processed_video_url && !session.pose_data && (
