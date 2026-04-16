@@ -11,20 +11,173 @@ from __future__ import annotations
 import asyncio
 import logging
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any, ClassVar
 
+import numpy as np
 from arq import Retry
 from arq.connections import RedisSettings
 
 from backend.app.config import get_settings
+from backend.app.storage import download_file
 from backend.app.task_manager import (
     TaskStatus,
     get_valkey_client,
     store_error,
     store_result,
 )
+from skating_ml.types import H36Key
 
 logger = logging.getLogger(__name__)
+
+
+def _sample_poses(
+    poses: np.ndarray,
+    sample_rate: int = 10,
+) -> dict:
+    """Sample poses to reduce data transfer for frontend.
+
+    Args:
+        poses: (N, 17, 3) array of poses
+        sample_rate: Sample every Nth frame (default: 10)
+
+    Returns:
+        dict with frames list and poses array for sampled frames
+    """
+    n_frames = len(poses)
+    sampled_indices = list(range(0, n_frames, sample_rate))
+
+    # Extract sampled poses as list for JSON serialization
+    sampled_poses = poses[sampled_indices].tolist()
+
+    return {
+        "frames": sampled_indices,
+        "poses": sampled_poses,
+    }
+
+
+def _compute_frame_metrics(poses: np.ndarray) -> dict:
+    """Compute frame-by-frame biomechanics metrics.
+
+    Args:
+        poses: (N, 17, 3) array of poses
+
+    Returns:
+        dict with metric arrays (knee angles, hip angles, trunk lean, CoM height)
+    """
+    knee_angles_r = []
+    knee_angles_l = []
+    hip_angles_r = []
+    hip_angles_l = []
+    trunk_lean = []
+    com_height = []
+
+    for pose in poses:
+        # Knee angles (hip-knee-ankle)
+        r_knee = pose[H36Key.RHIP]
+        r_knee_joint = pose[H36Key.RKNEE]
+        r_ankle = pose[H36Key.RFOOT]
+
+        l_knee = pose[H36Key.LHIP]
+        l_knee_joint = pose[H36Key.LKNEE]
+        l_ankle = pose[H36Key.LFOOT]
+
+        # Right knee angle
+        if not (np.isnan(r_knee).any() or np.isnan(r_knee_joint).any() or np.isnan(r_ankle).any()):
+            vec1 = r_knee_joint - r_knee
+            vec2 = r_ankle - r_knee_joint
+            angle = np.degrees(
+                np.arccos(
+                    np.clip(
+                        np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-8),
+                        -1,
+                        1,
+                    )
+                )
+            )
+            knee_angles_r.append(angle)
+        else:
+            knee_angles_r.append(float("nan"))
+
+        # Left knee angle
+        if not (np.isnan(l_knee).any() or np.isnan(l_knee_joint).any() or np.isnan(l_ankle).any()):
+            vec1 = l_knee_joint - l_knee
+            vec2 = l_ankle - l_knee_joint
+            angle = np.degrees(
+                np.arccos(
+                    np.clip(
+                        np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-8),
+                        -1,
+                        1,
+                    )
+                )
+            )
+            knee_angles_l.append(angle)
+        else:
+            knee_angles_l.append(float("nan"))
+
+        # Hip angles (thorax-hip-knee)
+        r_thorax = pose[H36Key.THORAX]
+        l_thorax = pose[H36Key.THORAX]
+
+        # Right hip angle
+        if not (np.isnan(r_thorax).any() or np.isnan(r_knee).any() or np.isnan(r_knee_joint).any()):
+            vec1 = r_knee - r_thorax
+            vec2 = r_knee_joint - r_knee
+            angle = np.degrees(
+                np.arccos(
+                    np.clip(
+                        np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-8),
+                        -1,
+                        1,
+                    )
+                )
+            )
+            hip_angles_r.append(angle)
+        else:
+            hip_angles_r.append(float("nan"))
+
+        # Left hip angle
+        if not (np.isnan(l_thorax).any() or np.isnan(l_knee).any() or np.isnan(l_knee_joint).any()):
+            vec1 = l_knee - l_thorax
+            vec2 = l_knee_joint - l_knee
+            angle = np.degrees(
+                np.arccos(
+                    np.clip(
+                        np.dot(vec1, vec2) / (np.linalg.norm(vec1) * np.linalg.norm(vec2) + 1e-8),
+                        -1,
+                        1,
+                    )
+                )
+            )
+            hip_angles_l.append(angle)
+        else:
+            hip_angles_l.append(float("nan"))
+
+        # Trunk lean (spine angle from vertical)
+        spine = pose[H36Key.SPINE]
+        neck = pose[H36Key.NECK]
+        if not (np.isnan(spine).any() or np.isnan(neck).any()):
+            spine_vec = neck - spine
+            spine_vec[1] = 0  # Project to horizontal plane
+            lean = np.degrees(np.arctan2(spine_vec[0], spine_vec[2])) if spine_vec[2] != 0 else 0
+            trunk_lean.append(lean)
+        else:
+            trunk_lean.append(float("nan"))
+
+        # CoM height (hip center y)
+        hip_center = pose[H36Key.HIP_CENTER]
+        com_height.append(hip_center[1] if not np.isnan(hip_center[1]) else float("nan"))
+
+    # Convert to lists for JSON
+    return {
+        "knee_angles_r": [float(x) if not np.isnan(x) else None for x in knee_angles_r],
+        "knee_angles_l": [float(x) if not np.isnan(x) else None for x in knee_angles_l],
+        "hip_angles_r": [float(x) if not np.isnan(x) else None for x in hip_angles_r],
+        "hip_angles_l": [float(x) if not np.isnan(x) else None for x in hip_angles_l],
+        "trunk_lean": [float(x) if not np.isnan(x) else None for x in trunk_lean],
+        "com_height": [float(x) if not np.isnan(x) else None for x in com_height],
+    }
 
 
 async def startup(ctx: dict[str, Any]) -> None:
@@ -94,10 +247,41 @@ async def process_video_task(
         )
         logger.info("Vast.ai processing complete for task %s", task_id)
 
+        # Prepare pose data for JSON storage (if poses available)
+        pose_data = None
+        frame_metrics = None
+
+        if vast_result.poses_key:
+            try:
+                import tempfile
+
+                # Download poses temporarily for sampling
+                with tempfile.TemporaryDirectory() as tmpdir:
+                    poses_path = Path(tmpdir) / "poses.npy"
+                    download_file(vast_result.poses_key, str(poses_path))
+
+                    # Load poses and prepare data
+                    poses = np.load(str(poses_path))
+                    fps = vast_result.stats.get("fps", 30.0)
+
+                    # Sample poses for frontend
+                    sampled = _sample_poses(poses, sample_rate=10)
+                    sampled["fps"] = fps
+                    pose_data = sampled
+
+                    # Compute frame metrics
+                    frame_metrics = _compute_frame_metrics(poses)
+
+                    logger.info(
+                        "Prepared pose_data: %d frames, %d metrics",
+                        len(sampled["frames"]),
+                        len(poses),
+                    )
+            except Exception as pose_err:
+                logger.warning("Failed to prepare pose data: %s", pose_err)
+
         response_data = {
             "video_path": vast_result.video_key,
-            "poses_path": vast_result.poses_key,
-            "csv_path": vast_result.csv_key,
             "stats": vast_result.stats,
             "status": "Analysis complete!",
         }
@@ -106,10 +290,22 @@ async def process_video_task(
         # Save analysis results to Postgres if session_id was provided
         if session_id and vast_result.metrics:
             try:
+                from backend.app.crud.session import update_session_analysis
                 from backend.app.database import async_session
                 from backend.app.services.session_saver import save_analysis_results
 
                 async with async_session() as db:
+                    # Save pose data and frame metrics as JSON
+                    if pose_data or frame_metrics:
+                        await update_session_analysis(
+                            db,
+                            session_id=session_id,
+                            pose_data=pose_data,
+                            frame_metrics=frame_metrics,
+                            phases=vast_result.phases,
+                        )
+
+                    # Save metrics and recommendations (existing flow)
                     await save_analysis_results(
                         db,
                         session_id=session_id,

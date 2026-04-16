@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from sqlalchemy import desc, select
+import sqlalchemy as sa
+from sqlalchemy import desc, func, select
 from sqlalchemy.orm import selectinload
 
 from backend.app.models.session import Session
@@ -63,3 +64,39 @@ async def soft_delete(db: AsyncSession, session: Session) -> None:
     session.status = "deleted"
     db.add(session)
     await db.flush()
+
+
+async def update_session_analysis(
+    db: AsyncSession,
+    session_id: str,
+    pose_data: dict | None,
+    frame_metrics: dict | None,
+    phases: dict | None,
+) -> Session:
+    """Update session with JSON pose data and metrics.
+
+    Args:
+        db: Async database session
+        session_id: ID of the Session row
+        pose_data: Sampled pose data (frames, poses, fps)
+        frame_metrics: Frame-by-frame biomechanics metrics
+        phases: Element phase markers (takeoff, peak, landing)
+
+    Returns:
+        Updated Session object
+    """
+    stmt = (
+        sa.update(Session)
+        .where(Session.id == session_id)
+        .values(
+            pose_data=pose_data,
+            frame_metrics=frame_metrics,
+            phases=phases,
+            status="completed",
+            processed_at=func.now(),
+        )
+        .returning(Session)
+    )
+    result = await db.execute(stmt)
+    await db.commit()
+    return result.scalar_one()
