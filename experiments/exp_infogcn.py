@@ -35,18 +35,16 @@ import sys
 import time
 from pathlib import Path
 
-import numpy as np
 import torch
-import torch.nn as nn
-import torch.optim as optim
-from torch.amp import autocast, GradScaler
+from torch import optim
+from torch.amp import GradScaler, autocast
 
 # Add experiments/ to path for infogcn package
 sys.path.insert(0, str(Path(__file__).parent))
 
-from infogcn.model import InfoGCN
 from infogcn.feeder import FSCFeeder
-from infogcn.loss import LabelSmoothingCE, get_mmd_loss, BalancedSampler
+from infogcn.loss import BalancedSampler, LabelSmoothingCE, get_mmd_loss
+from infogcn.model import InfoGCN
 
 BASE = Path(__file__).resolve().parent.parent / "data" / "datasets"
 
@@ -295,7 +293,7 @@ def run_h27(num_epochs=110):
         )
 
     # Ensemble evaluation
-    print(f"\n--- H27 Ensemble ---")
+    print("\n--- H27 Ensemble ---")
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     _, test_loader, num_classes, _ = load_fsc_data(modality="joint", window_size=64, balanced=False)
 
@@ -324,7 +322,7 @@ def run_h27(num_epochs=110):
     ensemble_pred = sum(torch.cat(all_preds[m]) for m in modalities) / len(modalities)
     acc = (ensemble_pred.argmax(1) == all_labels).float().mean().item() * 100
     print(f"  H27 Ensemble: {acc:.1f}%")
-    print(f"  Individual: " + ", ".join(f"{m}={scores[m]:.1f}%" for m in modalities))
+    print("  Individual: " + ", ".join(f"{m}={scores[m]:.1f}%" for m in modalities))
     return acc
 
 

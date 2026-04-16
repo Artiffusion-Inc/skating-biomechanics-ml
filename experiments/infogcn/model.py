@@ -5,10 +5,11 @@ Key changes: no Apex dependency, COCO 17kp support, no einops.
 """
 
 import math
+
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
+from torch import nn
 
 from .graph import Graph
 from .modules import EncodingBlock, bn_init

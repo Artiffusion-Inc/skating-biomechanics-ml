@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from backend.app.services.choreography.elements_db import ELEMENTS
+from app.services.choreography.elements_db import ELEMENTS
 
 
 def goe_factor(base_value: float) -> float:

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 import random
 
-from backend.app.services.choreography.elements_db import ELEMENTS
-from backend.app.services.choreography.rules_engine import validate_layout
-from backend.app.services.choreography.score_calculator import calculate_tes
+from app.services.choreography.elements_db import ELEMENTS
+from app.services.choreography.rules_engine import validate_layout
+from app.services.choreography.score_calculator import calculate_tes
 
 
 def _parse_combination(combo_str: str) -> list[str]:

@@ -8,25 +8,25 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, status
 
-from backend.app.auth.deps import CurrentUser, DbDep
-from backend.app.crud.relationship import (
+from app.auth.deps import CurrentUser, DbDep
+from app.crud.relationship import (
     create as create_rel,
 )
-from backend.app.crud.relationship import (
+from app.crud.relationship import (
     get_active as get_active_rel,
 )
-from backend.app.crud.relationship import (
+from app.crud.relationship import (
     get_by_id as get_rel_by_id,
 )
-from backend.app.crud.relationship import (
+from app.crud.relationship import (
     list_for_user,
     list_pending_for_skater,
 )
-from backend.app.crud.user import get_by_email
-from backend.app.schemas import InviteRequest, RelationshipListResponse, RelationshipResponse
+from app.crud.user import get_by_email
+from app.schemas import InviteRequest, RelationshipListResponse, RelationshipResponse
 
 if TYPE_CHECKING:
-    from backend.app.models.relationship import Relationship
+    from app.models.relationship import Relationship
 
 router = APIRouter(tags=["relationships"])
 

@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import desc, select
 
-from backend.app.models.choreography import ChoreographyProgram, MusicAnalysis
+from app.models.choreography import ChoreographyProgram, MusicAnalysis
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
@@ -42,6 +42,20 @@ async def get_music_analysis_by_id(db: AsyncSession, music_id: str) -> MusicAnal
         select(MusicAnalysis).where(MusicAnalysis.id == music_id),
     )
     return result.scalar_one_or_none()
+
+
+async def update_music_analysis(
+    db: AsyncSession,
+    music: MusicAnalysis,
+    **kwargs,
+) -> MusicAnalysis:
+    for key, value in kwargs.items():
+        if value is not None:
+            setattr(music, key, value)
+    db.add(music)
+    await db.flush()
+    await db.refresh(music)
+    return music
 
 
 # --- Choreography Program ---

@@ -4,21 +4,22 @@
 from __future__ import annotations
 
 import tempfile
-import uuid
+from pathlib import Path
 
 from fastapi import APIRouter, HTTPException, Query, UploadFile, status
 
-from backend.app.auth.deps import CurrentUser, DbDep
-from backend.app.crud.choreography import (
+from app.auth.deps import CurrentUser, DbDep  # noqa: TC001 — runtime FastAPI Depends
+from app.crud.choreography import (
     create_music_analysis,
     create_program,
     delete_program,
     get_music_analysis_by_id,
     get_program_by_id,
     list_programs_by_user,
+    update_music_analysis,
     update_program,
 )
-from backend.app.schemas import (
+from app.schemas import (
     ChoreographyProgramResponse,
     ExportRequest,
     GenerateRequest,
@@ -32,11 +33,11 @@ from backend.app.schemas import (
     ValidateRequest,
     ValidateResponse,
 )
-from backend.app.services.choreography.csp_solver import solve_layout
-from backend.app.services.choreography.music_analyzer import extract_features_for_csp
-from backend.app.services.choreography.rink_renderer import render_rink
-from backend.app.services.choreography.rules_engine import validate_layout as validate_layout_engine
-from backend.app.storage import upload_file
+from app.services.choreography.csp_solver import solve_layout
+from app.services.choreography.music_analyzer import extract_features_for_csp
+from app.services.choreography.rink_renderer import render_rink
+from app.services.choreography.rules_engine import validate_layout as validate_layout_engine
+from app.storage import upload_file
 
 router = APIRouter(tags=["choreography"])
 
@@ -51,8 +52,21 @@ def _program_to_response(program) -> ChoreographyProgramResponse:
 # ---------------------------------------------------------------------------
 
 
+def _get_duration(path: str, suffix: str) -> float:
+    """Get audio duration from file header (no ML deps needed)."""
+    import wave
+
+    try:
+        if suffix == ".wav":
+            with wave.open(path, "rb") as wf:
+                return round(wf.getnframes() / float(wf.getframerate()), 1)
+    except Exception:
+        pass
+    return 180.0
+
+
 @router.post(
-    "/choreography/upload-music",
+    "/choreography/music/upload",
     response_model=UploadMusicResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -61,8 +75,11 @@ async def upload_music(
     db: DbDep,
     file: UploadFile,
 ):
-    """Upload an audio file, save to R2, create MusicAnalysis record."""
-    import wave
+    """Upload an audio file, analyze it, and store results."""
+    import asyncio
+    import logging
+
+    logger = logging.getLogger(__name__)
 
     suffix = (
         f".{file.filename.rsplit('.', 1)[-1]}" if file.filename and "." in file.filename else ".mp3"
@@ -72,29 +89,68 @@ async def upload_music(
         tmp.write(content)
         tmp_path = tmp.name
 
-    # Determine duration from file (basic WAV check, otherwise estimate)
-    duration_sec = 180.0  # default
-    try:
-        if suffix == ".wav":
-            with wave.open(tmp_path, "rb") as wf:
-                frames = wf.getnframes()
-                rate = wf.getframerate()
-                duration_sec = round(frames / float(rate), 1)
-    except Exception:
-        pass
-
-    r2_key = f"music/{user.id}/{uuid.uuid4()}{suffix}"
-    upload_file(tmp_path, r2_key)
-
-    audio_url = f"/files/{r2_key}"
+    # Create record as "analyzing"
     music = await create_music_analysis(
         db,
         user_id=user.id,
         filename=file.filename or "unknown",
-        audio_url=audio_url,
-        duration_sec=duration_sec,
-        status="pending",
+        audio_url="",
+        duration_sec=0,
+        status="analyzing",
     )
+
+    try:
+        # Run music analysis in thread pool (blocking librosa/madmom calls)
+        # Graceful fallback: if ML deps aren't installed, use basic duration
+        duration_sec = 0.0
+        bpm = None
+        energy_curve = None
+        peaks = None
+        structure = None
+
+        try:
+            from app.services.choreography.music_analyzer import analyze_music_sync
+
+            logger.info("Running music analysis on %s", tmp_path)
+            result = await asyncio.to_thread(analyze_music_sync, tmp_path)
+            duration_sec = result["duration_sec"]
+            bpm = result["bpm"]
+            energy_curve = result["energy_curve"]
+            peaks = result["peaks"]
+            structure = result.get("structure") or []
+            logger.info("Analysis complete: bpm=%.1f, duration=%.1f", bpm, duration_sec)
+        except ImportError:
+            # librosa/madmom not available — estimate duration from file header
+            logger.info("librosa not available, using basic duration estimation")
+            duration_sec = await asyncio.to_thread(_get_duration, tmp_path, suffix)
+
+        # Upload to R2 (blocking boto3 — run in thread pool)
+        r2_key = f"music/{user.id}/{music.id}{suffix}"
+        logger.info("Uploading to R2: %s", r2_key)
+        await asyncio.to_thread(upload_file, tmp_path, r2_key)
+        logger.info("R2 upload complete")
+
+        await update_music_analysis(
+            db,
+            music,
+            audio_url=f"/files/{r2_key}",
+            duration_sec=duration_sec,
+            bpm=bpm,
+            energy_curve=energy_curve,
+            peaks=peaks,
+            structure=structure,
+            status="completed",
+        )
+    except Exception as e:
+        logger.exception("Music analysis failed")
+        await update_music_analysis(db, music, status="failed")
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Music analysis failed: {type(e).__name__}: {e}",
+        ) from e
+    finally:
+        Path(tmp_path).unlink(missing_ok=True)
+
     return UploadMusicResponse(music_id=music.id, filename=music.filename)
 
 

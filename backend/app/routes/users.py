@@ -2,9 +2,9 @@
 
 from fastapi import APIRouter
 
-from backend.app.auth.deps import CurrentUser, DbDep
-from backend.app.crud.user import update
-from backend.app.schemas import (
+from app.auth.deps import CurrentUser, DbDep
+from app.crud.user import update
+from app.schemas import (
     UpdateProfileRequest,
     UpdateSettingsRequest,
     UserResponse,

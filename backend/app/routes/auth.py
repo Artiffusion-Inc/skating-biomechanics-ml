@@ -5,20 +5,20 @@ from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, HTTPException, status
 
-from backend.app.auth.deps import DbDep
-from backend.app.auth.security import (
+from app.auth.deps import DbDep
+from app.auth.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
     hash_token,
     verify_password,
 )
-from backend.app.config import get_settings
-from backend.app.crud.refresh_token import create as create_refresh_token_crud
-from backend.app.crud.refresh_token import get_active_by_hash, revoke
-from backend.app.crud.user import create as create_user
-from backend.app.crud.user import get_by_email
-from backend.app.schemas import (
+from app.config import get_settings
+from app.crud.refresh_token import create as create_refresh_token_crud
+from app.crud.refresh_token import get_active_by_hash, revoke
+from app.crud.user import create as create_user
+from app.crud.user import get_by_email
+from app.schemas import (
     LoginRequest,
     RefreshRequest,
     RegisterRequest,

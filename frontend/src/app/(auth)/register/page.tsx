@@ -23,10 +23,10 @@ export default function RegisterPage() {
     setLoading(true)
     try {
       await register(email, password, displayName || undefined)
-      toast.success(t("signUpSuccess"))
+      toast.success(t("signUpSuccess"), { duration: 3000 })
       router.push("/feed")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("signUpError"))
+      toast.error(err instanceof Error ? err.message : t("signUpError"), { duration: 3000 })
     } finally {
       setLoading(false)
     }

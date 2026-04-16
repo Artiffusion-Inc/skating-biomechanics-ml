@@ -7,7 +7,7 @@ import uuid
 from sqlalchemy import Boolean, Float, SmallInteger, String, Text
 from sqlalchemy.orm import Mapped, mapped_column
 
-from backend.app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin
 
 
 class User(TimestampMixin, Base):

@@ -30,18 +30,18 @@ Usage:
     PYTHONUNBUFFERED=1 .venv/bin/python -u experiments/exp_motionbert.py
 """
 
-import sys
 import pickle
-import time
 import random
-import numpy as np
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from pathlib import Path
+import sys
+import time
 from collections import Counter, OrderedDict
 from functools import partial
+from pathlib import Path
+
+import numpy as np
+import torch
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 BASE = Path("data/datasets")
 MOTIONBERT_PATH = Path("/root/MotionBERT")  # Adjust if different
@@ -524,7 +524,7 @@ def main():
     print(f"  6c-2 MB Frozen + Linear (H25):    {mb_linear_acc:.1%}")
     print(f"  6c-3 MB Frozen + BiGRU (H25b):    {mb_bigru_acc:.1%}")
     print(f"  MotionBERT params: {total_params / 1e6:.1f}M (frozen)")
-    print(f"\n  Key question: Does pretrained motion knowledge transfer to figure skating?")
+    print("\n  Key question: Does pretrained motion knowledge transfer to figure skating?")
     print(f"  Baseline gap: {mb_bigru_acc - baseline_acc:+.1%}pp")
 
 

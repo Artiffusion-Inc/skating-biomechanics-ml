@@ -5,10 +5,10 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query, status
 
-from backend.app.auth.deps import CurrentUser, DbDep
-from backend.app.crud.relationship import is_coach_for_student
-from backend.app.crud.session import create, get_by_id, list_by_user, soft_delete, update
-from backend.app.schemas import (
+from app.auth.deps import CurrentUser, DbDep
+from app.crud.relationship import is_coach_for_student
+from app.crud.session import create, get_by_id, list_by_user, soft_delete, update
+from app.schemas import (
     CreateSessionRequest,
     PatchSessionRequest,
     SessionListResponse,

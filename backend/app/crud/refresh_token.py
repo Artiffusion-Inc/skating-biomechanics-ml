@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from backend.app.models.refresh_token import RefreshToken
+from app.models.refresh_token import RefreshToken
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

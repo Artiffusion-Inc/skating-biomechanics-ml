@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from backend.app.models.relationship import Relationship
+from app.models.relationship import Relationship
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

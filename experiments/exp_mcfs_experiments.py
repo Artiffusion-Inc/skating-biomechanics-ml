@@ -11,16 +11,17 @@ Usage:
     uv run python experiments/exp_mcfs_experiments.py
 """
 
-import pickle
 import json
-import time
+import pickle
 import random
+import time
+from collections import Counter
+from pathlib import Path
+
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from pathlib import Path
-from collections import Counter
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 BASE = Path("data/datasets")
 
@@ -357,7 +358,7 @@ def main():
         corr = np.corrcoef(pred, y_test)[0, 1]
         baseline_mae = np.mean(np.abs(y_test - y_test.mean()))
 
-        print(f"Linear regression (Ridge):")
+        print("Linear regression (Ridge):")
         print(f"  MAE: {mae:.2f} GOE (baseline mean: {baseline_mae:.2f})")
         print(f"  Correlation: {corr:.3f}")
         print(f"  Improvement over baseline: {(1 - mae / baseline_mae) * 100:.1f}%")

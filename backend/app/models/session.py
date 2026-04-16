@@ -8,7 +8,7 @@ from datetime import datetime  # noqa: TC003
 from sqlalchemy import JSON, DateTime, Float, ForeignKey, Index, String, Text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from backend.app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin
 
 
 class Session(TimestampMixin, Base):

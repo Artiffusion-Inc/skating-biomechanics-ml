@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from backend.app.services.choreography.elements_db import (
+from app.services.choreography.elements_db import (
     ElementType,
     get_element,
 )
@@ -112,9 +112,7 @@ def validate_layout(layout: dict) -> ValidationResult:
     # ---- C_capacity: max 7 jump passes ----
     max_jump_passes = 7
     if num_jump_passes > max_jump_passes:
-        result.add_error(
-            f"Too many jumping passes: {num_jump_passes} (max {max_jump_passes})"
-        )
+        result.add_error(f"Too many jumping passes: {num_jump_passes} (max {max_jump_passes})")
 
     # ---- C_spins: max 3 spins ----
     if num_spins > 3:
@@ -143,9 +141,7 @@ def validate_layout(layout: dict) -> ValidationResult:
 
     for code, count in jump_counts.items():
         if count > 2:
-            result.add_error(
-                f"Zayak rule violation: {code} attempted {count} times (max 2)"
-            )
+            result.add_error(f"Zayak rule violation: {code} attempted {count} times (max 2)")
         elif count == 2:
             # Check if at least one is in a combination
             in_combo = 0

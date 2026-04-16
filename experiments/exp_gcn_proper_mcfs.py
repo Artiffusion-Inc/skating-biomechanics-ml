@@ -27,16 +27,16 @@ Usage:
 """
 
 import pickle
-import time
 import random
-import copy
+import time
+from collections import Counter
+from pathlib import Path
+
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from pathlib import Path
-from collections import Counter
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 BASE = Path("data/datasets")
 
@@ -528,7 +528,7 @@ def pretrain_contrastive(encoder, train_poses, device, epochs=30, lr=1e-3, batch
         if (ep + 1) % 10 == 0 or ep == 0:
             print(f"    Ep {ep + 1:3d}: loss={total_loss / n:.4f}")
 
-    print(f"  Contrastive pre-training done.")
+    print("  Contrastive pre-training done.")
     return model.encoder
 
 
@@ -702,7 +702,7 @@ def main():
     if boost >= 10.0:
         print("  H13 verdict: SUPPORTED")
     elif boost < 3.0:
-        print(f"  H13 verdict: REJECTED")
+        print("  H13 verdict: REJECTED")
     else:
         print(f"  H13 verdict: INCONCLUSIVE ({boost:+.1%}pp)")
 

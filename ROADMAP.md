@@ -729,7 +729,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 ### Data Resources
 | Dataset | Content | Link | Status |
 |---------|---------|------|--------|
-| AthletePose3D | 1.3M frames, 12 sports, 71GB | github.com/calvinyeungck/AthletePose3D | ✅ Downloaded |
+| AthletePose3D | 1.3M frames, 3 sports (12 motion types), 71GB | github.com/calvinyeungck/AthletePose3D | ✅ Downloaded |
 | Figure-Skating-Classification | 5168 seq, 64 classes, 340MB | huggingface.co/datasets/Mercity/... | ✅ Downloaded |
 | MCFS | 2668 segments, 129 classes, 103MB | github.com/shenglanliu/mcfs-dataset | ✅ Downloaded |
 | SkatingVerse | 28K videos, 28 classes, 46GB | skatingverse.163.com | ✅ Downloaded |

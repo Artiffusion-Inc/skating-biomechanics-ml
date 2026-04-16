@@ -8,15 +8,15 @@ from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, HTTPException
 
-from backend.app.config import get_settings
-from backend.app.schemas import (
+from app.config import get_settings
+from app.schemas import (
     MLModelFlags,
     ProcessRequest,
     ProcessResponse,
     QueueProcessResponse,
     TaskStatusResponse,
 )
-from backend.app.task_manager import (
+from app.task_manager import (
     create_task_state,
     get_task_state,
     get_valkey_client,

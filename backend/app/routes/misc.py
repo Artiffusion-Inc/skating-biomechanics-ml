@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 
-from backend.app.storage import object_exists, stream_object
+from app.storage import object_exists, stream_object
 
 router = APIRouter(tags=["misc"])
 

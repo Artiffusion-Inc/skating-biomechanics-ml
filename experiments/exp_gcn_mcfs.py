@@ -12,13 +12,14 @@ Usage:
 """
 
 import pickle
-import time
 import random
+import time
+from pathlib import Path
+
 import numpy as np
 import torch
-import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
-from pathlib import Path
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 BASE = Path("data/datasets")
 
@@ -350,8 +351,8 @@ def main():
     print(f"BiGRU (control):  {gru_acc:.1%}")
     print(f"ST-GCN (treatment): {gcn_acc:.1%}")
     print(f"Difference:        {diff:+.1%}pp")
-    print(f"Prediction:        >= +3.0pp")
-    print(f"Falsification:     <= +1.0pp")
+    print("Prediction:        >= +3.0pp")
+    print("Falsification:     <= +1.0pp")
     if diff >= 3.0:
         print("H6 verdict: SUPPORTED")
     elif diff <= 1.0:

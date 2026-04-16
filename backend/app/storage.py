@@ -8,7 +8,7 @@ from pathlib import Path
 import boto3
 from botocore.config import Config as BotoConfig
 
-from backend.app.config import get_settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 

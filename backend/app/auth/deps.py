@@ -9,9 +9,9 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from backend.app.config import get_settings
-from backend.app.database import get_db
-from backend.app.models.user import User
+from app.config import get_settings
+from app.database import get_db
+from app.models.user import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
 
@@ -38,7 +38,7 @@ async def get_current_user(
     except (pyjwt.InvalidTokenError, ValueError):
         raise credentials_exception from None
 
-    from backend.app.crud.user import get_by_id
+    from app.crud.user import get_by_id
 
     user = await get_by_id(db, user_id)
     if user is None or not user.is_active:

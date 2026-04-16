@@ -22,10 +22,10 @@ export default function LoginPage() {
     setLoading(true)
     try {
       await login(email, password)
-      toast.success(t("signInSuccess"))
+      toast.success(t("signInSuccess"), { duration: 3000 })
       router.push("/feed")
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : t("signInError"))
+      toast.error(err instanceof Error ? err.message : t("signInError"), { duration: 3000 })
     } finally {
       setLoading(false)
     }

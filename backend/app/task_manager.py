@@ -10,7 +10,7 @@ from typing import Any
 
 import redis.asyncio as aioredis
 
-from backend.app.config import get_settings
+from app.config import get_settings
 
 logger = logging.getLogger(__name__)
 

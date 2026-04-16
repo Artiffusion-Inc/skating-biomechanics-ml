@@ -1,9 +1,9 @@
 "use client"
 
 import { ArrowLeft, Sparkles } from "lucide-react"
+import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-import Link from "next/link"
 import { InventoryEditor } from "@/components/choreography/inventory-editor"
 import { LayoutPicker } from "@/components/choreography/layout-picker"
 import { MusicUploader } from "@/components/choreography/music-uploader"
@@ -41,7 +41,7 @@ export default function NewProgramPage() {
 
   function handleUpload(file: File) {
     uploadMusic.mutate(file, {
-      onSuccess: (res) => {
+      onSuccess: res => {
         setMusicId(res.music_id)
       },
     })
@@ -59,7 +59,7 @@ export default function NewProgramPage() {
         count: 3,
       },
       {
-        onSuccess: (res) => {
+        onSuccess: res => {
           if (res.layouts.length > 0) {
             setSelectedLayout(res.layouts[0])
             setStep("result")
@@ -85,7 +85,7 @@ export default function NewProgramPage() {
         },
       },
       {
-        onSuccess: (program) => {
+        onSuccess: program => {
           router.push(`/choreography/programs/${program.id}`)
         },
       },
@@ -122,7 +122,9 @@ export default function NewProgramPage() {
                   type="button"
                   onClick={() => setDiscipline(d)}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    discipline === d ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent/50"
+                    discipline === d
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:bg-accent/50"
                   }`}
                 >
                   {t(d)}
@@ -136,7 +138,9 @@ export default function NewProgramPage() {
                   type="button"
                   onClick={() => setSegment(s)}
                   className={`rounded-lg border px-3 py-1.5 text-xs font-medium transition-colors ${
-                    segment === s ? "border-primary bg-primary/10 text-primary" : "border-border hover:bg-accent/50"
+                    segment === s
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border hover:bg-accent/50"
                   }`}
                 >
                   {t(s)}
@@ -177,11 +181,9 @@ export default function NewProgramPage() {
           <LayoutPicker
             layouts={generateLayouts.data.layouts}
             selectedIndex={
-              selectedLayout
-                ? generateLayouts.data.layouts.indexOf(selectedLayout)
-                : null
+              selectedLayout ? generateLayouts.data.layouts.indexOf(selectedLayout) : null
             }
-            onSelect={(idx) => {
+            onSelect={idx => {
               setSelectedLayout(generateLayouts.data.layouts[idx])
               renderRink.mutate({
                 layout: {
@@ -204,11 +206,7 @@ export default function NewProgramPage() {
                 />
               </div>
 
-              <ScoreBar
-                layout={selectedLayout}
-                discipline={discipline}
-                segment={segment}
-              />
+              <ScoreBar layout={selectedLayout} discipline={discipline} segment={segment} />
 
               <button
                 type="button"

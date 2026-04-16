@@ -26,7 +26,7 @@ export default function ProgramEditorPage() {
 
   function handleTitleChange(newTitle: string) {
     setTitle(newTitle)
-    clearTimeout(saveTimer.current)
+    clearTimeout(saveTimer.current ?? 0)
     saveTimer.current = setTimeout(() => {
       saveProgram.mutate({ id, title: newTitle })
     }, 500)

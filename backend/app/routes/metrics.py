@@ -8,17 +8,17 @@ from datetime import UTC, datetime, timedelta
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
-from backend.app.auth.deps import CurrentUser, DbDep
-from backend.app.crud.relationship import is_coach_for_student
-from backend.app.metrics_registry import METRIC_REGISTRY
-from backend.app.models.session import Session, SessionMetric
-from backend.app.schemas import (
+from app.auth.deps import CurrentUser, DbDep
+from app.crud.relationship import is_coach_for_student
+from app.metrics_registry import METRIC_REGISTRY
+from app.models.session import Session, SessionMetric
+from app.schemas import (
     DiagnosticsFinding,
     DiagnosticsResponse,
     TrendDataPoint,
     TrendResponse,
 )
-from backend.app.services.diagnostics import (
+from app.services.diagnostics import (
     check_consistently_below_range,
     check_declining_trend,
     check_high_variability,
@@ -107,7 +107,7 @@ async def get_trend(
     values = [dp.value for dp in data_points]
     trend = "stable"
     if len(values) >= 3:
-        from backend.app.services.diagnostics import _linear_regression
+        from app.services.diagnostics import _linear_regression
 
         slope, r_sq = _linear_regression(values)
         if slope > 0 and r_sq > 0.3:

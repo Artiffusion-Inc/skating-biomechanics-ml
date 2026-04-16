@@ -14,17 +14,16 @@ Usage:
 """
 
 import pickle
-import json
-import time
 import random
-import math
+import time
+from collections import Counter
+from pathlib import Path
+
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from pathlib import Path
-from collections import Counter
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 BASE = Path("data/datasets")
 
@@ -245,7 +244,7 @@ class PoseTransformer(nn.Module):
     def forward(self, x, lengths):
         B, T, _ = x.shape
         # Subsample long sequences to max_len
-        if T > self.max_len:
+        if self.max_len < T:
             indices = torch.linspace(0, T - 1, self.max_len, device=x.device).long()
             x = x[:, indices, :]
             lengths = (lengths.float() * (self.max_len / T)).long().clamp(max=self.max_len)

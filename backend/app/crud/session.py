@@ -8,7 +8,7 @@ import sqlalchemy as sa
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import selectinload
 
-from backend.app.models.session import Session
+from app.models.session import Session
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

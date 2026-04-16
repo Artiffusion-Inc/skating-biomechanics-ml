@@ -111,7 +111,7 @@ const ProgramListResponseSchema = z.object({
 export function useMusicAnalysis(musicId: string | undefined) {
   return useQuery({
     queryKey: ["music-analysis", musicId],
-    queryFn: () => apiFetch(`/choreography/music/${musicId}`, MusicAnalysisSchema),
+    queryFn: () => apiFetch(`/choreography/music/${musicId}/analysis`, MusicAnalysisSchema),
     enabled: !!musicId,
     refetchInterval: query => {
       const status = query.state.data?.status
@@ -155,7 +155,7 @@ export function useGenerateLayouts() {
       season: string
       inventory?: { jumps: string[]; spins: string[]; combinations: string[] }
       count?: number
-    }) => apiPost("/choreography/layouts/generate", GenerateResponseSchema, body),
+    }) => apiPost("/choreography/generate", GenerateResponseSchema, body),
   })
 }
 
@@ -166,7 +166,7 @@ export function useValidateLayout() {
       segment: "short_program" | "free_skate"
       season: string
       layout: { elements: Array<{ code: string; timestamp: number; goe: number }> }
-    }) => apiPost("/choreography/layouts/validate", ValidationResultSchema, body),
+    }) => apiPost("/choreography/validate", ValidationResultSchema, body),
   })
 }
 
@@ -182,7 +182,7 @@ export function useRenderRink() {
       }
       width?: number
       height?: number
-    }) => apiPost("/choreography/layouts/render", RenderRinkResponseSchema, body),
+    }) => apiPost("/choreography/render-rink", RenderRinkResponseSchema, body),
   })
 }
 

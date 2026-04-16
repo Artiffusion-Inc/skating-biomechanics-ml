@@ -8,7 +8,7 @@ import secrets
 import jwt as pyjwt
 from passlib.context import CryptContext
 
-from backend.app.config import get_settings
+from app.config import get_settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 

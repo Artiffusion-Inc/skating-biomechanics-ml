@@ -17,16 +17,16 @@ Usage:
 """
 
 import pickle
-import time
-import math
 import random
+import time
+from collections import Counter
+from pathlib import Path
+
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
-from torch.utils.data import Dataset, DataLoader
-from pathlib import Path
-from collections import Counter
+from torch import nn
+from torch.utils.data import DataLoader, Dataset
 
 BASE = Path("data/datasets")
 

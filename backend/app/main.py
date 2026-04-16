@@ -6,9 +6,9 @@ import structlog
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from backend.app.config import get_settings
-from backend.app.logging_config import configure_logging
-from backend.app.routes import (
+from app.config import get_settings
+from app.logging_config import configure_logging
+from app.routes import (
     auth,
     choreography,
     detect,

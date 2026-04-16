@@ -7,10 +7,10 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from backend.app.crud.session import get_by_id, update
-from backend.app.crud.session_metric import bulk_create, get_current_best
-from backend.app.metrics_registry import METRIC_REGISTRY
-from backend.app.services.pr_tracker import check_pr
+from app.crud.session import get_by_id, update
+from app.crud.session_metric import bulk_create, get_current_best
+from app.metrics_registry import METRIC_REGISTRY
+from app.services.pr_tracker import check_pr
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession

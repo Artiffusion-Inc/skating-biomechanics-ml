@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import select
 
-from backend.app.models.session import Session, SessionMetric
+from app.models.session import Session, SessionMetric
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
