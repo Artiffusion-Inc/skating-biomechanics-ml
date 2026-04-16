@@ -1,9 +1,11 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
 import { useTranslations } from "@/i18n"
 import { useSession } from "@/lib/api/sessions"
+import { useAnalysisStore } from "@/stores/analysis"
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
@@ -11,6 +13,9 @@ export default function SessionDetailPage() {
   const te = useTranslations("elements")
   const tc = useTranslations("common")
   const ts = useTranslations("sessions")
+
+  // Calculate total frames from pose_data
+  const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300 // Fallback estimate
 
   if (isLoading)
     return <div className="py-20 text-center text-muted-foreground">{tc("loading")}</div>
@@ -28,7 +33,17 @@ export default function SessionDetailPage() {
         </p>
       </div>
 
-      {session.processed_video_url && (
+      {session.processed_video_url && session.pose_data && (
+        <VideoWithSkeleton
+          videoUrl={session.processed_video_url}
+          poseData={session.pose_data}
+          phases={session.phases ?? null}
+          totalFrames={totalFrames}
+          className="rounded-xl"
+        />
+      )}
+
+      {session.processed_video_url && !session.pose_data && (
         <video src={session.processed_video_url} controls className="w-full rounded-xl">
           <track kind="captions" />
         </video>
