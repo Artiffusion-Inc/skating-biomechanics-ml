@@ -1,6 +1,6 @@
 """Tests for CSP solver."""
 
-from backend.app.services.choreography.csp_solver import solve_layout
+from app.services.choreography.csp_solver import solve_layout
 
 
 def test_basic_free_skate():

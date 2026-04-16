@@ -1,12 +1,11 @@
 """Tests for auth FastAPI dependencies."""
 
 import pytest
+from app.auth.deps import get_current_user
+from app.auth.security import create_access_token, hash_password
+from app.models import User
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.app.auth.deps import get_current_user
-from backend.app.auth.security import create_access_token, hash_password
-from backend.app.models import User
 
 
 @pytest.mark.asyncio

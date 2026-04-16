@@ -1,8 +1,7 @@
 """Tests for metrics_registry.py."""
 
 import pytest
-
-from backend.app.metrics_registry import (
+from app.metrics_registry import (
     ALL_ELEMENTS,
     JUMP_ELEMENTS,
     METRIC_REGISTRY,

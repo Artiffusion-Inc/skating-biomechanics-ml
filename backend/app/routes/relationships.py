@@ -8,7 +8,6 @@ from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.auth.deps import CurrentUser, DbDep
 from app.crud.relationship import (
     create as create_rel,
 )
@@ -26,6 +25,7 @@ from app.crud.user import get_by_email
 from app.schemas import InviteRequest, RelationshipListResponse, RelationshipResponse
 
 if TYPE_CHECKING:
+    from app.auth.deps import CurrentUser, DbDep
     from app.models.relationship import Relationship
 
 router = APIRouter(tags=["relationships"])

@@ -10,21 +10,19 @@ export function ProfileHero() {
   const { user } = useAuth()
   const t = useTranslations("profile")
 
-  // Early return if no user
-  if (!user) return null
-
   const [editingName, setEditingName] = useState(false)
   const [editingBio, setEditingBio] = useState(false)
-  const [name, setName] = useState(user.display_name ?? "")
-  const [bio, setBio] = useState(user.bio ?? "")
-  const [saving, setSaving] = useState(false)
+  const [name, setName] = useState("")
+  const [bio, setBio] = useState("")
   const nameRef = useRef<HTMLInputElement>(null)
   const bioRef = useRef<HTMLTextAreaElement>(null)
 
-  const initial = (user.display_name ?? user.email)[0].toUpperCase()
+  // Current display values (use edited values when editing, otherwise user values)
+  const displayName = editingName ? name : (user?.display_name ?? "")
+  const displayBio = editingBio ? bio : (user?.bio ?? "")
+  const initial = ((user?.display_name ?? user?.email ?? "")[0] || "?").toUpperCase()
 
   async function save() {
-    setSaving(true)
     try {
       const { updateProfile } = await import("@/lib/auth")
       await updateProfile({
@@ -36,19 +34,19 @@ export function ProfileHero() {
       setEditingBio(false)
     } catch {
       toast.error(t("updateError"))
-    } finally {
-      setSaving(false)
     }
   }
 
   function startEditName() {
-    setName(user!.display_name ?? "")
+    if (!user) return
+    setName(user.display_name ?? "")
     setEditingName(true)
     setTimeout(() => nameRef.current?.select(), 0)
   }
 
   function startEditBio() {
-    setBio(user!.bio ?? "")
+    if (!user) return
+    setBio(user.bio ?? "")
     setEditingBio(true)
     setTimeout(() => bioRef.current?.focus(), 0)
   }
@@ -56,9 +54,9 @@ export function ProfileHero() {
   function cancelEdit() {
     setEditingName(false)
     setEditingBio(false)
-    setName(user!.display_name ?? "")
-    setBio(user!.bio ?? "")
   }
+
+  if (!user) return null
 
   return (
     <div className="flex flex-col items-center gap-3 py-4">
@@ -82,7 +80,6 @@ export function ProfileHero() {
             onChange={e => setName(e.target.value)}
             onBlur={() => save()}
             className="w-48 rounded-lg border border-border bg-secondary px-2 py-1 text-center text-base font-semibold outline-none focus-visible:border-foreground"
-            autoFocus
           />
           <button
             type="button"
@@ -94,7 +91,7 @@ export function ProfileHero() {
         </form>
       ) : (
         <button type="button" onClick={startEditName} className="group flex items-center gap-1.5">
-          <span className="text-lg font-semibold">{user.display_name ?? user.email}</span>
+          <span className="text-lg font-semibold">{displayName || user.email}</span>
           <Pencil className="h-3.5 w-3.5 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
       )}
@@ -118,13 +115,12 @@ export function ProfileHero() {
             onBlur={() => save()}
             rows={2}
             className="w-full rounded-lg border border-border bg-secondary px-2 py-1 text-center text-sm outline-none focus-visible:border-foreground resize-none"
-            autoFocus
           />
         </form>
       ) : (
         <button type="button" onClick={startEditBio} className="group max-w-xs text-center">
           <p className="text-sm text-muted-foreground">
-            {user.bio || <span className="italic opacity-50">{t("addBio")}</span>}
+            {displayBio || <span className="italic opacity-50">{t("addBio")}</span>}
           </p>
           <Pencil className="mx-auto mt-0.5 h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </button>

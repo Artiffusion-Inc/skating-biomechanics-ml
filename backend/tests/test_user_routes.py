@@ -1,18 +1,16 @@
 """Tests for user API routes."""
 
 import pytest
+from app.auth.security import create_access_token, hash_password
+from app.models import User
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.app.auth.security import create_access_token, hash_password
-from backend.app.models import User
 
 
 @pytest.fixture
 def app():
+    from app.routes.users import router
     from fastapi import FastAPI
-
-    from backend.app.routes.users import router
 
     app = FastAPI()
     app.include_router(router, prefix="/api/v1/users")
@@ -21,7 +19,7 @@ def app():
 
 @pytest.fixture
 async def client(app, db_session: AsyncSession):
-    from backend.app.database import get_db
+    from app.database import get_db
 
     app.dependency_overrides[get_db] = lambda: db_session
 

@@ -1,7 +1,7 @@
 # backend/tests/services/choreography/test_music_analyzer.py
 """Tests for music analyzer."""
 
-from backend.app.services.choreography.music_analyzer import (
+from app.services.choreography.music_analyzer import (
     extract_features_for_csp,
 )
 

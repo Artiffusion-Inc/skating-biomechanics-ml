@@ -1,6 +1,6 @@
 """Tests for choreography CRUD operations."""
 
-from backend.app.crud.choreography import (
+from app.crud.choreography import (
     create_music_analysis,
     create_program,
     get_music_analysis_by_id,

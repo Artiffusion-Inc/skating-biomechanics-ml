@@ -4,10 +4,9 @@ import uuid
 from datetime import UTC, datetime
 
 import pytest
+from app.models import RefreshToken, Session, User
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
-from backend.app.models import RefreshToken, Session, User
 
 
 @pytest.mark.asyncio

@@ -1,6 +1,6 @@
 """Tests for SVG rink renderer."""
 
-from backend.app.services.choreography.rink_renderer import render_rink
+from app.services.choreography.rink_renderer import render_rink
 
 
 def test_render_empty_rink():

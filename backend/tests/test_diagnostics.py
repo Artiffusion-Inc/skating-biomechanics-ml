@@ -1,6 +1,6 @@
 """Tests for diagnostics engine."""
 
-from backend.app.services.diagnostics import (
+from app.services.diagnostics import (
     check_consistently_below_range,
     check_declining_trend,
     check_high_variability,

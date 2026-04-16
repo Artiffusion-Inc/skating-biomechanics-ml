@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import select
 
-from app.auth.deps import CurrentUser, DbDep
 from app.crud.relationship import is_coach_for_student
 from app.metrics_registry import METRIC_REGISTRY
 from app.models.session import Session, SessionMetric
+
+if TYPE_CHECKING:
+    from app.auth.deps import CurrentUser, DbDep
 from app.schemas import (
     DiagnosticsFinding,
     DiagnosticsResponse,

@@ -3,8 +3,7 @@
 import time
 
 import pytest
-
-from backend.app.auth.security import (
+from app.auth.security import (
     create_access_token,
     create_refresh_token,
     hash_password,
@@ -54,8 +53,7 @@ def test_create_access_token_custom_expiry():
     # After 2 seconds it should be expired
     time.sleep(2)
     import jwt as pyjwt
-
-    from backend.app.config import get_settings
+    from app.config import get_settings
 
     settings = get_settings()
     with pytest.raises(pyjwt.ExpiredSignatureError):
@@ -78,7 +76,7 @@ def test_create_refresh_token_unique():
 
 def test_hash_token():
     """Test token hashing for DB storage."""
-    from backend.app.auth.security import hash_token
+    from app.auth.security import hash_token
 
     token = create_refresh_token()
     hashed = hash_token(token)

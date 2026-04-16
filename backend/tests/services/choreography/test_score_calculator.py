@@ -1,8 +1,7 @@
 """Tests for IJS score calculation."""
 
 import pytest
-
-from backend.app.services.choreography.score_calculator import (
+from app.services.choreography.score_calculator import (
     calculate_goe_total,
     calculate_tes,
     goe_factor,

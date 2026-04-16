@@ -1,8 +1,7 @@
 """Tests for ISU element database."""
 
 import pytest
-
-from backend.app.services.choreography.elements_db import (
+from app.services.choreography.elements_db import (
     ElementType,
     get_element,
     get_elements_by_type,

@@ -1,8 +1,7 @@
 """Tests for choreography ORM models."""
 
 import pytest
-
-from backend.app.models.choreography import ChoreographyProgram, MusicAnalysis
+from app.models.choreography import ChoreographyProgram, MusicAnalysis
 
 
 @pytest.fixture

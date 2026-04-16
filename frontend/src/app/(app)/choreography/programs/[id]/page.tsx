@@ -61,7 +61,7 @@ export default function ProgramEditorPage() {
           <div className="flex-1 space-y-1.5 overflow-y-auto">
             {elements.map((el, i) => (
               <div
-                key={`${el.code}-${i}`}
+                key={`${el.code}-${el.timestamp}`}
                 className="flex items-center gap-2 rounded-lg bg-muted/50 px-3 py-1.5"
               >
                 <span className="w-5 text-xs text-muted-foreground">{i + 1}</span>

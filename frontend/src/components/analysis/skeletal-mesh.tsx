@@ -61,11 +61,6 @@ const CONNECTIONS = [
   [15, 16],
 ]
 
-// Joint radius based on importance
-const JOINT_RADIUS = 0.025
-// Bone radius (slightly thinner than joints)
-const BONE_RADIUS = 0.015
-
 // Color coding based on joint angle quality
 function getJointColor(
   jointIndex: number,
@@ -109,9 +104,16 @@ export function SkeletalMesh({ poseData, frameMetrics, currentFrame }: SkeletalM
 
     // Convert normalized [0,1] to 3D space [-0.5, 0.5]
     const scale = 1.0
-    const jointPositions: Array<{ position: [number, number, number]; color: number }> = []
-    const bonePositions: Array<{ start: [number, number, number]; end: [number, number, number] }> =
-      []
+    const jointPositions: Array<{
+      index: number
+      position: [number, number, number]
+      color: number
+    }> = []
+    const bonePositions: Array<{
+      index: number
+      start: [number, number, number]
+      end: [number, number, number]
+    }> = []
 
     // First pass: collect all joint positions
     for (let i = 0; i < pose.length; i++) {
@@ -119,13 +121,15 @@ export function SkeletalMesh({ poseData, frameMetrics, currentFrame }: SkeletalM
       if (conf < 0.3) continue // Skip low-confidence joints
 
       jointPositions.push({
+        index: i,
         position: [(x - 0.5) * scale, (y - 0.5) * scale, 0],
         color: getJointColor(i, frameMetrics, currentFrame),
       })
     }
 
     // Second pass: create bones
-    for (const [start, end] of CONNECTIONS) {
+    for (let boneIdx = 0; boneIdx < CONNECTIONS.length; boneIdx++) {
+      const [start, end] = CONNECTIONS[boneIdx]
       const startJoint = pose[start]
       const endJoint = pose[end]
 
@@ -137,6 +141,7 @@ export function SkeletalMesh({ poseData, frameMetrics, currentFrame }: SkeletalM
       if (conf1 < 0.3 || conf2 < 0.3) continue // Skip low-confidence joints
 
       bonePositions.push({
+        index: boneIdx,
         start: [(x1 - 0.5) * scale, (y1 - 0.5) * scale, 0],
         end: [(x2 - 0.5) * scale, (y2 - 0.5) * scale, 0],
       })
@@ -148,18 +153,18 @@ export function SkeletalMesh({ poseData, frameMetrics, currentFrame }: SkeletalM
   return (
     <>
       {/* Bones */}
-      {bones.map((bone, i) => (
+      {bones.map(bone => (
         <Bone
-          key={`bone-${i}`}
+          key={`bone-${bone.index}`}
           start={bone.start as [number, number, number]}
           end={bone.end as [number, number, number]}
         />
       ))}
 
       {/* Joints */}
-      {joints.map((joint, i) => (
+      {joints.map(joint => (
         <Joint
-          key={`joint-${i}`}
+          key={`joint-${joint.index}`}
           position={joint.position as [number, number, number]}
           color={joint.color}
         />
