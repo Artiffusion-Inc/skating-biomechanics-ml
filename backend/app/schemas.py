@@ -192,6 +192,47 @@ class SessionMetricResponse(BaseModel):
     model_config = {"from_attributes": True}
 
 
+# Pose and metrics data types (Task 10, 2026-04-16)
+
+
+class PoseData(BaseModel):
+    """Sampled pose data for frontend visualization.
+
+    Frames are sampled (e.g., every 10th frame) to reduce data transfer.
+    poses shape: (N_sampled, 17, 3) where 17 = H3.6M keypoints, 3 = (x, y, conf)
+    """
+
+    frames: list[int]  # Sampled frame indices
+    poses: list[list[list[float]]]  # [frame][keypoint][x,y,conf]
+    fps: float  # Video frame rate
+
+
+class FrameMetrics(BaseModel):
+    """Frame-by-frame biomechanics metrics.
+
+    All arrays are aligned with the frames list in PoseData.
+    null values indicate metric could not be computed for that frame.
+    """
+
+    knee_angles_r: list[float | None]
+    knee_angles_l: list[float | None]
+    hip_angles_r: list[float | None]
+    hip_angles_l: list[float | None]
+    trunk_lean: list[float | None]
+    com_height: list[float | None]
+
+
+class PhasesData(BaseModel):
+    """Phase markers for element segmentation.
+
+    Frame indices are relative to the original video, not sampled frames.
+    """
+
+    takeoff: int | None = None
+    peak: int | None = None
+    landing: int | None = None
+
+
 class SessionResponse(BaseModel):
     id: str
     user_id: str
@@ -200,11 +241,11 @@ class SessionResponse(BaseModel):
     processed_video_url: str | None
     poses_url: str | None  # Deprecated: Replaced by pose_data
     csv_url: str | None  # Deprecated: Replaced by frame_metrics
-    pose_data: dict | None  # New: Direct pose data storage (JSON)
-    frame_metrics: dict | None  # New: Frame-by-frame metrics (JSON)
+    pose_data: PoseData | None  # New: Typed pose data storage (JSON)
+    frame_metrics: FrameMetrics | None  # New: Typed frame metrics (JSON)
     status: str
     error_message: str | None
-    phases: dict | None
+    phases: PhasesData | None  # Typed phase markers
     recommendations: list[str] | None
     overall_score: float | None
     created_at: str
