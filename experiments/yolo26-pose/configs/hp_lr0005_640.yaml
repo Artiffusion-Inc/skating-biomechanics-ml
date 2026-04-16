@@ -1,0 +1,55 @@
+# HP Search Config: Baseline (Official Recipe)
+# Hypothesis: LR=0.0005, freeze=5 achieves optimal balance
+
+name: hp_lr0005_640
+phase: hp_search
+
+# Model
+model: yolo26n-pose.pt
+pretrained: true
+
+# Data
+data: /root/data/datasets/yolo26_ap3d/data.yaml
+subset: 0.1  # 25K frames for fast HP search
+
+# Training hyperparameters
+epochs: 50
+batch: 16
+imgsz: 640
+lr0: 0.0005  # Official recipe
+lrf: 0.88    # Gentle decay
+momentum: 0.937
+weight_decay: 0.0005
+
+# Architecture
+freeze: 5    # Freeze first 5 layers
+
+# Augmentation
+mosaic: 0.9
+mixup: 0.05
+fliplr: 0.5
+copy_paste: 0.0  # No SkeletonMix
+hsv_h: 0.015
+hsv_s: 0.35
+hsv_v: 0.2
+degrees: 0.0    # No rotation (vertical sport)
+translate: 0.1
+scale: 0.5
+shear: 0.0
+perspective: 0.0
+
+# Validation (offline for HP search)
+val: false
+save_period: 10
+project: /root/yolo_runs
+exist_ok: true
+
+# Hardware
+device: 0
+workers: 8
+pin_memory: true
+
+# Reproducibility
+seed: 42
+deterministic: true
+log_interval: 10
