@@ -5,3 +5,4 @@ test_dirs:
 util_dirs: []
 language_globs:
   tsx: "frontend/**/*.{ts,tsx}"
+  python: "{backend,ml}/**/*.py"

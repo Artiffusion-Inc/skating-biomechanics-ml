@@ -1,0 +1,19 @@
+id: no-subprocess
+language: python
+message: |
+  Don't use subprocess. Use proper Python libraries instead.
+
+  Instead of:  subprocess.run(["nvidia-smi", ...])
+  Use:         pynvml (NVML), psutil, or native Python APIs.
+severity: error
+note: |
+  Scripts in ml/scripts/ may use subprocess for CLI tooling (xdg-open, etc).
+rule:
+  any:
+    - pattern: subprocess.run($$$ARGS)
+    - pattern: subprocess.Popen($$$ARGS)
+    - pattern: subprocess.call($$$ARGS)
+    - pattern: subprocess.check_output($$$ARGS)
+    - pattern: subprocess.check_call($$$ARGS)
+ignores:
+  - "ml/scripts/**"

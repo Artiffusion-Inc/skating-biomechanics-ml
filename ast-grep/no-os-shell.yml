@@ -1,0 +1,17 @@
+id: no-os-shell
+language: python
+message: |
+  Don't use os.system/os.popen for shell commands. Use proper Python APIs.
+
+  Instead of:  os.system("rm -rf /tmp/xyz")
+  Use:         shutil.rmtree("/tmp/xyz"), pathlib.Path.unlink(), etc.
+
+  Instead of:  os.popen("which python").read()
+  Use:         shutil.which("python")
+severity: error
+note: |
+  os.environ, os.path, os.getcwd() etc are fine — only shell execution is banned.
+rule:
+  any:
+    - pattern: os.system($$$ARGS)
+    - pattern: os.popen($$$ARGS)

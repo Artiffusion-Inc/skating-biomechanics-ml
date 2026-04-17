@@ -1,0 +1,19 @@
+id: no-stdout-parsing
+language: python
+message: |
+  Don't parse subprocess stdout as text. Use Python APIs that return structured data.
+
+  Instead of:  output.decode().split('\n')
+  Use:         pynvml, psutil, or other native libraries.
+severity: warning
+note: |
+  Catches .stdout followed by string operations — strong signal of CLI output parsing.
+  Logging stdout is fine; only string parsing (split, regex, strip) is flagged.
+rule:
+  any:
+    - pattern: $OBJ.stdout.split($$$ARGS)
+    - pattern: $OBJ.stdout.splitlines($$$ARGS)
+    - pattern: $OBJ.stdout.decode($$$ARGS)
+    - pattern: $OBJ.stdout.strip($$$ARGS)
+    - pattern: $OBJ.stdout.readlines($$$ARGS)
+    - pattern: $OBJ.stdout.read($$$ARGS)

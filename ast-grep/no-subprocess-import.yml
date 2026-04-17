@@ -1,0 +1,16 @@
+id: no-subprocess-import
+language: python
+message: |
+  Don't import subprocess. Use proper Python libraries instead.
+
+  Instead of:  import subprocess
+  Use:         import pynvml, import psutil, etc.
+severity: error
+note: |
+  Scripts in ml/scripts/ may import subprocess for CLI tooling.
+rule:
+  any:
+    - pattern: import subprocess
+    - pattern: from subprocess import $$$NAMES
+ignores:
+  - "ml/scripts/**"
