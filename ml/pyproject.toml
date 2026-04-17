@@ -6,6 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     "rtmlib>=0.0.7",            # RTMPose pose estimation (HALPE26, 26kp with feet)
     "onnxruntime-gpu>=1.24.4",  # ONNX Runtime with CUDA backend for rtmlib
+    "nvidia-ml-py>=13.0.0",     # NVIDIA GPU management via NVML (replaces pynvml)
     "opencv-python>=4.10.0",
     "numpy>=2.0.0",
     "dtw-python>=1.5.0",

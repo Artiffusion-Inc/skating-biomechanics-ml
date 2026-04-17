@@ -27,7 +27,6 @@ from __future__ import annotations
 
 import logging
 import os
-import subprocess
 from dataclasses import dataclass
 from typing import Literal
 
@@ -171,8 +170,25 @@ def get_onnx_providers(device: str = "auto") -> list[str]:
 # ------------------------------------------------------------------
 
 
+def _get_gpu_count() -> int:
+    """Get number of available GPUs using NVML.
+
+    Returns:
+        Number of GPUs, or 0 if query fails.
+    """
+    try:
+        from pynvml import nvmlDeviceGetCount, nvmlInit, nvmlShutdown
+
+        nvmlInit()
+        count = nvmlDeviceGetCount()
+        nvmlShutdown()
+        return count
+    except Exception:
+        return 0
+
+
 def _get_gpu_memory_mb(gpu_id: int) -> int:
-    """Get total GPU memory in MB using nvidia-smi.
+    """Get total GPU memory in MB using NVML.
 
     Args:
         gpu_id: GPU device ID.
@@ -181,22 +197,22 @@ def _get_gpu_memory_mb(gpu_id: int) -> int:
         Total memory in MB, or 0 if query fails.
     """
     try:
-        result = subprocess.run(
-            [
-                "nvidia-smi",
-                "--query-gpu=memory.total",
-                "--format=csv,noheader,nounits",
-                "--id=" + str(gpu_id),
-            ],
-            capture_output=True,
-            text=True,
-            check=False,
+        from pynvml import (
+            nvmlDeviceGetHandleByIndex,
+            nvmlDeviceGetMemoryInfo,
+            nvmlInit,
+            nvmlShutdown,
         )
-        if result.returncode == 0 and result.stdout.strip():
-            return int(result.stdout.strip())
-    except (FileNotFoundError, ValueError):
-        pass
-    return 0
+
+        nvmlInit()
+        handle = nvmlDeviceGetHandleByIndex(gpu_id)
+        memory_info = nvmlDeviceGetMemoryInfo(handle)
+        nvmlShutdown()
+
+        # Convert bytes to MB
+        return memory_info.total // (1024 * 1024)
+    except Exception:
+        return 0
 
 
 @dataclass
@@ -248,30 +264,19 @@ class MultiGPUConfig:
 
     def __post_init__(self) -> None:
         """Detect GPUs and populate enabled_gpus."""
-        # Detect available GPUs
+        # Detect available GPUs using NVML
         all_gpus: list[GPUInfo] = []
 
-        # Try to detect GPU count via nvidia-smi
-        try:
-            result = subprocess.run(
-                ["nvidia-smi", "--query-gpu=count", "--format=csv,noheader,nounits"],
-                capture_output=True,
-                text=True,
-                check=False,
+        gpu_count = _get_gpu_count()
+        for i in range(gpu_count):
+            memory_mb = _get_gpu_memory_mb(i)
+            all_gpus.append(
+                GPUInfo(
+                    device_id=i,
+                    total_memory_mb=memory_mb,
+                    memory_reserve_mb=self.memory_reserve_mb,
+                )
             )
-            if result.returncode == 0 and result.stdout.strip():
-                gpu_count = int(result.stdout.strip())
-                for i in range(gpu_count):
-                    memory_mb = _get_gpu_memory_mb(i)
-                    all_gpus.append(
-                        GPUInfo(
-                            device_id=i,
-                            total_memory_mb=memory_mb,
-                            memory_reserve_mb=self.memory_reserve_mb,
-                        )
-                    )
-        except (FileNotFoundError, ValueError):
-            pass
 
         # Filter by gpu_ids if specified
         if self.gpu_ids is not None:
