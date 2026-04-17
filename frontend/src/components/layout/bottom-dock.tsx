@@ -8,19 +8,21 @@ import { z } from "zod"
 import { useTranslations } from "@/i18n"
 import { apiFetch } from "@/lib/api-client"
 
-const RelationshipListSchema = z.object({
-  relationships: z.array(z.object({ status: z.string() })),
+const ConnectionListSchema = z.object({
+  connections: z.array(z.object({ status: z.string(), connection_type: z.string() })),
 })
 
 export function BottomDock() {
   const pathname = usePathname()
   const t = useTranslations("nav")
 
-  const { data: relsData } = useQuery({
-    queryKey: ["relationships"],
-    queryFn: () => apiFetch("/relationships", RelationshipListSchema),
+  const { data: connsData } = useQuery({
+    queryKey: ["connections"],
+    queryFn: () => apiFetch("/connections", ConnectionListSchema),
   })
-  const hasStudents = (relsData?.relationships ?? []).some(r => r.status === "active")
+  const hasStudents = (connsData?.connections ?? []).some(
+    r => r.status === "active" && r.connection_type === "coaching",
+  )
 
   const tabs = [
     { href: "/feed", icon: Newspaper, label: t("feed") },

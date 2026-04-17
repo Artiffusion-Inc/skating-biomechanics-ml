@@ -4,19 +4,19 @@ import { useState } from "react"
 import { toast } from "sonner"
 import { useTranslations } from "@/i18n"
 import {
-  useAcceptInvite,
-  useEndRelationship,
-  useInvite,
-  usePendingInvites,
-  useRelationships,
-} from "@/lib/api/relationships"
+  useAcceptConnection,
+  useEndConnection,
+  useInviteConnection,
+  usePendingConnections,
+  useConnections,
+} from "@/lib/api/connections"
 
 export default function ConnectionsPage() {
-  const { data: rels } = useRelationships()
-  const { data: pending } = usePendingInvites()
-  const invite = useInvite()
-  const acceptInvite = useAcceptInvite()
-  const endRel = useEndRelationship()
+  const { data: conns } = useConnections()
+  const { data: pending } = usePendingConnections()
+  const invite = useInviteConnection()
+  const acceptConn = useAcceptConnection()
+  const endConn = useEndConnection()
   const t = useTranslations("toast")
   const tc = useTranslations("connections")
 
@@ -25,7 +25,7 @@ export default function ConnectionsPage() {
   const handleInvite = async () => {
     if (!email) return
     try {
-      await invite.mutateAsync({ skater_email: email })
+      await invite.mutateAsync({ to_user_email: email, connection_type: "coaching" })
       toast.success(t("invitationSent"))
       setEmail("")
     } catch {
@@ -33,7 +33,7 @@ export default function ConnectionsPage() {
     }
   }
 
-  const activeRels = (rels?.relationships ?? []).filter(r => r.status === "active")
+  const activeConns = (conns?.connections ?? []).filter(r => r.status === "active")
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 sm:max-w-3xl">
@@ -59,18 +59,18 @@ export default function ConnectionsPage() {
         </div>
       </div>
 
-      {pending && pending.relationships.length > 0 && (
+      {pending && pending.connections.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium">{tc("incomingInvites")}</p>
-          {pending.relationships.map(r => (
+          {pending.connections.map(r => (
             <div
               key={r.id}
               className="flex items-center justify-between rounded-xl border border-border p-3"
             >
-              <span className="text-sm truncate mr-2">{r.coach_name ?? r.coach_id}</span>
+              <span className="text-sm truncate mr-2">{r.from_user_name ?? r.from_user_id}</span>
               <button
                 type="button"
-                onClick={() => acceptInvite.mutateAsync(r.id)}
+                onClick={() => acceptConn.mutateAsync(r.id)}
                 className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground"
               >
                 {tc("accept")}
@@ -80,18 +80,18 @@ export default function ConnectionsPage() {
         </div>
       )}
 
-      {activeRels.length > 0 && (
+      {activeConns.length > 0 && (
         <div className="space-y-2">
           <p className="text-sm font-medium">{tc("activeConnections")}</p>
-          {activeRels.map(r => (
+          {activeConns.map(r => (
             <div
               key={r.id}
               className="flex items-center justify-between rounded-xl border border-border p-3"
             >
-              <span className="text-sm truncate mr-2">{r.skater_name ?? r.skater_id}</span>
+              <span className="text-sm truncate mr-2">{r.to_user_name ?? r.to_user_id}</span>
               <button
                 type="button"
-                onClick={() => endRel.mutateAsync(r.id)}
+                onClick={() => endConn.mutateAsync(r.id)}
                 className="shrink-0 text-xs text-muted-foreground hover:text-destructive"
               >
                 {tc("endConnection")}

@@ -3,14 +3,16 @@
 import Link from "next/link"
 import { StudentCard } from "@/components/coach/student-card"
 import { useTranslations } from "@/i18n"
-import { useRelationships } from "@/lib/api/relationships"
+import { useConnections } from "@/lib/api/connections"
 
 export default function DashboardPage() {
-  const { data, isLoading } = useRelationships()
+  const { data, isLoading } = useConnections()
   const tc = useTranslations("common")
   const ts = useTranslations("students")
 
-  const students = (data?.relationships ?? []).filter(r => r.status === "active")
+  const students = (data?.connections ?? []).filter(
+    r => r.status === "active" && r.connection_type === "coaching",
+  )
 
   if (isLoading)
     return <div className="py-20 text-center text-muted-foreground">{tc("loading")}</div>
@@ -33,8 +35,8 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-3 sm:max-w-3xl">
       <h1 className="nike-h3">{ts("title")}</h1>
-      {students.map(rel => (
-        <StudentCard key={rel.id} rel={rel} />
+      {students.map(conn => (
+        <StudentCard key={conn.id} conn={conn} />
       ))}
     </div>
   )

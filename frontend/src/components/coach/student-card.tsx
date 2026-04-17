@@ -2,21 +2,21 @@
 
 import { Clock } from "lucide-react"
 import Link from "next/link"
-import type { Relationship } from "@/types"
+import type { Connection } from "@/types"
 
-export function StudentCard({ rel }: { rel: Relationship }) {
+export function StudentCard({ conn }: { conn: Connection }) {
   return (
-    <Link href={`/students/${rel.skater_id}`} className="block">
+    <Link href={`/students/${conn.to_user_id}`} className="block">
       <div className="rounded-2xl border border-border p-4 hover:bg-accent/30 transition-colors">
         <div className="flex items-center gap-3">
           <div className="h-10 w-10 rounded-full bg-muted flex items-center justify-center text-sm font-medium">
-            {(rel.skater_name ?? "?")[0].toUpperCase()}
+            {(conn.to_user_name ?? "?")[0].toUpperCase()}
           </div>
           <div>
-            <p className="font-medium text-sm">{rel.skater_name ?? "Ученик"}</p>
+            <p className="font-medium text-sm">{conn.to_user_name ?? "Ученик"}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3" />
-              {new Date(rel.created_at).toLocaleDateString("ru-RU")}
+              {new Date(conn.created_at).toLocaleDateString("ru-RU")}
             </p>
           </div>
         </div>
