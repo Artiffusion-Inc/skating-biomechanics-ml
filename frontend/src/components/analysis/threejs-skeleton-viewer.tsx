@@ -4,6 +4,7 @@
 import { Environment, Grid, OrbitControls, PerspectiveCamera } from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
 import { Suspense } from "react"
+import { useTranslations } from "@/i18n"
 import { useAnalysisStore } from "@/stores/analysis"
 import type { FrameMetrics, PoseData } from "@/types"
 import { SkeletalMesh } from "./skeletal-mesh"
@@ -15,9 +16,10 @@ interface ThreeJSkeletonViewerProps {
 }
 
 function LoadingFallback() {
+  const t = useTranslations("analysis")
   return (
     <div className="flex h-full items-center justify-center text-muted-foreground">
-      Загрузка 3D...
+      {t("loading3D")}
     </div>
   )
 }

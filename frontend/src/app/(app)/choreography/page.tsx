@@ -28,7 +28,7 @@ export default function ChoreographyPage() {
             className="flex items-center gap-1.5 rounded-xl bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
             <Plus className="h-4 w-4" />
-            New
+            {t("newProgram")}
           </Link>
         </div>
         <div className="flex flex-col items-center gap-4 py-20">

@@ -72,7 +72,8 @@
     "preparing": "Preparing...",
     "complete": "Analysis complete",
     "retry": "Retry",
-    "back": "Back"
+    "back": "Back",
+    "loading3D": "Loading 3D..."
   },
   "profile": {
     "title": "Profile",
@@ -214,6 +215,8 @@
     "title": "Program Planner",
     "newProgram": "New Program",
     "untitled": "Untitled",
+    "notFound": "Program not found",
+    "noElements": "No elements",
     "short_program": "Short Program",
     "free_skate": "Free Skate",
     "mens_singles": "Men's Singles",
