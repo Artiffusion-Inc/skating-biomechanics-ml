@@ -62,8 +62,8 @@ def _s3(req: ProcessRequest):
 
 @app.post("/process", response_model=ProcessResponse)
 async def process(req: ProcessRequest):
-    from skating_ml.types import PersonClick
-    from skating_ml.web_helpers import process_video_pipeline
+    from src.types import PersonClick
+    from src.web_helpers import process_video_pipeline
 
     s3 = _s3(req)
 

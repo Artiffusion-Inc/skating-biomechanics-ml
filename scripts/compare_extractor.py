@@ -51,7 +51,7 @@ def main():
     frame_indices = [int(i * (n_frames - 1) / 7) for i in range(8)]
 
     # Run RTMO on all frames
-    from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+    from src.pose_estimation.pose_extractor import PoseExtractor
 
     extractor = PoseExtractor(mode="lightweight", output_format="pixels")
 

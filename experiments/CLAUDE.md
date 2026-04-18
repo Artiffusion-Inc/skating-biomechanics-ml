@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Exploratory ML experiments. Not part of the production pipeline (`ml/skating_ml/`).
+Exploratory ML experiments. Not part of the production pipeline (`ml/src/`).
 These are scripts and notebooks for testing hypotheses before integrating into the main system.
 
 ## Directory Convention

@@ -8,9 +8,9 @@ import time
 
 import numpy as np
 
-from skating_ml.visualization.core.overlay import draw_overlay_rect
-from skating_ml.visualization.core.text import put_text
-from skating_ml.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
+from src.visualization.core.overlay import draw_overlay_rect
+from src.visualization.core.text import put_text
+from src.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
 
 
 def _make_frame(h=480, w=640):

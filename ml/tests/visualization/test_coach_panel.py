@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skating_ml.types import ElementPhase, MetricResult
-from skating_ml.visualization.hud.coach_panel import CoachOverlayData, compute_coach_overlays
+from src.types import ElementPhase, MetricResult
+from src.visualization.hud.coach_panel import CoachOverlayData, compute_coach_overlays
 
 
 class TestCoachOverlayData:
@@ -111,7 +111,7 @@ class TestDrawCoachPanel:
 
     def test_draw_on_empty_frame(self):
         """Should draw panel without errors on a blank frame."""
-        from skating_ml.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
+        from src.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
 
         frame = np.zeros((720, 1280, 3), dtype=np.uint8)
         data = CoachOverlayData(
@@ -131,7 +131,7 @@ class TestDrawCoachPanel:
 
     def test_draw_returns_same_frame(self):
         """Should modify frame in place and return it."""
-        from skating_ml.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
+        from src.visualization.hud.coach_panel import CoachOverlayData, draw_coach_panel
 
         frame = np.zeros((720, 1280, 3), dtype=np.uint8)
         data = CoachOverlayData(

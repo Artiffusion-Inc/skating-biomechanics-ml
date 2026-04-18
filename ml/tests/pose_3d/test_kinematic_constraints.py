@@ -3,12 +3,12 @@
 import numpy as np
 import pytest
 
-from skating_ml.pose_3d.kinematic_constraints import (
+from src.pose_3d.kinematic_constraints import (
     apply_kinematic_constraints,
     enforce_bone_lengths,
     enforce_joint_angle_limits,
 )
-from skating_ml.types import H36M_SKELETON_EDGES
+from src.types import H36M_SKELETON_EDGES
 
 
 def make_t_pose_3d():
@@ -186,7 +186,7 @@ class TestApplyKinematicConstraints:
         corrected = apply_kinematic_constraints(noisy_poses.copy(), fps=30.0)
 
         # Compute standard deviation of each bone length across frames
-        from skating_ml.pose_3d.kinematic_constraints import _KINEMATIC_CHAIN_EDGES
+        from src.pose_3d.kinematic_constraints import _KINEMATIC_CHAIN_EDGES
 
         for parent, child in _KINEMATIC_CHAIN_EDGES:
             diffs = corrected[:, parent, :] - corrected[:, child, :]

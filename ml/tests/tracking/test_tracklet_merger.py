@@ -4,8 +4,8 @@ from unittest.mock import MagicMock
 
 import numpy as np
 
-from skating_ml.tracking.skeletal_identity import SkeletalIdentityExtractor
-from skating_ml.tracking.tracklet_merger import (
+from src.tracking.skeletal_identity import SkeletalIdentityExtractor
+from src.tracking.tracklet_merger import (
     Tracklet,
     TrackletMerger,
     build_tracklets,

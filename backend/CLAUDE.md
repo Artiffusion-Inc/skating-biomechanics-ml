@@ -40,7 +40,7 @@ backend/
 
 ## Architectural Constraint
 
-**ZERO ML imports.** All ML runs in `ml/skating_ml/worker.py` (arq worker). Routes like `/detect` and `/process` enqueue jobs to Valkey; results are polled via status/result endpoints.
+**ZERO ML imports.** All ML runs in `ml/src/worker.py` (arq worker). Routes like `/detect` and `/process` enqueue jobs to Valkey; results are polled via status/result endpoints.
 
 ## API Routes
 

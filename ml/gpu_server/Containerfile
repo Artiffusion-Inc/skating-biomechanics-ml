@@ -88,7 +88,7 @@ COPY --chown=appuser:appuser data/models/lama_fp32.onnx data/models/
 COPY --chown=appuser:appuser data/models/sam2/ data/models/sam2/
 
 # Source code — changes most often, top layer
-COPY --chown=appuser:appuser ml/skating_ml/ skating_ml/
+COPY --chown=appuser:appuser ml/src/ src/
 COPY --chown=appuser:appuser ml/gpu_server/ gpu_server/
 
 USER appuser

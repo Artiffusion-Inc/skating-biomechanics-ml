@@ -14,7 +14,7 @@ Phase 1 focused on eliminating Python loops and implementing vectorized operatio
 
 ## Implemented Changes
 
-### 1. Physics Engine Vectorization (`ml/skating_ml/analysis/physics_engine.py`)
+### 1. Physics Engine Vectorization (`ml/src/analysis/physics_engine.py`)
 
 **Changes:**
 - ✅ `calculate_center_of_mass` - Already vectorized (no changes needed)
@@ -42,7 +42,7 @@ inertia += self.segment_masses["head"] * r**2
 
 ---
 
-### 2. Geometry Functions Vectorization (`ml/skating_ml/utils/geometry.py`)
+### 2. Geometry Functions Vectorization (`ml/src/utils/geometry.py`)
 
 **Added Functions:**
 - ✅ `angle_3pt_vectorized()` - Vectorized angle calculation for time series
@@ -55,7 +55,7 @@ inertia += self.segment_masses["head"] * r**2
 
 ---
 
-### 3. Gap Filling Vectorization (`ml/skating_ml/utils/gap_filling.py`)
+### 3. Gap Filling Vectorization (`ml/src/utils/gap_filling.py`)
 
 **Changes:**
 - ✅ `_fill_linear()` - Vectorized interpolation using `np.linspace`
@@ -81,7 +81,7 @@ poses[gap_start : gap_end + 1] = left_pose * (1 - alphas) + right_pose * alphas
 
 ---
 
-### 4. Batch ONNX Inference (`ml/skating_ml/pose_3d/onnx_extractor.py`)
+### 4. Batch ONNX Inference (`ml/src/pose_3d/onnx_extractor.py`)
 
 **Added Method:**
 - ✅ `batch_extract()` - Process multiple windows in single ONNX run
@@ -166,10 +166,10 @@ poses[gap_start : gap_end + 1] = left_pose * (1 - alphas) + right_pose * alphas
 ## Files Modified
 
 ```
-ml/skating_ml/analysis/physics_engine.py        # Vectorized inertia
-ml/skating_ml/utils/geometry.py                 # Added vectorized functions
-ml/skating_ml/utils/gap_filling.py              # Vectorized interpolation
-ml/skating_ml/pose_3d/onnx_extractor.py         # Added batch_extract()
+ml/src/analysis/physics_engine.py        # Vectorized inertia
+ml/src/utils/geometry.py                 # Added vectorized functions
+ml/src/utils/gap_filling.py              # Vectorized interpolation
+ml/src/pose_3d/onnx_extractor.py         # Added batch_extract()
 backend/app/storage.py                          # Added async methods
 
 ml/tests/analysis/test_physics_engine.py        # +3 vectorized tests

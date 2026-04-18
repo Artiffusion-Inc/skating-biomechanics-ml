@@ -1,14 +1,15 @@
 """Tests for Numba-jitted metrics functions."""
 
 import numpy as np
+
 import pytest
 
-from skating_ml.analysis.metrics import (
+from src.analysis.metrics import (
+    _angle_3pt_rad_numba,
     _compute_knee_angle_series_numba,
     _compute_trunk_lean_series_numba,
 )
-from skating_ml.types import H36Key
-from skating_ml.utils.geometry import _angle_3pt_rad
+from src.types import H36Key
 
 
 class TestMetricsNumba:
@@ -20,7 +21,7 @@ class TestMetricsNumba:
         b = np.array([1.0, 0.0])
         c = np.array([1.0, 1.0])
 
-        angle = _angle_3pt_rad(a, b, c)
+        angle = _angle_3pt_rad_numba(a, b, c)
         assert np.isclose(angle, np.pi / 2)
 
     def test_angle_3pt_rad_straight(self):
@@ -29,7 +30,7 @@ class TestMetricsNumba:
         b = np.array([1.0, 0.0])
         c = np.array([2.0, 0.0])
 
-        angle = _angle_3pt_rad(a, b, c)
+        angle = _angle_3pt_rad_numba(a, b, c)
         assert np.isclose(angle, np.pi, rtol=1e-4)
 
     def test_compute_knee_angle_series_shape(self):

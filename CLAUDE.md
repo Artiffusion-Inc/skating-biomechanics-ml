@@ -36,7 +36,7 @@ skating-biomechanics-ml/
 │   ├── i18n/                         # next-intl (ru/en)
 │   └── messages/                     # Translation files
 ├── ml/                               # ML pipeline + arq worker
-│   ├── skating_ml/                   # Python package (skating_ml.*)
+│   ├── src/                   # Python package (src.*)
 │   │   ├── pose_estimation/          # RTMPose via rtmlib
 │   │   ├── analysis/                 # Metrics, phase detection, recommender
 │   │   ├── pose_3d/                  # 3D lifting, corrective lens
@@ -62,7 +62,7 @@ skating-biomechanics-ml/
 ## Architecture
 
 ```
-Frontend → FastAPI (backend/) → Valkey queue → arq worker (ml/skating_ml/)
+Frontend → FastAPI (backend/) → Valkey queue → arq worker (ml/src/)
   → [VASTAI_API_KEY set?]
     → YES: upload to R2 → Vast.ai route → GPU worker → download from R2
     → NO:  local GPU (process_video_pipeline)
@@ -75,7 +75,7 @@ ML Pipeline:
     → Rule-based Recommender → Russian Text Report
 ```
 
-**Key architectural constraint:** Backend (`backend/`) has **ZERO ML imports**. All ML runs in the arq worker (`ml/skating_ml/worker.py`). The worker depends on `backend` for DB/storage access, but never the reverse.
+**Key architectural constraint:** Backend (`backend/`) has **ZERO ML imports**. All ML runs in the arq worker (`ml/src/worker.py`). The worker depends on `backend` for DB/storage access, but never the reverse.
 
 **Key decisions:**
 - **rtmlib**: sole pose estimation backend — RTMO (COCO 17kp), ONNX (CPU+GPU)
@@ -132,7 +132,7 @@ System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-c
 
 ## Remote GPU Processing (Vast.ai Serverless)
 
-Worker dispatches to Vast.ai Serverless GPU when `VASTAI_API_KEY` is set, falls back to local GPU. Worker code lives in `ml/skating_ml/worker.py`, Vast.ai server in `ml/gpu_server/`.
+Worker dispatches to Vast.ai Serverless GPU when `VASTAI_API_KEY` is set, falls back to local GPU. Worker code lives in `ml/src/worker.py`, Vast.ai server in `ml/gpu_server/`.
 
 **Image**: `ghcr.io/xpos587/skating-ml-gpu:latest` — multi-stage, 4.9GB, no torch/timm/triton.
 
@@ -145,7 +145,7 @@ When tracking quality degrades (skeleton jumps to wrong person), follow this dat
 
 The tracking pipeline has 3 layers that can independently cause track switches:
 1. **Sports2DTracker** — per-frame centroid association (Kalman-predicted distance matrix)
-2. **Anti-steal logic** — in `ml/skating_ml/pose_estimation/rtmlib_extractor.py`, guards against centroid jumps
+2. **Anti-steal logic** — in `ml/src/pose_estimation/rtmlib_extractor.py`, guards against centroid jumps
 3. **Tracklet merger** — post-hoc NaN gap filling with biometric re-association
 
 ### Step 2: Analyze centroid trajectories

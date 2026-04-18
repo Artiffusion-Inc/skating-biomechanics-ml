@@ -5,8 +5,8 @@ import json
 import shutil
 from pathlib import Path
 
-from skating_ml.pipeline import AnalysisPipeline
-from skating_ml.utils.video import get_video_meta
+from src.pipeline import AnalysisPipeline
+from src.utils.video import get_video_meta
 
 # Dataset configuration
 DATASET_DIR = Path("data/dataset")

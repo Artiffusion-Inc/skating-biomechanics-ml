@@ -2057,7 +2057,7 @@ Expected: FAIL with `ModuleNotFoundError`
 # backend/app/services/choreography/music_analyzer.py
 """Music analysis: BPM, structure, energy peaks using madmom + librosa.
 
-This module is called from the arq worker (ml/skating_ml/worker.py),
+This module is called from the arq worker (ml/src/worker.py),
 NOT from the backend directly. The backend only stores/retrieves cached results.
 """
 

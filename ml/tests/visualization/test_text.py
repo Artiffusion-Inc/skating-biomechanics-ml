@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.visualization.core.text import draw_text_outlined
+from src.visualization.core.text import draw_text_outlined
 
 
 class TestDrawTextOutlined:

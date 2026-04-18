@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.pose_estimation.person_selector import compute_bboxes_from_poses, point_in_bbox
+from src.pose_estimation.person_selector import compute_bboxes_from_poses, point_in_bbox
 
 
 class TestComputeBboxes:

@@ -85,13 +85,13 @@ Virtual joints (computed helpers, NOT in array):
 | `ml/scripts/pseudo_label_skatingverse.py` | Create | SkatingVerse pseudo-label generation (pretrained model) |
 | `ml/scripts/benchmark_pretrained.py` | Create | Pretrained YOLO26 vs RTMO benchmark |
 | `ml/scripts/train_yolo26_pose.py` | Create | Fine-tuning + ONNX + TensorRT export |
-| `ml/skating_ml/pose_estimation/pose_extractor.py` | Rewrite | ONNX YOLO26-Pose backend |
-| `ml/skating_ml/pose_estimation/coco17.py` | Create | COCO 17kp constants (replaces h36m.py) |
-| `ml/skating_ml/pose_estimation/h36m.py` | Keep | Still used by pose_3d/ (disabled pipeline) |
-| `ml/skating_ml/types.py` | Modify | COCOKey enum (replaces H36Key for 2D pipeline) |
-| `ml/skating_ml/worker.py` | Modify | Update PoseExtractor constructor call (remove deprecated params) |
-| `ml/skating_ml/pipeline.py` | Modify | Update PoseExtractor constructor call |
-| `ml/skating_ml/visualization/pipeline.py` | Modify | Update PoseExtractor constructor call |
+| `ml/src/pose_estimation/pose_extractor.py` | Rewrite | ONNX YOLO26-Pose backend |
+| `ml/src/pose_estimation/coco17.py` | Create | COCO 17kp constants (replaces h36m.py) |
+| `ml/src/pose_estimation/h36m.py` | Keep | Still used by pose_3d/ (disabled pipeline) |
+| `ml/src/types.py` | Modify | COCOKey enum (replaces H36Key for 2D pipeline) |
+| `ml/src/worker.py` | Modify | Update PoseExtractor constructor call (remove deprecated params) |
+| `ml/src/pipeline.py` | Modify | Update PoseExtractor constructor call |
+| `ml/src/visualization/pipeline.py` | Modify | Update PoseExtractor constructor call |
 | ~20 files (2D pipeline) | Modify | H36Key.X → COCOKey.X: 13 simple renames + 7 structural (virtual joints) |
 | ~14 test files (ml/tests/) | Modify | H36Key → COCOKey in test fixtures and assertions |
 | pose_3d/*.py | Exclude | Disabled pipeline, will be rebuilt natively on COCO 17kp |
@@ -654,7 +654,7 @@ def run_yolo26(pairs):
     return all_preds
 
 def run_rtmo(pairs):
-    from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+    from src.pose_estimation.pose_extractor import PoseExtractor
     ext = PoseExtractor(mode="lightweight", output_format="pixels")
     all_preds = []
     for vid, gt in pairs:
@@ -1648,9 +1648,9 @@ git commit -m "feat(ml): self-training loop for SkatingVerse pseudo-labels"
 **Scope:** Only 2D pipeline files. pose_3d/ is excluded (disabled, will be rebuilt natively on COCO 17kp). h36m.py is kept for pose_3d/ until rebuild.
 
 **Files:**
-- Create: `ml/skating_ml/pose_estimation/coco17.py`
-- Modify: `ml/skating_ml/types.py` (COCOKey enum)
-- Keep: `ml/skating_ml/pose_estimation/h36m.py` (still used by pose_3d/)
+- Create: `ml/src/pose_estimation/coco17.py`
+- Modify: `ml/src/types.py` (COCOKey enum)
+- Keep: `ml/src/pose_estimation/h36m.py` (still used by pose_3d/)
 - Modify: ~30 files in 2D pipeline (H36Key.X → COCOKey.X)
 
 **Excluded (pose_3d/ — disabled, future rebuild):**
@@ -1818,13 +1818,13 @@ For each of the 37 files, apply these transformations:
 - `pose[H36Key.HEAD]` → `compute_head(pose)` (was index 10, now computed — eye midpoint, better than nose for CoM)
 
 **Files with virtual joints** (need logic change, not just remap):
-- `ml/skating_ml/analysis/physics_engine.py` — uses HEAD, SPINE, THORAX
-- `ml/skating_ml/visualization/layers/vertical_axis_layer.py` — uses HEAD
-- `ml/skating_ml/detection/pose_tracker.py` — uses mid_hip, mid_shoulder (already computed inline)
-- `ml/skating_ml/tracking/skeletal_identity.py` — uses bone ratios (direct indices work after remap)
-- `ml/skating_ml/pose_estimation/normalizer.py` — root-centering (uses mid_hip)
-- `ml/skating_ml/pose_3d/kinematic_constraints.py` — bone length constraints
-- `ml/skating_ml/pose_3d/anchor_projection.py` — torso anchor
+- `ml/src/analysis/physics_engine.py` — uses HEAD, SPINE, THORAX
+- `ml/src/visualization/layers/vertical_axis_layer.py` — uses HEAD
+- `ml/src/detection/pose_tracker.py` — uses mid_hip, mid_shoulder (already computed inline)
+- `ml/src/tracking/skeletal_identity.py` — uses bone ratios (direct indices work after remap)
+- `ml/src/pose_estimation/normalizer.py` — root-centering (uses mid_hip)
+- `ml/src/pose_3d/kinematic_constraints.py` — bone length constraints
+- `ml/src/pose_3d/anchor_projection.py` — torso anchor
 
 **Skeleton edges remap** (types.py + visualization):
 - Replace `H36M_SKELETON_EDGES` with `COCO_SKELETON_EDGES` from coco17.py
@@ -1863,8 +1863,8 @@ Run: `uv run python -m pytest ml/tests/ --no-cov -q`
 - [ ] **Step 7: Commit**
 
 ```bash
-git add ml/skating_ml/pose_estimation/coco17.py ml/skating_ml/pose_estimation/__init__.py \
-       ml/skating_ml/types.py \
+git add ml/src/pose_estimation/coco17.py ml/src/pose_estimation/__init__.py \
+       ml/src/types.py \
        ml/tests/conftest.py ml/tests/test_types.py \
        <all ~20 modified 2D pipeline files> \
        <all ~14 modified test files>
@@ -1876,19 +1876,19 @@ git commit -m "refactor(pose): standardize 2D pipeline on COCO 17kp (pose_3d/ ex
 ### Task 4: Rewrite PoseExtractor — ONNX Runtime Backend
 
 **Files:**
-- Modify: `ml/skating_ml/pose_estimation/pose_extractor.py`
-- Modify: `ml/skating_ml/worker.py` (update constructor call)
-- Modify: `ml/skating_ml/pipeline.py` (update constructor call)
-- Modify: `ml/skating_ml/visualization/pipeline.py` (update constructor call)
+- Modify: `ml/src/pose_estimation/pose_extractor.py`
+- Modify: `ml/src/worker.py` (update constructor call)
+- Modify: `ml/src/pipeline.py` (update constructor call)
+- Modify: `ml/src/visualization/pipeline.py` (update constructor call)
 
 - [ ] **Step 1: Read current pose_extractor.py**
 
-Read: `ml/skating_ml/pose_estimation/pose_extractor.py` — understand `extract_video_tracked()`, `preview_persons()`, tracking integration.
+Read: `ml/src/pose_estimation/pose_extractor.py` — understand `extract_video_tracked()`, `preview_persons()`, tracking integration.
 
 Also read callers to understand required constructor params:
-- `ml/skating_ml/worker.py` — uses `mode`, `tracking_backend`, `tracking_mode`, `output_format`
-- `ml/skating_ml/pipeline.py` — uses `output_format`
-- `ml/skating_ml/visualization/pipeline.py` — uses `output_format`, `det_frequency`, `frame_skip`, `tracking_mode`
+- `ml/src/worker.py` — uses `mode`, `tracking_backend`, `tracking_mode`, `output_format`
+- `ml/src/pipeline.py` — uses `output_format`
+- `ml/src/visualization/pipeline.py` — uses `output_format`, `det_frequency`, `frame_skip`, `tracking_mode`
 
 - [ ] **Step 2: Replace rtmlib with ONNX inference**
 
@@ -2022,7 +2022,7 @@ __all__ = ["PoseExtractor"]
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/pose_estimation/pose_extractor.py ml/skating_ml/pose_estimation/__init__.py
+git add ml/src/pose_estimation/pose_extractor.py ml/src/pose_estimation/__init__.py
 git commit -m "refactor(pose): replace rtmlib/RTMO with ONNX YOLO26-Pose"
 ```
 
@@ -2077,7 +2077,7 @@ uv run python ml/scripts/visualize_with_skeleton.py data/uploads/<test.mp4> --la
 
 ```python
 import time, cv2
-from skating_ml.pose_estimation import PoseExtractor
+from src.pose_estimation import PoseExtractor
 ext = PoseExtractor()
 cap = cv2.VideoCapture("data/uploads/test.mp4")
 start = time.perf_counter()
@@ -2104,7 +2104,7 @@ git commit -m "test(ml): verify YOLO26-Pose + COCO migration integration"
 ## Verification Checklist
 
 - [ ] `uv run python -m pytest ml/tests/ --no-cov` — all pass
-- [ ] `uv run ruff check ml/skating_ml/` — no errors
+- [ ] `uv run ruff check ml/src/` — no errors
 - [ ] `grep -rn "rtmlib" ml/` — no matches
 - [ ] Skeleton overlay on real skating video looks correct
 - [ ] Speed >= RTMO baseline (141 FPS)

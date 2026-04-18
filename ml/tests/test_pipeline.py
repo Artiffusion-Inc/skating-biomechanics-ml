@@ -7,8 +7,8 @@ H3.6M Architecture:
 
 import pytest
 
-from skating_ml.pipeline import AnalysisPipeline
-from skating_ml.types import ElementPhase
+from src.pipeline import AnalysisPipeline
+from src.types import ElementPhase
 
 
 @pytest.mark.integration
@@ -49,7 +49,7 @@ class TestAnalysisPipeline:
         """Should format report correctly."""
         pipeline = AnalysisPipeline()
 
-        from skating_ml.types import AnalysisReport, MetricResult
+        from src.types import AnalysisReport, MetricResult
 
         # Create mock report
         phases = ElementPhase(
@@ -91,7 +91,7 @@ class TestAnalysisPipeline:
         """Should compute overall score correctly."""
         pipeline = AnalysisPipeline()
 
-        from skating_ml.types import MetricResult
+        from src.types import MetricResult
 
         # All good metrics
         metrics_good = [
@@ -204,7 +204,7 @@ class TestPipelineLazyLoading:
         pipeline = AnalysisPipeline()
 
         assert pipeline._pose_3d_extractor is None
-        with patch("skating_ml.pipeline.Path") as mock_path:
+        with patch("src.pipeline.Path") as mock_path:
             mock_path.return_value.exists.return_value = False
             extractor = pipeline._get_pose_3d_extractor()
         assert extractor is None

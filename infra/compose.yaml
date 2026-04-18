@@ -19,11 +19,11 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-skating_ml}
+      POSTGRES_DB: ${POSTGRES_DB:-src}
       POSTGRES_USER: ${POSTGRES_USER:-skating}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skating_dev}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U skating -d skating_ml"]
+      test: ["CMD-SHELL", "pg_isready -U skating -d src"]
       interval: 5s
       timeout: 3s
       retries: 5

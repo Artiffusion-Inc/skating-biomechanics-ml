@@ -5,8 +5,8 @@ Updated for H3.6M 17-keypoint 3D format.
 
 import numpy as np
 
-from skating_ml.pose_estimation.normalizer import PoseNormalizer
-from skating_ml.types import H36Key
+from src.pose_estimation.normalizer import PoseNormalizer
+from src.types import H36Key
 
 
 class TestPoseNormalizer:

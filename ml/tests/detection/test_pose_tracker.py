@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_ml.detection.pose_tracker import PoseTracker
-from skating_ml.types import H36Key
+from src.detection.pose_tracker import PoseTracker
+from src.types import H36Key
 
 
 @pytest.fixture

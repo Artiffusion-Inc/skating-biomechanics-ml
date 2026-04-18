@@ -1,9 +1,8 @@
 """Tests for Numba-jitted geometry functions."""
 
 import numpy as np
-import pytest
 
-from skating_ml.utils.geometry import (
+from src.utils.geometry import (
     _angle_3pt_rad,
     _distance_numba,
     angle_3pt,

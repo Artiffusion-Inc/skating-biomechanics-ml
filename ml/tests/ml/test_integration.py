@@ -8,7 +8,7 @@ class TestMLPipelineIntegration:
 
     def test_registry_with_all_models_registered(self):
         """All 6 models can be registered within VRAM budget."""
-        from skating_ml.extras.model_registry import ModelRegistry
+        from src.extras.model_registry import ModelRegistry
 
         reg = ModelRegistry(device="cpu", vram_budget_mb=1000)
         reg.register("depth_anything", vram_mb=200, path="/tmp/depth.onnx")
@@ -30,8 +30,8 @@ class TestMLPipelineIntegration:
 
     def test_depth_layer_context_flow(self):
         """Depth map flows from estimator through LayerContext to layer."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.depth_layer import DepthMapLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.depth_layer import DepthMapLayer
 
         layer = DepthMapLayer(opacity=0.5)
         frame = np.zeros((100, 100, 3), dtype=np.uint8)
@@ -46,10 +46,10 @@ class TestMLPipelineIntegration:
 
     def test_multiple_layers_compose(self):
         """Depth + flow + segmentation layers compose correctly."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.depth_layer import DepthMapLayer
-        from skating_ml.visualization.layers.optical_flow_layer import OpticalFlowLayer
-        from skating_ml.visualization.layers.segmentation_layer import SegmentationMaskLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.depth_layer import DepthMapLayer
+        from src.visualization.layers.optical_flow_layer import OpticalFlowLayer
+        from src.visualization.layers.segmentation_layer import SegmentationMaskLayer
 
         layers = [
             DepthMapLayer(opacity=0.3),

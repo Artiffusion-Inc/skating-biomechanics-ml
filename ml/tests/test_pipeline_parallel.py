@@ -8,8 +8,8 @@ from unittest import mock
 import numpy as np
 import pytest
 
-from skating_ml.pipeline import AnalysisPipeline
-from skating_ml.types import ElementPhase, VideoMeta
+from src.pipeline import AnalysisPipeline
+from src.types import ElementPhase, VideoMeta
 
 
 @pytest.mark.asyncio
@@ -39,7 +39,7 @@ async def test_analyze_async_without_element():
     )
 
     with (
-        mock.patch("skating_ml.pipeline.get_video_meta", return_value=mock_meta),
+        mock.patch("src.pipeline.get_video_meta", return_value=mock_meta),
         mock.patch.object(
             pipeline,
             "_extract_and_track",
@@ -71,7 +71,7 @@ def test_analyze_sync_still_works():
     )
 
     with (
-        mock.patch("skating_ml.pipeline.get_video_meta", return_value=mock_meta),
+        mock.patch("src.pipeline.get_video_meta", return_value=mock_meta),
         mock.patch.object(
             pipeline,
             "_extract_and_track",
@@ -139,7 +139,7 @@ async def test_detect_phases_async_with_manual():
 @pytest.mark.asyncio
 async def test_compute_metrics_async():
     """Test _compute_metrics_async method."""
-    from skating_ml.analysis import element_defs
+    from src.analysis import element_defs
 
     pipeline = AnalysisPipeline(enable_smoothing=False)
 

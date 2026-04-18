@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skating_ml.types import H36Key
-from skating_ml.utils.geometry import (
+from src.types import H36Key
+from src.utils.geometry import (
     calculate_center_of_mass,
     calculate_com_trajectory,
     get_mid_hip,

@@ -3,8 +3,8 @@
 
 import pytest
 
-from skating_ml.device import MultiGPUConfig
-from skating_ml.pose_estimation import MultiGPUPoseExtractor
+from src.device import MultiGPUConfig
+from src.pose_estimation import MultiGPUPoseExtractor
 
 
 def test_multi_gpu_extractor_init():
@@ -88,7 +88,7 @@ def test_merge_chunks():
     """Test chunk merging logic."""
     from pathlib import Path
 
-    from skating_ml.types import VideoMeta
+    from src.types import VideoMeta
 
     # Create mock results
     chunk1_result = {

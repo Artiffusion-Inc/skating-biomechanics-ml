@@ -16,7 +16,7 @@
 ## File Structure
 
 ```
-ml/skating_ml/
+ml/src/
 ├── analysis/
 │   ├── physics_engine.py          # MODIFY: vectorize CoM calculation
 │   └── metrics.py                  # MODIFY: vectorize angle calculations
@@ -48,16 +48,16 @@ backend/app/
 
 **Files:**
 
-- Modify: `ml/skating_ml/analysis/physics_engine.py:100-156`
-- Test: `ml/skating_ml/tests/analysis/test_physics_engine.py`
+- Modify: `ml/src/analysis/physics_engine.py:100-156`
+- Test: `ml/src/tests/analysis/test_physics_engine.py`
 
 - [ ] **Step 1: Add failing test for vectorized CoM calculation**
 
 ```python
-# ml/skating_ml/tests/analysis/test_physics_engine.py
+# ml/src/tests/analysis/test_physics_engine.py
 import numpy as np
 import pytest
-from skating_ml.analysis.physics_engine import PhysicsEngine
+from src.analysis.physics_engine import PhysicsEngine
 
 def test_calculate_center_of_mass_vectorized():
     """Test vectorized CoM calculation matches original implementation."""
@@ -90,7 +90,7 @@ Expected: PASS (current implementation works, just establishing baseline)
 - [ ] **Step 3: Add performance benchmark for vectorization**
 
 ```python
-# ml/skating_ml/tests/analysis/test_physics_engine.py
+# ml/src/tests/analysis/test_physics_engine.py
 import time
 
 def test_calculate_center_of_mass_performance():
@@ -121,7 +121,7 @@ Expected: PASS with timing output (likely ~0.3-0.5s for current loop-based)
 - [ ] **Step 5: Refactor calculate_center_of_mass to use vectorized operations**
 
 ```python
-# ml/skating_ml/analysis/physics_engine.py
+# ml/src/analysis/physics_engine.py
 
 def calculate_center_of_mass(self, poses_3d: np.ndarray) -> np.ndarray:
     """Calculate center of mass trajectory from 3D poses.
@@ -190,7 +190,7 @@ Expected: PASS with ~10-50x faster timing (~0.01-0.05s)
 
 ```bash
 cd /home/michael/Github/skating-biomechanics-ml
-git add ml/skating_ml/analysis/physics_engine.py ml/tests/analysis/test_physics_engine.py
+git add ml/src/analysis/physics_engine.py ml/tests/analysis/test_physics_engine.py
 git commit -m "feat(physics): vectorize center of mass calculation
 
 - Replace frame-by-frame loop with NumPy vectorized operations
@@ -204,13 +204,13 @@ git commit -m "feat(physics): vectorize center of mass calculation
 
 **Files:**
 
-- Modify: `ml/skating_ml/analysis/physics_engine.py:158-200`
-- Test: `ml/skating_ml/tests/analysis/test_physics_engine.py`
+- Modify: `ml/src/analysis/physics_engine.py:158-200`
+- Test: `ml/src/tests/analysis/test_physics_engine.py`
 
 - [ ] **Step 1: Add failing test for vectorized inertia calculation**
 
 ```python
-# ml/skating_ml/tests/analysis/test_physics_engine.py
+# ml/src/tests/analysis/test_physics_engine.py
 def test_calculate_moment_of_inertia_vectorized():
     """Test vectorized inertia calculation matches original."""
     engine = PhysicsEngine(body_mass=60.0)
@@ -233,7 +233,7 @@ Expected: PASS (current implementation)
 - [ ] **Step 3: Refactor calculate_moment_of_inertia to use vectorized operations**
 
 ```python
-# ml/skating_ml/analysis/physics_engine.py
+# ml/src/analysis/physics_engine.py
 
 def calculate_moment_of_inertia(self, poses_3d: np.ndarray) -> np.ndarray:
     """Calculate moment of inertia about vertical axis (y-axis).
@@ -272,7 +272,7 @@ Expected: PASS all tests
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/analysis/physics_engine.py ml/tests/analysis/test_physics_engine.py
+git add ml/src/analysis/physics_engine.py ml/tests/analysis/test_physics_engine.py
 git commit -m "feat(physics): vectorize moment of inertia calculation
 
 - Replace nested loops with NumPy broadcasting
@@ -285,16 +285,16 @@ git commit -m "feat(physics): vectorize moment of inertia calculation
 
 **Files:**
 
-- Modify: `ml/skating_ml/utils/geometry.py`
-- Test: `ml/skating_ml/tests/utils/test_geometry.py`
+- Modify: `ml/src/utils/geometry.py`
+- Test: `ml/src/tests/utils/test_geometry.py`
 
 - [ ] **Step 1: Add failing test for vectorized angle calculation**
 
 ```python
-# ml/skating_ml/tests/utils/test_geometry.py
+# ml/src/tests/utils/test_geometry.py
 import numpy as np
 import pytest
-from skating_ml.utils.geometry import angle_between_vectors_vectorized
+from src.utils.geometry import angle_between_vectors_vectorized
 
 def test_angle_between_vectors_vectorized():
     """Test vectorized angle calculation."""
@@ -332,7 +332,7 @@ Expected: FAIL with "angle_between_vectors_vectorized not defined"
 - [ ] **Step 3: Implement vectorized angle function**
 
 ```python
-# ml/skating_ml/utils/geometry.py
+# ml/src/utils/geometry.py
 
 def angle_between_vectors_vectorized(v1: np.ndarray, v2: np.ndarray) -> np.ndarray:
     """Calculate angle between vectors in degrees (vectorized).
@@ -374,7 +374,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/utils/geometry.py ml/tests/utils/test_geometry.py
+git add ml/src/utils/geometry.py ml/tests/utils/test_geometry.py
 git commit -m "feat(geometry): add vectorized angle calculation
 
 - Add angle_between_vectors_vectorized for batch operations
@@ -388,16 +388,16 @@ git commit -m "feat(geometry): add vectorized angle calculation
 
 **Files:**
 
-- Modify: `ml/skating_ml/utils/gap_filling.py:293-296`
-- Test: `ml/skating_ml/tests/utils/test_gap_filling.py`
+- Modify: `ml/src/utils/gap_filling.py:293-296`
+- Test: `ml/src/tests/utils/test_gap_filling.py`
 
 - [ ] **Step 1: Add failing test for vectorized interpolation**
 
 ```python
-# ml/skating_ml/tests/utils/test_gap_filling.py
+# ml/src/tests/utils/test_gap_filling.py
 def test_linear_interpolation_vectorized():
     """Test vectorized linear interpolation."""
-    from skating_ml.utils.gap_filling import GapFiller
+    from src.utils.gap_filling import GapFiller
 
     filler = GapFiller()
 
@@ -438,7 +438,7 @@ Expected: FAIL (function doesn't exist yet)
 - [ ] **Step 3: Implement vectorized interpolation in GapFiller**
 
 ```python
-# ml/skating_ml/utils/gap_filling.py
+# ml/src/utils/gap_filling.py
 
 def _interpolate_gap_vectorized(
     self,
@@ -498,7 +498,7 @@ Expected: PASS all tests
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/utils/gap_filling.py ml/tests/utils/test_gap_filling.py
+git add ml/src/utils/gap_filling.py ml/tests/utils/test_gap_filling.py
 git commit -m "feat(gap_filling): vectorize linear interpolation
 
 - Replace frame-by-frame loop with NumPy broadcasting
@@ -511,16 +511,16 @@ git commit -m "feat(gap_filling): vectorize linear interpolation
 
 **Files:**
 
-- Modify: `ml/skating_ml/pose_3d/onnx_extractor.py:73-92`
-- Test: `ml/skating_ml/tests/pose_3d/test_onnx_extractor.py`
+- Modify: `ml/src/pose_3d/onnx_extractor.py:73-92`
+- Test: `ml/src/tests/pose_3d/test_onnx_extractor.py`
 
 - [ ] **Step 1: Add failing test for batch inference**
 
 ```python
-# ml/skating_ml/tests/pose_3d/test_onnx_extractor.py
+# ml/src/tests/pose_3d/test_onnx_extractor.py
 import numpy as np
 import pytest
-from skating_ml.pose_3d import AthletePose3DExtractor
+from src.pose_3d import AthletePose3DExtractor
 
 @pytest.mark.skipif(not Path("data/models/motionagformer-s-ap3d.onnx").exists(),
                     reason="Model not found")
@@ -558,7 +558,7 @@ Expected: FAIL with "extract_sequence_batch not defined"
 - [ ] **Step 3: Implement batch inference in ONNXPoseExtractor**
 
 ```python
-# ml/skating_ml/pose_3d/onnx_extractor.py
+# ml/src/pose_3d/onnx_extractor.py
 
 def extract_sequence_batch(
     self,
@@ -616,7 +616,7 @@ Expected: PASS
 - [ ] **Step 5: Add benchmark test**
 
 ```python
-# ml/skating_ml/tests/pose_3d/test_onnx_extractor.py
+# ml/src/tests/pose_3d/test_onnx_extractor.py
 import time
 
 def test_batch_inference_speedup():
@@ -655,7 +655,7 @@ Expected: PASS with 1.5-2x speedup
 - [ ] **Step 7: Commit**
 
 ```bash
-git add ml/skating_ml/pose_3d/onnx_extractor.py ml/tests/pose_3d/test_onnx_extractor.py
+git add ml/src/pose_3d/onnx_extractor.py ml/tests/pose_3d/test_onnx_extractor.py
 git commit -m "feat(pose_3d): add batch ONNX inference for 3D lifting
 
 - Process multiple temporal windows in single ONNX call
@@ -670,7 +670,7 @@ git commit -m "feat(pose_3d): add batch ONNX inference for 3D lifting
 **Files:**
 
 - Modify: `backend/app/storage.py`
-- Modify: `ml/skating_ml/vastai/client.py`
+- Modify: `ml/src/vastai/client.py`
 - Test: `backend/tests/test_storage.py`
 
 - [ ] **Step 1: Add async download function to storage.py**
@@ -799,7 +799,7 @@ Expected: PASS
 - [ ] **Step 4: Update worker.py to use async download**
 
 ```python
-# ml/skating_ml/worker.py
+# ml/src/worker.py
 
 async def process_video_task(...):
     """arq task: dispatch video processing to Vast.ai Serverless GPU."""
@@ -822,7 +822,7 @@ async def process_video_task(...):
 - [ ] **Step 5: Commit**
 
 ```bash
-git add backend/app/storage.py backend/tests/test_storage.py ml/skating_ml/worker.py
+git add backend/app/storage.py backend/tests/test_storage.py ml/src/worker.py
 git commit -m "feat(storage): add async R2 download/upload with httpx
 
 - Replace blocking boto3 with async httpx client
@@ -846,7 +846,7 @@ import pytest
 import time
 import numpy as np
 from pathlib import Path
-from skating_ml.pipeline import AnalysisPipeline
+from src.pipeline import AnalysisPipeline
 
 @pytest.mark.benchmark
 def test_full_pipeline_performance():
@@ -926,7 +926,7 @@ def test_numpy_vectorization_speedup():
     """Ensure vectorized functions are faster than loops."""
     import numpy as np
     import time
-    from skating_ml.analysis.physics_engine import PhysicsEngine
+    from src.analysis.physics_engine import PhysicsEngine
 
     engine = PhysicsEngine(body_mass=60.0)
     poses_3d = np.random.randn(500, 17, 3).astype(np.float32)
@@ -1000,10 +1000,10 @@ Total: 13 new tests, 100% passing
 
 ## Code Changes
 
-- `ml/skating_ml/analysis/physics_engine.py`: Vectorized CoM and inertia
-- `ml/skating_ml/utils/geometry.py`: Added vectorized angle functions
-- `ml/skating_ml/utils/gap_filling.py`: Vectorized interpolation
-- `ml/skating_ml/pose_3d/onnx_extractor.py`: Batch inference
+- `ml/src/analysis/physics_engine.py`: Vectorized CoM and inertia
+- `ml/src/utils/geometry.py`: Added vectorized angle functions
+- `ml/src/utils/gap_filling.py`: Vectorized interpolation
+- `ml/src/pose_3d/onnx_extractor.py`: Batch inference
 - `backend/app/storage.py`: Async I/O with httpx
 
 ## Next Steps

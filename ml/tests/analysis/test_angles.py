@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skating_ml.analysis.angles import (
+from src.analysis.angles import (
     ANGLE_DEFS,
     SEGMENT_DEFS,
     compute_joint_angles,

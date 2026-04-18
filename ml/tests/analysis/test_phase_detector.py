@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from skating_ml.analysis.metrics import PhaseDetectionResult
-from skating_ml.analysis.phase_detector import PhaseDetector
-from skating_ml.types import ElementPhase, H36Key
+from src.analysis.metrics import PhaseDetectionResult
+from src.analysis.phase_detector import PhaseDetector
+from src.types import ElementPhase, H36Key
 
 
 class TestPhaseDetector:

@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.visualization.skeleton.drawer import draw_skeleton
+from src.visualization.skeleton.drawer import draw_skeleton
 
 
 def _frame(w=640, h=480):
