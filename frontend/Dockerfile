@@ -18,6 +18,8 @@ WORKDIR /app
 # ============================================
 FROM base AS builder
 
+COPY --from=ghcr.io/oven-sh/bun:latest /bun /usr/local/bin/bun
+
 COPY package.json bun.lock* ./
 
 RUN --mount=type=cache,target=/root/.local/share/bun,sharing=locked \
