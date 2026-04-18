@@ -6,7 +6,7 @@ from pathlib import Path
 
 import cv2
 
-from skating_ml.utils.video_writer import H264Writer
+from src.utils.video_writer import H264Writer
 
 
 def main():

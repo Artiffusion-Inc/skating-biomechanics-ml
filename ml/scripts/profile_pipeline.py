@@ -15,8 +15,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from skating_ml.pipeline import AnalysisPipeline
-from skating_ml.utils.profiling import PipelineProfiler
+from src.pipeline import AnalysisPipeline
+from src.utils.profiling import PipelineProfiler
 
 
 def main() -> int:
@@ -44,7 +44,7 @@ def main() -> int:
 
     if args.deep:
         # Deep profiling: patch PoseExtractor.tracker property to time model init
-        from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+        from src.pose_estimation.pose_extractor import PoseExtractor
 
         original_tracker_fget = PoseExtractor.tracker.fget  # type: ignore[attr-defined]
         tracker_init_time_s = 0.0
@@ -109,7 +109,7 @@ def main() -> int:
 
         # Compute avg per-frame
         pure_inference = rtmo_inference - tracker_init_time_s
-        from skating_ml.utils.video import get_video_meta
+        from src.utils.video import get_video_meta
 
         video_meta = get_video_meta(args.video)
         num_frames = video_meta.num_frames

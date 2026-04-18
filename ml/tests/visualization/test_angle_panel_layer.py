@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skating_ml.visualization.layers.angle_panel_layer import AnglePanelLayer
-from skating_ml.visualization.layers.base import LayerContext
+from src.visualization.layers.angle_panel_layer import AnglePanelLayer
+from src.visualization.layers.base import LayerContext
 
 
 def _make_context(angles=None, w=640, h=480):

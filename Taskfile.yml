@@ -18,9 +18,9 @@ tasks:
     cmd: "{{.UV_RUN}} pytest backend/tests/ ml/tests/ -v -m \"not slow\" --tb=short"
 
   py-typecheck:
-    desc: Run basedpyright type checker on backend/app and ml/skating_ml
+    desc: Run basedpyright type checker on backend/app and ml/src
     dir: .
-    cmd: "{{.UV_RUN}} basedpyright --level error backend/app ml/skating_ml"
+    cmd: "{{.UV_RUN}} basedpyright --level error backend/app ml/src"
 
   py-all:
     desc: Run all Python quality checks (lint, test, typecheck)

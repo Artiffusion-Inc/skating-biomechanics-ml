@@ -9,7 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 import numpy as np
 import pytest
 
-from skating_ml.types import H36Key
+from src.types import H36Key
 
 
 @pytest.fixture

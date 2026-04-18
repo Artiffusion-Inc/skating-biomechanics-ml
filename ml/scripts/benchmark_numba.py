@@ -7,7 +7,7 @@ import numpy as np
 
 def benchmark_geometry():
     """Benchmark geometry functions."""
-    from skating_ml.utils.geometry import angle_3pt_batch
+    from src.utils.geometry import angle_3pt_batch
 
     print("Benchmarking geometry functions...")
 
@@ -31,7 +31,7 @@ def benchmark_geometry():
 
 def benchmark_smoothing():
     """Benchmark smoothing."""
-    from skating_ml.utils.smoothing import smooth_trajectory_2d_numba
+    from src.utils.smoothing import smooth_trajectory_2d_numba
 
     print("\nBenchmarking smoothing...")
 
@@ -54,8 +54,8 @@ def benchmark_smoothing():
 
 def benchmark_metrics():
     """Benchmark metrics."""
-    from skating_ml.analysis.metrics import _compute_knee_angle_series_numba
-    from skating_ml.types import H36Key
+    from src.analysis.metrics import _compute_knee_angle_series_numba
+    from src.types import H36Key
 
     print("\nBenchmarking metrics...")
 

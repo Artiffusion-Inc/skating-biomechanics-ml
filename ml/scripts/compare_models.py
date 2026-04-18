@@ -21,21 +21,21 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-from skating_ml.device import DeviceConfig
+from src.device import DeviceConfig
 
 # Ensure src/ is importable
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from typing import TYPE_CHECKING
 
-from skating_ml.pose_estimation import H36M_SKELETON_EDGES, H36Key
-from skating_ml.types import PersonClick
-from skating_ml.utils.geometry import angle_3pt
-from skating_ml.utils.video_writer import H264Writer
-from skating_ml.visualization.skeleton.drawer import draw_skeleton
+from src.pose_estimation import H36M_SKELETON_EDGES, H36Key
+from src.types import PersonClick
+from src.utils.geometry import angle_3pt
+from src.utils.video_writer import H264Writer
+from src.visualization.skeleton.drawer import draw_skeleton
 
 if TYPE_CHECKING:
-    from skating_ml.pose_estimation.pose_extractor import TrackedExtraction
+    from src.pose_estimation.pose_extractor import TrackedExtraction
 
 # ---------------------------------------------------------------------------
 # Backend factory
@@ -51,7 +51,7 @@ BACKEND_CLI_CHOICES: dict[str, str] = {}
 def _create_extractor(backend: str, conf_threshold: float = 0.3):
     """Create a pose extractor for the given backend name."""
     if backend == "rtmlib":
-        from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+        from src.pose_estimation.pose_extractor import PoseExtractor
 
         return PoseExtractor(
             output_format="normalized",

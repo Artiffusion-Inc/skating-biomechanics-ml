@@ -21,8 +21,8 @@ from PIL import Image, ImageDraw, ImageFont
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from skating_ml.datasets.coco_builder import merge_coco_foot_keypoints
-from skating_ml.datasets.projector import project_foot_frame, validate_foot_projection
+from src.datasets.coco_builder import merge_coco_foot_keypoints
+from src.datasets.projector import project_foot_frame, validate_foot_projection
 
 DATA_ROOT = Path("data/datasets/athletepose3d")
 

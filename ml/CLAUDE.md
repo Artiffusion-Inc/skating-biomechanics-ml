@@ -2,13 +2,13 @@
 
 ## Architectural Constraint
 
-**ml depends on backend, never the reverse.** The worker (`skating_ml/worker.py`) imports from `backend.app` for DB/storage/task management. The backend has **ZERO** imports from `skating_ml`.
+**ml depends on backend, never the reverse.** The worker (`src/worker.py`) imports from `backend.app` for DB/storage/task management. The backend has **ZERO** imports from `src`.
 
 ## Project Structure
 
 ```
 ml/
-├── skating_ml/                       # Python package (skating_ml.*)
+├── src/                       # Python package (src.*)
 │   ├── __init__.py                   # Exports DeviceConfig
 │   ├── types.py                      # Core types: H36Key, FrameKeypoints, PersonClick, etc.
 │   ├── device.py                     # DeviceConfig — GPU/CPU auto-detection
@@ -100,7 +100,7 @@ ml/
 └── pyproject.toml                    # ML deps + skating-backend dependency
 ```
 
-## Key Types (`skating_ml.types`)
+## Key Types (`src.types`)
 
 | Type | Purpose |
 |------|---------|
@@ -137,7 +137,7 @@ System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-c
 ## Device Configuration
 
 ```python
-from skating_ml.device import DeviceConfig
+from src.device import DeviceConfig
 
 cfg = DeviceConfig.default()        # Auto-detect (CUDA preferred)
 cfg = DeviceConfig(device="cpu")    # Explicit CPU
@@ -162,7 +162,7 @@ Compute-intensive functions use Numba JIT for acceleration:
 
 **Note:** TensorRT remains experimental (ONNX by default for serverless compatibility).
 
-## Worker Jobs (`skating_ml.worker`)
+## Worker Jobs (`src.worker`)
 
 Two async jobs registered with arq:
 
@@ -184,5 +184,5 @@ When skeleton jumps to wrong person, follow the data-driven approach in @CLAUDE.
 ## Before Committing
 
 1. **Tests**: `uv run python -m pytest ml/tests/ --no-cov`
-2. **Lint**: `uv run ruff check ml/skating_ml/`
-3. **Type check**: `uv run basedpyright ml/skating_ml/ --level error`
+2. **Lint**: `uv run ruff check ml/src/`
+3. **Type check**: `uv run basedpyright ml/src/ --level error`

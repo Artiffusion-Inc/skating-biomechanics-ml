@@ -9,7 +9,7 @@ import numpy as np
 import pytest
 
 if TYPE_CHECKING:
-    from skating_ml.extras.foot_tracker import FootTracker
+    from src.extras.foot_tracker import FootTracker
 
 
 class TestFootTracker:
@@ -18,7 +18,7 @@ class TestFootTracker:
     @staticmethod
     def _make_tracker(mock_session) -> FootTracker:
         """Create a FootTracker bypassing __init__ with required attributes set."""
-        from skating_ml.extras.foot_tracker import FootTracker
+        from src.extras.foot_tracker import FootTracker
 
         tracker = FootTracker.__new__(FootTracker)
         tracker._session = mock_session
@@ -112,8 +112,8 @@ class TestFootTracker:
 
     def test_init_from_registry(self):
         """FootTracker loads from ModelRegistry."""
-        from skating_ml.extras.foot_tracker import FootTracker
-        from skating_ml.extras.model_registry import ModelRegistry
+        from src.extras.foot_tracker import FootTracker
+        from src.extras.model_registry import ModelRegistry
 
         reg = ModelRegistry(device="cpu")
         reg.register("foot_tracker", vram_mb=30, path="/tmp/foot_tracker.onnx")
@@ -129,7 +129,7 @@ class TestFootTracker:
         mock_session.get_outputs.return_value = mock_outputs
 
         with mock.patch(
-            "skating_ml.extras.model_registry.ort.InferenceSession", return_value=mock_session
+            "src.extras.model_registry.ort.InferenceSession", return_value=mock_session
         ):
             tracker = FootTracker(reg)
             assert tracker._session is mock_session

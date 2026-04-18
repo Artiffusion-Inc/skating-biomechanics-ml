@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.utils.smoothing import (
+from src.utils.smoothing import (
     _exponential_smoothing_numba,
     _one_euro_filter_sequence_numba,
     _smoothing_factor_numba,

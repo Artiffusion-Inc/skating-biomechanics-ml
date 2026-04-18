@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skating_ml.tracking.sports2d import Sports2DTracker
-from skating_ml.types import H36Key
+from src.tracking.sports2d import Sports2DTracker
+from src.types import H36Key
 
 
 def _make_person_pose(cx: float, cy: float, scale: float = 0.1) -> np.ndarray:

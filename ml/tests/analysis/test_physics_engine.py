@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.analysis.physics_engine import (
+from src.analysis.physics_engine import (
     DEFAULT_BODY_MASS,
     SEGMENT_MASS_RATIOS,
     PhysicsEngine,

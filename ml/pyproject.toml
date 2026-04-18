@@ -33,4 +33,4 @@ build-backend = "hatchling.build"
 allow-direct-references = true
 
 [tool.hatch.build.targets.wheel]
-packages = ["skating_ml"]
+packages = ["src"]

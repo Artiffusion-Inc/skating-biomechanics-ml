@@ -3,9 +3,9 @@
 import numpy as np
 import pytest
 
-from skating_ml.pose_estimation import H36Key
-from skating_ml.visualization.layers.base import LayerContext
-from skating_ml.visualization.layers.joint_angle_layer import JointAngleLayer
+from src.pose_estimation import H36Key
+from src.visualization.layers.base import LayerContext
+from src.visualization.layers.joint_angle_layer import JointAngleLayer
 
 
 def _make_context(pose_2d=None, w=640, h=480):

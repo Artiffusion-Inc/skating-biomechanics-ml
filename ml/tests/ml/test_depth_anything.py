@@ -8,7 +8,7 @@ from unittest import mock
 import numpy as np
 
 if TYPE_CHECKING:
-    from skating_ml.extras.depth_anything import DepthEstimator
+    from src.extras.depth_anything import DepthEstimator
 
 
 class TestDepthEstimator:
@@ -17,7 +17,7 @@ class TestDepthEstimator:
     @staticmethod
     def _make_estimator(mock_session, input_name: str = "image") -> DepthEstimator:
         """Create a DepthEstimator bypassing __init__ with required attributes set."""
-        from skating_ml.extras.depth_anything import DepthEstimator
+        from src.extras.depth_anything import DepthEstimator
 
         est = DepthEstimator.__new__(DepthEstimator)
         est._session = mock_session
@@ -85,8 +85,8 @@ class TestDepthEstimator:
 
     def test_init_from_registry(self):
         """DepthEstimator loads from ModelRegistry."""
-        from skating_ml.extras.depth_anything import DepthEstimator
-        from skating_ml.extras.model_registry import ModelRegistry
+        from src.extras.depth_anything import DepthEstimator
+        from src.extras.model_registry import ModelRegistry
 
         reg = ModelRegistry(device="cpu")
         reg.register("depth_anything", vram_mb=200, path="/tmp/depth.onnx")
@@ -97,7 +97,7 @@ class TestDepthEstimator:
         ]
 
         with mock.patch(
-            "skating_ml.extras.model_registry.ort.InferenceSession", return_value=mock_session
+            "src.extras.model_registry.ort.InferenceSession", return_value=mock_session
         ):
             est = DepthEstimator(reg)
             assert est._session is mock_session
@@ -108,8 +108,8 @@ class TestDepthMapLayer:
 
     def test_render_adds_depth_overlay(self):
         """DepthMapLayer renders color-mapped depth onto frame."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.depth_layer import DepthMapLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.depth_layer import DepthMapLayer
 
         layer = DepthMapLayer(opacity=0.5)
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -125,8 +125,8 @@ class TestDepthMapLayer:
 
     def test_render_no_depth_returns_unchanged(self):
         """Layer is a no-op when no depth_map in context."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.depth_layer import DepthMapLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.depth_layer import DepthMapLayer
 
         layer = DepthMapLayer()
         frame = np.ones((480, 640, 3), dtype=np.uint8) * 128

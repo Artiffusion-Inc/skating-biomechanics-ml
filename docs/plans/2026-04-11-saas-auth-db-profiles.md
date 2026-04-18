@@ -156,11 +156,11 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-skating_ml}
+      POSTGRES_DB: ${POSTGRES_DB:-src}
       POSTGRES_USER: ${POSTGRES_USER:-skating}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skating_dev}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U skating -d skating_ml"]
+      test: ["CMD-SHELL", "pg_isready -U skating -d src"]
       interval: 5s
       timeout: 3s
       retries: 5
@@ -179,7 +179,7 @@ Add after the existing VALKEY section:
 
 ```env
 # PostgreSQL
-DATABASE_URL=postgresql+asyncpg://skating:skating_dev@localhost:5432/skating_ml
+DATABASE_URL=postgresql+asyncpg://skating:skating_dev@localhost:5432/src
 
 # JWT Authentication
 JWT_SECRET_KEY=change-me-to-a-random-secret
@@ -207,7 +207,7 @@ Add these fields to the `Settings` class in `src/config.py`, after `task_ttl_sec
 
 ```python
     # PostgreSQL
-    database_url: str = "postgresql+asyncpg://skating:skating_dev@localhost:5432/skating_ml"
+    database_url: str = "postgresql+asyncpg://skating:skating_dev@localhost:5432/src"
 
     # JWT Authentication
     jwt_secret_key: str = "change-me-to-a-random-secret"
@@ -552,7 +552,7 @@ Run: `uv run alembic init alembic`
 Replace `sqlalchemy.url` line in `alembic.ini`:
 
 ```ini
-sqlalchemy.url = postgresql+asyncpg://skating:skating_dev@localhost:5432/skating_ml
+sqlalchemy.url = postgresql+asyncpg://skating:skating_dev@localhost:5432/src
 ```
 
 Set `file_template` to include timestamps:

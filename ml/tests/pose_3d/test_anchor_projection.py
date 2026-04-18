@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.pose_3d.anchor_projection import anchor_project, blend_by_confidence
+from src.pose_3d.anchor_projection import anchor_project, blend_by_confidence
 
 
 def make_test_data(n_frames=10, width=1920, height=1080):

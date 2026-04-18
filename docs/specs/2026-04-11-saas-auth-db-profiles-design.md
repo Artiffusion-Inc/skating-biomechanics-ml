@@ -70,7 +70,7 @@ Add authentication and user management to the existing FastAPI + Next.js platfor
 ### Connection string
 
 ```
-postgresql+asyncpg://user:pass@localhost:5432/skating_ml
+postgresql+asyncpg://user:pass@localhost:5432/src
 ```
 
 ### Session management
@@ -289,7 +289,7 @@ services:
   postgres:
     image: postgres:17-alpine
     environment:
-      POSTGRES_DB: skating_ml
+      POSTGRES_DB: src
       POSTGRES_USER: skating
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skating_dev}
     ports:

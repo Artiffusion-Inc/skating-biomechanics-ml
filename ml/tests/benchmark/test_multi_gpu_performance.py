@@ -12,10 +12,10 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from skating_ml.device import MultiGPUConfig
-from skating_ml.pipeline import AnalysisPipeline
-from skating_ml.pose_estimation import MultiGPUPoseExtractor, PoseExtractor
-from skating_ml.types import ElementPhase
+from src.device import MultiGPUConfig
+from src.pipeline import AnalysisPipeline
+from src.pose_estimation import MultiGPUPoseExtractor, PoseExtractor
+from src.types import ElementPhase
 
 
 class TestMultiGPUPoseExtraction:

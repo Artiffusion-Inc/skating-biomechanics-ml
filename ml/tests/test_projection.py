@@ -39,7 +39,7 @@ def sample_coco():
 class TestFootProjection:
     def test_project_foot_point_in_frame(self, cam_params, sample_3d):
         """Projected LHEL should be within video bounds (1920x1088)."""
-        from skating_ml.datasets.projector import project_point
+        from src.datasets.projector import project_point
 
         cam = cam_params["fs_camera_1"]
         p_world = sample_3d[50, 49]  # LHEL at frame 50 (visible from cam_1)
@@ -50,7 +50,7 @@ class TestFootProjection:
 
     def test_foot_points_near_ankle(self, cam_params, sample_3d, sample_coco):
         """LHEL should be within 50px of COCO LANK."""
-        from skating_ml.datasets.projector import project_point
+        from src.datasets.projector import project_point
 
         cam = cam_params["fs_camera_1"]
         # Use frame where keypoints are visible (frame 50)
@@ -62,7 +62,7 @@ class TestFootProjection:
 
     def test_projection_matches_coco_body(self, cam_params, sample_3d, sample_coco):
         """Our projection should match _coco.npy within 20px for LANK."""
-        from skating_ml.datasets.projector import project_point
+        from src.datasets.projector import project_point
 
         cam = cam_params["fs_camera_1"]
         our_x, our_y = project_point(sample_3d[50, 33], cam)  # LANK = AP3D idx 33
@@ -73,7 +73,7 @@ class TestFootProjection:
 
     def test_project_foot_frame_returns_6x2(self, cam_params, sample_3d):
         """project_foot_frame returns (6, 2) for foot keypoints."""
-        from skating_ml.datasets.projector import project_foot_frame
+        from src.datasets.projector import project_foot_frame
 
         cam = cam_params["fs_camera_1"]
         result = project_foot_frame(sample_3d[50], cam)
@@ -82,7 +82,7 @@ class TestFootProjection:
 
     def test_both_cameras_produce_valid_coords(self, cam_params, sample_3d):
         """Camera 1 and Camera 6 both produce in-frame foot coords."""
-        from skating_ml.datasets.projector import project_foot_frame
+        from src.datasets.projector import project_foot_frame
 
         for cam_name in ["fs_camera_1", "fs_camera_6"]:
             cam = cam_params[cam_name]
@@ -97,7 +97,7 @@ class TestFootProjection:
 
     def test_nan_3d_returns_nan(self, cam_params):
         """NaN input should return NaN output."""
-        from skating_ml.datasets.projector import project_point
+        from src.datasets.projector import project_point
 
         cam = cam_params["fs_camera_1"]
         x, y = project_point(np.array([np.nan, 0.0, 0.0]), cam)
@@ -111,13 +111,13 @@ class TestWeakPerspectiveProjection:
 
     def test_ankle_ap3d_indices_defined(self):
         """ANKLE_AP3D_INDICES constant should exist with L_ankle=33, R_ankle=95."""
-        from skating_ml.datasets.projector import ANKLE_AP3D_INDICES
+        from src.datasets.projector import ANKLE_AP3D_INDICES
 
         assert list(ANKLE_AP3D_INDICES) == [33, 95]
 
     def test_small_toes_always_nan(self, cam_params, sample_3d):
         """Small toe slots (indices 2, 5) should always be NaN."""
-        from skating_ml.datasets.projector import project_foot_frame
+        from src.datasets.projector import project_foot_frame
 
         cam = cam_params["fs_camera_1"]
         foot_2d = project_foot_frame(sample_3d[50], cam)
@@ -127,7 +127,7 @@ class TestWeakPerspectiveProjection:
 
     def test_weak_perspective_preserves_foot_geometry(self, cam_params, sample_3d):
         """Foot points should maintain correct relative positions (heel below ankle)."""
-        from skating_ml.datasets.projector import project_foot_frame
+        from src.datasets.projector import project_foot_frame
 
         cam = cam_params["fs_camera_1"]
         foot_2d = project_foot_frame(sample_3d[50], cam)
@@ -150,7 +150,7 @@ class TestWeakPerspectiveProjection:
 
     def test_weak_perspective_foot_near_ankle(self, cam_params, sample_3d, sample_coco):
         """Weak-perspective foot points should be within reasonable distance of ankle."""
-        from skating_ml.datasets.projector import project_foot_frame
+        from src.datasets.projector import project_foot_frame
 
         cam = cam_params["fs_camera_1"]
         foot_2d = project_foot_frame(sample_3d[50], cam)
@@ -165,7 +165,7 @@ class TestWeakPerspectiveProjection:
 
     def test_nan_ankle_invalidates_heel(self, cam_params):
         """NaN processed ankle (AP3D 33) should invalidate L_heel (uses weak-perspective)."""
-        from skating_ml.datasets.projector import project_foot_frame
+        from src.datasets.projector import project_foot_frame
 
         cam = cam_params["fs_camera_1"]
         kp3d = np.zeros((142, 3), dtype=np.float64)
@@ -204,7 +204,7 @@ class TestValidateFootProjection:
 
     def test_valid_heel_kept(self):
         """Heel within 60px and below ankle is kept."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         l_ankle = np.array([500.0, 800.0])
         r_ankle = np.array([700.0, 800.0])
@@ -231,7 +231,7 @@ class TestValidateFootProjection:
 
     def test_invalid_heel_above_ankle(self):
         """Heel above ankle by more than 30px is rejected."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [500.0, 800.0]  # L ankle
@@ -256,7 +256,7 @@ class TestValidateFootProjection:
 
     def test_invalid_heel_too_far(self):
         """Heel more than 60px from ankle is rejected."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [500.0, 800.0]  # L ankle
@@ -280,7 +280,7 @@ class TestValidateFootProjection:
 
     def test_valid_toe_kept(self):
         """Toe within 80px of ankle is kept."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [500.0, 800.0]  # L ankle
@@ -305,7 +305,7 @@ class TestValidateFootProjection:
 
     def test_invalid_toe_too_far(self):
         """Toe more than 80px from ankle is rejected."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [500.0, 800.0]  # L ankle
@@ -329,7 +329,7 @@ class TestValidateFootProjection:
 
     def test_mixed_valid_and_invalid(self):
         """Only invalid points become NaN, valid ones are preserved."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [500.0, 800.0]  # L ankle
@@ -360,7 +360,7 @@ class TestValidateFootProjection:
 
     def test_already_nan_preserved(self):
         """Already-NaN points remain NaN (no crash)."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [500.0, 800.0]
@@ -389,7 +389,7 @@ class TestValidateFootProjection:
 
     def test_nan_ankle_invalidates_foot(self):
         """NaN ankle should invalidate its foot keypoints."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [np.nan, np.nan]  # L ankle is NaN
@@ -418,7 +418,7 @@ class TestValidateFootProjection:
 
     def test_invalid_toe_above_ankle(self):
         """Toe above ankle is rejected even if distance is small."""
-        from skating_ml.datasets.projector import validate_foot_projection
+        from src.datasets.projector import validate_foot_projection
 
         coco_2d = np.zeros((17, 2))
         coco_2d[15] = [500.0, 800.0]  # L ankle

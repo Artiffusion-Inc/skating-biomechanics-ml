@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.utils.gap_filling import GapFiller, GapReport
+from src.utils.gap_filling import GapFiller, GapReport
 
 
 def _make_poses(
@@ -239,7 +239,7 @@ class TestLongGapSplits:
         mask = ~np.isnan(poses[:, 0, 0])
 
         filler = GapFiller()
-        with caplog.at_level(logging.WARNING, logger="skating_ml.utils.gap_filling"):
+        with caplog.at_level(logging.WARNING, logger="src.utils.gap_filling"):
             _filled, _report = filler.fill_gaps(poses, mask)
 
         assert "Long gap" in caplog.text

@@ -2,8 +2,8 @@
 
 import numpy as np
 
-from skating_ml.alignment.aligner import MotionAligner
-from skating_ml.types import ElementPhase
+from src.alignment.aligner import MotionAligner
+from src.types import ElementPhase
 
 
 class TestMotionAligner:

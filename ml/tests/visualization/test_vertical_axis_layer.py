@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from skating_ml.pose_estimation import H36Key
-from skating_ml.visualization.layers.base import LayerContext
-from skating_ml.visualization.layers.vertical_axis_layer import (
+from src.pose_estimation import H36Key
+from src.visualization.layers.base import LayerContext
+from src.visualization.layers.vertical_axis_layer import (
     TiltQuality,
     VerticalAxisLayer,
     classify_tilt,
@@ -161,7 +161,7 @@ class TestVerticalAxisLayerEdgeCases:
 
     def test_backward_compatible_constructor(self):
         """Old-style constructor with config and viz_config still works."""
-        from skating_ml.visualization.config import LayerConfig, VisualizationConfig
+        from src.visualization.config import LayerConfig, VisualizationConfig
 
         layer = VerticalAxisLayer(
             config=LayerConfig(enabled=True, z_index=5),
@@ -208,19 +208,19 @@ class TestTiltDirectionLabel:
     """Test direction label helper."""
 
     def test_zero_tilt_no_direction(self):
-        from skating_ml.visualization.layers.vertical_axis_layer import _tilt_direction_label
+        from src.visualization.layers.vertical_axis_layer import _tilt_direction_label
 
         assert _tilt_direction_label(0.0) == ""
         assert _tilt_direction_label(0.5) == ""
 
     def test_positive_tilt_right(self):
-        from skating_ml.visualization.layers.vertical_axis_layer import _tilt_direction_label
+        from src.visualization.layers.vertical_axis_layer import _tilt_direction_label
 
         assert _tilt_direction_label(5.0) == "R"
         assert _tilt_direction_label(1.5) == "R"
 
     def test_negative_tilt_left(self):
-        from skating_ml.visualization.layers.vertical_axis_layer import _tilt_direction_label
+        from src.visualization.layers.vertical_axis_layer import _tilt_direction_label
 
         assert _tilt_direction_label(-5.0) == "L"
         assert _tilt_direction_label(-1.5) == "L"

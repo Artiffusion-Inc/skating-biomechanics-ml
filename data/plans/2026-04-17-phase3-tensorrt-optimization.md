@@ -92,13 +92,13 @@ git commit -m "feat(pose): add TensorRT EP detection script"
 ## Task 2: Extend DeviceConfig with TensorRT Support
 
 **Files:**
-- Modify: `ml/skating_ml/device.py`
+- Modify: `ml/src/device.py`
 - Test: `ml/tests/test_device.py`
 
 - [ ] **Step 1: Add tensorrt_enabled field to DeviceConfig**
 
 ```python
-# ml/skating_ml/device.py
+# ml/src/device.py
 # Add after line 99:
 
 @dataclass(frozen=True)
@@ -148,7 +148,7 @@ class TestDeviceConfigTensorRT:
 
     def test_tensorrt_disabled_by_default(self):
         """TensorRT should be disabled by default."""
-        from skating_ml.device import DeviceConfig
+        from src.device import DeviceConfig
 
         cfg = DeviceConfig()
         assert not cfg.tensorrt_enabled
@@ -156,7 +156,7 @@ class TestDeviceConfigTensorRT:
 
     def test_tensorrt_enabled_cuda(self):
         """TensorRT EP should be first in providers when enabled."""
-        from skating_ml.device import DeviceConfig
+        from src.device import DeviceConfig
 
         cfg = DeviceConfig(device="cuda", tensorrt_enabled=True)
         assert cfg.tensorrt_enabled
@@ -164,7 +164,7 @@ class TestDeviceConfigTensorRT:
 
     def test_tensorrt_ignored_on_cpu(self):
         """TensorRT flag should be ignored on CPU."""
-        from skating_ml.device import DeviceConfig
+        from src.device import DeviceConfig
 
         cfg = DeviceConfig(device="cpu", tensorrt_enabled=True)
         assert cfg.tensorrt_enabled  # Flag is set but...
@@ -172,7 +172,7 @@ class TestDeviceConfigTensorRT:
 
     def test_with_tensorrt_classmethod(self):
         """with_tensorrt() convenience method."""
-        from skating_ml.device import DeviceConfig
+        from src.device import DeviceConfig
 
         cfg = DeviceConfig.with_tensorrt()
         assert cfg.tensorrt_enabled
@@ -180,7 +180,7 @@ class TestDeviceConfigTensorRT:
 
     def test_repr_includes_tensorrt(self):
         """repr should show TensorRT status."""
-        from skating_ml.device import DeviceConfig
+        from src.device import DeviceConfig
 
         cfg = DeviceConfig(device="cuda", tensorrt_enabled=True)
         assert "tensorrt" in repr(cfg).lower()
@@ -194,7 +194,7 @@ Expected: PASS (5 tests)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/device.py ml/tests/test_device.py
+git add ml/src/device.py ml/tests/test_device.py
 git commit -m "feat(device): add TensorRT support to DeviceConfig"
 ```
 
@@ -203,20 +203,20 @@ git commit -m "feat(device): add TensorRT support to DeviceConfig"
 ## Task 3: Update PoseExtractor for TensorRT EP
 
 **Files:**
-- Modify: `ml/skating_ml/pose_estimation/pose_extractor.py`
+- Modify: `ml/src/pose_estimation/pose_extractor.py`
 - Test: `ml/tests/pose_estimation/test_pose_extractor_tensorrt.py`
 
 - [ ] **Step 1: Add tensorrt parameter to PoseExtractor**
 
 Read current `PoseExtractor.__init__` signature:
 ```bash
-grep -A 20 "class PoseExtractor" ml/skating_ml/pose_estimation/pose_extractor.py
+grep -A 20 "class PoseExtractor" ml/src/pose_estimation/pose_extractor.py
 ```
 
 - [ ] **Step 2: Modify constructor to accept tensorrt flag**
 
 ```python
-# In ml/skating_ml/pose_estimation/pose_extractor.py
+# In ml/src/pose_estimation/pose_extractor.py
 # Modify PoseExtractor.__init__ to accept tensorrt parameter
 
 # Add parameter after existing params:
@@ -242,7 +242,7 @@ def __init__(
 - [ ] **Step 3: Update extract_poses() function signature**
 
 ```python
-# In ml/skating_ml/pose_estimation/pose_extractor.py
+# In ml/src/pose_estimation/pose_extractor.py
 # Update extract_poses() function:
 
 def extract_poses(
@@ -266,8 +266,8 @@ def extract_poses(
 # Create ml/tests/pose_estimation/test_pose_extractor_tensorrt.py:
 
 import pytest
-from skating_ml.pose_estimation import PoseExtractor
-from skating_ml.device import DeviceConfig
+from src.pose_estimation import PoseExtractor
+from src.device import DeviceConfig
 
 class TestPoseExtractorTensorRT:
     """Tests for PoseExtractor TensorRT support."""
@@ -302,7 +302,7 @@ Expected: PASS (4 tests)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/pose_estimation/pose_extractor.py ml/tests/pose_estimation/test_pose_extractor_tensorrt.py
+git add ml/src/pose_estimation/pose_extractor.py ml/tests/pose_estimation/test_pose_extractor_tensorrt.py
 git commit -m "feat(pose): add TensorRT support to PoseExtractor"
 ```
 
@@ -311,13 +311,13 @@ git commit -m "feat(pose): add TensorRT support to PoseExtractor"
 ## Task 4: Add TensorRT CLI Flag
 
 **Files:**
-- Modify: `ml/skating_ml/cli.py`
+- Modify: `ml/src/cli.py`
 - Test: `ml/tests/test_cli_tensorrt.py`
 
 - [ ] **Step 1: Add --tensorrt flag to analyze command**
 
 ```python
-# In ml/skating_ml/cli.py
+# In ml/src/cli.py
 # Add to analyze_parser:
 
 analyze_parser.add_argument(
@@ -330,7 +330,7 @@ analyze_parser.add_argument(
 - [ ] **Step 2: Pass tensorrt flag to pipeline**
 
 ```python
-# In ml/skating_ml/cli.py
+# In ml/src/cli.py
 # In main() function, analyze command handler:
 
 if args.command == "analyze":
@@ -343,7 +343,7 @@ if args.command == "analyze":
 - [ ] **Step 3: Update AnalysisPipeline to accept tensorrt**
 
 ```python
-# In ml/skating_ml/pipeline.py
+# In ml/src/pipeline.py
 # Update AnalysisPipeline.__init__:
 
 class AnalysisPipeline:
@@ -368,7 +368,7 @@ class AnalysisPipeline:
 # Create ml/tests/test_cli_tensorrt.py:
 
 import pytest
-from skating_ml.cli import main
+from src.cli import main
 
 class TestCLITensorRT:
     """Tests for CLI TensorRT flag."""
@@ -394,7 +394,7 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/cli.py ml/skating_ml/pipeline.py ml/tests/test_cli_tensorrt.py
+git add ml/src/cli.py ml/src/pipeline.py ml/tests/test_cli_tensorrt.py
 git commit -m "feat(cli): add --tensorrt flag"
 ```
 
@@ -415,7 +415,7 @@ git commit -m "feat(cli): add --tensorrt flag"
 import time
 import numpy as np
 from pathlib import Path
-from skating_ml.pose_estimation import PoseExtractor
+from src.pose_estimation import PoseExtractor
 
 def benchmark(video_path: str, runs: int = 5):
     """Benchmark inference with and without TensorRT."""
@@ -525,7 +525,7 @@ git commit -m "feat(bench): add TensorRT benchmark script"
 
 **Files:**
 - Modify: `ml/CLAUDE.md`
-- Modify: `ml/skating_ml/__init__.py`
+- Modify: `ml/src/__init__.py`
 
 - [ ] **Step 1: Update CLAUDE.md**
 
@@ -537,15 +537,15 @@ git commit -m "feat(bench): add TensorRT benchmark script"
 TensorRT acceleration is available via ONNX Runtime TensorRT Execution Provider:
 
 ```python
-from skating_ml.device import DeviceConfig
-from skating_ml.pose_estimation import PoseExtractor
+from src.device import DeviceConfig
+from src.pose_estimation import PoseExtractor
 
 # Enable TensorRT
 cfg = DeviceConfig.with_tensorrt()
 extractor = PoseExtractor(device=cfg)
 
 # Or via CLI
-uv run python -m skating_ml.cli analyze video.mp4 --tensorrt
+uv run python -m src.cli analyze video.mp4 --tensorrt
 ```
 
 **Expected performance:** 1.5-2x speedup on RTX 3050 Ti.
@@ -561,7 +561,7 @@ Check availability: `uv run python ml/scripts/check_tensorrt.py`
 - [ ] **Step 2: Update __init__.py exports (if needed)**
 
 ```python
-# In ml/skating_ml/__init__.py
+# In ml/src/__init__.py
 # Add TensorRT-related exports if exposing new API
 ```
 
@@ -572,13 +572,13 @@ Expected: All tests pass
 
 - [ ] **Step 4: Lint check**
 
-Run: `uv run ruff check ml/skating_ml/`
+Run: `uv run ruff check ml/src/`
 Expected: No errors
 
 - [ ] **Step 5: Final commit**
 
 ```bash
-git add ml/CLAUDE.md ml/skating_ml/__init__.py
+git add ml/CLAUDE.md ml/src/__init__.py
 git commit -m "docs(tensorrt): update documentation for TensorRT support"
 ```
 
@@ -606,7 +606,7 @@ After completing all tasks:
 
 4. **Test CLI integration:**
    ```bash
-   uv run python -m skating_ml.cli analyze video.mp4 --tensorrt --element waltz_jump
+   uv run python -m src.cli analyze video.mp4 --tensorrt --element waltz_jump
    ```
 
 ---

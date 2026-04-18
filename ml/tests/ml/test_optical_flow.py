@@ -11,7 +11,7 @@ class TestOpticalFlowEstimator:
 
     def test_estimate_returns_flow_field(self):
         """estimate() returns (H, W, 2) float32 flow field."""
-        from skating_ml.extras.optical_flow import OpticalFlowEstimator
+        from src.extras.optical_flow import OpticalFlowEstimator
 
         mock_session = mock.MagicMock()
         # NeuFlowV2 outputs (1, 2, 432, 768)
@@ -31,7 +31,7 @@ class TestOpticalFlowEstimator:
 
     def test_estimate_frame_size_mismatch_raises(self):
         """estimate() raises ValueError if frames have different sizes."""
-        from skating_ml.extras.optical_flow import OpticalFlowEstimator
+        from src.extras.optical_flow import OpticalFlowEstimator
 
         est = OpticalFlowEstimator.__new__(OpticalFlowEstimator)
 
@@ -43,7 +43,7 @@ class TestOpticalFlowEstimator:
 
     def test_estimate_from_previous(self):
         """estimate_from_previous() caches previous frame."""
-        from skating_ml.extras.optical_flow import OpticalFlowEstimator
+        from src.extras.optical_flow import OpticalFlowEstimator
 
         mock_session = mock.MagicMock()
         mock_session.run.return_value = [np.zeros((1, 2, 432, 768), dtype=np.float32)]
@@ -64,7 +64,7 @@ class TestOpticalFlowEstimator:
 
     def test_reset(self):
         """reset() clears cached previous frame."""
-        from skating_ml.extras.optical_flow import OpticalFlowEstimator
+        from src.extras.optical_flow import OpticalFlowEstimator
 
         est = OpticalFlowEstimator.__new__(OpticalFlowEstimator)
         est._prev_frame = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -78,8 +78,8 @@ class TestOpticalFlowLayer:
 
     def test_render_adds_flow_overlay(self):
         """OpticalFlowLayer renders HSV color wheel flow."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.optical_flow_layer import OpticalFlowLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.optical_flow_layer import OpticalFlowLayer
 
         layer = OpticalFlowLayer(opacity=0.5)
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -93,8 +93,8 @@ class TestOpticalFlowLayer:
 
     def test_render_no_flow_returns_unchanged(self):
         """Layer is a no-op when no flow_field in context."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.optical_flow_layer import OpticalFlowLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.optical_flow_layer import OpticalFlowLayer
 
         layer = OpticalFlowLayer()
         frame = np.ones((480, 640, 3), dtype=np.uint8) * 128

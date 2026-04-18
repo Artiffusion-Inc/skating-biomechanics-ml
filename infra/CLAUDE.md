@@ -25,7 +25,7 @@ podman compose down     # Stop services
 ```
 
 **Valkey**: `localhost:6379` — arq task queue
-**PostgreSQL**: `localhost:5432` — SQLAlchemy async (db: `skating_ml`, user: `skating`)
+**PostgreSQL**: `localhost:5432` — SQLAlchemy async (db: `src`, user: `skating`)
 
 Defaults in `compose.yaml` use env vars with `:-` fallbacks (`VALKEY_HOST_PORT`, `POSTGRES_DB`, etc.).
 

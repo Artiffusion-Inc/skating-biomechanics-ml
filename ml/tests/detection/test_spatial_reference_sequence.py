@@ -4,7 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from skating_ml.detection.spatial_reference import (
+from src.detection.spatial_reference import (
     CameraPose,
     compensate_poses_per_frame,
     estimate_pose_sequence,
@@ -45,8 +45,8 @@ def _identity_camera_poses(num_frames: int, interval: int = 30):
 class TestEstimatePoseSequence:
     """Tests for estimate_pose_sequence()."""
 
-    @patch("skating_ml.detection.spatial_reference.SpatialReferenceDetector")
-    @patch("skating_ml.detection.spatial_reference.cv2.VideoCapture")
+    @patch("src.detection.spatial_reference.SpatialReferenceDetector")
+    @patch("src.detection.spatial_reference.cv2.VideoCapture")
     def test_returns_only_high_confidence_frames(self, mock_cap_cls, mock_det_cls):
         """Frames with confidence <= 0.1 should be excluded."""
         # Setup mock video: 90 frames, read returns True for first 90 calls
@@ -86,8 +86,8 @@ class TestEstimatePoseSequence:
         assert 60 in frame_indices
         assert 30 not in frame_indices
 
-    @patch("skating_ml.detection.spatial_reference.SpatialReferenceDetector")
-    @patch("skating_ml.detection.spatial_reference.cv2.VideoCapture")
+    @patch("src.detection.spatial_reference.SpatialReferenceDetector")
+    @patch("src.detection.spatial_reference.cv2.VideoCapture")
     def test_returns_empty_for_unopenable_video(self, mock_cap_cls, _mock_det_cls):
         """Should return empty list when video cannot be opened."""
         mock_cap = MagicMock()
@@ -97,8 +97,8 @@ class TestEstimatePoseSequence:
         result = estimate_pose_sequence("nonexistent.mp4")
         assert result == []
 
-    @patch("skating_ml.detection.spatial_reference.SpatialReferenceDetector")
-    @patch("skating_ml.detection.spatial_reference.cv2.VideoCapture")
+    @patch("src.detection.spatial_reference.SpatialReferenceDetector")
+    @patch("src.detection.spatial_reference.cv2.VideoCapture")
     def test_smoothing_applied(self, mock_cap_cls, mock_det_cls):
         """Camera poses should be smoothed (values should differ from raw)."""
         mock_cap = MagicMock()

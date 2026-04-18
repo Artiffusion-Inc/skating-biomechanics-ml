@@ -1,7 +1,7 @@
 """Tests for recommendation engine."""
 
-from skating_ml.analysis.recommender import Recommender
-from skating_ml.types import MetricResult
+from src.analysis.recommender import Recommender
+from src.types import MetricResult
 
 
 class TestRecommender:

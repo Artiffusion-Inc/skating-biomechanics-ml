@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skating_ml.utils.smoothing import (
+from src.utils.smoothing import (
     OneEuroFilter,
     OneEuroFilterConfig,
     PoseSmoother,
@@ -159,7 +159,7 @@ class TestPoseSmoother:
     @pytest.fixture
     def sample_poses(self):
         """Create sample pose sequence with 17 joints (H3.6M format)."""
-        from skating_ml.types import H36Key
+        from src.types import H36Key
 
         # 30 frames, 17 joints, 2 coords
         poses = np.zeros((30, 17, 2), dtype=np.float32)
@@ -363,7 +363,7 @@ class TestIntegration:
 
     def test_smoothing_after_normalization(self):
         """Test that smoothing works after pose normalization."""
-        from skating_ml.types import H36Key
+        from src.types import H36Key
 
         # Create normalized poses (centered at origin)
         poses = np.zeros((30, 17, 2), dtype=np.float32)

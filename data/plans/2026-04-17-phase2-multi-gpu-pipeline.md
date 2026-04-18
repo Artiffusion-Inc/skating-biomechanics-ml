@@ -19,7 +19,7 @@
 ## File Structure
 
 ```
-ml/skating_ml/
+ml/src/
 ├── device.py                          # MODIFY: multi-GPU support
 ├── pipeline.py                        # MODIFY: pipeline parallelism
 ├── pose_estimation/
@@ -39,7 +39,7 @@ ml/skating_ml/
 
 **Files:**
 
-- Modify: `ml/skating_ml/device.py`
+- Modify: `ml/src/device.py`
 - Test: `ml/tests/test_device.py`
 
 - [ ] **Step 1: Add failing test for multi-GPU detection**
@@ -47,7 +47,7 @@ ml/skating_ml/
 ```python
 # ml/tests/test_device.py
 import pytest
-from skating_ml.device import DeviceConfig, MultiGPUConfig
+from src.device import DeviceConfig, MultiGPUConfig
 
 def test_multi_gpu_detection():
     """Test detection of multiple GPUs."""
@@ -94,7 +94,7 @@ Expected: FAIL with "MultiGPUConfig not defined"
 - [ ] **Step 3: Implement MultiGPUConfig class**
 
 ```python
-# ml/skating_ml/device.py
+# ml/src/device.py
 import os
 from dataclasses import dataclass, field
 from typing import Literal
@@ -206,7 +206,7 @@ class MultiGPUConfig:
 - [ ] **Step 4: Update DeviceConfig to support multi-GPU**
 
 ```python
-# ml/skating_ml/device.py
+# ml/src/device.py
 
 @dataclass
 class DeviceConfig:
@@ -250,7 +250,7 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/device.py ml/tests/test_device.py
+git add ml/src/device.py ml/tests/test_device.py
 git commit -m "feat(device): add multi-GPU detection and configuration
 
 - Add MultiGPUConfig for managing multiple GPUs
@@ -265,19 +265,19 @@ git commit -m "feat(device): add multi-GPU detection and configuration
 
 **Files:**
 
-- Create: `ml/skating_ml/pose_estimation/multi_gpu_extractor.py`
-- Modify: `ml/skating_ml/pose_estimation/pose_extractor.py`
-- Test: `ml/skating_ml/tests/pose_estimation/test_multi_gpu_extractor.py`
+- Create: `ml/src/pose_estimation/multi_gpu_extractor.py`
+- Modify: `ml/src/pose_estimation/pose_extractor.py`
+- Test: `ml/src/tests/pose_estimation/test_multi_gpu_extractor.py`
 
 - [ ] **Step 1: Add failing test for multi-GPU extraction**
 
 ```python
-# ml/skating_ml/tests/pose_estimation/test_multi_gpu_extractor.py
+# ml/src/tests/pose_estimation/test_multi_gpu_extractor.py
 import pytest
 import numpy as np
 from pathlib import Path
-from skating_ml.pose_estimation import MultiGPUPoseExtractor
-from skating_ml.device import MultiGPUConfig
+from src.pose_estimation import MultiGPUPoseExtractor
+from src.device import MultiGPUConfig
 
 @pytest.mark.skipif(len(MultiGPUConfig().enabled_gpus) < 2,
                     reason="Requires at least 2 GPUs")
@@ -350,7 +350,7 @@ Expected: FAIL with "MultiGPUPoseExtractor not defined"
 - [ ] **Step 3: Implement MultiGPUPoseExtractor**
 
 ```python
-# ml/skating_ml/pose_estimation/multi_gpu_extractor.py
+# ml/src/pose_estimation/multi_gpu_extractor.py
 from __future__ import annotations
 import logging
 from concurrent.futures import ProcessPoolExecutor, as_completed
@@ -358,11 +358,11 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 import numpy as np
 
-from skating_ml.device import MultiGPUConfig
-from skating_ml.types import PersonClick, TrackedExtraction
+from src.device import MultiGPUConfig
+from src.types import PersonClick, TrackedExtraction
 
 if TYPE_CHECKING:
-    from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+    from src.pose_estimation.pose_extractor import PoseExtractor
 
 logger = logging.getLogger(__name__)
 
@@ -389,7 +389,7 @@ class MultiGPUPoseExtractor:
         # Create one extractor per GPU
         self.extractors: list[PoseExtractor] = []
         for gpu_info in self.config.enabled_gpus:
-            from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+            from src.pose_estimation.pose_extractor import PoseExtractor
 
             device = f"cuda:{gpu_info.device_id}"
             extractor = PoseExtractor(
@@ -401,7 +401,7 @@ class MultiGPUPoseExtractor:
 
         if not self.extractors:
             logger.warning("No GPUs available, falling back to CPU")
-            from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+            from src.pose_estimation.pose_extractor import PoseExtractor
 
             self.extractors.append(PoseExtractor(
                 output_format=output_format,
@@ -495,7 +495,7 @@ class MultiGPUPoseExtractor:
         # Set CUDA device for this process
         os.environ["CUDA_VISIBLE_DEVICES"] = str(gpu_idx)
 
-        from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+        from src.pose_estimation.pose_extractor import PoseExtractor
 
         extractor = PoseExtractor(
             output_format="normalized",
@@ -523,7 +523,7 @@ Expected: PASS (on multi-GPU system) or SKIP (on single GPU)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/pose_estimation/multi_gpu_extractor.py ml/tests/pose_estimation/test_multi_gpu_extractor.py
+git add ml/src/pose_estimation/multi_gpu_extractor.py ml/tests/pose_estimation/test_multi_gpu_extractor.py
 git commit -m "feat(pose): add multi-GPU batch pose extraction
 
 - Distribute video chunks across multiple GPUs
@@ -538,18 +538,18 @@ git commit -m "feat(pose): add multi-GPU batch pose extraction
 
 **Files:**
 
-- Modify: `ml/skating_ml/pipeline.py`
-- Test: `ml/skating_ml/tests/test_pipeline_parallel.py`
+- Modify: `ml/src/pipeline.py`
+- Test: `ml/src/tests/test_pipeline_parallel.py`
 
 - [ ] **Step 1: Add test for parallel pipeline stages**
 
 ```python
-# ml/skating_ml/tests/test_pipeline_parallel.py
+# ml/src/tests/test_pipeline_parallel.py
 import pytest
 import asyncio
 import time
 from pathlib import Path
-from skating_ml.pipeline import AnalysisPipeline
+from src.pipeline import AnalysisPipeline
 
 @pytest.mark.asyncio
 async def test_pipeline_parallel_stages():
@@ -593,7 +593,7 @@ Expected: FAIL with "analyze_async not defined"
 - [ ] **Step 3: Implement async pipeline with parallel stages**
 
 ```python
-# ml/skating_ml/pipeline.py
+# ml/src/pipeline.py
 
 import asyncio
 from typing import TYPE_CHECKING
@@ -821,7 +821,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/pipeline.py ml/tests/test_pipeline_parallel.py
+git add ml/src/pipeline.py ml/tests/test_pipeline_parallel.py
 git commit -m "feat(pipeline): add async analyze with parallel stages
 
 - Parallelize 3D lifting and phase detection
@@ -836,15 +836,15 @@ git commit -m "feat(pipeline): add async analyze with parallel stages
 
 **Files:**
 
-- Create: `ml/skating_ml/utils/profiler.py`
-- Test: `ml/skating_ml/tests/utils/test_profiler.py`
+- Create: `ml/src/utils/profiler.py`
+- Test: `ml/src/tests/utils/test_profiler.py`
 
 - [ ] **Step 1: Add profiler tests**
 
 ```python
-# ml/skating_ml/tests/utils/test_profiler.py
+# ml/src/tests/utils/test_profiler.py
 import pytest
-from skating_ml.utils.profiler import Profiler, profile_function
+from src.utils.profiler import Profiler, profile_function
 
 def test_profiler_context_manager():
     """Test profiler context manager."""
@@ -874,7 +874,7 @@ def test_profiler_decorator():
 - [ ] **Step 2: Implement profiler utilities**
 
 ```python
-# ml/skating_ml/utils/profiler.py
+# ml/src/utils/profiler.py
 import time
 import logging
 from contextlib import contextmanager
@@ -958,7 +958,7 @@ Expected: PASS
 - [ ] **Step 4: Integrate profiler into pipeline**
 
 ```python
-# ml/skating_ml/pipeline.py
+# ml/src/pipeline.py
 
 from .utils.profiler import StageProfiler
 
@@ -1004,7 +1004,7 @@ class AnalysisPipeline:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/utils/profiler.py ml/tests/utils/test_profiler.py ml/skating_ml/pipeline.py
+git add ml/src/utils/profiler.py ml/tests/utils/test_profiler.py ml/src/pipeline.py
 git commit -m "feat(utils): add profiling utilities
 
 - Add Profiler context manager and decorator
@@ -1028,9 +1028,9 @@ git commit -m "feat(utils): add profiling utilities
 import pytest
 import time
 from pathlib import Path
-from skating_ml.device import MultiGPUConfig
-from skating_ml.pose_estimation import MultiGPUPoseExtractor
-from skating_ml.pipeline import AnalysisPipeline
+from src.device import MultiGPUConfig
+from src.pose_estimation import MultiGPUPoseExtractor
+from src.pipeline import AnalysisPipeline
 
 @pytest.mark.benchmark
 @pytest.mark.skipif(len(MultiGPUConfig().enabled_gpus) < 2,
@@ -1165,10 +1165,10 @@ Total: 10 new tests, 100% passing
 
 ## Code Changes
 
-- `ml/skating_ml/device.py`: Added MultiGPUConfig
-- `ml/skating_ml/pose_estimation/multi_gpu_extractor.py`: NEW
-- `ml/skating_ml/pipeline.py`: Added analyze_async
-- `ml/skating_ml/utils/profiler.py`: NEW
+- `ml/src/device.py`: Added MultiGPUConfig
+- `ml/src/pose_estimation/multi_gpu_extractor.py`: NEW
+- `ml/src/pipeline.py`: Added analyze_async
+- `ml/src/utils/profiler.py`: NEW
 
 ## Next Steps
 

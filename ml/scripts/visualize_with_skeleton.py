@@ -21,20 +21,20 @@ import cv2
 import numpy as np
 from tqdm import tqdm
 
-from skating_ml.detection.blade_edge_detector_3d import BladeEdgeDetector3D
-from skating_ml.detection.spatial_reference import SpatialReferenceDetector
-from skating_ml.pose_estimation import H36Key
-from skating_ml.types import BladeState3D
-from skating_ml.utils.geometry import detect_visible_side, estimate_floor_angle
-from skating_ml.utils.subtitles import SubtitleParser
-from skating_ml.utils.video import get_video_meta
-from skating_ml.utils.video_writer import H264Writer
-from skating_ml.visualization import (
+from src.detection.blade_edge_detector_3d import BladeEdgeDetector3D
+from src.detection.spatial_reference import SpatialReferenceDetector
+from src.pose_estimation import H36Key
+from src.types import BladeState3D
+from src.utils.geometry import detect_visible_side, estimate_floor_angle
+from src.utils.subtitles import SubtitleParser
+from src.utils.video import get_video_meta
+from src.utils.video_writer import H264Writer
+from src.visualization import (
     draw_blade_indicator_hud,
     project_3d_to_2d,
     put_text,
 )
-from skating_ml.visualization.core.text import draw_text_box, draw_text_outlined
+from src.visualization.core.text import draw_text_box, draw_text_outlined
 
 
 def main() -> int:
@@ -179,7 +179,7 @@ def main() -> int:
     cap = cv2.VideoCapture(str(args.video))
 
     # --- Person selection (before pose extraction) ---
-    from skating_ml.types import PersonClick as _PersonClick
+    from src.types import PersonClick as _PersonClick
 
     person_click = None
     if args.poses and args.poses.exists():
@@ -189,7 +189,7 @@ def main() -> int:
         print(f"Using click point: ({person_click.x}, {person_click.y})")
     elif args.select_person:
         # Need an extractor just for the preview
-        from skating_ml.pose_estimation.pose_extractor import PoseExtractor
+        from src.pose_estimation.pose_extractor import PoseExtractor
 
         _preview_extractor = PoseExtractor(
             output_format="normalized",
@@ -251,7 +251,7 @@ def main() -> int:
         confs = np.ones_like(poses_viz[:, :, 0])
         prepared = None
     else:
-        from skating_ml.visualization.pipeline import prepare_poses
+        from src.visualization.pipeline import prepare_poses
 
         model_3d = args.model_3d
         if model_3d is None:
@@ -324,7 +324,7 @@ def main() -> int:
     )
 
     # Construct visualization pipeline
-    from skating_ml.visualization.pipeline import VizPipeline
+    from src.visualization.pipeline import VizPipeline
 
     pipe = VizPipeline(
         meta=meta,
@@ -370,7 +370,7 @@ def main() -> int:
     # Pre-create PhysicsEngine for CoM trajectory (avoid per-frame allocation)
     physics_engine = None
     if args.use_3d and args.com_trajectory:
-        from skating_ml.analysis import PhysicsEngine
+        from src.analysis import PhysicsEngine
 
         physics_engine = PhysicsEngine(body_mass=60.0)
 
