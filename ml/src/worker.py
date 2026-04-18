@@ -24,6 +24,8 @@ from backend.app.storage import download_file
 from backend.app.task_manager import (
     TaskStatus,
     get_valkey_client,
+    is_cancelled,
+    mark_cancelled,
     store_error,
     store_result,
 )
@@ -212,6 +214,12 @@ async def process_video_task(
                     element_type = session.element_type
 
         logger.info("Dispatching task %s to Vast.ai (video_key=%s)", task_id, video_key)
+
+        # Cancellation check before expensive GPU dispatch
+        if await is_cancelled(task_id, valkey=valkey):
+            await mark_cancelled(task_id, valkey=valkey)
+            return {"status": "cancelled"}
+
         vast_result = await process_video_remote_async(
             video_key=video_key,
             person_click={"x": person_click["x"], "y": person_click["y"]} if person_click else None,
@@ -223,6 +231,11 @@ async def process_video_task(
             element_type=element_type,
         )
         logger.info("Vast.ai processing complete for task %s", task_id)
+
+        # Cancellation check after GPU returns (skip post-processing)
+        if await is_cancelled(task_id, valkey=valkey):
+            await mark_cancelled(task_id, valkey=valkey)
+            return {"status": "cancelled"}
 
         # Prepare pose data for JSON storage (if poses available)
         pose_data = None
