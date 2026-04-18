@@ -11,7 +11,7 @@ resolution-markers = [
 ]
 
 [options]
-exclude-newer = "2026-04-11T18:02:38.419760738Z"
+exclude-newer = "2026-04-11T18:19:32.093955145Z"
 exclude-newer-span = "P7D"
 
 [[package]]
@@ -3356,6 +3356,7 @@ name = "skating-backend"
 version = "0.1.0"
 source = { directory = "/home/michael/Github/skating-biomechanics-ml/backend" }
 dependencies = [
+    { name = "aiobotocore" },
     { name = "alembic" },
     { name = "arq" },
     { name = "asyncpg" },
@@ -3379,6 +3380,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aiobotocore", specifier = ">=3.4.0" },
     { name = "alembic", specifier = ">=1.18.4" },
     { name = "arq", specifier = ">=0.27.0" },
     { name = "asyncpg", specifier = ">=0.30" },
