@@ -30,12 +30,29 @@ class TestExtractVideoTracked:
 
     def test_output_shape_matches_video(self) -> None:
         """Output shape is always (num_frames, 17, 3) regardless of gaps."""
-        # Since the extractor has complex tracking logic, we test the basic interface
-        # The actual extraction is tested via integration tests
-        assert True  # Placeholder for when we add proper mock-based tests
-        # Since the extractor has complex tracking logic, we test the basic interface
-        # The actual extraction is tested via integration tests
-        assert True  # Placeholder for when we add proper mock-based tests
+        num_frames = 50
+        poses = np.zeros((num_frames, 17, 3), dtype=np.float32)
+        meta = _make_video_meta(num_frames)
+
+        extraction = TrackedExtraction(
+            poses=poses,
+            frame_indices=np.arange(num_frames),
+            first_detection_frame=0,
+            target_track_id=0,
+            fps=30.0,
+            video_meta=meta,
+        )
+
+        # Verify poses shape matches (num_frames, 17, 3)
+        assert extraction.poses.shape == (num_frames, 17, 3)
+
+        # Verify frame_indices length matches num_frames
+        assert extraction.frame_indices.shape == (num_frames,)
+
+        # Verify valid_mask shape matches num_frames
+        mask = extraction.valid_mask()
+        assert mask.shape == (num_frames,)
+        assert mask.all()  # All frames should be valid (no NaN)
 
     def test_valid_mask_correctness(self) -> None:
         """valid_mask() returns True for non-NaN frames."""
