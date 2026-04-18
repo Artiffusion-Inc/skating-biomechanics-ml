@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skating_ml.types import H36Key
+from src.types import H36Key
 
 
 # Copy the vectorized function here for testing (to avoid backend import issues)

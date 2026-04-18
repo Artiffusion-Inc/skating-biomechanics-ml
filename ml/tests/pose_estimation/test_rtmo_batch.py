@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skating_ml.pose_estimation.rtmo_batch import (
+from src.pose_estimation.rtmo_batch import (
     RTMO_INPUT_SIZE,
     _nms,
     postprocess_batch,

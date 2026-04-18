@@ -22,7 +22,7 @@ def benchmark_sequential_extraction(
     Returns:
         (elapsed_time, fps) tuple.
     """
-    from skating_ml.pose_estimation import PoseExtractor
+    from src.pose_estimation import PoseExtractor
 
     print("=" * 60)
     print("SEQUENTIAL EXTRACTION (BASELINE)")
@@ -62,7 +62,7 @@ def benchmark_batched_extraction(
     Returns:
         (elapsed_time, fps) tuple.
     """
-    from skating_ml.pose_estimation import BatchPoseExtractor
+    from src.pose_estimation import BatchPoseExtractor
 
     print("=" * 60)
     print(f"BATCHED EXTRACTION (batch_size={batch_size})")
@@ -90,9 +90,11 @@ def benchmark_batched_extraction(
 
 def benchmark_batch_sizes(
     video_path: Path,
-    batch_sizes: list[int] = [1, 2, 4, 8, 16],
+    batch_sizes: list[int] | None = None,
     mode: str = "balanced",
 ) -> dict[int, tuple[float, float]]:
+    if batch_sizes is None:
+        batch_sizes = [1, 2, 4, 8, 16]
     """Benchmark multiple batch sizes.
 
     Args:
@@ -191,7 +193,7 @@ def main():
     print(f"\nBenchmarking video: {args.video}")
     print("Video metadata:")
 
-    from skating_ml.utils.video import get_video_meta
+    from src.utils.video import get_video_meta
 
     meta = get_video_meta(args.video)
     print(f"  Resolution: {meta.width}x{meta.height}")
