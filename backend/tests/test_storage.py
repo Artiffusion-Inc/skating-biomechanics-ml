@@ -2,10 +2,19 @@
 
 from __future__ import annotations
 
-from unittest.mock import ANY, AsyncMock, MagicMock, Mock, patch
+import sys
+from types import ModuleType
+from unittest.mock import ANY, MagicMock, patch
 
 import pytest
-from app.storage import (
+
+# Mock aiobotocore before importing app.storage (it's a top-level import)
+_mock_aiobotocore = ModuleType("aiobotocore")
+_mock_aiobotocore_session = ModuleType("aiobotocore.session")
+sys.modules["aiobotocore"] = _mock_aiobotocore
+sys.modules["aiobotocore.session"] = _mock_aiobotocore_session
+
+from app.storage import (  # noqa: E402
     delete_object,
     download_file,
     get_object_url,
@@ -16,7 +25,7 @@ from app.storage import (
     upload_file,
 )
 
-# --- Sync storage tests (moved from ml/tests/test_storage.py) ---
+# --- Sync storage tests ---
 
 
 @patch("app.storage._client")
