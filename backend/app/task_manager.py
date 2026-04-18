@@ -194,3 +194,22 @@ async def set_cancel_signal(task_id: str, valkey: aioredis.Redis | None = None) 
     finally:
         if close:
             await valkey.close()
+
+
+TASK_EVENTS_PREFIX = "task_events:"
+
+
+async def publish_task_event(
+    task_id: str,
+    data: dict,
+    valkey: aioredis.Redis | None = None,
+) -> None:
+    """Publish task event to pub/sub channel for SSE streaming."""
+    close = valkey is None
+    if valkey is None:
+        valkey = await get_valkey_client()
+    try:
+        await valkey.publish(f"{TASK_EVENTS_PREFIX}{task_id}", json.dumps(data))
+    finally:
+        if close:
+            await valkey.close()

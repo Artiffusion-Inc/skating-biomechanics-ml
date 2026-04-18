@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+import json
 import uuid
 
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, HTTPException
+from sse_starlette.sse import EventSourceResponse
 
 from app.config import get_settings
 from app.schemas import (
@@ -17,6 +19,7 @@ from app.schemas import (
     TaskStatusResponse,
 )
 from app.task_manager import (
+    TASK_EVENTS_PREFIX,
     create_task_state,
     get_task_state,
     get_valkey_client,
@@ -67,6 +70,7 @@ async def enqueue_process(req: ProcessRequest):
             export=req.export,
             ml_flags=ml_flags,
             session_id=req.session_id,
+            _priority=10,  # Low priority for full analysis
         )
     finally:
         await arq_pool.close()
@@ -105,3 +109,36 @@ async def cancel_queued_process(task_id: str):
     """Cancel a queued or running task via Valkey signal."""
     await set_cancel_signal(task_id)
     return {"status": "cancel_requested", "task_id": task_id}
+
+
+@router.get("/process/{task_id}/stream")
+async def stream_process_status(task_id: str):
+    """SSE endpoint for real-time task progress streaming."""
+
+    async def event_generator():
+        valkey = await get_valkey_client()
+        pubsub = valkey.pubsub()
+        channel = f"{TASK_EVENTS_PREFIX}{task_id}"
+        await pubsub.subscribe(channel)
+        try:
+            # Send initial state
+            state = await get_task_state(task_id, valkey=valkey)
+            if state:
+                yield f"data: {json.dumps(state)}\n\n"
+            else:
+                yield f"data: {json.dumps({'status': 'unknown'})}\n\n"
+
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    yield f"data: {message['data'].decode()}\n\n"
+                    try:
+                        data = json.loads(message["data"])
+                        if data.get("status") in ("completed", "failed", "cancelled"):
+                            break
+                    except (json.JSONDecodeError, TypeError):
+                        pass
+        finally:
+            await pubsub.unsubscribe(channel)
+            await valkey.close()
+
+    return EventSourceResponse(event_generator())

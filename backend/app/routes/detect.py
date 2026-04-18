@@ -61,6 +61,7 @@ async def enqueue_detect(
             task_id=task_id,
             video_key=video_key,
             tracking=tracking,
+            _priority=0,  # High priority for fast preview
         )
     finally:
         await arq_pool.close()
