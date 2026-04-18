@@ -15,7 +15,7 @@
 ### Task 1: Make `coco_to_h36m` public in h36m.py
 
 **Files:**
-- Modify: `ml/skating_ml/pose_estimation/h36m.py:106`
+- Modify: `ml/src/pose_estimation/h36m.py:106`
 
 - [ ] **Step 1: Rename `_coco_to_h36m_single` to `coco_to_h36m`**
 
@@ -30,7 +30,7 @@ def coco_to_h36m(coco_pose: np.ndarray) -> np.ndarray:
 
 - [ ] **Step 2: Update the internal reference in halpe26.py**
 
-In `ml/skating_ml/pose_estimation/halpe26.py`, the `halpe26_to_h36m` function duplicates this logic. This file will be deleted in Task 5, so no need to update it.
+In `ml/src/pose_estimation/halpe26.py`, the `halpe26_to_h36m` function duplicates this logic. This file will be deleted in Task 5, so no need to update it.
 
 - [ ] **Step 3: Run existing tests to verify nothing breaks**
 
@@ -40,7 +40,7 @@ Expected: All tests pass (no internal callers of the renamed function)
 - [ ] **Step 4: Commit**
 
 ```bash
-git add ml/skating_ml/pose_estimation/h36m.py
+git add ml/src/pose_estimation/h36m.py
 git commit -m "refactor(pose): make coco_to_h36m public for RTMO migration"
 ```
 
@@ -49,11 +49,11 @@ git commit -m "refactor(pose): make coco_to_h36m public for RTMO migration"
 ### Task 2: Remove `foot_keypoints` from `TrackedExtraction`
 
 **Files:**
-- Modify: `ml/skating_ml/types.py:810-835`
+- Modify: `ml/src/types.py:810-835`
 
 - [ ] **Step 1: Remove the `foot_keypoints` field from `TrackedExtraction`**
 
-In `ml/skating_ml/types.py`, remove lines 833-835:
+In `ml/src/types.py`, remove lines 833-835:
 ```python
     # DELETE these lines:
     foot_keypoints: np.ndarray | None = (
@@ -91,7 +91,7 @@ Expected: Some tests fail due to `foot_keypoints` references — this is expecte
 - [ ] **Step 4: Commit**
 
 ```bash
-git add ml/skating_ml/types.py
+git add ml/src/types.py
 git commit -m "refactor(types): remove foot_keypoints from TrackedExtraction"
 ```
 
@@ -100,7 +100,7 @@ git commit -m "refactor(types): remove foot_keypoints from TrackedExtraction"
 ### Task 3: Rewrite extractor to use RTMO (COCO 17)
 
 **Files:**
-- Modify: `ml/skating_ml/pose_estimation/rtmlib_extractor.py`
+- Modify: `ml/src/pose_estimation/rtmlib_extractor.py`
 
 This is the core change. Replace `BodyWithFeet` → `Body` (RTMO), remove HALPE26 intermediate format, remove all foot keypoint handling.
 
@@ -297,7 +297,7 @@ Expected: May fail due to foot_keypoints assertions in tests (fixed in Task 7).
 - [ ] **Step 7: Commit**
 
 ```bash
-git add ml/skating_ml/pose_estimation/rtmlib_extractor.py
+git add ml/src/pose_estimation/rtmlib_extractor.py
 git commit -m "feat(pose): switch from RTMPose/BodyWithFeet to RTMO/Body (COCO 17kp)"
 ```
 
@@ -306,11 +306,11 @@ git commit -m "feat(pose): switch from RTMPose/BodyWithFeet to RTMO/Body (COCO 1
 ### Task 4: Remove foot keypoints from Tracklet and TrackletMerger
 
 **Files:**
-- Modify: `ml/skating_ml/tracking/tracklet_merger.py`
+- Modify: `ml/src/tracking/tracklet_merger.py`
 
 - [ ] **Step 1: Remove `foot_keypoints` from Tracklet dataclass**
 
-In `ml/skating_ml/tracking/tracklet_merger.py`, remove line 31:
+In `ml/src/tracking/tracklet_merger.py`, remove line 31:
 ```python
 # DELETE:
     foot_keypoints: dict[int, np.ndarray] = field(default_factory=dict)
@@ -361,7 +361,7 @@ Replace line 178:
 - [ ] **Step 4: Commit**
 
 ```bash
-git add ml/skating_ml/tracking/tracklet_merger.py
+git add ml/src/tracking/tracklet_merger.py
 git commit -m "refactor(tracking): remove foot_keypoints from Tracklet"
 ```
 
@@ -370,12 +370,12 @@ git commit -m "refactor(tracking): remove foot_keypoints from Tracklet"
 ### Task 5: Remove foot keypoints from visualization
 
 **Files:**
-- Modify: `ml/skating_ml/visualization/skeleton/drawer.py`
-- Modify: `ml/skating_ml/visualization/pipeline.py`
+- Modify: `ml/src/visualization/skeleton/drawer.py`
+- Modify: `ml/src/visualization/pipeline.py`
 
 - [ ] **Step 1: Remove `foot_keypoints` parameter from `draw_skeleton`**
 
-In `ml/skating_ml/visualization/skeleton/drawer.py`, line 54, remove the `foot_keypoints` parameter from the function signature.
+In `ml/src/visualization/skeleton/drawer.py`, line 54, remove the `foot_keypoints` parameter from the function signature.
 
 - [ ] **Step 2: Remove foot keypoint drawing logic**
 
@@ -387,7 +387,7 @@ Delete the `_draw_foot_keypoints` function (lines 415-460+) and the foot index c
 
 - [ ] **Step 4: Remove `foot_kps` from VizPipeline**
 
-In `ml/skating_ml/visualization/pipeline.py`:
+In `ml/src/visualization/pipeline.py`:
 - Remove `foot_kps` field from `VizPipeline` dataclass (line 52)
 - Remove `foot_kps` from `RenderState` dataclass (line 269)
 - Remove all `foot_kp` / `raw_foot_kps` logic in `prepare()` and `render_frame()` methods (lines 353-386, 431)
@@ -395,7 +395,7 @@ In `ml/skating_ml/visualization/pipeline.py`:
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/visualization/
+git add ml/src/visualization/
 git commit -m "refactor(viz): remove foot keypoints from skeleton drawing and viz pipeline"
 ```
 
@@ -404,16 +404,16 @@ git commit -m "refactor(viz): remove foot keypoints from skeleton drawing and vi
 ### Task 6: Clean up web_helpers.py
 
 **Files:**
-- Modify: `ml/skating_ml/web_helpers.py`
+- Modify: `ml/src/web_helpers.py`
 
 - [ ] **Step 1: Remove `foot_kps` reference**
 
-In `ml/skating_ml/web_helpers.py`, line 309, remove the `foot_kps=prepared.foot_kps` argument. Search for any other `foot_kps` or `foot_keypoints` references in the file and remove them.
+In `ml/src/web_helpers.py`, line 309, remove the `foot_kps=prepared.foot_kps` argument. Search for any other `foot_kps` or `foot_keypoints` references in the file and remove them.
 
 - [ ] **Step 2: Commit**
 
 ```bash
-git add ml/skating_ml/web_helpers.py
+git add ml/src/web_helpers.py
 git commit -m "refactor(web): remove foot_keypoints from detect endpoint"
 ```
 
@@ -422,18 +422,18 @@ git commit -m "refactor(web): remove foot_keypoints from detect endpoint"
 ### Task 7: Delete `halpe26.py` and clean up dead imports
 
 **Files:**
-- Delete: `ml/skating_ml/pose_estimation/halpe26.py`
-- Modify: `ml/skating_ml/pose_estimation/__init__.py`
+- Delete: `ml/src/pose_estimation/halpe26.py`
+- Modify: `ml/src/pose_estimation/__init__.py`
 
 - [ ] **Step 1: Delete halpe26.py**
 
 ```bash
-git rm ml/skating_ml/pose_estimation/halpe26.py
+git rm ml/src/pose_estimation/halpe26.py
 ```
 
 - [ ] **Step 2: Update `__init__.py` docstring**
 
-In `ml/skating_ml/pose_estimation/__init__.py`, update the module docstring:
+In `ml/src/pose_estimation/__init__.py`, update the module docstring:
 ```python
 """Pose estimation module for figure skating analysis.
 
@@ -447,7 +447,7 @@ Architecture:
 
 - [ ] **Step 3: Remove geometry.py foot angle functions**
 
-In `ml/skating_ml/utils/geometry.py`, remove the foot angle functions (around lines 233-370):
+In `ml/src/utils/geometry.py`, remove the foot angle functions (around lines 233-370):
 - `compute_foot_angles` function
 - `compute_foot_angle_single` function
 - The comment block `# Foot angle functions for blade edge detection (HALPE26 foot keypoints)`
@@ -457,7 +457,7 @@ Keep all other geometry functions (angles, distances, etc.).
 - [ ] **Step 4: Commit**
 
 ```bash
-git add ml/skating_ml/pose_estimation/ ml/skating_ml/utils/geometry.py
+git add ml/src/pose_estimation/ ml/src/utils/geometry.py
 git commit -m "refactor(pose): delete halpe26.py, remove foot angle functions"
 ```
 
@@ -466,13 +466,13 @@ git commit -m "refactor(pose): delete halpe26.py, remove foot angle functions"
 ### Task 8: Update docstrings across pipeline, CLI, and ML docs
 
 **Files:**
-- Modify: `ml/skating_ml/pipeline.py`
-- Modify: `ml/skating_ml/cli.py`
+- Modify: `ml/src/pipeline.py`
+- Modify: `ml/src/cli.py`
 - Modify: `ml/CLAUDE.md`
 
 - [ ] **Step 1: Update pipeline.py docstrings**
 
-In `ml/skating_ml/pipeline.py`:
+In `ml/src/pipeline.py`:
 - Line 5: Change `RTMPoseExtractor (rtmlib BodyWithFeet)` → `RTMPoseExtractor (rtmlib RTMO Body)`
 - Line 9: Change `RTMPoseExtractor.extract_video_tracked()` stays the same
 - Line 44: Change `17 keypoints, normalized [0,1], rtmlib backend` stays the same
@@ -480,7 +480,7 @@ In `ml/skating_ml/pipeline.py`:
 
 - [ ] **Step 2: Update cli.py docstrings**
 
-In `ml/skating_ml/cli.py`:
+In `ml/src/cli.py`:
 - Line 6: Change `RTMPoseExtractor (rtmlib BodyWithFeet)` → `RTMPoseExtractor (rtmlib RTMO Body)`
 - Line 413: Change `RTMPose (rtmlib, HALPE26 26kp)` → `RTMO (rtmlib, COCO 17kp)`
 
@@ -495,7 +495,7 @@ In `ml/CLAUDE.md`:
 - [ ] **Step 4: Commit**
 
 ```bash
-git add ml/skating_ml/pipeline.py ml/skating_ml/cli.py ml/CLAUDE.md
+git add ml/src/pipeline.py ml/src/cli.py ml/CLAUDE.md
 git commit -m "docs: update docstrings for RTMO migration"
 ```
 
@@ -563,14 +563,14 @@ git commit -m "test: update tests for RTMO migration, remove foot keypoints"
 
 - [ ] **Step 1: Run ruff lint**
 
-Run: `cd /home/michael/Github/skating-biomechanics-ml/.claude/worktrees/dataset-unification && uv run ruff check ml/skating_ml/ 2>&1`
+Run: `cd /home/michael/Github/skating-biomechanics-ml/.claude/worktrees/dataset-unification && uv run ruff check ml/src/ 2>&1`
 Expected: No errors.
 
 - [ ] **Step 2: Fix any lint errors if found**
 
 - [ ] **Step 3: Run basedpyright**
 
-Run: `cd /home/michael/Github/skating-biomechanics-ml/.claude/worktrees/dataset-unification && uv run basedpyright ml/skating_ml/ --level error 2>&1 | tail -20`
+Run: `cd /home/michael/Github/skating-biomechanics-ml/.claude/worktrees/dataset-unification && uv run basedpyright ml/src/ --level error 2>&1 | tail -20`
 Expected: No errors.
 
 - [ ] **Step 4: Commit any lint/type fixes**
@@ -586,17 +586,17 @@ git commit -m "fix(lint): address lint and type errors from RTMO migration"
 
 | File | Action | What changes |
 |------|--------|-------------|
-| `ml/skating_ml/pose_estimation/rtmlib_extractor.py` | **Rewrite** | BodyWithFeet → Body (RTMO), HALPE26 → COCO 17, remove foot kp |
-| `ml/skating_ml/pose_estimation/halpe26.py` | **Delete** | Entire file (HALPE26Key, halpe26_to_h36m, extract_foot_keypoints) |
-| `ml/skating_ml/pose_estimation/h36m.py` | **Modify** | Make `coco_to_h36m` public |
-| `ml/skating_ml/pose_estimation/__init__.py` | **Modify** | Update docstring |
-| `ml/skating_ml/types.py` | **Modify** | Remove `foot_keypoints` from TrackedExtraction |
-| `ml/skating_ml/tracking/tracklet_merger.py` | **Modify** | Remove foot_keypoints from Tracklet |
-| `ml/skating_ml/visualization/skeleton/drawer.py` | **Modify** | Remove foot kp drawing |
-| `ml/skating_ml/visualization/pipeline.py` | **Modify** | Remove foot_kps |
-| `ml/skating_ml/web_helpers.py` | **Modify** | Remove foot_kps |
-| `ml/skating_ml/utils/geometry.py` | **Modify** | Remove foot angle functions |
-| `ml/skating_ml/pipeline.py` | **Modify** | Update docstrings |
-| `ml/skating_ml/cli.py` | **Modify** | Update docstrings |
+| `ml/src/pose_estimation/rtmlib_extractor.py` | **Rewrite** | BodyWithFeet → Body (RTMO), HALPE26 → COCO 17, remove foot kp |
+| `ml/src/pose_estimation/halpe26.py` | **Delete** | Entire file (HALPE26Key, halpe26_to_h36m, extract_foot_keypoints) |
+| `ml/src/pose_estimation/h36m.py` | **Modify** | Make `coco_to_h36m` public |
+| `ml/src/pose_estimation/__init__.py` | **Modify** | Update docstring |
+| `ml/src/types.py` | **Modify** | Remove `foot_keypoints` from TrackedExtraction |
+| `ml/src/tracking/tracklet_merger.py` | **Modify** | Remove foot_keypoints from Tracklet |
+| `ml/src/visualization/skeleton/drawer.py` | **Modify** | Remove foot kp drawing |
+| `ml/src/visualization/pipeline.py` | **Modify** | Remove foot_kps |
+| `ml/src/web_helpers.py` | **Modify** | Remove foot_kps |
+| `ml/src/utils/geometry.py` | **Modify** | Remove foot angle functions |
+| `ml/src/pipeline.py` | **Modify** | Update docstrings |
+| `ml/src/cli.py` | **Modify** | Update docstrings |
 | `ml/CLAUDE.md` | **Modify** | Update docs |
 | `ml/tests/*` | **Modify/Delete** | Update tests, delete test_coco_builder.py |

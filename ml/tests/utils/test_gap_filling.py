@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.utils.gap_filling import GapFiller
+from src.utils.gap_filling import GapFiller
 
 
 class TestFillLinear:

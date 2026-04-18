@@ -18,14 +18,14 @@ def onnx_model_path():
 
 
 def test_onnx_extractor_init(onnx_model_path):
-    from skating_ml.pose_3d.onnx_extractor import ONNXPoseExtractor
+    from src.pose_3d.onnx_extractor import ONNXPoseExtractor
 
     ext = ONNXPoseExtractor(onnx_model_path, device="cpu")
     assert ext.temporal_window == 81
 
 
 def test_onnx_extractor_single_window(onnx_model_path):
-    from skating_ml.pose_3d.onnx_extractor import ONNXPoseExtractor
+    from src.pose_3d.onnx_extractor import ONNXPoseExtractor
 
     ext = ONNXPoseExtractor(onnx_model_path, device="cpu")
     # Input: (81, 17, 2) normalized 2D poses
@@ -38,7 +38,7 @@ def test_onnx_extractor_single_window(onnx_model_path):
 
 
 def test_onnx_extractor_long_sequence(onnx_model_path):
-    from skating_ml.pose_3d.onnx_extractor import ONNXPoseExtractor
+    from src.pose_3d.onnx_extractor import ONNXPoseExtractor
 
     ext = ONNXPoseExtractor(onnx_model_path, device="cpu")
     # Input longer than 81 frames — should be windowed
@@ -48,7 +48,7 @@ def test_onnx_extractor_long_sequence(onnx_model_path):
 
 
 def test_onnx_extractor_short_sequence(onnx_model_path):
-    from skating_ml.pose_3d.onnx_extractor import ONNXPoseExtractor
+    from src.pose_3d.onnx_extractor import ONNXPoseExtractor
 
     ext = ONNXPoseExtractor(onnx_model_path, device="cpu")
     # Input shorter than 81 frames — should be padded

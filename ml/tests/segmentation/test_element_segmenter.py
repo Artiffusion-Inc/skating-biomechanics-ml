@@ -6,9 +6,9 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from skating_ml.analysis.element_segmenter import ElementSegmenter
-from skating_ml.types import H36Key, NormalizedPose, SegmentationResult
-from skating_ml.utils.video import VideoMeta
+from src.analysis.element_segmenter import ElementSegmenter
+from src.types import H36Key, NormalizedPose, SegmentationResult
+from src.utils.video import VideoMeta
 
 
 @pytest.fixture

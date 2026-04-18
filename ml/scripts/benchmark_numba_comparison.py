@@ -7,7 +7,7 @@ import numpy as np
 
 def benchmark_angle_before_after():
     """Compare pure NumPy vs Numba JIT for angle calculations."""
-    from skating_ml.utils.geometry import angle_3pt, angle_3pt_batch
+    from src.utils.geometry import angle_3pt, angle_3pt_batch
 
     print("=" * 60)
     print("ANGLE CALCULATION (1M operations)")
@@ -51,7 +51,7 @@ def benchmark_angle_before_after():
 
 def benchmark_smoothing_before_after():
     """Compare pure Python vs Numba JIT for smoothing."""
-    from skating_ml.utils.smoothing import OneEuroFilter, smooth_trajectory_2d_numba
+    from src.utils.smoothing import OneEuroFilter, smooth_trajectory_2d_numba
 
     print("\n" + "=" * 60)
     print("SMOOTHING (100K frames, 2D trajectory)")
@@ -82,7 +82,9 @@ def benchmark_smoothing_before_after():
 
     start = time.perf_counter()
     for _ in range(runs):
-        _ = smooth_trajectory_2d_numba(trajectory, fps=30.0, min_cutoff=0.004, beta=0.7, d_cutoff=1.0)
+        _ = smooth_trajectory_2d_numba(
+            trajectory, fps=30.0, min_cutoff=0.004, beta=0.7, d_cutoff=1.0
+        )
     time_after = time.perf_counter() - start
     frames_after = 1000 * runs
     print(f"  Time: {time_after:.3f}s")
@@ -96,9 +98,9 @@ def benchmark_smoothing_before_after():
 
 def benchmark_metrics_before_after():
     """Compare loop vs Numba JIT for metrics."""
-    from skating_ml.analysis.metrics import _compute_knee_angle_series_numba
-    from skating_ml.types import H36Key
-    from skating_ml.utils.geometry import angle_3pt
+    from src.analysis.metrics import _compute_knee_angle_series_numba
+    from src.types import H36Key
+    from src.utils.geometry import angle_3pt
 
     print("\n" + "=" * 60)
     print("KNEE ANGLE SERIES (100K calculations)")
@@ -125,11 +127,15 @@ def benchmark_metrics_before_after():
     # AFTER: Numba JIT batch
     print("\n🟢 AFTER: Numba JIT _compute_knee_angle_series_numba")
     # Warmup
-    _ = _compute_knee_angle_series_numba(poses, int(H36Key.LHIP), int(H36Key.LKNEE), int(H36Key.LFOOT))
+    _ = _compute_knee_angle_series_numba(
+        poses, int(H36Key.LHIP), int(H36Key.LKNEE), int(H36Key.LFOOT)
+    )
 
     start = time.perf_counter()
     for _ in range(runs):
-        _ = _compute_knee_angle_series_numba(poses, int(H36Key.LHIP), int(H36Key.LKNEE), int(H36Key.LFOOT))
+        _ = _compute_knee_angle_series_numba(
+            poses, int(H36Key.LHIP), int(H36Key.LKNEE), int(H36Key.LFOOT)
+        )
     time_after = time.perf_counter() - start
     ops_after = 100 * runs
     print(f"  Time: {time_after:.3f}s")

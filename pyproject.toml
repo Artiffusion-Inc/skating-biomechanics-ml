@@ -107,7 +107,7 @@ max-returns = 8
 max-statements = 80
 
 [tool.ruff.lint.isort]
-known-first-party = ["backend", "skating_ml"]
+known-first-party = ["backend", "src"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*.py" = ["ARG", "PLR2004", "ERA", "SIM117", "T20", "S101"]
@@ -115,9 +115,9 @@ known-first-party = ["backend", "skating_ml"]
 "scripts/visualize_with_skeleton.py" = ["ARG001"]
 "ml/scripts/**/*.py" = ["T20", "S602"]
 "experiments/**/*.py" = ["T20", "S", "ERA"]
-"ml/skating_ml/analysis/rules/*.py" = []
-"ml/skating_ml/visualization/**/*.py" = []
-"ml/skating_ml/cli.py" = []
+"ml/src/analysis/rules/*.py" = []
+"ml/src/visualization/**/*.py" = []
+"ml/src/cli.py" = []
 "ml/**/*.py" = ["ARG001", "F841"]  # unused args in callback-heavy code
 "backend/**/*.py" = ["ARG001", "F841"]
 
@@ -147,7 +147,7 @@ exclude = [
 
 [tool.vulture]
 min_confidence = 80
-paths = ["backend/app", "ml/skating_ml", "backend/tests", "ml/tests"]
+paths = ["backend/app", "ml/src", "backend/tests", "ml/tests"]
 exclude = ["__init__.py"]
 make_whitelist = false
 
@@ -174,7 +174,7 @@ markers = [
 ]
 
 [tool.coverage.run]
-source = ["backend/app", "ml/skating_ml"]
+source = ["backend/app", "ml/src"]
 omit = [
     "*/tests/*",
     "*/__init__.py",

@@ -11,7 +11,7 @@ class TestSegmentAnything:
     @staticmethod
     def _make_estimator(mock_ve_session, mock_pd_session):
         """Create SegmentAnything bypassing __init__."""
-        from skating_ml.extras.segment_anything import SegmentAnything
+        from src.extras.segment_anything import SegmentAnything
 
         est = SegmentAnything.__new__(SegmentAnything)
         est._ve_session = mock_ve_session
@@ -51,7 +51,7 @@ class TestSegmentAnything:
 
     def test_segment_with_no_point_returns_empty(self):
         """segment() with point=None returns None (no prompt)."""
-        from skating_ml.extras.segment_anything import SegmentAnything
+        from src.extras.segment_anything import SegmentAnything
 
         est = SegmentAnything.__new__(SegmentAnything)
         result = est.segment(np.zeros((480, 640, 3), dtype=np.uint8), point=None)
@@ -87,8 +87,8 @@ class TestSegmentationLayer:
 
     def test_render_adds_mask_overlay(self):
         """SegmentationMaskLayer renders semi-transparent mask."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.segmentation_layer import SegmentationMaskLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.segmentation_layer import SegmentationMaskLayer
 
         layer = SegmentationMaskLayer(opacity=0.3)
         frame = np.zeros((480, 640, 3), dtype=np.uint8)
@@ -105,8 +105,8 @@ class TestSegmentationLayer:
 
     def test_render_no_mask_returns_unchanged(self):
         """No-op when no seg_mask in context."""
-        from skating_ml.visualization.layers.base import LayerContext
-        from skating_ml.visualization.layers.segmentation_layer import SegmentationMaskLayer
+        from src.visualization.layers.base import LayerContext
+        from src.visualization.layers.segmentation_layer import SegmentationMaskLayer
 
         layer = SegmentationMaskLayer()
         frame = np.ones((480, 640, 3), dtype=np.uint8) * 128

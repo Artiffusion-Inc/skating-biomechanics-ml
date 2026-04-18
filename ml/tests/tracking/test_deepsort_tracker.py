@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skating_ml.types import H36Key
+from src.types import H36Key
 
 # All tests skip because deep-sort-realtime is not installed
 deepsort_available = pytest.mark.skipif(
@@ -40,7 +40,7 @@ def _make_person_pose(cx: float, cy: float, scale: float = 0.1) -> np.ndarray:
 class TestDeepSORTBasic:
     def test_first_frame_assigns_ids(self):
         """Первый кадр — все получают ID."""
-        from skating_ml.tracking.deepsort_tracker import DeepSORTTracker
+        from src.tracking.deepsort_tracker import DeepSORTTracker
 
         tracker = DeepSORTTracker(embedder_gpu=False)
         kps = np.array([_make_person_pose(0.3, 0.5), _make_person_pose(0.7, 0.5)])
@@ -53,7 +53,7 @@ class TestDeepSORTBasic:
 
     def test_stable_ids_across_frames(self):
         """Тот же человек на нескольких кадрах получает тот же ID."""
-        from skating_ml.tracking.deepsort_tracker import DeepSORTTracker
+        from src.tracking.deepsort_tracker import DeepSORTTracker
 
         tracker = DeepSORTTracker(embedder_gpu=False)
         person_a = _make_person_pose(0.3, 0.5)
@@ -70,7 +70,7 @@ class TestDeepSORTBasic:
 
     def test_no_frame_graceful(self):
         """frame=None (без изображения) не крашит."""
-        from skating_ml.tracking.deepsort_tracker import DeepSORTTracker
+        from src.tracking.deepsort_tracker import DeepSORTTracker
 
         tracker = DeepSORTTracker(embedder_gpu=False)
         kps = np.array([_make_person_pose(0.3, 0.5)])
@@ -82,7 +82,7 @@ class TestDeepSORTBasic:
 
     def test_import_error_message(self):
         """Без пакета — понятное ImportError."""
-        from skating_ml.tracking.deepsort_tracker import DeepSORTTracker
+        from src.tracking.deepsort_tracker import DeepSORTTracker
 
         tracker = DeepSORTTracker(embedder_gpu=False)
         with pytest.raises(ImportError, match="deep-sort-realtime"):
@@ -93,7 +93,7 @@ class TestDeepSORTBasic:
 
     def test_reset_clears_state(self):
         """reset() сбрасывает всё состояние."""
-        from skating_ml.tracking.deepsort_tracker import DeepSORTTracker
+        from src.tracking.deepsort_tracker import DeepSORTTracker
 
         tracker = DeepSORTTracker(embedder_gpu=False)
         kps = np.array([_make_person_pose(0.3, 0.5)])

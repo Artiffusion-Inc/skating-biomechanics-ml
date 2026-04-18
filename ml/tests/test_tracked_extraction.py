@@ -11,7 +11,7 @@ from pathlib import Path
 
 import numpy as np
 
-from skating_ml.types import TrackedExtraction, VideoMeta
+from src.types import TrackedExtraction, VideoMeta
 
 
 def _make_video_meta(num_frames: int = 100) -> VideoMeta:

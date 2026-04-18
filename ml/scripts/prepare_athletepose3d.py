@@ -22,13 +22,13 @@ from tqdm import tqdm
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from skating_ml.datasets.coco_builder import (
+from src.datasets.coco_builder import (
     build_coco_json,
     format_keypoints,
     merge_coco_foot_keypoints,
     save_coco_json,
 )
-from skating_ml.datasets.projector import project_foot_frame, validate_foot_projection
+from src.datasets.projector import project_foot_frame, validate_foot_projection
 
 DATA_ROOT = Path("data/datasets/athletepose3d")
 OUTPUT_DIR = DATA_ROOT / "coco_annotations"

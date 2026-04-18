@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from skating_ml.pose_3d.corrective_pipeline import CorrectiveLens
+from src.pose_3d.corrective_pipeline import CorrectiveLens
 
 
 def make_2d_poses(n=10):

@@ -19,7 +19,7 @@
 ## File Structure
 
 ```
-ml/skating_ml/
+ml/src/
 ├── optimization/
 │   ├── __init__.py
 │   ├── tensorrt_converter.py        # CREATE: ONNX → TensorRT conversion
@@ -47,16 +47,16 @@ ml/skating_ml/
 
 **Files:**
 
-- Create: `ml/skating_ml/optimization/tensorrt_converter.py`
-- Test: `ml/skating_ml/tests/optimization/test_tensorrt_converter.py`
+- Create: `ml/src/optimization/tensorrt_converter.py`
+- Test: `ml/src/tests/optimization/test_tensorrt_converter.py`
 
 - [ ] **Step 1: Add failing test for TensorRT conversion**
 
 ```python
-# ml/skating_ml/tests/optimization/test_tensorrt_converter.py
+# ml/src/tests/optimization/test_tensorrt_converter.py
 import pytest
 from pathlib import Path
-from skating_ml.optimization.tensorrt_converter import TensorRTConverter
+from src.optimization.tensorrt_converter import TensorRTConverter
 
 @pytest.mark.tensorrt
 def test_tensorrt_converter_init():
@@ -119,7 +119,7 @@ Expected: FAIL with "TensorRTConverter not defined"
 - [ ] **Step 3: Implement TensorRTConverter**
 
 ```python
-# ml/skating_ml/optimization/tensorrt_converter.py
+# ml/src/optimization/tensorrt_converter.py
 from __future__ import annotations
 import logging
 from pathlib import Path
@@ -324,7 +324,7 @@ Expected: PASS (if TensorRT installed) or SKIP (if not)
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/optimization/tensorrt_converter.py ml/tests/optimization/test_tensorrt_converter.py
+git add ml/src/optimization/tensorrt_converter.py ml/tests/optimization/test_tensorrt_converter.py
 git commit -m "feat(optimization): add TensorRT converter
 
 - Convert ONNX models to TensorRT engines
@@ -339,18 +339,18 @@ git commit -m "feat(optimization): add TensorRT converter
 
 **Files:**
 
-- Create: `ml/skating_ml/optimization/quantization.py`
-- Create: `ml/skating_ml/optimization/validation.py`
-- Test: `ml/skating_ml/tests/optimization/test_quantization.py`
+- Create: `ml/src/optimization/quantization.py`
+- Create: `ml/src/optimization/validation.py`
+- Test: `ml/src/tests/optimization/test_quantization.py`
 
 - [ ] **Step 1: Add failing test for quantization**
 
 ```python
-# ml/skating_ml/tests/optimization/test_quantization.py
+# ml/src/tests/optimization/test_quantization.py
 import pytest
 import numpy as np
 from pathlib import Path
-from skating_ml.optimization.quantization import quantize_onnx_model, QuantizationMode
+from src.optimization.quantization import quantize_onnx_model, QuantizationMode
 
 @pytest.mark.quantization
 def test_fp16_quantization():
@@ -390,7 +390,7 @@ def test_int8_quantization():
 @pytest.mark.quantization
 def test_quantization_accuracy():
     """Test that quantization doesn't significantly hurt accuracy."""
-    from skating_ml.optimization.validation import compare_models
+    from src.optimization.validation import compare_models
 
     fp32_model = Path("data/models/rtmo-m.onnx")
     fp16_model = Path("data/models/rtmo-m-fp16.onnx")
@@ -419,7 +419,7 @@ Expected: FAIL with functions not defined
 - [ ] **Step 3: Implement quantization utilities**
 
 ```python
-# ml/skating_ml/optimization/quantization.py
+# ml/src/optimization/quantization.py
 from __future__ import annotations
 import logging
 from enum import Enum
@@ -530,7 +530,7 @@ def _quantize_int8(
 - [ ] **Step 4: Implement validation utilities**
 
 ```python
-# ml/skating_ml/optimization/validation.py
+# ml/src/optimization/validation.py
 from __future__ import annotations
 import logging
 from pathlib import Path
@@ -655,7 +655,7 @@ Expected: PASS
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/optimization/quantization.py ml/skating_ml/optimization/validation.py ml/tests/optimization/test_quantization.py
+git add ml/src/optimization/quantization.py ml/src/optimization/validation.py ml/tests/optimization/test_quantization.py
 git commit -m "feat(optimization): add model quantization and validation
 
 - Support FP16 and INT8 quantization
@@ -670,17 +670,17 @@ git commit -m "feat(optimization): add model quantization and validation
 
 **Files:**
 
-- Create: `ml/skating_ml/vastai/distributed.py`
-- Modify: `ml/skating_ml/vastai/client.py`
-- Test: `ml/skating_ml/tests/vastai/test_distributed.py`
+- Create: `ml/src/vastai/distributed.py`
+- Modify: `ml/src/vastai/client.py`
+- Test: `ml/src/tests/vastai/test_distributed.py`
 
 - [ ] **Step 1: Add failing test for distributed processing**
 
 ```python
-# ml/skating_ml/tests/vastai/test_distributed.py
+# ml/src/tests/vastai/test_distributed.py
 import pytest
 from pathlib import Path
-from skating_ml.vastai.distributed import DistributedProcessor
+from src.vastai.distributed import DistributedProcessor
 
 @pytest.mark.vastai
 @pytest.mark.skipif(not Path("backend/.env").exists(),
@@ -734,7 +734,7 @@ Expected: FAIL with "DistributedProcessor not defined"
 - [ ] **Step 3: Implement DistributedProcessor**
 
 ```python
-# ml/skating_ml/vastai/distributed.py
+# ml/src/vastai/distributed.py
 from __future__ import annotations
 import logging
 from dataclasses import dataclass
@@ -1042,7 +1042,7 @@ Expected: PASS (with Vast.ai credentials)
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/vastai/distributed.py ml/skating_ml/vastai/client.py ml/gpu_server/server.py ml/tests/vastai/test_distributed.py
+git add ml/src/vastai/distributed.py ml/src/vastai/client.py ml/gpu_server/server.py ml/tests/vastai/test_distributed.py
 git commit -m "feat(vastai): add distributed processing across workers
 
 - Split videos into chunks for parallel processing
@@ -1066,8 +1066,8 @@ git commit -m "feat(vastai): add distributed processing across workers
 import pytest
 import time
 from pathlib import Path
-from skating_ml.optimization.tensorrt_converter import TensorRTConverter
-from skating_ml.optimization.quantization import quantize_onnx_model, QuantizationMode
+from src.optimization.tensorrt_converter import TensorRTConverter
+from src.optimization.quantization import quantize_onnx_model, QuantizationMode
 
 @pytest.mark.benchmark
 @pytest.mark.tensorrt
@@ -1217,11 +1217,11 @@ Total: 10 new tests, 100% passing
 
 ## Code Changes
 
-- `ml/skating_ml/optimization/`: NEW directory
+- `ml/src/optimization/`: NEW directory
   - `tensorrt_converter.py`: ONNX → TensorRT
   - `quantization.py`: FP16/INT8 quantization
   - `validation.py`: Accuracy validation
-- `ml/skating_ml/vastai/distributed.py`: Multi-worker orchestration
+- `ml/src/vastai/distributed.py`: Multi-worker orchestration
 - `ml/gpu_server/server.py`: Chunk processing support
 
 ## Next Steps

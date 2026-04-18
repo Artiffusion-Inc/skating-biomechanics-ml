@@ -1,6 +1,6 @@
 """Tests for RdYlGn confidence coloring."""
 
-from skating_ml.visualization.skeleton.joints import get_confidence_color_rdygn
+from src.visualization.skeleton.joints import get_confidence_color_rdygn
 
 
 class TestRdYlGnConfidenceColor:

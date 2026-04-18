@@ -2,14 +2,14 @@
 
 import numpy as np
 
-from skating_ml.tracking.skeletal_identity import (
+from src.tracking.skeletal_identity import (
     NUM_BONES,
     compute_2d_skeletal_ratios,
     compute_bone_lengths_3d,
     compute_identity_profile,
     identity_similarity,
 )
-from skating_ml.types import H36Key
+from src.types import H36Key
 
 
 def _make_3d_pose(bone_scale: float = 1.0) -> np.ndarray:

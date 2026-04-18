@@ -1,14 +1,13 @@
 """Tests for Numba-jitted metrics functions."""
 
 import numpy as np
-import pytest
 
-from skating_ml.analysis.metrics import (
+from src.analysis.metrics import (
     _angle_3pt_rad_numba,
     _compute_knee_angle_series_numba,
     _compute_trunk_lean_series_numba,
 )
-from skating_ml.types import H36Key
+from src.types import H36Key
 
 
 class TestMetricsNumba:

@@ -6,7 +6,7 @@ from unittest import mock
 
 import numpy as np
 
-from skating_ml.visualization.pipeline import VizPipeline
+from src.visualization.pipeline import VizPipeline
 
 
 def _fake_meta(w=640, h=480, fps=30, num_frames=10):
@@ -136,17 +136,15 @@ def _fake_extraction(n=10):
 class TestPreparePoses:
     def test_returns_prepared_poses(self):
         """prepare_poses returns PreparedPoses with correct shapes."""
-        from skating_ml.visualization.pipeline import PreparedPoses, prepare_poses
+        from src.visualization.pipeline import PreparedPoses, prepare_poses
 
         with (
+            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
+            mock.patch("src.visualization.pipeline.PoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
+            mock.patch("src.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
             mock.patch(
-                "skating_ml.visualization.pipeline.get_video_meta", return_value=_fake_meta()
-            ),
-            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
-            mock.patch("skating_ml.visualization.pipeline.CorrectiveLens") as MockLens,
-            mock.patch("skating_ml.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
-            mock.patch(
-                "skating_ml.visualization.pipeline._resolve_model_3d",
+                "src.visualization.pipeline._resolve_model_3d",
                 return_value=Path("model.onnx"),
             ),
         ):
@@ -171,17 +169,15 @@ class TestPreparePoses:
 
     def test_no_corrective_lens_when_disabled(self):
         """When use_corrective_lens=False, CorrectiveLens is not called."""
-        from skating_ml.visualization.pipeline import prepare_poses
+        from src.visualization.pipeline import prepare_poses
 
         with (
+            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
+            mock.patch("src.visualization.pipeline.PoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
+            mock.patch("src.visualization.pipeline.ONNXPoseExtractor") as MockONNX,
             mock.patch(
-                "skating_ml.visualization.pipeline.get_video_meta", return_value=_fake_meta()
-            ),
-            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
-            mock.patch("skating_ml.visualization.pipeline.CorrectiveLens") as MockLens,
-            mock.patch("skating_ml.visualization.pipeline.ONNXPoseExtractor") as MockONNX,
-            mock.patch(
-                "skating_ml.visualization.pipeline._resolve_model_3d",
+                "src.visualization.pipeline._resolve_model_3d",
                 return_value=Path("model.onnx"),
             ),
         ):
@@ -197,14 +193,12 @@ class TestPreparePoses:
 
     def test_no_3d_when_model_missing(self):
         """When model not found, poses_3d is None but poses_norm is still valid."""
-        from skating_ml.visualization.pipeline import prepare_poses
+        from src.visualization.pipeline import prepare_poses
 
         with (
-            mock.patch(
-                "skating_ml.visualization.pipeline.get_video_meta", return_value=_fake_meta()
-            ),
-            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
-            mock.patch("skating_ml.visualization.pipeline._resolve_model_3d", return_value=None),
+            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
+            mock.patch("src.visualization.pipeline.PoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline._resolve_model_3d", return_value=None),
         ):
             MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
 
@@ -215,7 +209,7 @@ class TestPreparePoses:
 
     def test_gap_filling_when_frame_skip(self):
         """NaN frames from frame_skip are filled."""
-        from skating_ml.visualization.pipeline import prepare_poses
+        from src.visualization.pipeline import prepare_poses
 
         extraction = _fake_extraction(20)
         raw = np.full((20, 17, 3), np.nan, dtype=np.float32)
@@ -226,14 +220,14 @@ class TestPreparePoses:
 
         with (
             mock.patch(
-                "skating_ml.visualization.pipeline.get_video_meta",
+                "src.visualization.pipeline.get_video_meta",
                 return_value=_fake_meta(num_frames=20),
             ),
-            mock.patch("skating_ml.visualization.pipeline.PoseExtractor") as MockExt,
-            mock.patch("skating_ml.visualization.pipeline.CorrectiveLens") as MockLens,
-            mock.patch("skating_ml.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
+            mock.patch("src.visualization.pipeline.PoseExtractor") as MockExt,
+            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
+            mock.patch("src.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
             mock.patch(
-                "skating_ml.visualization.pipeline._resolve_model_3d",
+                "src.visualization.pipeline._resolve_model_3d",
                 return_value=Path("model.onnx"),
             ),
         ):
@@ -254,7 +248,7 @@ class TestPreparePoses:
 
 class TestResolveModel3d:
     def test_explicit_path_returned(self, tmp_path):
-        from skating_ml.visualization.pipeline import _resolve_model_3d
+        from src.visualization.pipeline import _resolve_model_3d
 
         model = tmp_path / "model.onnx"
         model.touch()
@@ -262,7 +256,7 @@ class TestResolveModel3d:
         assert result == model
 
     def test_none_when_not_found(self, tmp_path):
-        from skating_ml.visualization.pipeline import _resolve_model_3d
+        from src.visualization.pipeline import _resolve_model_3d
 
         result = _resolve_model_3d(tmp_path / "nonexistent.onnx")
         assert result is None

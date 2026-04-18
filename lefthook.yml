@@ -140,7 +140,7 @@ test:
 typecheck:
   commands:
     basedpyright:
-      run: uv run basedpyright --level error backend/app ml/skating_ml
+      run: uv run basedpyright --level error backend/app ml/src
     fe-typecheck:
       run: cd frontend && bunx tsc -p tsconfig.app.json
 

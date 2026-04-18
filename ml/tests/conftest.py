@@ -5,7 +5,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from skating_ml.types import H36Key
+from src.types import H36Key
 
 
 @pytest.fixture

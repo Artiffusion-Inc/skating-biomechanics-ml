@@ -41,7 +41,7 @@
 │   ├── tests/                    # Backend tests (moved from tests/backend/)
 │   └── pyproject.toml            # Backend-only deps (FastAPI, SQLAlchemy, etc.)
 ├── ml/                           # ML pipeline + worker
-│   ├── skating_ml/               # Python package "skating_ml"
+│   ├── src/               # Python package "src"
 │   │   ├── __init__.py
 │   │   ├── cli.py                # CLI entry point (was src/cli.py)
 │   │   ├── pipeline.py           # Analysis pipeline (was src/pipeline.py)
@@ -101,23 +101,23 @@
 | `from src.storage` | `from backend.app.storage` | Backend routes |
 | `from src.task_manager` | `from backend.app.task_manager` | Backend + worker |
 | `from src.worker import MLModelFlags` | `from backend.app.schemas import MLModelFlags` | Process route |
-| `from src.types` | `from skating_ml.types` | ML code |
-| `from src.device` | `from skating_ml.device` | ML code |
-| `from src.utils.xxx` | `from skating_ml.utils.xxx` | ML code |
-| `from src.analysis.xxx` | `from skating_ml.analysis.xxx` | ML code |
-| `from src.visualization.xxx` | `from skating_ml.visualization.xxx` | ML code |
-| `from src.pose_estimation.xxx` | `from skating_ml.pose_estimation.xxx` | ML code |
-| `from src.ml.xxx` | `from skating_ml.extras.xxx` | ML code |
-| `from src.alignment.xxx` | `from skating_ml.alignment.xxx` | ML code |
-| `from src.tracking.xxx` | `from skating_ml.tracking.xxx` | ML code |
-| `from src.references.xxx` | `from skating_ml.references.xxx` | ML code |
-| `from src.datasets.xxx` | `from skating_ml.datasets.xxx` | ML code |
-| `from src.detection.xxx` | `from skating_ml.detection.xxx` | ML code |
-| `from src.pose_3d.xxx` | `from skating_ml.pose_3d.xxx` | ML code |
-| `from src.vastai.xxx` | `from skating_ml.vastai.xxx` | ML code |
-| `from src.pipeline` | `from skating_ml.pipeline` | ML code |
-| `from src.cli` | `from skating_ml.cli` | ML code |
-| `from skating_biomechanics_ml.xxx` | `from skating_ml.xxx` | Scripts |
+| `from src.types` | `from src.types` | ML code |
+| `from src.device` | `from src.device` | ML code |
+| `from src.utils.xxx` | `from src.utils.xxx` | ML code |
+| `from src.analysis.xxx` | `from src.analysis.xxx` | ML code |
+| `from src.visualization.xxx` | `from src.visualization.xxx` | ML code |
+| `from src.pose_estimation.xxx` | `from src.pose_estimation.xxx` | ML code |
+| `from src.ml.xxx` | `from src.extras.xxx` | ML code |
+| `from src.alignment.xxx` | `from src.alignment.xxx` | ML code |
+| `from src.tracking.xxx` | `from src.tracking.xxx` | ML code |
+| `from src.references.xxx` | `from src.references.xxx` | ML code |
+| `from src.datasets.xxx` | `from src.datasets.xxx` | ML code |
+| `from src.detection.xxx` | `from src.detection.xxx` | ML code |
+| `from src.pose_3d.xxx` | `from src.pose_3d.xxx` | ML code |
+| `from src.vastai.xxx` | `from src.vastai.xxx` | ML code |
+| `from src.pipeline` | `from src.pipeline` | ML code |
+| `from src.cli` | `from src.cli` | ML code |
+| `from skating_biomechanics_ml.xxx` | `from src.xxx` | Scripts |
 
 ---
 
@@ -530,7 +530,7 @@ git commit -m "feat(frontend): update upload page for async detection"
 
 ```bash
 mkdir -p backend/app backend/tests backend/alembic
-mkdir -p ml/skating_ml ml/gpu_server ml/scripts ml/tests
+mkdir -p ml/src ml/gpu_server ml/scripts ml/tests
 mkdir -p docs/research docs/plans docs/specs
 mkdir -p infra experiments
 ```
@@ -624,36 +624,36 @@ git commit -m "refactor(repo): move backend to root directory"
 
 ### Task 7: Move ML pipeline to ml/
 
-- [ ] **Step 1: Move all remaining src/ modules to ml/skating_ml/**
+- [ ] **Step 1: Move all remaining src/ modules to ml/src/**
 
 ```bash
 # Core ML modules
-git mv src/alignment ml/skating_ml/alignment
-git mv src/analysis ml/skating_ml/analysis
-git mv src/detection ml/skating_ml/detection
-git mv src/datasets ml/skating_ml/datasets
-git mv src/models ml/skating_ml/models
-git mv src/pose_estimation ml/skating_ml/pose_estimation
-git mv src/pose_3d ml/skating_ml/pose_3d
-git mv src/references ml/skating_ml/references
-git mv src/tracking ml/skating_ml/tracking
-git mv src/utils ml/skating_ml/utils
-git mv src/visualization ml/skating_ml/visualization
+git mv src/alignment ml/src/alignment
+git mv src/analysis ml/src/analysis
+git mv src/detection ml/src/detection
+git mv src/datasets ml/src/datasets
+git mv src/models ml/src/models
+git mv src/pose_estimation ml/src/pose_estimation
+git mv src/pose_3d ml/src/pose_3d
+git mv src/references ml/src/references
+git mv src/tracking ml/src/tracking
+git mv src/utils ml/src/utils
+git mv src/visualization ml/src/visualization
 
 # Root-level ML files
-git mv src/cli.py ml/skating_ml/cli.py
-git mv src/pipeline.py ml/skating_ml/pipeline.py
-git mv src/device.py ml/skating_ml/device.py
-git mv src/types.py ml/skating_ml/types.py
-git mv src/worker.py ml/skating_ml/worker.py
-git mv src/web_helpers.py ml/skating_ml/web_helpers.py
-git mv src/__init__.py ml/skating_ml/__init__.py
+git mv src/cli.py ml/src/cli.py
+git mv src/pipeline.py ml/src/pipeline.py
+git mv src/device.py ml/src/device.py
+git mv src/types.py ml/src/types.py
+git mv src/worker.py ml/src/worker.py
+git mv src/web_helpers.py ml/src/web_helpers.py
+git mv src/__init__.py ml/src/__init__.py
 
 # Rename src/ml/ (model_registry etc) to extras/
-git mv src/ml ml/skating_ml/extras
+git mv src/ml ml/src/extras
 
 # Vast.ai client
-git mv src/vastai ml/skating_ml/vastai
+git mv src/vastai ml/src/vastai
 
 # GPU server
 git mv vastai/server.py ml/gpu_server/server.py
@@ -662,35 +662,35 @@ git mv vastai/Containerfile ml/gpu_server/Containerfile
 
 - [ ] **Step 2: Update ML internal imports**
 
-All `from src.xxx` imports in ML code become `from skating_ml.xxx`:
+All `from src.xxx` imports in ML code become `from src.xxx`:
 
 ```bash
-# src.xxx → skating_ml.xxx (but NOT src.backend — those stay)
-find ml/skating_ml -name '*.py' -exec sed -i 's/from src\.\([a-z_]\)/from skating_ml.\1/g' {} +
+# src.xxx → src.xxx (but NOT src.backend — those stay)
+find ml/src -name '*.py' -exec sed -i 's/from src\.\([a-z_]\)/from src.\1/g' {} +
 
-# Handle src.ml. → skating_ml.extras. (the model_registry etc)
-find ml/skating_ml -name '*.py' -exec sed -i 's/from skating_ml\.ml\./from skating_ml.extras./g' {} +
-find ml/skating_ml -name '*.py' -exec sed -i 's/from skating_ml\.ml import/from skating_ml.extras import/g' {} +
+# Handle src.ml. → src.extras. (the model_registry etc)
+find ml/src -name '*.py' -exec sed -i 's/from src\.ml\./from src.extras./g' {} +
+find ml/src -name '*.py' -exec sed -i 's/from src\.ml import/from src.extras import/g' {} +
 
 # Fix inline imports in web_helpers.py and worker.py that reference backend
 # These need to point to backend.app instead
-find ml/skating_ml -name '*.py' -exec sed -i 's/from src\.backend\./from backend.app./g' {} +
+find ml/src -name '*.py' -exec sed -i 's/from src\.backend\./from backend.app./g' {} +
 
 # Fix config import in worker (worker imports backend config)
-find ml/skating_ml -name '*.py' -exec sed -i 's/from src\.config import/from backend.app.config import/g' {} +
+find ml/src -name '*.py' -exec sed -i 's/from src\.config import/from backend.app.config import/g' {} +
 
 # Fix task_manager import in worker
-find ml/skating_ml -name '*.py' -exec sed -i 's/from src\.task_manager import/from backend.app.task_manager import/g' {} +
+find ml/src -name '*.py' -exec sed -i 's/from src\.task_manager import/from backend.app.task_manager import/g' {} +
 
 # Fix skating_biomechanics_ml package import in scripts
-find ml/scripts -name '*.py' -exec sed -i 's/from skating_biomechanics_ml\./from skating_ml./g' {} +
+find ml/scripts -name '*.py' -exec sed -i 's/from skating_biomechanics_ml\./from src./g' {} +
 ```
 
 - [ ] **Step 3: Update gpu_server imports**
 
 ```bash
-sed -i 's/from src\.types import/from skating_ml.types import/g' ml/gpu_server/server.py
-sed -i 's/from src\.web_helpers import/from skating_ml.web_helpers import/g' ml/gpu_server/server.py
+sed -i 's/from src\.types import/from src.types import/g' ml/gpu_server/server.py
+sed -i 's/from src\.web_helpers import/from src.web_helpers import/g' ml/gpu_server/server.py
 ```
 
 - [ ] **Step 4: Move ML scripts**
@@ -712,7 +712,7 @@ git mv scripts/setup_cuda_compat.sh ml/scripts/
 Update script imports:
 
 ```bash
-find ml/scripts -name '*.py' -exec sed -i 's/from src\./from skating_ml./g' {} +
+find ml/scripts -name '*.py' -exec sed -i 's/from src\./from src./g' {} +
 ```
 
 - [ ] **Step 5: Move ML tests**
@@ -738,7 +738,7 @@ git mv tests/conftest.py ml/tests/conftest.py
 Update test imports:
 
 ```bash
-find ml/tests -name '*.py' -exec sed -i 's/from src\./from skating_ml./g' {} +
+find ml/tests -name '*.py' -exec sed -i 's/from src\./from src./g' {} +
 ```
 
 - [ ] **Step 6: Clean up empty src/ and old directories**
@@ -813,7 +813,7 @@ git commit -m "refactor(repo): reorganize docs, experiments, and infra"
 Change `[tool.hatch.build.targets.wheel]`:
 ```toml
 [tool.hatch.build.targets.wheel]
-packages = ["backend/app", "ml/skating_ml"]
+packages = ["backend/app", "ml/src"]
 ```
 
 - [ ] **Step 2: Update pytest pythonpath**
@@ -829,7 +829,7 @@ pythonpath = ["backend", "ml"]
 Change `[tool.coverage.run]`:
 ```toml
 [tool.coverage.run]
-source = ["backend/app", "ml/skating_ml"]
+source = ["backend/app", "ml/src"]
 ```
 
 - [ ] **Step 4: Update ruff known-first-party**
@@ -837,7 +837,7 @@ source = ["backend/app", "ml/skating_ml"]
 Change `[tool.ruff.lint.isort]`:
 ```toml
 [tool.ruff.lint.isort]
-known-first-party = ["backend", "skating_ml"]
+known-first-party = ["backend", "src"]
 ```
 
 - [ ] **Step 5: Update ruff per-file-ignores paths**
@@ -867,7 +867,7 @@ tasks:
     cmd: "{{.UV_RUN}} pytest ml/tests/ backend/tests/ -v -m \"not slow\" --tb=short"
 
   py-typecheck:
-    cmd: "{{.UV_RUN}} basedpyright --level error backend/app ml/skating_ml"
+    cmd: "{{.UV_RUN}} basedpyright --level error backend/app ml/src"
 
   dev-backend:
     cmd: "{{.UV_RUN}} uvicorn backend.app.main:app --reload --port 8000"
@@ -913,14 +913,14 @@ Change all `src/` references. The file has these lines to update:
 - Line 122: `run: uv run ruff check src/ tests/ scripts/ --fix` → `run: uv run ruff check backend/ ml/ ml/tests/ backend/tests/ --fix`
 - Line 124: `run: cd src/frontend && bunx biome check --write .` → `run: cd frontend && bunx biome check --write .`
 - Line 131: `run: cd src/frontend && bun test --run` → `run: cd frontend && bun test --run`
-- Line 136: `run: uv run basedpyright --level error src/` → `run: uv run basedpyright --level error backend/app ml/skating_ml`
+- Line 136: `run: uv run basedpyright --level error src/` → `run: uv run basedpyright --level error backend/app ml/src`
 - Line 138: `run: cd src/frontend && bunx tsc -p tsconfig.app.json` → `run: cd frontend && bunx tsc -p tsconfig.app.json`
 
 ```bash
 sed -i 's|src/frontend/|frontend/|g' lefthook.yml
 sed -i 's|uv run ruff check src/ tests/ scripts/|uv run ruff check backend/ ml/ ml/tests/ backend/tests/|g' lefthook.yml
 sed -i 's|uv run ruff format src/ tests/ scripts/|uv run ruff format backend/ ml/ ml/tests/ backend/tests/|g' lefthook.yml
-sed -i 's|uv run basedpyright --level error src/|uv run basedpyright --level error backend/app ml/skating_ml|g' lefthook.yml
+sed -i 's|uv run basedpyright --level error src/|uv run basedpyright --level error backend/app ml/src|g' lefthook.yml
 ```
 
 - [ ] **Step 2: Update infra/Containerfile**
@@ -943,7 +943,7 @@ COPY --chown=appuser:appuser vastai/server.py vastai/server.py
 
 Change to:
 ```dockerfile
-COPY --chown=appuser:appuser ml/skating_ml/ skating_ml/
+COPY --chown=appuser:appuser ml/src/ src/
 COPY --chown=appuser:appuser ml/gpu_server/ gpu_server/
 ```
 
@@ -964,7 +964,7 @@ git rm package.json bun.lock package-lock.json 2>/dev/null || true
 
 - [ ] **Step 6: Update .gitignore if needed**
 
-Add `ml/skating_ml/__pycache__/` patterns if not already covered by generic `__pycache__/`.
+Add `ml/src/__pycache__/` patterns if not already covered by generic `__pycache__/`.
 
 - [ ] **Step 7: Update ast-grep config**
 
@@ -1063,7 +1063,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["skating_ml"]
+packages = ["src"]
 ```
 
 Note: For deployment, ml/pyproject.toml should add `skating-backend` as a dependency:
@@ -1117,8 +1117,8 @@ git commit -m "docs: update CLAUDE.md files for new directory structure"
 ```bash
 cd /home/michael/Github/skating-biomechanics-ml
 uv run python -c "from backend.app.main import app; print('backend OK')"
-uv run python -c "from skating_ml.types import H36Key; print('ml OK')"
-uv run python -c "from skating_ml.worker import WorkerSettings; print('worker OK')"
+uv run python -c "from src.types import H36Key; print('ml OK')"
+uv run python -c "from src.worker import WorkerSettings; print('worker OK')"
 ```
 
 - [ ] **Step 2: Backend typecheck**
@@ -1130,7 +1130,7 @@ uv run basedpyright --level error backend/app
 - [ ] **Step 3: ML typecheck**
 
 ```bash
-uv run basedpyright --level error ml/skating_ml
+uv run basedpyright --level error ml/src
 ```
 
 - [ ] **Step 4: Run ML tests**
@@ -1148,7 +1148,7 @@ uv run ruff check backend/app --fix
 - [ ] **Step 6: Run ML lint**
 
 ```bash
-uv run ruff check ml/skating_ml --fix
+uv run ruff check ml/src --fix
 ```
 
 - [ ] **Step 7: Frontend builds**
@@ -1167,7 +1167,7 @@ Expected: No output (zero matches)
 - [ ] **Step 9: Verify backend has zero ML imports**
 
 ```bash
-grep -rn "from skating_ml\." backend/ --include='*.py'
+grep -rn "from src\." backend/ --include='*.py'
 ```
 Expected: No output (zero matches)
 

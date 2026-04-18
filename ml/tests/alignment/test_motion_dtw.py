@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from skating_ml.alignment.motion_dtw import MotionDTWAligner
-from skating_ml.types import ElementPhase
+from src.alignment.motion_dtw import MotionDTWAligner
+from src.types import ElementPhase
 
 
 @pytest.fixture

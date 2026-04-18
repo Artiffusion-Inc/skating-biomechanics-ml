@@ -22,9 +22,9 @@ def main() -> int:
     checks = [
         (["ruff", "check", "."], "Ruff Lint"),
         (["ruff", "format", "--check", "."], "Ruff Format Check"),
-        (["mypy", "ml/skating_ml/"], "MyPy Type Check"),
-        (["vulture", "ml/skating_ml/", "ml/tests/", "--min-confidence", "80"], "Vulture Dead Code"),
-        (["pytest", "ml/tests/", "-v", "--cov=skating_ml"], "Pytest"),
+        (["mypy", "ml/src/"], "MyPy Type Check"),
+        (["vulture", "ml/src/", "ml/tests/", "--min-confidence", "80"], "Vulture Dead Code"),
+        (["pytest", "ml/tests/", "-v", "--cov=src"], "Pytest"),
     ]
 
     results = []

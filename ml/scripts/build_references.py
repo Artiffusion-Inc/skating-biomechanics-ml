@@ -10,11 +10,11 @@ import argparse
 import traceback
 from pathlib import Path
 
-from skating_ml.pose_estimation import PoseExtractor
-from skating_ml.pose_estimation.normalizer import PoseNormalizer
-from skating_ml.references import ReferenceBuilder, ReferenceStore
-from skating_ml.types import ElementPhase
-from skating_ml.utils.video import get_video_meta
+from src.pose_estimation import PoseExtractor
+from src.pose_estimation.normalizer import PoseNormalizer
+from src.references import ReferenceBuilder, ReferenceStore
+from src.types import ElementPhase
+from src.utils.video import get_video_meta
 
 
 def main() -> None:

@@ -11,9 +11,9 @@ import time
 
 import numpy as np
 
-from skating_ml.analysis.physics_engine import PhysicsEngine
-from skating_ml.utils.gap_filling import GapFiller
-from skating_ml.utils.geometry import (
+from src.analysis.physics_engine import PhysicsEngine
+from src.utils.gap_filling import GapFiller
+from src.utils.geometry import (
     angle_3pt_vectorized,
     calculate_com_trajectory_vectorized,
     segment_angle_vectorized,

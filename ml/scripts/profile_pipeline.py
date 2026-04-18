@@ -1,8 +1,8 @@
 """Profile ML pipeline to find optimization targets."""
 
 import cProfile
-import pstats
 import io
+import pstats
 from pathlib import Path
 
 
@@ -10,7 +10,7 @@ def profile_extraction(video_path: str, device: str = "cuda"):
     """Profile pose extraction."""
     print(f"Profiling pose extraction on {device}...")
 
-    from skating_ml.pose_estimation import PoseExtractor
+    from src.pose_estimation import PoseExtractor
 
     profiler = cProfile.Profile()
     profiler.enable()
@@ -32,7 +32,7 @@ def profile_analysis(poses, fps: float = 30.0):
     """Profile biomechanics analysis."""
     print("\nProfiling biomechanics analysis...")
 
-    from skating_ml.analysis import BiomechanicsAnalyzer
+    from src.analysis import BiomechanicsAnalyzer
 
     profiler = cProfile.Profile()
     profiler.enable()

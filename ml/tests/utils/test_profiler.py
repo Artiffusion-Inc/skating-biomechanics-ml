@@ -3,7 +3,7 @@
 
 import time
 
-from skating_ml.utils.profiler import Profiler, StageProfiler, profile_function
+from src.utils.profiler import Profiler, StageProfiler, profile_function
 
 
 def test_profiler_context_manager():

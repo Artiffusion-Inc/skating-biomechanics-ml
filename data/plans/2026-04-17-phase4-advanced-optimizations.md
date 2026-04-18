@@ -19,7 +19,7 @@
 ## File Structure
 
 ```
-ml/skating_ml/
+ml/src/
 ├── cuda/
 │   ├── __init__.py
 │   ├── kernels.py                    # CREATE: custom CUDA kernels wrapper
@@ -47,18 +47,18 @@ backend/app/
 
 **Files:**
 
-- Create: `ml/skating_ml/cuda/physics.cu`
-- Create: `ml/skating_ml/cuda/kernels.py`
-- Create: `ml/skating_ml/analysis/physics_engine_cuda.py`
-- Test: `ml/skating_ml/tests/cuda/test_kernels.py`
+- Create: `ml/src/cuda/physics.cu`
+- Create: `ml/src/cuda/kernels.py`
+- Create: `ml/src/analysis/physics_engine_cuda.py`
+- Test: `ml/src/tests/cuda/test_kernels.py`
 
 - [ ] **Step 1: Add failing test for CUDA physics**
 
 ```python
-# ml/skating_ml/tests/cuda/test_kernels.py
+# ml/src/tests/cuda/test_kernels.py
 import pytest
 import numpy as np
-from skating_ml.cuda.kernels import CUDAPhysicsKernels
+from src.cuda.kernels import CUDAPhysicsKernels
 
 @pytest.mark.cuda
 def test_cuda_available():
@@ -79,7 +79,7 @@ def test_cuda_com_calculation():
     com_cuda = kernels.calculate_center_of_mass(poses_3d)
 
     # Calculate on CPU for comparison
-    from skating_ml.analysis.physics_engine import PhysicsEngine
+    from src.analysis.physics_engine import PhysicsEngine
     engine = PhysicsEngine(body_mass=60.0)
     com_cpu = engine.calculate_center_of_mass(poses_3d)
 
@@ -103,7 +103,7 @@ def test_cuda_com_performance():
     cuda_time = time.perf_counter() - start
 
     # CPU
-    from skating_ml.analysis.physics_engine import PhysicsEngine
+    from src.analysis.physics_engine import PhysicsEngine
     engine = PhysicsEngine(body_mass=60.0)
 
     start = time.perf_counter()
@@ -125,7 +125,7 @@ Expected: FAIL with "CUDAPhysicsKernels not defined"
 - [ ] **Step 3: Implement CUDA kernel**
 
 ```cuda
-// ml/skating_ml/cuda/physics.cu
+// ml/src/cuda/physics.cu
 
 #include <cuda_runtime.h>
 #include <device_launch_parameters.h>
@@ -193,7 +193,7 @@ extern "C" {
 - [ ] **Step 4: Implement Python CUDA wrapper**
 
 ```python
-# ml/skating_ml/cuda/kernels.py
+# ml/src/cuda/kernels.py
 from __future__ import annotations
 import logging
 from pathlib import Path
@@ -314,11 +314,11 @@ class CUDAPhysicsKernels:
 - [ ] **Step 5: Create CUDA-accelerated physics engine**
 
 ```python
-# ml/skating_ml/analysis/physics_engine_cuda.py
+# ml/src/analysis/physics_engine_cuda.py
 from __future__ import annotations
 import logging
-from skating_ml.analysis.physics_engine import PhysicsEngine
-from skating_ml.cuda.kernels import CUDAPhysicsKernels
+from src.analysis.physics_engine import PhysicsEngine
+from src.cuda.kernels import CUDAPhysicsKernels
 
 logger = logging.getLogger(__name__)
 
@@ -370,7 +370,7 @@ Expected: PASS (if CUDA available) or SKIP
 - [ ] **Step 7: Commit**
 
 ```bash
-git add ml/skating_ml/cuda/ ml/skating_ml/analysis/physics_engine_cuda.py ml/tests/cuda/
+git add ml/src/cuda/ ml/src/analysis/physics_engine_cuda.py ml/tests/cuda/
 git commit -m "feat(cuda): add custom CUDA kernels for physics
 
 - Implement CoM calculation in CUDA
@@ -385,16 +385,16 @@ git commit -m "feat(cuda): add custom CUDA kernels for physics
 
 **Files:**
 
-- Create: `ml/skating_ml/utils/numba_jit.py`
-- Test: `ml/skating_ml/tests/utils/test_numba_jit.py`
+- Create: `ml/src/utils/numba_jit.py`
+- Test: `ml/src/tests/utils/test_numba_jit.py`
 
 - [ ] **Step 1: Add failing test for Numba JIT**
 
 ```python
-# ml/skating_ml/tests/utils/test_numba_jit.py
+# ml/src/tests/utils/test_numba_jit.py
 import pytest
 import numpy as np
-from skating_ml.utils.numba_jit import jit_angle_calculation
+from src.utils.numba_jit import jit_angle_calculation
 
 def test_jit_angle_calculation():
     """Test JIT-compiled angle calculation."""
@@ -445,7 +445,7 @@ Expected: FAIL with "jit_angle_calculation not defined"
 - [ ] **Step 3: Implement Numba JIT utilities**
 
 ```python
-# ml/skating_ml/utils/numba_jit.py
+# ml/src/utils/numba_jit.py
 from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
@@ -576,7 +576,7 @@ Expected: PASS
 - [ ] **Step 5: Commit**
 
 ```bash
-git add ml/skating_ml/utils/numba_jit.py ml/tests/utils/test_numba_jit.py
+git add ml/src/utils/numba_jit.py ml/tests/utils/test_numba_jit.py
 git commit -m "feat(utils): add Numba JIT-compiled functions
 
 - JIT-compile angle calculation with Numba
@@ -593,7 +593,7 @@ git commit -m "feat(utils): add Numba JIT-compiled functions
 
 - Create: `backend/app/routes/websockets.py`
 - Modify: `backend/app/routes/process.py`
-- Modify: `ml/skating_ml/worker.py`
+- Modify: `ml/src/worker.py`
 - Test: `backend/tests/test_websockets.py`
 
 - [ ] **Step 1: Add failing test for WebSocket progress**
@@ -737,7 +737,7 @@ async def websocket_process_progress(websocket: WebSocket, task_id: str):
 - [ ] **Step 4: Update worker to send progress via WebSocket**
 
 ```python
-# ml/skating_ml/worker.py
+# ml/src/worker.py
 
 async def process_video_task(...) -> dict[str, Any]:
     """arq task: dispatch video processing with WebSocket progress."""
@@ -781,7 +781,7 @@ Expected: PASS
 - [ ] **Step 7: Commit**
 
 ```bash
-git add backend/app/routes/websockets.py backend/app/main.py backend/tests/test_websockets.py ml/skating_ml/worker.py
+git add backend/app/routes/websockets.py backend/app/main.py backend/tests/test_websockets.py ml/src/worker.py
 git commit -m "feat(websockets): add real-time progress streaming
 
 - WebSocket endpoint for task progress
@@ -806,8 +806,8 @@ git commit -m "feat(websockets): add real-time progress streaming
 import pytest
 import time
 from pathlib import Path
-from skating_ml.pipeline import AnalysisPipeline
-from skating_ml.analysis.physics_engine_cuda import PhysicsEngineCUDA
+from src.pipeline import AnalysisPipeline
+from src.analysis.physics_engine_cuda import PhysicsEngineCUDA
 
 @pytest.mark.benchmark
 @pytest.mark.cuda
@@ -823,7 +823,7 @@ def test_cuda_physics_speedup():
     cuda_time = time.perf_counter() - start
 
     # NumPy (already vectorized from Phase 1)
-    from skating_ml.analysis.physics_engine import PhysicsEngine
+    from src.analysis.physics_engine import PhysicsEngine
     engine_numpy = PhysicsEngine(body_mass=60.0)
     start = time.perf_counter()
     com_numpy = engine_numpy.calculate_center_of_mass(poses_3d)
@@ -909,15 +909,15 @@ Total: 9 new tests, 100% passing
 ### Total Code Changes
 
 **New modules:**
-- `ml/skating_ml/cuda/` - Custom CUDA kernels
-- `ml/skating_ml/optimization/` - TensorRT, quantization
-- `ml/skating_ml/vastai/distributed.py` - Multi-worker processing
+- `ml/src/cuda/` - Custom CUDA kernels
+- `ml/src/optimization/` - TensorRT, quantization
+- `ml/src/vastai/distributed.py` - Multi-worker processing
 - `backend/app/routes/websockets.py` - Real-time streaming
 
 **Modified modules:**
-- `ml/skating_ml/analysis/physics_engine.py` - Vectorized
-- `ml/skating_ml/pipeline.py` - Async parallelism
-- `ml/skating_ml/device.py` - Multi-GPU support
+- `ml/src/analysis/physics_engine.py` - Vectorized
+- `ml/src/pipeline.py` - Async parallelism
+- `ml/src/device.py` - Multi-GPU support
 - `backend/app/storage.py` - Async I/O
 
 ### Total Tests Added: 42

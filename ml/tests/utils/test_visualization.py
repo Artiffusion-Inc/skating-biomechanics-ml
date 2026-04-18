@@ -5,8 +5,8 @@ Updated for modular visualization API (H3.6M 17kp format).
 
 import numpy as np
 
-from skating_ml.types import H36Key
-from skating_ml.visualization import (
+from src.types import H36Key
+from src.visualization import (
     BladeLayer,
     LayerContext,
     TrailLayer,

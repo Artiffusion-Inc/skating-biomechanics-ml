@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.visualization.core.overlay import draw_overlay_rect
+from src.visualization.core.overlay import draw_overlay_rect
 
 
 def _make_frame(h=100, w=200):

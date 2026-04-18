@@ -208,7 +208,7 @@ hsv_v: 0.4
 1. **scripts/extract_frames_skatingverse.py** — Frame extraction from videos
 2. **scripts/pseudo_label_skatingverse.py** — MogaNet-B inference pipeline
 3. **experiments/exp_distill_moganet_to_yolo26n.py** — Distillation training
-4. **ml/skating_ml/distillation/yolo_distill.py** — YOLO distillation wrapper
+4. **ml/src/distillation/yolo_distill.py** — YOLO distillation wrapper
 5. **experiments/yolo26-pose/configs/distill_moganet.yaml** — Training config
 
 ---

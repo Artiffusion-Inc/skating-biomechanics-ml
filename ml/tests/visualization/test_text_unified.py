@@ -2,7 +2,7 @@
 
 import numpy as np
 
-from skating_ml.visualization.core.text import measure_text_size_fast, put_text
+from src.visualization.core.text import measure_text_size_fast, put_text
 
 
 def _make_frame(h=200, w=400):

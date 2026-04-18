@@ -7,7 +7,7 @@ import numpy as np
 
 def benchmark_geometry():
     """Benchmark geometry functions."""
-    from skating_ml.utils.geometry import angle_3pt, angle_3pt_batch
+    from src.utils.geometry import angle_3pt_batch
 
     print("Benchmarking geometry functions...")
 
@@ -31,7 +31,7 @@ def benchmark_geometry():
 
 def benchmark_smoothing():
     """Benchmark smoothing."""
-    from skating_ml.utils.smoothing import smooth_trajectory_2d_numba
+    from src.utils.smoothing import smooth_trajectory_2d_numba
 
     print("\nBenchmarking smoothing...")
 
@@ -43,7 +43,9 @@ def benchmark_smoothing():
     # Benchmark
     start = time.perf_counter()
     for _ in range(100):
-        _ = smooth_trajectory_2d_numba(trajectory, fps=30.0, min_cutoff=0.004, beta=0.7, d_cutoff=1.0)
+        _ = smooth_trajectory_2d_numba(
+            trajectory, fps=30.0, min_cutoff=0.004, beta=0.7, d_cutoff=1.0
+        )
     elapsed = time.perf_counter() - start
 
     print(f"  100,000 frames smoothed in {elapsed:.3f}s")
@@ -52,15 +54,17 @@ def benchmark_smoothing():
 
 def benchmark_metrics():
     """Benchmark metrics."""
-    from skating_ml.analysis.metrics import _compute_knee_angle_series_numba
-    from skating_ml.types import H36Key
+    from src.analysis.metrics import _compute_knee_angle_series_numba
+    from src.types import H36Key
 
     print("\nBenchmarking metrics...")
 
     poses = np.random.randn(100, 17, 2).astype(np.float32)
 
     # Warmup
-    _ = _compute_knee_angle_series_numba(poses, int(H36Key.LHIP), int(H36Key.LKNEE), int(H36Key.LFOOT))
+    _ = _compute_knee_angle_series_numba(
+        poses, int(H36Key.LHIP), int(H36Key.LKNEE), int(H36Key.LFOOT)
+    )
 
     # Benchmark
     start = time.perf_counter()

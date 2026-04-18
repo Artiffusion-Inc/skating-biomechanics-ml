@@ -19,8 +19,8 @@ backend/
 └── alembic/versions/                  # Create: Migration for new columns
 
 ml/
-├── skating_ml/worker.py               # Modify: Return JSON instead of CSV paths
-└── skating_ml/pipeline.py             # Modify: Sample poses, pre-compute metrics
+├── src/worker.py               # Modify: Return JSON instead of CSV paths
+└── src/pipeline.py             # Modify: Sample poses, pre-compute metrics
 
 frontend/
 ├── src/types/index.ts                 # Modify: Add PoseData, FrameMetrics, PhasesData
@@ -198,12 +198,12 @@ git commit -m "feat(backend): add PoseData, FrameMetrics, PhasesData schemas"
 ## Task 4: Update Worker to Return JSON
 
 **Files:**
-- Modify: `ml/skating_ml/worker.py`
+- Modify: `ml/src/worker.py`
 
 - [ ] **Step 1: Import sampling utilities**
 
 ```python
-# ml/skating_ml/worker.py
+# ml/src/worker.py
 
 import numpy as np
 from typing import Any
@@ -212,7 +212,7 @@ from typing import Any
 - [ ] **Step 2: Add pose sampling function**
 
 ```python
-# ml/skating_ml/worker.py
+# ml/src/worker.py
 
 def _sample_poses(poses_norm: np.ndarray, sample_rate: int = 10) -> dict:
     """Sample poses for frontend visualization.
@@ -245,8 +245,8 @@ def _compute_frame_metrics(poses_norm: np.ndarray) -> dict:
     Returns:
         Dict with metric arrays
     """
-    from skating_ml.utils.geometry import angle_3pt
-    from skating_ml.types import H36Key
+    from src.utils.geometry import angle_3pt
+    from src.types import H36Key
 
     n_frames = len(poses_norm)
 
@@ -325,7 +325,7 @@ def _compute_frame_metrics(poses_norm: np.ndarray) -> dict:
 - [ ] **Step 3: Update process_video_task to return JSON**
 
 ```python
-# ml/skating_ml/worker.py - process_video_task function
+# ml/src/worker.py - process_video_task function
 
 # After line 95 (after vast_result = await asyncio.to_thread(...))
 
@@ -391,13 +391,13 @@ async def update_session_analysis(
 
 - [ ] **Step 5: Test worker compiles**
 
-Run: `cd ml && uv run python -c "from skating_ml.worker import process_video_task; print('OK')"`
+Run: `cd ml && uv run python -c "from src.worker import process_video_task; print('OK')"`
 Expected: "OK" printed, no import errors
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add ml/skating_ml/worker.py backend/app/crud/session.py
+git add ml/src/worker.py backend/app/crud/session.py
 git commit -m "feat(worker): return JSON instead of CSV paths, add pose sampling"
 ```
 
