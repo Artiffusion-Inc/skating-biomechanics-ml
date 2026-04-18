@@ -44,12 +44,12 @@ ENV NODE_ENV=production \
     PORT=3000 \
     HOSTNAME="0.0.0.0"
 
-RUN addgroup --system --gid 1000 nodejs \
-    && adduser --system --uid 1000 --shell /usr/sbin/nologin nextjs
+RUN addgroup --system --gid 1001 nextjs \
+    && adduser --system --uid 1001 --ingroup nextjs --shell /usr/sbin/nologin nextjs
 
-COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+COPY --from=builder --chown=nextjs:nextjs /app/public ./public
+COPY --from=builder --chown=nextjs:nextjs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nextjs /app/.next/static ./.next/static
 
 USER nextjs
 
