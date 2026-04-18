@@ -258,7 +258,7 @@ async def process_video_task(
                 # Download poses temporarily for sampling
                 with tempfile.TemporaryDirectory() as tmpdir:
                     poses_path = Path(tmpdir) / "poses.npy"
-                    download_file(vast_result.poses_key, str(poses_path))
+                    await asyncio.to_thread(download_file, vast_result.poses_key, str(poses_path))
 
                     # Load poses and prepare data
                     poses = np.load(str(poses_path))
@@ -362,7 +362,7 @@ async def detect_video_task(
 
         with tempfile.TemporaryDirectory() as tmpdir:
             video_path = Path(tmpdir) / "input.mp4"
-            download_file(video_key, str(video_path))
+            await asyncio.to_thread(download_file, video_key, str(video_path))
 
             cfg = DeviceConfig.default()
             extractor = PoseExtractor(
@@ -373,7 +373,9 @@ async def detect_video_task(
                 output_format="normalized",
                 device=cfg.device,
             )
-            persons, _ = extractor.preview_persons(video_path, num_frames=30)
+            persons, _ = await asyncio.to_thread(
+                extractor.preview_persons, video_path, num_frames=30
+            )
 
             if not persons:
                 result_data = {
