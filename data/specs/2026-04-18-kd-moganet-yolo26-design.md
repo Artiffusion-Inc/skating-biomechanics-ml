@@ -34,14 +34,14 @@ Figure skating pose estimator: YOLO26-Pose model optimized for figure skating, t
 
 | Dataset | Pose GT | Format | Conversion Needed | Volume (est.) |
 |---------|---------|--------|-------------------|---------------|
-| FineFS | 17kp 3D (NPZ) | (frames, 17, 3) | 3D->2D projection + COCO JSON | 1,167 videos -> ~350K frames @10fps |
-| FSAnno | 4D pose (PKL) | 4DHuman format | Extract 17kp -> COCO JSON | 3,700 clips -> ~50K frames @10fps |
-| FSC-64 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 5,031 seq -> ~150K frames |
-| MCFS-129 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 2,617 seq -> ~80K frames |
+| FineFS | 17kp 3D (NPZ) | (frames, 17, 3) | 3D->2D projection + COCO JSON | 1,167 videos, NPZ shape (4350, 17, 3) per video |
+| FSAnno | 4D pose (PKL) | 4DHuman format | Extract 17kp -> COCO JSON | 3,700 clips |
+| FSC-64 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 5,031 seq |
+| MCFS-129 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 2,617 seq |
 | AthletePose3D | 17kp 2D (COCO JSON) | Already COCO | None (already done) | 71K frames |
 | COCO train2017 | 17kp (COCO JSON) | Already COCO | None | ~15% mix |
 
-**Total estimated training data: ~500-700K frames**
+**Total training data: TBD — measure actual frame counts after conversion (Task 2-5). FineFS alone is ~5M raw frames (1,167 videos × 4,350 frames). Sampling strategy will determine final volume.**
 
 ### Data Split
 
@@ -49,14 +49,24 @@ Figure skating pose estimator: YOLO26-Pose model optimized for figure skating, t
 - AP3D + COCO: train only (domain diversity, no leakage into val)
 - Val set = skating-only (primary quality metric)
 
+### Sampling Strategy
+
+FineFS alone has ~5M raw frames (1,167 × 4,350). This is likely too many. Sampling options:
+- **10fps from 30fps source** — 3x reduction, ~1.7M frames (may still be too many)
+- **Keyframe extraction** — detect scene changes, keep distinct poses only
+- **Random sampling** — fixed N frames per video (e.g., 100 frames/video = ~117K total)
+- **Decision required:** Measure actual conversion time and storage, then decide.
+
 ### Preprocessing Steps
 
-1. Extract frames from videos (FineFS, FSAnno) at 10fps
-2. Convert all pose data to COCO JSON format (bbox + keypoints + visibility)
-3. Generate bounding boxes from keypoints (PCK-based padding)
-4. Filter: remove frames with < 5 visible keypoints
-5. Convert to YOLO pose format: images/ + labels/ (txt per image)
-6. Create data.yaml for Ultralytics
+1. Measure actual frame counts per dataset (before conversion)
+2. Decide sampling strategy based on total volume
+3. Extract frames from videos (FineFS, FSAnno) at chosen fps
+4. Convert all pose data to COCO JSON format (bbox + keypoints + visibility)
+5. Generate bounding boxes from keypoints (PCK-based padding)
+6. Filter: remove frames with < 5 visible keypoints
+7. Convert to YOLO pose format: images/ + labels/ (txt per image)
+8. Create data.yaml for Ultralytics
 
 ---
 

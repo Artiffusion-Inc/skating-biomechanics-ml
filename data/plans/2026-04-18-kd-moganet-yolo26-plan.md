@@ -45,15 +45,19 @@ Before writing converters, understand FineFS data.
 
 Convert FineFS dataset to YOLO pose format.
 
+**Context:** FineFS has 1,167 videos, NPZ shape (4,350, 17, 3) per video = ~5M raw frames. Need sampling strategy to reduce volume.
+
 **Actions:**
 - [ ] Create `experiments/yolo26-pose-kd/scripts/convert_finefs.py`
-- [ ] Extract frames from videos at 10fps (OpenCV)
+- [ ] Decide sampling strategy (see design spec "Sampling Strategy" section)
+- [ ] Extract frames from videos at chosen fps (OpenCV)
 - [ ] Map FineFS 17kp to COCO 17kp (if different order)
 - [ ] 3D→2D projection if needed (take x,y, discard z)
 - [ ] Generate bounding boxes from keypoints (PCK-based padding, factor=0.2)
 - [ ] Filter frames with < 5 visible keypoints
 - [ ] Output: YOLO format (images/ + labels/*.txt per image)
 - [ ] Spot-check: visual overlay of keypoints on 10 random frames
+- [ ] Record actual frame count after sampling
 
 **Input:** `/home/michael/Downloads/FineFS/data/skeleton.zip` + `video.zip`
 **Output:** `experiments/yolo26-pose-kd/data/finefs/train/` and `val/` (80/20 split)
@@ -87,22 +91,25 @@ Convert FSAnno dataset to YOLO pose format.
 
 Convert existing unified numpy data to YOLO pose format.
 
+**Important:** FSC/MCFS have pose sequences (T, 17, 2) but no original video frames. Need to determine if we have the source videos or need to work with skeleton-only data. Skeleton-only images (black bg, white skeleton) are not ideal for YOLO training.
+
 **Actions:**
 - [ ] Create `experiments/yolo26-pose-kd/scripts/convert_fsc_mcfs.py`
 - [ ] Read unified format: `{split}_poses.npy` (shape, dtype, keypoint order)
-- [ ] Render each frame as image from keypoints (black bg, white skeleton) OR
-  - [ ] **Decision needed:** Do we have original video frames for FSC/MCFS?
-- [ ] If no original frames: generate synthetic skeleton images (not ideal for training)
+- [ ] Measure actual frame counts per sequence
+- [ ] Determine: do we have original video frames? Check source data.
+- [ ] If no original frames: assess whether skeleton-only images are viable for YOLO
 - [ ] If frames available: extract from source
 - [ ] Generate bounding boxes from keypoints
 - [ ] Filter frames with < 5 visible keypoints
 - [ ] Output: YOLO format
 - [ ] Spot-check: 10 random samples
+- [ ] Record actual frame count
 
 **Input:** `data/unified/fsc-64/`, `data/unified/mcfs-129/`
 **Output:** `experiments/yolo26-pose-kd/data/fsc/train/`, `data/mcfs/train/`
 
-**Important question:** FSC/MCFS have pose sequences (T, 17, 2) but no original video frames. Need to determine if we have the source videos or need to work with skeleton-only data.
+**Decision point:** If no original frames, FSC/MCFS may need to be excluded from training.
 
 ---
 
@@ -335,17 +342,5 @@ Task 9 + Task 10 + Task 12 ──→ Task 13 (KD training)
 |-------|-------|---------------------|
 | Data converters | 2, 3, 4, 5 | Yes (after Task 1) |
 | Vast.ai setup | 7 | Yes (with data converters) |
-| Baseline + teacher adapation | 8, 10 | Partially (8 first, then 10) |
+| Baseline + teacher adaptation | 8, 10 | Partially (8 first, then 10) |
 | KD modules | 11, 12 | Yes (sequential, 11→12) |
-
-## Estimated Timeline
-
-| Phase | Tasks | Duration (est.) |
-|-------|-------|----------------|
-| Data prep | 1-6 | 2-3 days |
-| Environment | 7 | 0.5 day |
-| Baseline + ablation | 8-10 | 1-2 days |
-| KD implementation | 11-12 | 1-2 days |
-| KD training | 13-14 | 1-2 days |
-| Selection + docs | 15-16 | 0.5 day |
-| **Total** | | **6-10 days** |
