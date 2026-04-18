@@ -1,7 +1,6 @@
 """Tests for Numba-jitted metrics functions."""
 
 import numpy as np
-
 import pytest
 
 from src.analysis.metrics import (
