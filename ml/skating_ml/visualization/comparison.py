@@ -110,7 +110,7 @@ class ComparisonRenderer:
         cache_path = self._pose_cache_path(video_path)
         arr = np.stack(poses)
         np.savez_compressed(cache_path, poses=arr)
-        print(f"  Cached {len(poses)} poses -> {cache_path}", flush=True)
+        logger.info("Cached %d poses -> %s", len(poses), cache_path)
 
     def _load_pose_cache(self, video_path: Path, expected_frames: int) -> list[np.ndarray] | None:
         """Load poses from cache if valid.
@@ -127,18 +127,16 @@ class ComparisonRenderer:
             poses_arr = data["poses"]
             # Allow ±10% frame tolerance (resize/normalization may differ)
             if abs(len(poses_arr) - expected_frames) > max(expected_frames * 0.1, 5):
-                print(
-                    f"  Cache stale ({len(poses_arr)} vs {expected_frames} frames), re-extracting",
-                    flush=True,
+                logger.warning(
+                    "Cache stale (%d vs %d frames), re-extracting",
+                    len(poses_arr),
+                    expected_frames,
                 )
                 return None
             poses = [poses_arr[i] for i in range(len(poses_arr))]
-            print(
-                f"  Loaded {len(poses)} poses from cache: {cache_path}",
-                flush=True,
-            )
+            logger.info("Loaded %d poses from cache: %s", len(poses), cache_path)
             return poses
-        except Exception:
+        except Exception:  # noqa: BLE001
             return None
 
     def process(
@@ -173,27 +171,30 @@ class ComparisonRenderer:
             max(athlete_meta.num_frames, reference_meta.num_frames)
         )
 
-        print(
-            f"Athlete: {athlete_meta.width}x{athlete_meta.height} -> {target_w}x{a_h}",
-            flush=True,
+        logger.info(
+            "Athlete: %dx%d -> %dx%d",
+            athlete_meta.width,
+            athlete_meta.height,
+            target_w,
+            a_h,
         )
-        print(
-            f"Reference: {reference_meta.width}x{reference_meta.height} -> {target_w}x{r_h}",
-            flush=True,
+        logger.info(
+            "Reference: %dx%d -> %dx%d",
+            reference_meta.width,
+            reference_meta.height,
+            target_w,
+            r_h,
         )
-        print(f"Output: {out_w}x{out_h} @ {fps:.1f}fps", flush=True)
-        print(
-            f"Mode: {self.config.mode.value}, Overlays: {self.config.overlays}",
-            flush=True,
-        )
-        print(f"Processing up to {max_frames} frames...", flush=True)
+        logger.info("Output: %dx%d @ %.1ffps", out_w, out_h, fps)
+        logger.info("Mode: %s, Overlays: %s", self.config.mode.value, self.config.overlays)
+        logger.info("Processing up to %d frames...", max_frames)
 
         # Stage 1: Extract poses (with caching)
         device = self.config.device
         extractor = self._create_extractor(device)
 
         # Try cache first for athlete
-        print("Extracting athlete poses...", flush=True)
+        logger.info("Extracting athlete poses...")
         athlete_poses = self._load_pose_cache(athlete_video, max_frames)
         if athlete_poses is None:
             athlete_poses = self._extract_poses_streaming(
@@ -205,10 +206,10 @@ class ComparisonRenderer:
                 start_frame=self.config.start_frame,
             )
             self._save_pose_cache(athlete_video, athlete_poses)
-        print(f"  Got {len(athlete_poses)} athlete poses", flush=True)
+        logger.info("Got %d athlete poses", len(athlete_poses))
 
         # Try cache first for reference
-        print("Extracting reference poses...", flush=True)
+        logger.info("Extracting reference poses...")
         ref_poses = self._load_pose_cache(reference_video, max_frames)
         if ref_poses is None:
             ref_poses = self._extract_poses_streaming(
@@ -220,26 +221,20 @@ class ComparisonRenderer:
                 start_frame=self.config.start_frame,
             )
             self._save_pose_cache(reference_video, ref_poses)
-        print(f"  Got {len(ref_poses)} reference poses", flush=True)
+        logger.info("Got %d reference poses", len(ref_poses))
 
         # Handle empty poses
         if len(athlete_poses) == 0 and len(ref_poses) == 0:
-            print(
-                "WARNING: No poses detected in either video. "
-                "Outputting raw video without overlays.",
-                flush=True,
+            logger.warning(
+                "No poses detected in either video. Outputting raw video without overlays."
             )
         elif len(athlete_poses) == 0:
-            print(
-                "WARNING: No poses detected in athlete video. "
-                "Only reference skeleton will be drawn.",
-                flush=True,
+            logger.warning(
+                "No poses detected in athlete video. Only reference skeleton will be drawn."
             )
         elif len(ref_poses) == 0:
-            print(
-                "WARNING: No poses detected in reference video. "
-                "Only athlete overlays will be drawn.",
-                flush=True,
+            logger.warning(
+                "No poses detected in reference video. Only athlete overlays will be drawn."
             )
 
         # Stage 2: Smooth poses (only if we have enough)
@@ -249,18 +244,12 @@ class ComparisonRenderer:
             athlete_poses = smoother.smooth(np.stack(athlete_poses))
         elif len(athlete_poses) > 0:
             athlete_poses = np.stack(athlete_poses)
-            print(
-                "  Athlete: too few poses to smooth, using raw",
-                flush=True,
-            )
+            logger.debug("Athlete: too few poses to smooth, using raw")
         if len(ref_poses) > 2:
             ref_poses = smoother.smooth(np.stack(ref_poses))
         elif len(ref_poses) > 0:
             ref_poses = np.stack(ref_poses)
-            print(
-                "  Reference: too few poses to smooth, using raw",
-                flush=True,
-            )
+            logger.debug("Reference: too few poses to smooth, using raw")
 
         # Determine actual render frame count
         render_frames = min(
@@ -269,10 +258,10 @@ class ComparisonRenderer:
             max_frames,
         )
         if render_frames <= 0:
-            print("ERROR: No frames to render. Aborting.", flush=True)
+            logger.error("No frames to render. Aborting.")
             return
 
-        print(f"Rendering {render_frames} frames...", flush=True)
+        logger.info("Rendering %d frames...", render_frames)
 
         # Stage 3: Render (streaming) -- re-open captures for frame decoding
         writer = H264Writer(
@@ -283,14 +272,11 @@ class ComparisonRenderer:
         cap_r = cv2.VideoCapture(str(reference_video))
 
         if cap_a is None or not cap_a.isOpened():
-            print(f"ERROR: Cannot open athlete video: {athlete_video}", flush=True)
+            logger.error("Cannot open athlete video: %s", athlete_video)
             writer.close()
             return
         if cap_r is None or not cap_r.isOpened():
-            print(
-                f"ERROR: Cannot open reference video: {reference_video}",
-                flush=True,
-            )
+            logger.error("Cannot open reference video: %s", reference_video)
             cap_a.release()
             writer.close()
             return
@@ -331,10 +317,7 @@ class ComparisonRenderer:
             ret_r, frame_r = cap_r.read()
 
             if not ret_a and not ret_r:
-                print(
-                    f"  Both videos ended at frame {frame_idx}, stopping.",
-                    flush=True,
-                )
+                logger.debug("Both videos ended at frame %d, stopping.", frame_idx)
                 break
 
             # Use last frame if video ended
@@ -387,8 +370,8 @@ class ComparisonRenderer:
             # Compose output
             if self.config.mode == ComparisonMode.SIDE_BY_SIDE:
                 # Assemble side-by-side buffer
-                assert out_buf is not None
-                assert divider is not None
+                assert out_buf is not None  # noqa: S101
+                assert divider is not None  # noqa: S101
                 if pad_a is not None:
                     out_buf[:a_h, :target_w] = frame_a
                     out_buf[a_h:, :target_w] = pad_a
@@ -413,12 +396,12 @@ class ComparisonRenderer:
                 writer.write(frame_a)
 
             if frame_idx % 200 == 0:
-                print(f"  Frame {frame_idx}/{render_frames}", flush=True)
+                logger.debug("Frame %d/%d", frame_idx, render_frames)
 
         cap_a.release()
         cap_r.release()
         writer.close()
-        print(f"Done! Output: {output_path}", flush=True)
+        logger.info("Done! Output: %s", output_path)
 
     def _extract_poses_streaming(
         self,
