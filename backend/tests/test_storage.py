@@ -3,16 +3,15 @@
 from __future__ import annotations
 
 import sys
-from types import ModuleType
 from unittest.mock import ANY, MagicMock, patch
 
 import pytest
 
-# Mock aiobotocore before importing app.storage (it's a top-level import)
-_mock_aiobotocore = ModuleType("aiobotocore")
-_mock_aiobotocore.session = ModuleType("aiobotocore.session")
+# Mock aiobotocore before importing app.storage (top-level import + get_session call)
+_mock_aiobotocore = MagicMock()
+_mock_aiobotocore_session = MagicMock()
 sys.modules["aiobotocore"] = _mock_aiobotocore
-sys.modules["aiobotocore.session"] = _mock_aiobotocore.session
+sys.modules["aiobotocore.session"] = _mock_aiobotocore_session
 
 from app.storage import (  # noqa: E402
     delete_object,
