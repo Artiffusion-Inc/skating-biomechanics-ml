@@ -12,6 +12,7 @@ dependencies = [
     "onnxruntime-gpu>=1.24.4",      # ONNX Runtime with CUDA backend for rtmlib
     "opencv-python>=4.10.0",
     "numpy>=2.0.0",
+    "numba>=0.60.0",              # JIT compilation for compute-intensive functions
     # torch is optional — install with: uv add torch --extra torch-models
     "dtw-python>=1.5.0",
     "scipy>=1.14.0",
