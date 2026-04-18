@@ -43,8 +43,7 @@ export function useInviteConnection() {
 export function useAcceptConnection() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (connId: string) =>
-      apiPost(`/connections/${connId}/accept`, ConnectionSchema, {}),
+    mutationFn: (connId: string) => apiPost(`/connections/${connId}/accept`, ConnectionSchema, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["connections"] }),
   })
 }
@@ -52,8 +51,7 @@ export function useAcceptConnection() {
 export function useEndConnection() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (connId: string) =>
-      apiPost(`/connections/${connId}/end`, ConnectionSchema, {}),
+    mutationFn: (connId: string) => apiPost(`/connections/${connId}/end`, ConnectionSchema, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["connections"] }),
   })
 }
