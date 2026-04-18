@@ -6,32 +6,33 @@
 
 ---
 
-## Task 0: Local Benchmark (DLPerf Reference)
+## Task 0: Training Time Estimation
 
-Measure local GPU performance to predict training time on Vast.ai BEFORE renting.
+Calculate expected training time using published benchmarks.
 
-**Why:** $150 budget is hard constraint. Must know if training fits before spending money.
+**Reference:** Ultralytics docs — **2.8s compute per 1000 images on RTX 4090** (YOLO26n, baseline).
+
+**Full pipeline cost (RTX 4090, $0.28/hr, KD overhead 2.0x):**
+
+| Dataset | Stage 2 (ablation) | Stage 2.5 (teacher) | Stage 3 (KD) | Stage 4 (sizes) | Total | Cost |
+|---------|-------------------|--------------------|--------------------|--------------------|-------|------|
+| 50K | 4.7h | 1.2h | 7.8h | 18.1h | 31.8h | $8.9 |
+| 100K | 9.3h | 2.3h | 15.6h | 36.3h | 63.5h | $17.8 |
+| 200K | 18.7h | 4.7h | 31.1h | 72.6h | 127h | $35.6 |
+
+**Conclusion:** $150 budget is NOT a limiting factor. Even 500K images × full pipeline = $89. Dataset size determined by quality, not budget. No sampling needed unless FineFS alone exceeds reasonable training time.
+
+**VRAM budget (teacher + student):**
+- YOLO26n + MogaNet-B (eval): ~8-10GB → RTX 4090 24GB OK
+- YOLO26s + MogaNet-B (eval): ~12-14GB → RTX 4090 24GB OK
+- YOLO26m + MogaNet-B (eval): ~18-20GB → RTX 4090 24GB tight (batch=16)
 
 **Actions:**
-- [ ] Verify `yolo26n-pose.pt` weights exist locally (download if missing)
-- [ ] Run 1 epoch on 100 images, batch=16, imgsz=640 on local RTX 3050 Ti
-- [ ] Record: `t_ref` = time for 100 images × 1 epoch (seconds)
-- [ ] Record: `DLPerf_local` = DLPerf score for RTX 3050 Ti (~14)
-- [ ] Calculate `time_per_iter` = `t_ref / (100 / batch)` = seconds per iteration
-- [ ] Calculate training time for each target GPU:
-  ```
-  time_target = t_ref × (N_images / 100) × (DLPerf_local / DLPerf_target) × (batch_target / batch_local)
-  time_real = time_target × 2.0  # KD overhead (teacher ×1.5, dataloader ×1.2, val ×1.1)
-  cost = (time_real / 3600) × hourly_rate
-  ```
-- [ ] Verify: `cost < $150` for RTX 4090 ($0.28/hr, DLPerf≈55)
-- [ ] If over budget: reduce N_images via sampling (design spec Section 2)
+- [ ] After data conversion (Task 3-5): record actual N_images
+- [ ] Recalculate using table above with real N_images
+- [ ] Verify RTX 4090 24GB is sufficient (if using YOLO26m, plan batch=16)
 
-**Output:** Budget calculation with concrete numbers — hours and cost per GPU option.
-
-**Blocker:** Task 3-5 (data conversion) needed for actual N_images count. Run with N=1000 placeholder first, recalculate after data prep.
-
-**Validation:** `cost < $150` for primary GPU (RTX 4090).
+**Validation:** Total cost < $150 (already confirmed for any realistic N).
 
 ---
 
@@ -74,12 +75,11 @@ Before writing converters, understand FineFS data.
 
 Convert FineFS dataset to YOLO pose format.
 
-**Context:** FineFS has 1,167 videos, NPZ shape (4,350, 17, 3) per video = ~5M raw frames. Need sampling strategy to reduce volume.
+**Context:** FineFS has 1,167 videos, NPZ shape (4,350, 17, 3) per video = ~5M raw frames. Budget is NOT a constraint (full pipeline at 500K images = $89 on RTX 4090). Sampling driven by data quality and training efficiency, not cost.
 
 **Actions:**
 - [ ] Create `experiments/yolo26-pose-kd/scripts/convert_finefs.py`
-- [ ] Decide sampling strategy (see design spec "Sampling Strategy" section)
-- [ ] Extract frames from videos at chosen fps (OpenCV)
+- [ ] Extract frames from videos at 10fps (skip uniform/low-motion segments)
 - [ ] Map FineFS 17kp to COCO 17kp (if different order)
 - [ ] 3D→2D projection if needed (take x,y, discard z)
 - [ ] Generate bounding boxes from keypoints (PCK-based padding, factor=0.2)
@@ -165,35 +165,35 @@ Merge all datasets into single Ultralytics-compatible dataset.
 
 Prepare remote training environment on Vast.ai.
 
-**Prerequisite:** Task 0 benchmark complete, budget verified.
+**GPU Selection:**
+- Primary: RTX 4090 24GB (DLPerf≈55, ~$0.14-0.28/hr, best $/perf ratio)
+- Fallback: A100 40GB ($0.26-0.52/hr) if VRAM insufficient for YOLO26m + teacher
 
-**GPU Selection (DLPerf-based, from Task 0):**
-- Primary: RTX 4090 24GB (DLPerf≈55, $0.28/hr verified, best $/DLPerf-hr)
-- Fallback: A100 40GB (DLPerf≈52, $0.52/hr) if 24GB VRAM insufficient for teacher+student
-- Budget: $150 total, calculate max hours from Task 0 formula
-
-**Rental Requirements:**
-- Type: **On-Demand, Verified only** (unverified can be killed mid-training)
-- Disk: 200GB+ (datasets + checkpoints)
-- Image: CUDA 12.x + PyTorch compatible
+**Rental Strategy — Unverified + Smoke Test:**
+Unverified ≠ broken, just "not yet evaluated by platform". Verification is fully automated (reliability >= 90%, CUDA >= 12, 500+ Mbps). Real risks: provisioning failures (Docker/SSH), thermal throttling under load. Mitigated by 15-min smoke test. If machine survives 15 min at 100% GPU load → likely stable. Savings: 50-80% vs verified.
 
 **Actions:**
-- [ ] Rent Vast.ai instance (RTX 4090 24GB verified, 200GB+ disk, on-demand)
-- [ ] Verify DLPerf matches expected (~55 for 4090) — if significantly lower, recalculate budget
+- [ ] Search Vast.ai for RTX 4090 24GB, 200GB+ disk, on-demand
+- [ ] Filter: reliability >= 95% (even unverified), CUDA >= 12
+- [ ] Rent instance (unverified OK — cheaper, see strategy above)
+- [ ] **Smoke test (15 min):** run `gpu_burn` or training on 100 images at 100% load
+  - Check `nvidia-smi` — temp >85°C or clock drops → destroy instance, rent another
+  - Check network — download test file, if <10 MB/s → destroy
+  - If smoke test passes → proceed with setup
 - [ ] Install: Python 3.11+, PyTorch with CUDA, ultralytics, mmpose
 - [ ] Upload: all YOLO format datasets (rsync, compress)
 - [ ] Upload: MogaNet-B weights (`moganet_b_ap2d_384x288.pth`)
 - [ ] Upload: pretrained YOLO26 weights (`yolo26n/s/m-pose.pt`)
 - [ ] Verify: MogaNet-B inference works on 1 test image
 - [ ] Verify: YOLO26 validation works on skating val set
-- [ ] Verify: Task 0 benchmark replicates on remote GPU (compare t_ref)
 - [ ] Set up persistent tmux/screen session
 - [ ] Set up checkpointing: best + every 10 epochs (required for interruptible recovery)
 
-**Budget Guard:**
-- Track cumulative cost after each stage
-- If cost > 80% budget with stages remaining: reduce epochs, skip optional stages, or switch to smaller student
-- If GPU gets killed: resume from last checkpoint (save_period=10)
+**Checkpointing Strategy (for unverified instances):**
+- Save best model (by skating val AP)
+- Save every 10 epochs to disk
+- Optionally sync checkpoints to R2 (external storage)
+- If instance dies: resume from last checkpoint on new instance
 
 **Output:** Working remote environment with all data and models.
 
@@ -366,14 +366,15 @@ Document all results.
 ## Dependency Graph
 
 ```
-Task 0 (local benchmark) ──→ Task 7 (Vast.ai setup, needs budget calc)
+Task 0 (time estimation) ──→ recalculate after Task 3-5 (actual N_images)
 
 Task 1 (structure)
   ├── Task 2 (explore FineFS) ──→ Task 3 (FineFS converter)
   ├── Task 4 (FSAnno converter)
   └── Task 5 (FSC/MCFS converter)
 
-Task 3 + Task 4 + Task 5 ──→ Task 6 (data.yaml) ──→ Task 8 (baseline)
+Task 3 + Task 4 + Task 5 ──→ Task 6 (data.yaml) ──→ Task 7 (Vast.ai setup)
+                                                         └──→ Task 8 (baseline)
 
 Task 8 ──→ Task 9 (fine-tune ablation)
 Task 8 ──→ Task 10 (teacher adaptation)
@@ -390,8 +391,8 @@ Task 9 + Task 10 + Task 12 ──→ Task 13 (KD training)
 
 | Group | Tasks | Can run in parallel? |
 |-------|-------|---------------------|
-| Benchmark + structure | 0, 1 | Yes |
-| Data converters | 2, 3, 4, 5 | Yes (after Task 1) |
-| Vast.ai setup | 7 | After Task 0 (needs budget calc) |
-| Baseline + teacher adaptation | 8, 10 | Partially (8 first, then 10) |
+| Structure + data explore | 0, 1, 2 | Yes |
+| Data converters | 3, 4, 5 | Yes (after Task 2) |
 | KD modules | 11, 12 | Yes (sequential, 11→12) |
+| Vast.ai setup | 7 | After Task 6 (needs data ready) |
+| Baseline + teacher adaptation | 8, 10 | Partially (8 first, then 10) |

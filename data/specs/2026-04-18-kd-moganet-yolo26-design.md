@@ -41,7 +41,7 @@ Figure skating pose estimator: YOLO26-Pose model optimized for figure skating, t
 | AthletePose3D | 17kp 2D (COCO JSON) | Already COCO | None (already done) | 71K frames |
 | COCO train2017 | 17kp (COCO JSON) | Already COCO | None | ~15% mix |
 
-**Total training data: TBD — measure actual frame counts after conversion (Task 2-5). FineFS alone is ~5M raw frames (1,167 videos × 4,350 frames). Sampling strategy will determine final volume.**
+**Total training data: TBD — measure actual frame counts after conversion (Task 2-5). FineFS alone is ~5M raw frames (1,167 videos × 4,350 frames). Budget ($150) is not a constraint — sampling driven by quality and efficiency.**
 
 ### Data Split
 
@@ -51,27 +51,7 @@ Figure skating pose estimator: YOLO26-Pose model optimized for figure skating, t
 
 ### Sampling Strategy
 
-FineFS alone has ~5M raw frames (1,167 × 4,350). Budget constraint ($150) limits training time.
-
-**Sampling is budget-driven.** Calculate max frames from budget:
-
-```
-time_per_epoch = t_ref × (N_images / 100) × (DLPerf_ref / DLPerf_target) × (batch_ref / batch_target)
-max_hours = $150 / hourly_rate
-max_N_images = (max_hours × 3600 × batch) / (time_per_iter × epochs × overhead)
-```
-
-Where:
-- `t_ref` = measured time for 100 images, 1 epoch on local GPU (RTX 3050 Ti, DLPerf≈6)
-- `overhead` = 2.0× (KD teacher ×1.5, DataLoader ×1.2, validation ×1.1)
-- `DLPerf` = Vast.ai DLPerf score (predicts iterations/sec for CNN training)
-- `hourly_rate` = Vast.ai verified on-demand price for target GPU
-
-**Decision process:**
-1. Measure `t_ref` on local GPU (100 images, batch=16, YOLO26n-pose)
-2. Calculate max_N for RTX 4090 ($0.28/hr, DLPerf≈55)
-3. Sample datasets proportionally to fit max_N
-4. Priority: FineFS > FSAnno > FSC > MCFS (by quality and diversity)
+FineFS alone has ~5M raw frames (1,167 × 4,350). Budget ($150) is NOT a limiting factor — full pipeline at 500K images costs $89 on RTX 4090 (Ultralytics benchmark: 2.8s per 1000 images). Sampling driven by quality and training efficiency.
 
 **Priority order for sampling (best quality first):**
 - FineFS: highest quality (competition GT scores), 1,167 videos
@@ -331,25 +311,29 @@ Parallel training of n/s/m with best KD config from Stage 3.
 | H100 SXM 80GB | ~165 | $1.35 | 0.008 | 111 hrs |
 
 **Primary:** RTX 4090 (best $/DLPerf-hr). 24GB VRAM sufficient for YOLO26n/s + MogaNet-B teacher.
-**Fallback:** A100 40GB if VRAM insufficient. H100 only if RTX 4090 proves too slow.
+**Fallback:** A100 40GB if VRAM insufficient for YOLO26m + teacher.
 
-### DLPerf-based Time Estimation
+### Training Time Estimation
 
-Before renting, calculate training time without spending money:
+**Reference:** Ultralytics docs — 2.8s compute per 1000 images on RTX 4090 (YOLO26n baseline).
 
-1. **Benchmark locally:** Run 1 epoch on 100 images with local GPU (any GPU)
-2. **Calculate target time:**
-   ```
-   time_target = t_local × (DLPerf_local / DLPerf_target) × (batch_target / batch_local)
-   time_real = time_target × overhead  # overhead = 2.0 for KD training
-   ```
-3. **Verify budget fits:** `cost = time_real_hours × hourly_rate`
+**Full pipeline cost (RTX 4090, $0.28/hr, KD overhead 2.0x):**
 
-DLPerf predicts iterations/second for CNN training (ResNet50-style). YOLO training is CNN work — DLPerf is a good predictor. Less accurate for unusual compute patterns.
+| Dataset | Total time | Cost |
+|---------|-----------|------|
+| 50K images | 31.8h | $8.9 |
+| 100K images | 63.5h | $17.8 |
+| 200K images | 127h | $35.6 |
+
+$150 budget is not a limiting factor. Dataset size determined by quality, not cost.
 
 ### Training Environment
 
 - **Platform:** Vast.ai on-demand
+- **Instance type:** Unverified with smoke test (50-80% cheaper than verified)
+  - Filter: reliability >= 95%, CUDA >= 12
+  - Smoke test: 15 min at 100% GPU load, check temps and clocks
+  - If passes → stable for training. If fails → destroy, rent another.
 - **Container:** Docker/Podman with CUDA, PyTorch, Ultralytics, MMPose
 - **Persistent storage:** Dataset + checkpoints
 - **Checkpointing:** Save best + every 10 epochs (required for interruptible recovery)
@@ -397,9 +381,10 @@ experiments/yolo26-pose-kd/
 | Fine-tune kills pretrained (again) | Medium | High | Stage 1 baseline check; early stopping; patience=20 |
 | MogaNet-B domain gap on skating | Medium | Medium | Stage 2.5 teacher adaptation; AP3D contains some skating |
 | Data conversion bugs | High | Medium | Spot-check 10 samples per dataset; visual overlay validation |
-| Insufficient VRAM for teacher+student | Low | High | Use RTX 4090 24GB; if insufficient, offline teacher heatmaps |
+| Insufficient VRAM for teacher+student | Low | Medium | RTX 4090 24GB fits n/s; YOLO26m may need batch=16; fallback A100 40GB |
 | Simulated heatmap resolution mismatch | Medium | Medium | Match teacher heatmap resolution exactly; resize both to same grid |
 | Skating annotations quality varies | Medium | Medium | Filter frames with < 5 visible keypoints; confidence weighting |
+| Unverified instance dies mid-training | Medium | Low | 15-min smoke test; checkpointing every 10 epochs; resume on new instance |
 
 ---
 
