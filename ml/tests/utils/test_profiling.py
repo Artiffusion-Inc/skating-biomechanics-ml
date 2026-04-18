@@ -3,7 +3,7 @@
 import json
 import time
 
-from skating_ml.utils.profiling import PipelineProfiler, profile_stage
+from src.utils.profiling import PipelineProfiler, profile_stage
 
 
 class FakePipeline:
