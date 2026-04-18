@@ -1,9 +1,8 @@
 """Geometric utilities for pose analysis."""
 
 import numpy as np
+from numba import njit  # type: ignore
 from numpy.typing import NDArray
-
-from numba import njit
 
 from ..types import FrameKeypoints, H36Key, NormalizedPose, TimeSeries
 

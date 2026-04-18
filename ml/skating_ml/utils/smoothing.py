@@ -11,9 +11,8 @@ from dataclasses import dataclass
 from typing import Final
 
 import numpy as np
+from numba import njit  # type: ignore
 from numpy.typing import NDArray
-
-from numba import njit
 
 from ..types import NormalizedPose
 
@@ -127,9 +126,7 @@ def smooth_trajectory_2d_numba(
     # Smooth x and y separately using jitted filter
     for dim in range(2):
         series = trajectory[:, dim]
-        smoothed[:, dim] = _one_euro_filter_sequence_numba(
-            series, fps, min_cutoff, beta, d_cutoff
-        )
+        smoothed[:, dim] = _one_euro_filter_sequence_numba(series, fps, min_cutoff, beta, d_cutoff)
 
     return smoothed
 

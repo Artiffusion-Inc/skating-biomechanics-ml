@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
 import numpy as np
-from numba import njit
+from numba import njit  # type: ignore
 
 from ..types import (
     ElementPhase,
