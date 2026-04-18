@@ -1,0 +1,44 @@
+# Version control
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+
+# Dependencies (installed in container)
+node_modules/
+
+# Build artifacts
+.next/
+dist/
+
+# Environment files
+.env
+.env.*
+*.local
+
+# Logs
+*.log
+
+# Test files
+tests/
+coverage/
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+
+# Cache
+.cache/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Documentation
+*.md
+!README.md

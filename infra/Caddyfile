@@ -1,4 +1,19 @@
-:80 {
-    reverse_proxy /api/* localhost:8000
-    reverse_proxy localhost:3000
+{$DOMAIN:-localhost} {
+	# Backend API
+	handle /api/* {
+		reverse_proxy backend:8000 {
+			health_uri /api/v1/health
+			health_interval 10s
+			health_timeout 5s
+		}
+	}
+
+	# Frontend (Next.js)
+	handle {
+		reverse_proxy frontend:3000 {
+			health_uri /
+			health_interval 10s
+			health_timeout 5s
+		}
+	}
 }

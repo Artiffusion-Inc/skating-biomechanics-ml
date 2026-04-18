@@ -1,0 +1,43 @@
+# Version control
+.git
+.gitignore
+
+# CI/CD
+.github
+
+# IDE
+.vscode
+.idea
+
+# Python cache
+__pycache__
+*.pyc
+*.pyo
+.pytest_cache
+.ruff_cache
+.mypy_cache
+
+# Virtual environment
+.venv
+
+# Test files
+tests/
+
+# Build artifacts
+htmlcov/
+coverage/
+dist/
+build/
+*.egg-info
+
+# Environment files
+.env
+.env.*
+*.log
+
+# OS files
+.DS_Store
+
+# Documentation
+*.md
+!README.md
