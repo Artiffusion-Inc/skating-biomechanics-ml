@@ -315,8 +315,13 @@ def process_video_pipeline(  # noqa: PLR0913
     pipe.add_ml_layers(ml_layers)
 
     meta = prepared.meta
-    cap = cv2.VideoCapture(str(video_path))
     writer = H264Writer(output_path, meta.width, meta.height, meta.fps)
+
+    # Use AsyncFrameReader for decode-inference overlap
+    from src.utils.frame_buffer import AsyncFrameReader
+
+    reader = AsyncFrameReader(video_path, buffer_size=16, frame_skip=1)
+    reader.start()
 
     # --- Start biomechanics analysis in parallel (before render loop) ---
     analysis_future = None
@@ -335,15 +340,16 @@ def process_video_pipeline(  # noqa: PLR0913
     pose_idx = 0
     total = meta.num_frames
 
-    while cap.isOpened():
+    while True:
         if cancel_event is not None and cancel_event.is_set():
-            cap.release()
+            reader.join(timeout=1)
             writer.close()
             raise PipelineCancelled("Processing cancelled by user")
 
-        ret, frame = cap.read()
-        if not ret:
+        result = reader.get_frame()
+        if result is None:
             break
+        frame_idx, frame = result
 
         current_pose_idx, pose_idx = pipe.find_pose_idx(frame_idx, pose_idx)
 
@@ -399,7 +405,7 @@ def process_video_pipeline(  # noqa: PLR0913
         if progress_cb and frame_idx % 50 == 0:
             progress_cb(0.6 + 0.3 * frame_idx / total, f"Rendering frame {frame_idx}/{total}")
 
-    cap.release()
+    reader.join(timeout=5)
     writer.close()
 
     if progress_cb:
