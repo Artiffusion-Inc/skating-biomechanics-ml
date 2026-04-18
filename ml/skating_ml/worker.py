@@ -222,7 +222,7 @@ async def process_video_task(
         )
 
         from backend.app.crud.session import get_by_id
-        from backend.app.database import async_session
+        from backend.app.database import async_session  # type: ignore[import-untyped]
         from skating_ml.vastai.client import process_video_remote
 
         # Fetch element_type from session if session_id provided
@@ -277,7 +277,7 @@ async def process_video_task(
                         len(sampled["frames"]),
                         len(poses),
                     )
-            except Exception as pose_err:
+            except Exception as pose_err:  # noqa: BLE001
                 logger.warning("Failed to prepare pose data: %s", pose_err)
 
         response_data = {
@@ -291,7 +291,7 @@ async def process_video_task(
         if session_id and vast_result.metrics:
             try:
                 from backend.app.crud.session import update_session_analysis
-                from backend.app.database import async_session
+                from backend.app.database import async_session  # type: ignore[import-untyped]
                 from backend.app.services.session_saver import save_analysis_results
 
                 async with async_session() as db:
@@ -302,7 +302,7 @@ async def process_video_task(
                             session_id=session_id,
                             pose_data=pose_data,
                             frame_metrics=frame_metrics,
-                            phases=vast_result.phases,
+                            phases=vast_result.phases,  # type: ignore[arg-type]
                         )
 
                     # Save metrics and recommendations (existing flow)
@@ -314,7 +314,7 @@ async def process_video_task(
                         recommendations=vast_result.recommendations or [],
                     )
                     await db.commit()
-            except Exception as save_err:
+            except Exception as save_err:  # noqa: BLE001
                 logger.warning("Failed to save session results: %s", save_err)
 
         return response_data
@@ -396,13 +396,17 @@ async def detect_video_task(
             meta = get_video_meta(video_path)
             w, h = meta.width, meta.height
 
-            annotated = render_person_preview(frame, persons, selected_idx=None)
+            annotated = render_person_preview(
+                frame,  # type: ignore[arg-type]
+                persons,  # type: ignore[arg-type]
+                selected_idx=None,
+            )
             success, buf = cv2.imencode(".png", annotated)
             if not success:
                 raise RuntimeError("Failed to encode preview image")
             import base64
 
-            preview_b64 = base64.b64encode(buf).decode("ascii")
+            preview_b64 = base64.b64encode(buf).decode("ascii")  # type: ignore[arg-type]
 
             auto_click = None
             status_msg: str

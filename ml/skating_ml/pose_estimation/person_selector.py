@@ -8,9 +8,12 @@ Provides:
 
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING
 
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from pathlib import Path
@@ -75,7 +78,7 @@ def select_persons_interactive(
         import matplotlib.pyplot as plt
         from matplotlib.patches import Rectangle
     except ImportError:
-        print("matplotlib not available, falling back to CLI selection.")
+        logger.warning("matplotlib not available, falling back to CLI selection")
         return _cli_fallback(poses, bboxes)
 
     import cv2
@@ -86,7 +89,7 @@ def select_persons_interactive(
     cap.release()
 
     if not ret:
-        print(f"Cannot read video: {video_path}")
+        logger.error("Cannot read video: %s", video_path)
         return list(range(len(poses)))
 
     frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
@@ -158,7 +161,7 @@ def select_persons_interactive(
     if not selected:
         selected = list(range(n_persons))
 
-    print(f"Selected persons: {selected}")
+    logger.info("Selected persons: %s", selected)
     return selected
 
 
@@ -169,16 +172,16 @@ def _cli_fallback(
     """CLI fallback when matplotlib is not available."""
     n = len(poses)
     if n == 1:
-        print("Auto-selecting person 0 (only one detected).")
+        logger.info("Auto-selecting person 0 (only one detected)")
         return [0]
 
-    print(f"Detected {n} persons:")
+    logger.info("Detected %d persons:", n)
     for i in range(n):
         if bboxes and i < len(bboxes):
             x1, y1, x2, y2 = bboxes[i]
-            print(f"  [{i}] bbox=({x1},{y1},{x2},{y2})")
+            logger.info("  [%d] bbox=(%d,%d,%d,%d)", i, x1, y1, x2, y2)
         else:
-            print(f"  [{i}]")
+            logger.info("  [%d]", i)
 
     try:
         choice = input("Enter person index: ").strip()

@@ -4,8 +4,11 @@ This module provides a file-based storage system for reference skating elements,
 organized by element type (three_turn, waltz_jump, etc.).
 """
 
+import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     from .reference_builder import ReferenceBuilder  # type: ignore[import-untyped]
@@ -86,9 +89,9 @@ class ReferenceStore:
             try:
                 ref = self._builder.load_reference(npz_file)
                 references.append(ref)
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 # Skip invalid files
-                print(f"Warning: Failed to load {npz_file}: {e}")
+                logger.warning("Failed to load %s: %s", npz_file, e)
 
         return references
 
