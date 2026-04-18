@@ -105,24 +105,33 @@ class AnalysisPipeline:
             (compensated_h36m, frame_offset) — poses (N, 17, 3) normalized,
             frame_offset = first_detection_frame index.
         """
-        # 1. Tracked extraction
+        # 1. Lazy-init extractor (model download + ONNX session)
+        t0 = time.perf_counter()
         extractor = self._get_pose_2d_extractor()
         if extractor is None:
             raise RuntimeError("2D pose extractor not initialized")
-        extraction = extractor.extract_video_tracked(video_path, person_click=self._person_click)
+        self._profiler.record("extractor_init", time.perf_counter() - t0)
 
-        # 2. Skip pre-roll (trim leading NaN frames before first detection)
+        # 2. Tracked extraction (per-frame RTMO inference + tracking)
+        t0 = time.perf_counter()
+        extraction = extractor.extract_video_tracked(video_path, person_click=self._person_click)
+        self._profiler.record("rtmo_inference_loop", time.perf_counter() - t0)
+
+        # 3. Skip pre-roll (trim leading NaN frames before first detection)
         frame_offset = extraction.first_detection_frame
         poses = extraction.poses[frame_offset:]
         valid = extraction.valid_mask()[frame_offset:]
 
-        # 3. Gap filling
+        # 4. Gap filling
+        t0 = time.perf_counter()
         from .utils.gap_filling import GapFiller
 
         filler = GapFiller()
         filled, _report = filler.fill_gaps(poses, valid)
+        self._profiler.record("gap_filling", time.perf_counter() - t0)
 
-        # 4. Spatial reference / camera compensation
+        # 5. Spatial reference / camera compensation
+        t0 = time.perf_counter()
         if self._reestimate_camera:
             from .detection.spatial_reference import (
                 compensate_poses_per_frame,
@@ -160,6 +169,7 @@ class AnalysisPipeline:
                 compensated = np.dstack([compensated, compensated_px[:, :, 2:3]])
             else:
                 compensated = filled
+        self._profiler.record("spatial_reference", time.perf_counter() - t0)
 
         return compensated, frame_offset
 

@@ -9,17 +9,20 @@
 
 | Parameter | Value |
 |-----------|-------|
-| Video | `athletepose3d/train_set/S1/Axel_10_cam_1.mp4` |
+| Video | `athletepose3d/train_set/S1/Axel_10_cam_1.mp4` (186 frames, 60fps, 3.1s) |
 | Element type | waltz_jump |
 | Device | CPU (CUDA unavailable — "CUDA unknown error") |
 | Pipeline | `AnalysisPipeline.analyze()` |
+| RTMO model | `rtmo-m` (balanced, 640x640) |
 | 3D lift | Failed (no model file), exception caught |
 | DTW | Skipped (no reference loaded) |
 | Physics | Skipped (depends on 3D) |
 
-**Note:** Run on CPU, not GPU. Real production uses GPU (CUDA). CPU numbers are an upper bound for GPU performance — GPU inference is ~7x faster per frame (measured previously: 5.6s vs 39.4s for 364 frames).
+**Note:** Run on CPU, not GPU. Real production uses GPU (CUDA).
 
-## Stage Timings
+## Run 1: Cold Start (model download)
+
+First run — RTMO model (78.8MB) downloaded at ~25-50 kB/s.
 
 ```
 Stage                              Time (s)        %    Calls
@@ -38,68 +41,119 @@ recommendations                      0.0025     0.0%        1
 TOTAL                             1130.3255   100.0%
 ```
 
-## Time Distribution (ASCII)
+~17 min of the 1128s was model download (not captured separately by profiler).
+
+## Run 2: Warm (cached model) + Deep Profile
+
+Model already cached in `~/.cache/rtmlib/hub/checkpoints/`. Deep `--deep` flag enabled.
 
 ```
-extract_and_track  ████████████████████████████████████████████ 99.8%
-phase_detection    █                                                0.1%
-metrics            █                                                0.1%
-smooth             █                                                0.0%
-recommendations    █                                                0.0%
-video_meta         █                                                0.0%
-normalize          █                                                0.0%
-3d_lift_and_blade  █                                                0.0%
-dtw_alignment      █                                                0.0%
-physics            █                                                0.0%
+Stage                              Time (s)        %    Calls
+-------------------------------------------------------------------
+video_meta                           0.0036     0.0%        1
+extractor_init                       0.0000     0.0%        1
+rtmo_inference_loop                 69.7847    98.8%        1
+gap_filling                          0.0002     0.0%        1
+spatial_reference                    0.0669     0.1%        1
+extract_and_track                   69.8522    98.9%        1
+normalize                            0.0012     0.0%        1
+smooth                               0.2577     0.4%        1
+3d_lift_and_blade                    0.0001     0.0%        1
+phase_detection                      0.4912     0.7%        1
+metrics                              0.0316     0.0%        1
+dtw_alignment                        0.0000     0.0%        1
+physics                              0.0000     0.0%        1
+recommendations                      0.0014     0.0%        1
+-------------------------------------------------------------------
+TOTAL                               70.6401   100.0%
+```
+
+### Deep: `extract_and_track` Breakdown
+
+| Sub-stage | Time (s) | % of extract_and_track |
+|-----------|----------|------------------------|
+| RTMO model init (ONNX session) | 0.000 | 0.0% (cached) |
+| rtmo_inference_loop (186 frames) | 69.785 | 99.9% |
+| gap_filling | 0.000 | 0.0% |
+| spatial_reference | 0.067 | 0.1% |
+| **Total** | **69.852** | **100.0%** |
+
+**Per-frame RTMO inference: 375.2ms/frame (CPU)**
+
+## Full Pipeline Breakdown (Warm Run)
+
+```
+extract_and_track  ████████████████████████████████████████████ 98.9%
+phase_detection    ▏                                                0.7%
+smooth             ▏                                                0.4%
+spatial_reference  ▏                                                0.1%
+metrics            ▏                                                0.0%
+recommendations    ▏                                                0.0%
+video_meta         ▏                                                0.0%
+normalize          ▏                                                0.0%
+gap_filling        ▏                                                0.0%
+3d_lift_and_blade  ▏                                                0.0%
+dtw_alignment      ▏                                                0.0%
+physics            ▏                                                0.0%
 ```
 
 ## Analysis
 
-### Bottleneck: `extract_and_track` = 99.8% of total time
+### Bottleneck: RTMO per-frame inference = 98.8% of total time
 
-RTMPose inference (via rtmlib/ONNX Runtime) dominates pipeline execution at 1128.2s on CPU. This includes:
-- Frame extraction from video
-- RTMO model loading (~17 min cold start — first-time model download at ~25-50 kB/s)
-- Per-frame 2D pose estimation
-- Person tracking (Kalman filter + biometric Re-ID)
-- Gap filling
+375ms/frame on CPU for RTMO-M (balanced) at 640x640. For 186 frames = 69.8s.
 
-### CPU-only stages combined: < 0.2% of total
+Inside `rtmo_inference_loop`, every frame runs:
+1. `cv2.VideoCapture.read()` — frame decode
+2. Optional resize (if > 1920px)
+3. `tracker(frame_ds)` — RTMO ONNX inference + built-in tracking
+4. COCO→H3.6M conversion + normalization
+5. Track association (Sports2D/DeepSORT/custom)
+6. Biometric validation (anti-steal)
+
+The RTMO ONNX inference itself dominates. Tracking overhead (Sports2D centroid association, biometric validation) is negligible compared to the neural network forward pass.
+
+### Everything else combined: 1.2%
 
 | Category | Time (s) | % of total |
 |----------|----------|------------|
-| normalize | 0.0015 | 0.0001% |
-| smooth (One-Euro filter) | 0.4504 | 0.0398% |
-| phase_detection | 1.1046 | 0.0977% |
-| metrics | 0.6012 | 0.0532% |
-| recommendations | 0.0025 | 0.0002% |
-| **Total CPU-only** | **2.160** | **0.191%** |
+| phase_detection | 0.491 | 0.70% |
+| smooth (One-Euro filter) | 0.258 | 0.36% |
+| spatial_reference | 0.067 | 0.09% |
+| metrics | 0.032 | 0.04% |
+| video_meta | 0.004 | 0.01% |
+| normalize | 0.001 | 0.00% |
+| recommendations | 0.001 | 0.00% |
+| gap_filling | 0.000 | 0.00% |
+| **Total non-inference** | **0.854** | **1.21%** |
 
-### Numba JIT targets — impact assessment
+### Numba JIT targets — confirmed noise
 
-The functions optimized with Numba JIT in PR #29 (`_angle_3pt_rad`, `smooth_trajectory_2d`, `_compute_knee_angle_series`, `_compute_trunk_lean_series`) are called within stages that total < 0.2% of pipeline time. Even a 100x speedup on these functions would save at most ~2s out of 1130s.
+PR #29 optimized `_angle_3pt_rad`, `smooth_trajectory_2d`, `_compute_knee_angle_series`, `_compute_trunk_lean_series` with Numba JIT. These run inside `smooth` (0.258s) and `metrics` (0.032s) — totaling 0.29s out of 70.6s. Even complete elimination would save 0.4%.
 
-### 3D lifting
+### Cold start impact
 
-Not measured — model file not found, exception silently caught. When enabled, this adds MotionAGFormer/TCPFormer inference. Previous measurements showed CorrectiveLens adds ~3px max shift at unknown time cost. Worth profiling separately with GPU.
+First run took 1130s vs warm 70.6s. Difference = 1059s, almost entirely RTMO model download (~78.8MB at ~25-50 kB/s). Model is cached after first run to `~/.cache/rtmlib/hub/checkpoints/`.
 
-### DTW / Physics
+## Recommendations
 
-Both effectively 0s — DTW skipped (no reference), physics skipped (depends on 3D poses).
-
-## Recommendations for Optimization
-
-1. **RTMPose inference is the only meaningful bottleneck.** All other optimization is noise.
-2. **GPU acceleration already provides 7x speedup** (measured: 5.6s vs 39.4s for 364 frames). Ensure CUDA works in production.
-3. **Model download caching.** Cold start downloads 78.8MB RTMO model at ~25-50 kB/s (~17 min). Cache model locally or pre-download.
-4. **Frame skip.** Already available (`frame_skip=8` in visualization). For analysis pipeline, consider adaptive frame skip during non-critical phases (preparation, recovery).
-5. **Do NOT optimize Numba targets further.** The 0.2% CPU-only stages are not the bottleneck. Numba JIT compilation overhead may exceed its benefit for single-run analysis.
+1. **RTMO inference is the only bottleneck.** 98.8% of pipeline time.
+2. **GPU acceleration is the primary lever.** Previously measured 7x speedup on GPU. With 375ms/frame → ~54ms/frame, 186 frames → ~10s total.
+3. **Frame skip for analysis.** Already available (`frame_skip` parameter). Skipping every other frame halves inference time with linear interpolation recovering skipped poses.
+4. **Lighter RTMO variant.** `rtmo-s` (small, 8xb32) vs current `rtmo-m` (medium, 16xb16). Trade accuracy for speed.
+5. **Batch inference.** Currently processes one frame at a time. ONNX Runtime supports batching — processing N frames per batch could improve GPU utilization.
+6. **Do NOT optimize Numba targets.** 0.4% of pipeline time. Numba JIT cold-start compilation may exceed saved time for single-run analysis.
 
 ## Reproduction
 
 ```bash
+# Basic profile
 cd ml && .venv/bin/python scripts/profile_pipeline.py \
-    /path/to/video.mp4 --element waltz_jump --json /tmp/profiling_results.json
+    /path/to/video.mp4 --element waltz_jump --json /tmp/profiling.json
+
+# Deep profile (model init vs inference)
+cd ml && .venv/bin/python scripts/profile_pipeline.py \
+    /path/to/video.mp4 --element waltz_jump --deep --json /tmp/profiling_deep.json
 ```
 
-Raw data: `/tmp/profiling_results.json`
+Raw data: `/tmp/profiling_results.json`, `/tmp/profiling_deep.json`
