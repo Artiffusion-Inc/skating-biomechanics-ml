@@ -104,6 +104,7 @@ class BatchPoseExtractor:
 
         # Lazy-initialised on first call
         self._tracker: PoseTracker | None = None
+        self._batch_rtmo = None  # Lazy-init BatchRTMO for true batch inference
 
     @property
     def tracker(self) -> PoseTracker:
@@ -204,7 +205,7 @@ class BatchPoseExtractor:
                 # Process batch when full
                 if len(batch_buffer) >= self.batch_size:
                     poses_batch = self._process_batch(batch_buffer, w, h)
-                    for idx, pose in zip(batch_indices, poses_batch):
+                    for idx, pose in zip(batch_indices, poses_batch, strict=True):
                         all_poses[idx] = pose
                     batch_buffer = []
                     batch_indices = []
@@ -220,7 +221,7 @@ class BatchPoseExtractor:
             # Process remaining frames
             if batch_buffer:
                 poses_batch = self._process_batch(batch_buffer, w, h)
-                for idx, pose in zip(batch_indices, poses_batch):
+                for idx, pose in zip(batch_indices, poses_batch, strict=True):
                     all_poses[idx] = pose
                 pbar.update(len(batch_indices))
 
@@ -251,12 +252,9 @@ class BatchPoseExtractor:
         original_width: int,
         original_height: int,
     ) -> list[np.ndarray]:
-        """Process a batch of frames through RTMO.
+        """Process a batch of frames through RTMO with true batch inference.
 
         This is the key optimization: single RTMO call for multiple frames.
-        Currently processes frames sequentially but keeps data on GPU.
-
-        Future improvement: Modify rtmlib to support true batch inference.
 
         Args:
             frames: List of frames to process (H, W, 3).
@@ -266,25 +264,25 @@ class BatchPoseExtractor:
         Returns:
             List of H3.6M poses (17, 3) for each frame.
         """
+        # Lazy-init BatchRTMO
+        if self._batch_rtmo is None:
+            from .rtmo_batch import BatchRTMO
+
+            self._batch_rtmo = BatchRTMO(
+                mode=self._mode,
+                device=self._device,
+                score_thr=self._conf_threshold,
+            )
+
+        results = self._batch_rtmo.infer_batch(frames)
+
         poses = []
-
-        for frame in frames:
-            # Run RTMO inference
-            tracker = self.tracker
-            if tracker is None:
-                continue
-
-            tracker_result = tracker(frame)
-            if not isinstance(tracker_result, tuple) or len(tracker_result) != 2:
-                continue
-
-            keypoints, scores = tracker_result
-
+        for keypoints, scores in results:
             if keypoints is None or len(keypoints) == 0:
                 poses.append(np.full((17, 3), np.nan, dtype=np.float32))
                 continue
 
-            # Use first detected person (simplified)
+            # Use first detected person
             kp = keypoints[0].astype(np.float32)  # (17, 2) pixels
             conf = scores[0].astype(np.float32)  # (17,)
 
@@ -311,6 +309,9 @@ class BatchPoseExtractor:
 
     def close(self) -> None:
         """Release resources."""
+        if self._batch_rtmo is not None:
+            self._batch_rtmo.close()
+            self._batch_rtmo = None
         self._tracker = None
 
     def __enter__(self):
