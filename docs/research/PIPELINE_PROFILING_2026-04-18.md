@@ -95,6 +95,33 @@ ONNX inference details: 186 calls, min=171ms, max=549ms, std=70ms. First few fra
 
 **DeepSORT = 17.9% of pipeline** — second largest consumer. Uses PyTorch MobileNet embedder for appearance-based Re-ID. Runs 169/186 frames (skipped when no detections).
 
+DeepSORT internals: `generate_embeds()` = 100% of DeepSORT time (68.8ms/call). Kalman predict + Hungarian matching = negligible. The bottleneck is PyTorch MobileNet forward pass.
+
+### Run 4: ONNX Runtime Op-Level Profiling (RTMO model)
+
+Profiled RTMO-M (89.3MB) directly via `ort.SessionOptions(enable_profiling=True)`, 5 inference runs. 6314 trace events, 45 unique ONNX operators.
+
+| ONNX Op | Time (ms) | % | Calls | Avg (ms) |
+|---------|-----------|---|-------|----------|
+| **Conv** | 1818.9 | 62.4% | 800 | 2.274 |
+| **QuickGelu** | 320.2 | 11.0% | 704 | 0.455 |
+| **ReorderInput** | 278.1 | 9.5% | 640 | 0.435 |
+| **ReorderOutput** | 203.4 | 7.0% | 840 | 0.242 |
+| Concat | 81.5 | 2.8% | 400 | 0.204 |
+| Add | 58.4 | 2.0% | 416 | 0.140 |
+| MatMul | 43.8 | 1.5% | 96 | 0.456 |
+| Slice | 28.3 | 1.0% | 272 | 0.104 |
+| Split | 26.7 | 0.9% | 32 | 0.836 |
+| MaxPool | 14.7 | 0.5% | 24 | 0.611 |
+| Rest (36 ops) | 141.8 | 4.9% | — | — |
+| **Total** | **2914.8** | **100%** | **6240** | **0.467** |
+
+Key observations:
+- **Conv layers = 62.4%** — dominant. CPU matrix multiplication. Benefits massively from GPU.
+- **QuickGelu = 11.0%** — GELU activation variant. Could be fused with Conv in GPU kernels.
+- **ReorderInput + ReorderOutput = 16.5%** — data layout conversion (NHWC↔NCHW). Zero cost on GPU (just memory view), significant CPU overhead.
+- **ReorderInput (9.5%) and ReorderOutput (7.0%) together = 281.5ms/5runs = 56.3ms/frame** — this is pure CPU memory copy overhead that disappears on GPU.
+
 ## Full Pipeline Breakdown (Warm Run)
 
 ```
@@ -154,12 +181,13 @@ First run took 1130s vs warm 70.6s. Difference = 1059s, almost entirely RTMO mod
 ## Recommendations
 
 1. **Two bottlenecks: RTMO (74.9%) + DeepSORT (17.9%).** Combined 92.8% of pipeline.
-2. **GPU acceleration is the primary lever.** Both RTMO (ONNX) and DeepSORT (PyTorch) benefit. Previously measured 7x speedup for RTMO on GPU. DeepSORT embedder also GPU-accelerated via PyTorch CUDA.
+2. **GPU acceleration is the primary lever.** On GPU: Conv moves to CUDA cores (10-50x faster), ReorderInput/Output becomes zero-cost (memory view), QuickGelu fuses with Conv. Previously measured 7x speedup for RTMO on GPU. DeepSORT embedder also GPU-accelerated via PyTorch CUDA.
 3. **Disable DeepSORT for single-person videos.** DeepSORT embedder runs even when only 1 person is detected. For single-skater analysis (most use cases), appearance Re-ID is unnecessary — rtmlib's built-in IoU tracking suffices. Use `tracking_backend="rtmlib"` or `tracking_mode="rtmlib"` to skip DeepSORT entirely. Expected savings: 71.4ms/frame (19.7%).
 4. **Frame skip for analysis.** Already available (`frame_skip` parameter). Skipping every other frame halves both RTMO and DeepSORT time.
 5. **Lighter RTMO variant.** `rtmo-s` (small) vs current `rtmo-m` (medium). Trade accuracy for speed.
-6. **Batch inference.** Currently one frame at a time. ONNX Runtime supports batching.
-7. **Do NOT optimize Numba targets.** 0.4% of pipeline time. Numba JIT cold-start compilation may exceed saved time for single-run analysis.
+6. **Batch inference.** Currently one frame at a time. ONNX Runtime supports batching — processing N frames per batch could improve GPU utilization.
+7. **ReorderInput/ReorderOutput = 16.5% of ONNX time on CPU.** This is NHWC↔NCHW layout conversion. Zero cost on GPU. If CPU-only deployment needed, consider converting RTMO to NHWC-native ONNX graph.
+8. **Do NOT optimize Numba targets.** 0.4% of pipeline time. Numba JIT cold-start compilation may exceed saved time for single-run analysis.
 
 ## Reproduction
 
