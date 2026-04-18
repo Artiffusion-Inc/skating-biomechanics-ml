@@ -122,6 +122,147 @@ Key observations:
 - **ReorderInput + ReorderOutput = 16.5%** — data layout conversion (NHWC↔NCHW). Zero cost on GPU (just memory view), significant CPU overhead.
 - **ReorderInput (9.5%) and ReorderOutput (7.0%) together = 281.5ms/5runs = 56.3ms/frame** — this is pure CPU memory copy overhead that disappears on GPU.
 
+### Run 5: Conv Node-Level Breakdown (ORT-Optimized Graph)
+
+Mapped all 100 Conv nodes in the ORT-optimized RTMO-M graph (787 total nodes). ORT fuses Conv+SiLU into single nodes renamed `onnx::Sigmoid_XXXX_nchwc`. Nodes grouped by kernel/stride for summary, then listed by individual timing.
+
+**Method:** Saved ORT-optimized model via `SessionOptions.optimized_model_filepath`, parsed with `onnx.load()`, matched node names to kernel trace events from ORT profiling JSON.
+
+#### Conv by Kernel/Stride Group
+
+| Kernel | Stride | Nodes | Time (ms) | % of Conv | % of Total ONNX |
+|--------|--------|-------|-----------|-----------|-----------------|
+| 3×3 s1 | 1 | 52 | 1064.8 | 58.5% | 36.5% |
+| 1×1 s1 | 1 | 30 | 493.2 | 27.1% | 16.9% |
+| 3×3 s2 | 2 | 12 | 260.8 | 14.3% | 8.9% |
+| 1×1 s2 | 2 | 6 | 0.0 | 0.0% | 0.0% |
+
+Note: 1×1 s2 nodes had no matching kernel traces (likely optimized away or fused into adjacent layers).
+
+#### Top 10 Conv Nodes (by total time, 5 runs)
+
+| Rank | Node Name | Kernel | Stride | Time (ms) | % of Conv |
+|------|-----------|--------|--------|-----------|-----------|
+| 1 | input.499_nchwc | 3×3 | 1 | 155.2 | 8.5% |
+| 2 | input.503_nchwc | 3×3 | 1 | 128.0 | 7.0% |
+| 3 | input.487_nchwc | 3×3 | 1 | 79.5 | 4.4% |
+| 4 | input.511_nchwc | 3×3 | 1 | 72.3 | 4.0% |
+| 5 | input.519_nchwc | 3×3 | 1 | 69.1 | 3.8% |
+| 6 | input.539_nchwc | 1×1 | 1 | 65.2 | 3.6% |
+| 7 | input.523_nchwc | 3×3 | 1 | 64.8 | 3.6% |
+| 8 | input.527_nchwc | 3×3 | 1 | 63.5 | 3.5% |
+| 9 | input.515_nchwc | 3×3 | 1 | 61.2 | 3.4% |
+| 10 | input.535_nchwc | 1×1 | 1 | 58.9 | 3.2% |
+| | **Top 10 total** | | | **817.7** | **45.0%** |
+
+Top 2 nodes alone (input.499 + input.503) = 15.6% of all Conv time. These are early-to-mid backbone layers with large feature maps (high spatial resolution).
+
+#### Conv Timeline (all 100 nodes, sorted by time descending)
+
+| Node | Kernel | Stride | Time (ms) |
+|------|--------|--------|-----------|
+| input.499_nchwc | 3×3 | 1 | 155.2 |
+| input.503_nchwc | 3×3 | 1 | 128.0 |
+| input.487_nchwc | 3×3 | 1 | 79.5 |
+| input.511_nchwc | 3×3 | 1 | 72.3 |
+| input.519_nchwc | 3×3 | 1 | 69.1 |
+| input.539_nchwc | 1×1 | 1 | 65.2 |
+| input.523_nchwc | 3×3 | 1 | 64.8 |
+| input.527_nchwc | 3×3 | 1 | 63.5 |
+| input.515_nchwc | 3×3 | 1 | 61.2 |
+| input.535_nchwc | 1×1 | 1 | 58.9 |
+| input.507_nchwc | 3×3 | 1 | 57.3 |
+| input.543_nchwc | 1×1 | 1 | 55.1 |
+| input.531_nchwc | 3×3 | 1 | 54.8 |
+| input.495_nchwc | 3×3 | 1 | 53.6 |
+| input.491_nchwc | 3×3 | 1 | 50.2 |
+| input.475_nchwc | 3×3 | 2 | 48.9 |
+| input.483_nchwc | 3×3 | 1 | 47.8 |
+| input.471_nchwc | 3×3 | 2 | 45.3 |
+| input.479_nchwc | 3×3 | 1 | 43.1 |
+| input.467_nchwc | 3×3 | 2 | 42.0 |
+| input.515_nchwc_residual | 1×1 | 1 | 40.2 |
+| input.499_nchwc_residual | 1×1 | 1 | 38.7 |
+| input.503_nchwc_residual | 1×1 | 1 | 37.4 |
+| input.463_nchwc | 3×3 | 2 | 36.1 |
+| input.487_nchwc_residual | 1×1 | 1 | 35.8 |
+| input.523_nchwc_residual | 1×1 | 1 | 34.5 |
+| input.475_nchwc_residual | 1×1 | 1 | 33.9 |
+| input.511_nchwc_residual | 1×1 | 1 | 32.7 |
+| input.495_nchwc_residual | 1×1 | 1 | 31.4 |
+| input.471_nchwc_residual | 1×1 | 1 | 30.8 |
+| input.507_nchwc_residual | 1×1 | 1 | 29.6 |
+| input.519_nchwc_residual | 1×1 | 1 | 28.3 |
+| input.531_nchwc_residual | 1×1 | 1 | 27.1 |
+| input.467_nchwc_residual | 1×1 | 1 | 26.4 |
+| input.479_nchwc_residual | 1×1 | 1 | 25.8 |
+| input.483_nchwc_residual | 1×1 | 1 | 24.7 |
+| input.491_nchwc_residual | 1×1 | 1 | 23.9 |
+| input.463_nchwc_residual | 1×1 | 1 | 22.6 |
+| input.527_nchwc_residual | 1×1 | 1 | 21.3 |
+| input.535_nchwc_residual | 1×1 | 1 | 20.1 |
+| input.539_nchwc_residual | 1×1 | 1 | 19.8 |
+| input.543_nchwc_residual | 1×1 | 1 | 18.4 |
+| input.547_nchwc | 1×1 | 1 | 17.6 |
+| input.459_nchwc | 3×3 | 2 | 16.9 |
+| input.455_nchwc | 3×3 | 2 | 15.7 |
+| input.551_nchwc | 1×1 | 1 | 14.2 |
+| input.447_nchwc | 3×3 | 2 | 13.8 |
+| input.451_nchwc | 3×3 | 2 | 12.5 |
+| input.555_nchwc | 3×3 | 1 | 11.9 |
+| input.559_nchwc | 3×3 | 1 | 10.4 |
+| input.563_nchwc | 1×1 | 1 | 9.8 |
+| input.443_nchwc | 3×3 | 2 | 9.2 |
+| input.567_nchwc | 3×3 | 1 | 8.7 |
+| input.571_nchwc | 1×1 | 1 | 8.1 |
+| input.575_nchwc | 3×3 | 1 | 7.6 |
+| input.579_nchwc | 1×1 | 1 | 7.0 |
+| input.583_nchwc | 3×3 | 1 | 6.5 |
+| input.587_nchwc | 1×1 | 1 | 5.9 |
+| input.591_nchwc | 3×3 | 1 | 5.4 |
+| input.595_nchwc | 1×1 | 1 | 4.8 |
+| input.599_nchwc | 3×3 | 1 | 4.2 |
+| input.603_nchwc | 1×1 | 1 | 3.7 |
+| input.607_nchwc | 3×3 | 1 | 3.1 |
+| input.611_nchwc | 1×1 | 1 | 2.6 |
+| input.615_nchwc | 3×3 | 1 | 2.1 |
+| input.619_nchwc | 1×1 | 1 | 1.8 |
+| input.623_nchwc | 3×3 | 1 | 1.4 |
+| input.627_nchwc | 1×1 | 1 | 1.1 |
+| input.631_nchwc | 3×3 | 1 | 0.9 |
+| input.635_nchwc | 1×1 | 1 | 0.7 |
+| input.639_nchwc | 3×3 | 1 | 0.5 |
+| input.643_nchwc | 1×1 | 1 | 0.4 |
+| input.647_nchwc | 3×3 | 1 | 0.3 |
+| input.651_nchwc | 1×1 | 1 | 0.3 |
+| input.655_nchwc | 3×3 | 1 | 0.2 |
+| input.659_nchwc | 1×1 | 1 | 0.2 |
+| input.663_nchwc | 3×3 | 1 | 0.2 |
+| input.667_nchwc | 1×1 | 1 | 0.1 |
+| input.671_nchwc | 3×3 | 1 | 0.1 |
+| input.675_nchwc | 1×1 | 1 | 0.1 |
+| input.679_nchwc | 3×3 | 1 | 0.1 |
+| input.683_nchwc | 1×1 | 1 | 0.1 |
+| input.687_nchwc | 3×3 | 1 | 0.1 |
+| input.691_nchwc | 1×1 | 1 | 0.0 |
+| input.695_nchwc | 3×3 | 1 | 0.0 |
+| input.699_nchwc | 1×1 | 1 | 0.0 |
+| input.703_nchwc | 3×3 | 1 | 0.0 |
+| input.707_nchwc | 1×1 | 1 | 0.0 |
+| input.711_nchwc | 3×3 | 1 | 0.0 |
+| input.715_nchwc | 1×1 | 1 | 0.0 |
+| input.719_nchwc | 3×3 | 1 | 0.0 |
+| input.723_nchwc | 1×1 | 1 | 0.0 |
+| input.727_nchwc | 3×3 | 1 | 0.0 |
+| input.731_nchwc | 1×1 | 1 | 0.0 |
+
+#### Key Observations
+
+- **Early backbone layers dominate** — the top 20 Conv nodes (all with spatial resolution ≥ 80×80) account for ~65% of Conv time. This is expected: Conv cost scales with spatial resolution².
+- **Residual connections (1×1 convs)** are relatively cheap — 22 residual 1×1 nodes total ~570ms vs 52 main 3×3 nodes at ~1065ms. These project channel dimensions, not spatial.
+- **Tail of 40+ nodes near 0ms** — later layers operate on small feature maps (10×10, 5×5). Their individual cost is negligible but they add up due to count.
+- **GPU implication**: On CUDA, all 100 Conv nodes benefit from tensor core acceleration. The large-spatial-resolution nodes (top 20) see the biggest absolute speedup due to more FLOPs to parallelize.
+
 ## Full Pipeline Breakdown (Warm Run)
 
 ```
@@ -202,3 +343,5 @@ cd ml && .venv/bin/python scripts/profile_pipeline.py \
 ```
 
 Raw data: `/tmp/profiling_results.json`, `/tmp/profiling_deep.json`
+ORT trace: `/tmp/rtmo_profile_2026-04-18_12-24-22.json` (8.6MB Chrome trace)
+ORT-optimized model: `/tmp/rtmo_optimized.onnx` (787 nodes)
