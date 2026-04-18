@@ -5,10 +5,10 @@ import { toast } from "sonner"
 import { useTranslations } from "@/i18n"
 import {
   useAcceptConnection,
+  useConnections,
   useEndConnection,
   useInviteConnection,
   usePendingConnections,
-  useConnections,
 } from "@/lib/api/connections"
 
 export default function ConnectionsPage() {

@@ -2,6 +2,7 @@
  * Shared API infrastructure: base URL, token storage, typed fetch helper.
  */
 
+import { redirect } from "next/navigation"
 import type { z } from "zod"
 
 export const API_BASE = "/api/v1"
@@ -26,12 +27,14 @@ export function getRefreshToken(): string | null {
 export function setTokens(access: string, refresh: string) {
   localStorage.setItem(TOKEN_KEY, access)
   localStorage.setItem(REFRESH_KEY, refresh)
+  // biome-ignore lint: sync auth cookie for SSR gating
   document.cookie = "sb_auth=1; path=/; max-age=31536000; SameSite=Lax"
 }
 
 export function clearTokens() {
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(REFRESH_KEY)
+  // biome-ignore lint: clear auth cookie on logout
   document.cookie = "sb_auth=; path=/; max-age=0"
 }
 
@@ -72,7 +75,7 @@ export async function apiFetch<T>(
   if (!res.ok) {
     if (res.status === 401) {
       clearTokens()
-      window.location.href = "/login"
+      redirect("/login")
       throw new ApiError("Unauthorized", res.status)
     }
     const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))

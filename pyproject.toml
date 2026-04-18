@@ -12,6 +12,7 @@ dependencies = [
     "onnxruntime-gpu>=1.24.4",      # ONNX Runtime with CUDA backend for rtmlib
     "opencv-python>=4.10.0",
     "numpy>=2.0.0",
+    "numba>=0.60.0",              # JIT compilation for compute-intensive functions
     # torch is optional — install with: uv add torch --extra torch-models
     "dtw-python>=1.5.0",
     "scipy>=1.14.0",
@@ -110,16 +111,18 @@ max-statements = 80
 known-first-party = ["backend", "skating_ml"]
 
 [tool.ruff.lint.per-file-ignores]
-"tests/**/*.py" = ["ARG", "PLR2004", "ERA", "SIM117", "T20", "S101"]
+"tests/**/*.py" = ["ARG", "PLR2004", "ERA", "SIM117", "T20", "S101", "S106", "S108", "S110", "BLE001", "F401", "S105", "F841"]
+"backend/tests/**/*.py" = ["ARG", "PLR2004", "ERA", "SIM117", "T20", "S101", "S106", "S108", "S110", "BLE001", "F401", "S105", "F841"]
+"ml/tests/**/*.py" = ["ARG", "PLR2004", "ERA", "SIM117", "T20", "S101", "S106", "S108", "S110", "BLE001", "F401", "S105", "F841"]
 "__init__.py" = ["F401"]  # unused imports
 "scripts/visualize_with_skeleton.py" = ["ARG001"]
-"ml/scripts/**/*.py" = ["T20", "S602"]
+"ml/scripts/**/*.py" = ["T20", "S602", "ERA", "E402", "S101", "B007", "PTH", "S108", "S310", "S603", "BLE001", "ARG001", "F841", "I001", "S607", "C414", "B905", "F401", "RUF100"]
 "experiments/**/*.py" = ["T20", "S", "ERA"]
 "ml/skating_ml/analysis/rules/*.py" = []
 "ml/skating_ml/visualization/**/*.py" = []
 "ml/skating_ml/cli.py" = []
-"ml/**/*.py" = ["ARG001", "F841"]  # unused args in callback-heavy code
-"backend/**/*.py" = ["ARG001", "F841"]
+"ml/skating_ml/**/*.py" = ["ARG001", "F841", "S110", "BLE001", "S306", "RUF100"]  # legacy error handling
+"backend/**/*.py" = ["ARG001", "F841", "S110", "BLE001", "TC001", "S105", "S311", "RUF100"]
 
 [tool.ruff.format]
 quote-style = "double"

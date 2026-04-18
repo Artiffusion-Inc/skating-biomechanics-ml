@@ -42,7 +42,9 @@ export default function ProgramEditorPage() {
 
   if (!program) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">Not found</div>
+      <div className="flex items-center justify-center py-20 text-muted-foreground">
+        {t("notFound")}
+      </div>
     )
   }
 
@@ -70,7 +72,7 @@ export default function ProgramEditorPage() {
               </div>
             ))}
             {elements.length === 0 && (
-              <p className="py-8 text-center text-sm text-muted-foreground">No elements</p>
+              <p className="py-8 text-center text-sm text-muted-foreground">{t("noElements")}</p>
             )}
           </div>
         </div>

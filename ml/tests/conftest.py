@@ -1,6 +1,10 @@
 """Shared pytest fixtures and configuration."""
 
+import sys
 from pathlib import Path
+
+# Add ml to path for imports
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import numpy as np
 import pytest
