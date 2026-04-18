@@ -85,7 +85,9 @@ export interface Session {
   id: string
   user_id: string
   element_type: string
+  video_key?: string | null
   video_url: string | null
+  processed_video_key?: string | null
   processed_video_url: string | null
   poses_url?: string | null // Deprecated: Replaced by pose_data
   csv_url?: string | null // Deprecated: Replaced by frame_metrics
@@ -150,21 +152,24 @@ export interface MetricDef {
 }
 
 // ---------------------------------------------------------------------------
-// Relationships
+// Connections
 // ---------------------------------------------------------------------------
 
-export interface Relationship {
+export type ConnectionType = "coaching" | "choreography"
+
+export interface Connection {
   id: string
-  coach_id: string
-  skater_id: string
+  from_user_id: string
+  to_user_id: string
+  connection_type: ConnectionType
   status: "invited" | "active" | "ended"
   initiated_by: string | null
   created_at: string
   ended_at: string | null
-  coach_name: string | null
-  skater_name: string | null
+  from_user_name: string | null
+  to_user_name: string | null
 }
 
-export interface RelationshipListResponse {
-  relationships: Relationship[]
+export interface ConnectionListResponse {
+  connections: Connection[]
 }

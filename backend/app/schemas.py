@@ -302,37 +302,39 @@ class DiagnosticsResponse(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Relationships
+# Connections
 # ---------------------------------------------------------------------------
 
 
 class InviteRequest(BaseModel):
-    skater_email: str
+    to_user_email: str
+    connection_type: str = Field(pattern=r"^(coaching|choreography)$")
 
 
-class RelationshipResponse(BaseModel):
+class ConnectionResponse(BaseModel):
     id: str
-    coach_id: str
-    skater_id: str
+    from_user_id: str
+    to_user_id: str
+    connection_type: str
     status: str
     initiated_by: str | None
     created_at: str
     ended_at: str | None
-    coach_name: str | None = None
-    skater_name: str | None = None
+    from_user_name: str | None = None
+    to_user_name: str | None = None
 
     model_config = {"from_attributes": True}
 
     @field_validator("created_at", "ended_at", mode="before")
     @classmethod
-    def validate_datetime(cls, v: Any) -> str:
+    def validate_datetime(cls, v):
         if isinstance(v, datetime):
             return v.isoformat()
         return str(v)
 
 
-class RelationshipListResponse(BaseModel):
-    relationships: list[RelationshipResponse]
+class ConnectionListResponse(BaseModel):
+    connections: list[ConnectionResponse]
 
 
 # ---------------------------------------------------------------------------
