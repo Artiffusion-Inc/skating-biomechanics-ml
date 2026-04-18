@@ -72,16 +72,11 @@ def _compute_knee_angle_series_numba(
     angles = np.zeros(num_frames, dtype=np.float32)
     rad2deg = 180.0 / np.pi
 
-    # Convert to int for Numba compatibility
-    hip_i = int(hip_idx)
-    knee_i = int(knee_idx)
-    foot_i = int(foot_idx)
-
     for i in range(num_frames):
         pose = poses[i]
-        hip = pose[hip_i]
-        knee = pose[knee_i]
-        foot = pose[foot_i]
+        hip = pose[hip_idx]
+        knee = pose[knee_idx]
+        foot = pose[foot_idx]
 
         angle_rad = _angle_3pt_rad_numba(hip, knee, foot)
         angles[i] = angle_rad * rad2deg
@@ -633,9 +628,9 @@ class BiomechanicsAnalyzer:
             Knee angle in degrees (num_frames,).
         """
         if side == "left":
-            hip_idx, knee_idx, foot_idx = H36Key.LHIP, H36Key.LKNEE, H36Key.LFOOT
+            hip_idx, knee_idx, foot_idx = int(H36Key.LHIP), int(H36Key.LKNEE), int(H36Key.LFOOT)
         else:
-            hip_idx, knee_idx, foot_idx = H36Key.RHIP, H36Key.RKNEE, H36Key.RFOOT
+            hip_idx, knee_idx, foot_idx = int(H36Key.RHIP), int(H36Key.RKNEE), int(H36Key.RFOOT)
 
         return _compute_knee_angle_series_numba(poses, hip_idx, knee_idx, foot_idx)
 
