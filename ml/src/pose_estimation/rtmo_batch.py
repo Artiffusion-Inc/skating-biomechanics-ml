@@ -359,7 +359,71 @@ class BatchRTMO:
 
         return results
 
+    def infer_batch_iobinding(
+        self,
+        frames: list[np.ndarray],
+    ) -> list[tuple[np.ndarray, np.ndarray]]:
+        """Run batch inference with IO Binding (zero-copy GPU transfer).
+
+        Pre-allocates GPU tensors on first call, then reuses them for
+        subsequent calls with the same batch size. Falls back to regular
+        ``session.run`` when the device is not CUDA.
+
+        Args:
+            frames: List of BGR frames (H, W, 3) uint8.
+
+        Returns:
+            List of (keypoints, scores) tuples per frame.
+        """
+        if not frames:
+            return []
+
+        if self._device != "cuda":
+            return self.infer_batch(frames)
+
+        batch_tensor, ratios = preprocess_batch(frames)
+        batch_size = batch_tensor.shape[0]
+
+        # Pre-allocate GPU tensors (once per batch_size)
+        if not hasattr(self, "_binding") or self._binding_batch_size != batch_size:
+            import onnxruntime as ort
+
+            self._binding = self._session.io_binding()
+            input_ortvalue = ort.OrtValue.ortvalue_from_shape_and_type(
+                [batch_size, 3, RTMO_INPUT_SIZE, RTMO_INPUT_SIZE],
+                np.float32,
+                "cuda",
+                0,
+            )
+            self._binding.bind_ortvalue_input(self._input_name, input_ortvalue)
+            for name in self._output_names:
+                self._binding.bind_output(name, "cuda", 0)
+            self._binding_batch_size = batch_size
+
+        # Update input in-place (zero-copy)
+        input_ortvalue = self._binding.get_inputs()[0].get_ortvalue()
+        input_ortvalue.update_inplace(batch_tensor)
+
+        # Run inference with IO binding
+        self._session.run_with_iobinding(self._binding)
+
+        # Read outputs
+        dets = self._binding.get_outputs()[0].get_numpy_data()[: len(frames)]
+        keypoints = self._binding.get_outputs()[1].get_numpy_data()[: len(frames)]
+
+        return postprocess_batch(
+            dets,
+            keypoints,
+            ratios,
+            score_thr=self._score_thr,
+            nms_thr=self._nms_thr,
+        )
+
     def close(self) -> None:
         """Release resources."""
+        if hasattr(self, "_binding"):
+            del self._binding
+        if hasattr(self, "_binding_batch_size"):
+            del self._binding_batch_size
         if hasattr(self, "_session"):
             del self._session
