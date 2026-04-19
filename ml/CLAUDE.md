@@ -162,7 +162,7 @@ Compute-intensive functions use Numba JIT for acceleration:
 
 **Note:** TensorRT remains experimental (ONNX by default for serverless compatibility).
 
-## Worker Jobs (`src.worker`)
+## Worker Jobs (`backend/app.worker`)
 
 Two async jobs registered with arq:
 
