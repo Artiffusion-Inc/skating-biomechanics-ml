@@ -1,6 +1,5 @@
 "use client"
 
-import { useRef } from "react"
 import WaveSurfer from "wavesurfer.js"
 import { useChoreographyEditor } from "./store"
 
@@ -9,13 +8,11 @@ interface WaveformViewProps {
 }
 
 export function WaveformView({ audioUrl }: WaveformViewProps) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  const wavesurferRef = useRef<WaveSurfer | null>(null)
   const { pixelsPerSecond, setCurrentTime, setIsPlaying } =
     useChoreographyEditor()
 
   function handleContainerRef(el: HTMLDivElement | null) {
-    if (!el || wavesurferRef.current) return
+    if (!el || WaveformViewRef.current) return
     if (!audioUrl) return
 
     const ws = WaveSurfer.create({
@@ -33,19 +30,30 @@ export function WaveformView({ audioUrl }: WaveformViewProps) {
       minPxPerSec: pixelsPerSecond,
     })
 
-    ws.on("timeupdate", (time) => setCurrentTime(time))
-    ws.on("play", () => setIsPlaying(true))
-    ws.on("pause", () => setIsPlaying(false))
+    const unsubscribers = [
+      ws.on("timeupdate", (time) => {
+        if (el.isConnected) setCurrentTime(time)
+      }),
+      ws.on("play", () => {
+        if (el.isConnected) setIsPlaying(true)
+      }),
+      ws.on("pause", () => {
+        if (el.isConnected) setIsPlaying(false)
+      }),
+    ]
 
-    ws.load(audioUrl).catch(() => {
-      // Graceful fallback if audio fails to load
-    })
+    ws.load(audioUrl).catch(() => {})
 
-    wavesurferRef.current = ws
+    WaveformViewRef.current = ws
+    WaveformViewRef._cleanup = () => {
+      unsubscribers.forEach((u) => u?.())
+      ws.destroy()
+      WaveformViewRef.current = null
+    }
   }
 
-  // Expose play/pause/seek for TransportBar via module-level ref
-  WaveformViewRef.current = wavesurferRef.current
+  // Expose for TransportBar
+  void WaveformViewRef
 
   return (
     <div
@@ -63,4 +71,8 @@ export function WaveformView({ audioUrl }: WaveformViewProps) {
 }
 
 // Module-level ref for TransportBar to access wavesurfer instance
-export const WaveformViewRef = { current: null as WaveSurfer | null }
+interface WaveformRefObj {
+  current: WaveSurfer | null
+  _cleanup?: () => void
+}
+export const WaveformViewRef: WaveformRefObj = { current: null }

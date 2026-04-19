@@ -22,10 +22,8 @@ interface TimelineElementProps {
 export function TimelineElement({
   element,
   pixelsPerSecond,
-  duration: _duration,
   snapMode,
   beatMarkers,
-  phraseMarkers: _phraseMarkers,
   isSelected,
   isActive,
   onSelect,
@@ -37,6 +35,8 @@ export function TimelineElement({
 
   const leftPx = element.timestamp * pixelsPerSecond
   const widthPx = element.duration * pixelsPerSecond
+
+  const SNAP_THRESHOLD = 0.5
 
   function snapToMarker(timestamp: number): number {
     if (snapMode === "off") return timestamp
@@ -51,7 +51,7 @@ export function TimelineElement({
         closest = m
       }
     }
-    return minDist < 0.5 ? closest : timestamp
+    return minDist < SNAP_THRESHOLD ? closest : timestamp
   }
 
   const handlePointerDown = useCallback(
@@ -62,6 +62,8 @@ export function TimelineElement({
       dragRef.current = { startX: e.clientX, startTimestamp: element.timestamp }
       ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
 
+      const ac = new AbortController()
+
       const handlePointerMove = (ev: PointerEvent) => {
         const dx = ev.clientX - dragRef.current.startX
         const dt = dx / pixelsPerSecond
@@ -71,12 +73,11 @@ export function TimelineElement({
       }
 
       const handlePointerUp = () => {
-        window.removeEventListener("pointermove", handlePointerMove)
-        window.removeEventListener("pointerup", handlePointerUp)
+        ac.abort()
       }
 
-      window.addEventListener("pointermove", handlePointerMove)
-      window.addEventListener("pointerup", handlePointerUp)
+      window.addEventListener("pointermove", handlePointerMove, { signal: ac.signal })
+      window.addEventListener("pointerup", handlePointerUp, { signal: ac.signal })
     },
     [element.id, element.timestamp, pixelsPerSecond, snapMode, beatMarkers, onSelect, moveElement],
   )

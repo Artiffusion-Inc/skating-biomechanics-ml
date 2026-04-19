@@ -9,7 +9,7 @@ import type {
   SnapMode,
   RinkPreset,
 } from "@/types/choreography"
-import { DEFAULT_DURATIONS } from "@/types/choreography"
+import { DEFAULT_DURATIONS, layoutElementToTimeline } from "@/types/choreography"
 
 interface ChoreographyEditorState {
   // Program
@@ -104,23 +104,7 @@ export const useChoreographyEditor = create<ChoreographyEditorState>((set, get) 
   initFromProgram: (program, audioUrl, musicDuration, beatMarkers, phraseMarkers) => {
     idCounter = 0
     const layoutElements = program.layout?.elements ?? []
-    const elements: TimelineElement[] = layoutElements.map((el, i) => {
-      const trackType: TrackType = el.code.includes("Sp")
-        ? "spins"
-        : el.code.startsWith("StSq") || el.code.startsWith("ChSq")
-          ? "sequences"
-          : "jumps"
-      return {
-        id: `el-${i}-${el.code}-${el.timestamp}`,
-        code: el.code,
-        trackType,
-        timestamp: el.timestamp,
-        duration: DEFAULT_DURATIONS[trackType],
-        goe: el.goe,
-        jumpPassIndex: el.jump_pass_index ?? undefined,
-        position: el.position ?? undefined,
-      }
-    })
+    const elements: TimelineElement[] = layoutElements.map(layoutElementToTimeline)
     set({
       programId: program.id,
       title: program.title ?? "",
@@ -195,7 +179,7 @@ export const useChoreographyEditor = create<ChoreographyEditorState>((set, get) 
   setRinkPreset: (preset, width, height) => {
     const presets: Record<string, [number, number]> = { olympic: [60, 30], nhl: [61, 26], training: [56, 26] }
     const found = presets[preset]
-    const [w, h] = width !== undefined ? [width, height!] : found ?? [60, 30]
+    const [w, h] = width !== undefined && height !== undefined ? [width, height] : found ?? [60, 30]
     set({ rinkPreset: preset, rinkWidth: w, rinkHeight: h })
   },
 
