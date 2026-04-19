@@ -21,6 +21,7 @@ from app.task_manager import (
     TASK_EVENTS_PREFIX,
     create_task_state,
     get_task_state,
+    get_valkey,
     get_valkey_client,
     set_cancel_signal,
 )
@@ -36,11 +37,8 @@ async def enqueue_process(request: Request, req: ProcessRequest):
     """Enqueue video processing job and return task_id immediately."""
     task_id = f"proc_{uuid.uuid4().hex[:12]}"
 
-    valkey = await get_valkey_client()
-    try:
-        await create_task_state(task_id, video_key=req.video_key, valkey=valkey)
-    finally:
-        await valkey.close()
+    valkey = get_valkey()
+    await create_task_state(task_id, video_key=req.video_key, valkey=valkey)
 
     ml_flags = MLModelFlags(
         depth=req.depth,
@@ -71,11 +69,8 @@ async def enqueue_process(request: Request, req: ProcessRequest):
 @router.get("/process/{task_id}/status", response_model=TaskStatusResponse)
 async def get_process_status(task_id: str):
     """Poll task status."""
-    valkey = await get_valkey_client()
-    try:
-        state = await get_task_state(task_id, valkey=valkey)
-    finally:
-        await valkey.close()
+    valkey = get_valkey()
+    state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
         raise HTTPException(status_code=404, detail="Task not found")
