@@ -46,6 +46,7 @@ async def enqueue_detect(
         task_id=task_id,
         video_key=video_key,
         tracking=tracking,
+        _queue_name="skating:queue:fast",
     )
 
     return DetectQueueResponse(task_id=task_id, video_key=video_key)

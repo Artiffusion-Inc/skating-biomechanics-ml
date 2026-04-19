@@ -126,3 +126,11 @@ async def test_publish_task_event(valkey):
 
     await pubsub.unsubscribe(channel)
     await pubsub.aclose()
+
+
+def test_worker_queue_names():
+    """Each WorkerSettings class should use its own queue name."""
+    from backend.app.worker import FastWorkerSettings, HeavyWorkerSettings
+
+    assert FastWorkerSettings.queue_name == "skating:queue:fast"
+    assert HeavyWorkerSettings.queue_name == "skating:queue:heavy"

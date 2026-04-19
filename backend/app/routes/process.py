@@ -60,6 +60,7 @@ async def enqueue_process(request: Request, req: ProcessRequest):
         export=req.export,
         ml_flags=ml_flags,
         session_id=req.session_id,
+        _queue_name="skating:queue:heavy",
     )
 
     return QueueProcessResponse(task_id=task_id)
