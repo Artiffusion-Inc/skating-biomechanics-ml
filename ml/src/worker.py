@@ -166,6 +166,10 @@ async def startup(ctx: dict[str, Any]) -> None:
 
 async def shutdown(ctx: dict[str, Any]) -> None:
     logger.info("Video processing worker shutting down")
+    pool = ctx.get("redis")
+    if pool:
+        await pool.close()
+        logger.info("Worker valkey pool closed")
 
 
 async def process_video_task(
