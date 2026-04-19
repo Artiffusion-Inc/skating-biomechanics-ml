@@ -515,6 +515,7 @@ class FastWorkerSettings:
     )
     retry_jobs: bool = True
     retry_delays: ClassVar[list[int]] = _settings.app.worker_retry_delays
+    job_completion_wait: int = 120
 
     on_startup = startup
     on_shutdown = shutdown
@@ -536,6 +537,7 @@ class HeavyWorkerSettings:
     max_jobs: int = 1  # GPU-bound, can't parallelize
     retry_jobs: bool = True
     retry_delays: ClassVar[list[int]] = _settings.app.worker_retry_delays
+    job_completion_wait: int = 600
 
     on_startup = startup
     on_shutdown = shutdown
