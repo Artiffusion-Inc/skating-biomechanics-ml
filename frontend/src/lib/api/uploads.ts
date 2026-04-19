@@ -73,8 +73,13 @@ export class ChunkedUploader {
     }
 
     // Complete upload
-    await apiFetch(`/uploads/${init.upload_id}/complete`, z.object({ status: z.string() }), {
+    await apiFetch("/uploads/complete", z.object({ status: z.string(), key: z.string() }), {
       method: "POST",
+      body: JSON.stringify({
+        upload_id: init.upload_id,
+        key: init.key,
+        parts: init.parts.map((p) => ({ part_number: p.part_number, etag: "" })),
+      }),
     })
 
     return init.key
