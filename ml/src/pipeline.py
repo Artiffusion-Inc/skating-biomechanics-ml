@@ -667,22 +667,13 @@ class AnalysisPipeline:
         else:
             smoothed = normalized
 
-        # Parallel stages: 3D lifting AND phase detection
-        if self._compute_3d:
-            poses_3d_future = asyncio.create_task(self._lift_poses_3d_async(smoothed, meta.fps))
-            poses_3d, blade_summaries = await poses_3d_future
-        else:
-            poses_3d, blade_summaries = None, None
+        # Default phases for non-element analysis
+        poses_3d: np.ndarray | None = None
+        blade_summaries: tuple | None = None
+        phases = ElementPhase(name="unknown", start=0, takeoff=0, peak=0, landing=0, end=0)
+        reference: np.ndarray | None = None
 
-        if element_type is not None:
-            phases_future = asyncio.create_task(
-                self._detect_phases_async(smoothed, meta.fps, element_type, manual_phases)
-            )
-            phases = await phases_future  # type: ignore[assignment]
-        else:
-            phases = ElementPhase(name="unknown", start=0, takeoff=0, peak=0, landing=0, end=0)
-
-        # Element-specific analysis
+        # Element-specific analysis with wave-based parallelism
         if element_type is not None and element_def is not None:
             # Pre-compute CoM once (shared by metrics + 3D physics)
             com_trajectory = calculate_com_trajectory(smoothed)
@@ -711,8 +702,6 @@ class AnalysisPipeline:
             if self._compute_3d:
                 poses_3d, blade_summaries = wave1_results[result_idx]
                 result_idx += 1
-            else:
-                poses_3d, blade_summaries = None, None
 
             phases = wave1_results[result_idx]
             result_idx += 1
@@ -922,7 +911,8 @@ class AnalysisPipeline:
             phases: Element phase boundaries.
 
         Returns:
-            Physics dict with jump_height, flight_time, avg_inertia, or None on error.
+            Physics dict with jump_height, flight_time, avg_inertia, takeoff_velocity,
+            fit_quality, or None on error.
         """
         try:
             from .analysis.physics_engine import PhysicsEngine
@@ -937,6 +927,15 @@ class AnalysisPipeline:
             if result.jump_height is not None:
                 physics_dict["jump_height"] = result.jump_height
                 physics_dict["flight_time"] = result.flight_time
+
+            # Restore trajectory fit details for types.py report rendering
+            if phases.takeoff is not None and phases.landing is not None:
+                trajectory = physics_engine._fit_jump_trajectory_with_com(
+                    poses_3d, phases.takeoff, phases.landing, result.center_of_mass
+                )
+                physics_dict["takeoff_velocity"] = trajectory["takeoff_velocity"]
+                physics_dict["fit_quality"] = trajectory["fit_quality"]
+
             return physics_dict
         except Exception:
             return None
