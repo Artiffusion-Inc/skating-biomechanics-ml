@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import tempfile
 from pathlib import Path
 
@@ -209,7 +210,8 @@ async def generate_layout(body: GenerateRequest, user: CurrentUser, db: DbDep):
         "structure": music.structure or [],
     }
     music_features = extract_features_for_csp(analysis)
-    layouts = solve_layout(
+    layouts = await asyncio.to_thread(
+        solve_layout,
         inventory=body.inventory,
         music_features=music_features,
         discipline=body.discipline,
