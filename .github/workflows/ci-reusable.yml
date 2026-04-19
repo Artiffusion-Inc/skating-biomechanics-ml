@@ -83,7 +83,7 @@ jobs:
       - name: Sync deps
         run: uv sync --frozen --dev
       - name: pytest
-        run: PYTHONPATH=ml:. uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --cov=backend/app --cov=ml/src --cov-report=xml --tb=short
+        run: PYTHONPATH=ml:. uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --cov=backend/app --cov=ml/src --cov-report=xml --junitxml=junit.xml --tb=short
       - name: Upload coverage (backend)
         if: always()
         uses: codecov/codecov-action@v5
@@ -92,6 +92,12 @@ jobs:
           flags: backend,ml
           name: python-coverage
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results (backend)
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: junit.xml
 
   fe-lint:
     name: Lint (Biome)
@@ -134,7 +140,7 @@ jobs:
         run: bun run build
       - name: Vitest coverage
         working-directory: frontend
-        run: bun run vitest run --coverage
+        run: bun run vitest run --coverage --reporter=junit --outputFile=test-report.junit.xml
       - name: Upload coverage (frontend)
         if: always()
         uses: codecov/codecov-action@v5
@@ -143,6 +149,12 @@ jobs:
           flags: frontend
           name: frontend-coverage
           token: ${{ secrets.CODECOV_TOKEN }}
+      - name: Upload test results (frontend)
+        if: ${{ !cancelled() }}
+        uses: codecov/test-results-action@v1
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: frontend/test-report.junit.xml
 
   docker-backend:
     name: Docker Build (Backend)
