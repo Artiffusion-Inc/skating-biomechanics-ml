@@ -1,8 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Plus } from "lucide-react"
 import { useChoreographyEditor } from "./store"
 import { TimelineElement } from "./timeline-element"
+import { ElementPicker } from "./element-picker"
+import { ElementEditor } from "./element-editor"
 import type { TrackType } from "@/types/choreography"
 import { TRACK_CONFIG } from "@/types/choreography"
 import { useTranslations } from "@/i18n"
@@ -23,8 +26,12 @@ export function ElementTrack({ type }: ElementTrackProps) {
     beatMarkers,
     phraseMarkers,
     selectedElementId,
+    addElement,
     setSelectedElement,
   } = useChoreographyEditor()
+
+  const [pickerState, setPickerState] = useState<{ x: number; y: number; timestamp: number } | null>(null)
+  const [editorState, setEditorState] = useState<{ x: number; y: number; elementId: string } | null>(null)
 
   const trackElements = elements.filter((e) => e.trackType === type)
   const config = TRACK_CONFIG[type]
@@ -36,8 +43,7 @@ export function ElementTrack({ type }: ElementTrackProps) {
     const rect = e.currentTarget.getBoundingClientRect()
     const x = e.clientX - rect.left
     const timestamp = x / pixelsPerSecond
-    // Will be wired to ElementPicker in Phase 2
-    setSelectedElement(null)
+    setPickerState({ x: e.clientX, y: e.clientY, timestamp })
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -114,7 +120,13 @@ export function ElementTrack({ type }: ElementTrackProps) {
             isSelected={el.id === selectedElementId}
             isActive={currentTime >= el.timestamp && currentTime < el.timestamp + el.duration}
             onSelect={setSelectedElement}
-            onEdit={setSelectedElement}
+            onEdit={(id) => {
+              const domEl = document.querySelector(`[data-element-id="${id}"]`)
+              const rect = domEl?.getBoundingClientRect()
+              if (rect) {
+                setEditorState({ x: rect.right + 4, y: rect.top, elementId: id })
+              }
+            }}
           />
         ))}
 
@@ -126,6 +138,43 @@ export function ElementTrack({ type }: ElementTrackProps) {
           </div>
         )}
       </div>
+
+      {/* Element Picker popover */}
+      {pickerState && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => setPickerState(null)}
+        >
+          <div
+            className="absolute"
+            style={{ left: pickerState.x, top: pickerState.y }}
+          >
+            <ElementPicker
+              trackType={type}
+              onSelect={(code) => addElement(type, pickerState.timestamp, code)}
+              onClose={() => setPickerState(null)}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Element Editor popover */}
+      {editorState && (
+        <div
+          className="fixed inset-0 z-50"
+          onClick={() => setEditorState(null)}
+        >
+          <div
+            className="absolute"
+            style={{ left: editorState.x, top: editorState.y }}
+          >
+            <ElementEditor
+              elementId={editorState.elementId}
+              onClose={() => setEditorState(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

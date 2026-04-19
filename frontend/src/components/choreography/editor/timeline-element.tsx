@@ -94,6 +94,7 @@ export function TimelineElement({
 
   return (
     <div
+      data-element-id={element.id}
       role="button"
       tabIndex={0}
       className={cn(
