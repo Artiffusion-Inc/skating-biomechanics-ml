@@ -1,11 +1,13 @@
 "use client"
 
+import { useRef } from "react"
 import { useParams } from "next/navigation"
 import { ArrowLeft } from "lucide-react"
 import Link from "next/link"
 import { useTranslations } from "@/i18n"
 import { useProgram, useMusicAnalysis, useSaveProgram } from "@/lib/api/choreography"
 import { useChoreographyEditor } from "@/components/choreography/editor/store"
+import { startAutoSave } from "@/components/choreography/editor/auto-save"
 import { WaveformView } from "@/components/choreography/editor/waveform-view"
 import { TransportBar } from "@/components/choreography/editor/transport-bar"
 import { ElementTrack } from "@/components/choreography/editor/element-track"
@@ -19,6 +21,7 @@ export default function ProgramEditorPage() {
   const { data: program, isLoading } = useProgram(id)
   const saveProgram = useSaveProgram()
   const editor = useChoreographyEditor()
+  const unsubRef = useRef<(() => void) | null>(null)
 
   const musicAnalysisId = program?.music_analysis_id
   const { data: musicAnalysis } = useMusicAnalysis(musicAnalysisId ?? undefined)
@@ -50,12 +53,23 @@ export default function ProgramEditorPage() {
 
   function handleSave() {
     if (!program) return
+    if (unsubRef.current) unsubRef.current()
     const { layout: saveLayout } = editor.getLayoutForSave()
-    saveProgram.mutate({
-      id,
-      title: editor.title,
-      layout: { elements: saveLayout },
-    })
+    saveProgram.mutate(
+      {
+        id,
+        title: editor.title,
+        layout: { elements: saveLayout },
+      },
+      {
+        onSuccess: () => {
+          unsubRef.current = startAutoSave(
+            (data) => saveProgram.mutate(data),
+            () => saveProgram.isPending,
+          )
+        },
+      },
+    )
   }
 
   if (isLoading) {
@@ -76,6 +90,11 @@ export default function ProgramEditorPage() {
 
   if (!initialized) {
     editor.initFromProgram(program, audioUrl, musicDuration, beatMarkers, phraseMarkers)
+    if (unsubRef.current) unsubRef.current()
+    unsubRef.current = startAutoSave(
+      (data) => saveProgram.mutate(data),
+      () => saveProgram.isPending,
+    )
   }
 
   return (
