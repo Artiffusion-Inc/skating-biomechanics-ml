@@ -32,6 +32,8 @@ skating-biomechanics-ml/
 │   │   ├── config.py                 # Settings (Pydantic BaseSettings)
 │   │   ├── storage.py                # R2/S3 client
 │   │   ├── task_manager.py           # Valkey task queue helpers
+│   │   ├── vastai/                   # Vast.ai Serverless GPU dispatch
+│   │   ├── worker.py                 # arq worker (process_video_task, detect_video_task)
 │   │   └── schemas.py                # Pydantic request/response schemas
 │   ├── alembic/                      # Database migrations
 │   ├── tests/                        # Backend tests
@@ -42,7 +44,7 @@ skating-biomechanics-ml/
 │   ├── lib/                          # API client, hooks, utils
 │   ├── i18n/                         # next-intl (ru/en)
 │   └── messages/                     # Translation files
-├── ml/                               # ML pipeline + arq worker
+├── ml/                               # ML pipeline (pure library, no backend deps)
 │   ├── src/                   # Python package (src.*)
 │   │   ├── pose_estimation/          # RTMPose via rtmlib
 │   │   ├── analysis/                 # Metrics, phase detection, recommender
@@ -50,11 +52,10 @@ skating-biomechanics-ml/
 │   │   ├── detection/                # Person detection, tracking
 │   │   ├── utils/                    # Smoothing, visualization, gap filling
 │   │   ├── visualization/            # HUD, skeleton, comparison layers
-│   │   ├── worker.py                 # arq worker (process_video_task, detect_video_task)
 │   │   └── extras/                   # Optional ML models (depth, optical flow)
 │   ├── gpu_server/                   # Vast.ai GPU server (Containerfile)
 │   ├── tests/                        # ML tests
-│   └── pyproject.toml                # ML dependencies (depends on backend)
+│   └── pyproject.toml                # ML dependencies
 ├── docs/                             # Documentation
 │   └── research/                     # Research papers and findings
 ├── infra/                            # Infrastructure
