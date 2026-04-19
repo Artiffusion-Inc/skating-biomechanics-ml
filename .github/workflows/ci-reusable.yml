@@ -83,7 +83,14 @@ jobs:
       - name: Sync deps
         run: uv sync --frozen --dev
       - name: pytest
-        run: PYTHONPATH=ml:. uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --tb=short
+        run: PYTHONPATH=ml:. uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --cov=backend/app --cov=ml/src --cov-report=xml --tb=short
+      - name: Upload coverage (backend)
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          files: coverage.xml
+          flags: backend,ml
+          name: python-coverage
 
   fe-lint:
     name: Lint (Biome)
@@ -124,6 +131,16 @@ jobs:
       - name: next build
         working-directory: frontend
         run: bun run build
+      - name: Vitest coverage
+        working-directory: frontend
+        run: bun run vitest run --coverage
+      - name: Upload coverage (frontend)
+        if: always()
+        uses: codecov/codecov-action@v5
+        with:
+          directory: frontend/coverage
+          flags: frontend
+          name: frontend-coverage
 
   docker-backend:
     name: Docker Build (Backend)
