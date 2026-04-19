@@ -27,6 +27,7 @@ import numpy as np
 
 from .device import DeviceConfig
 from .types import AnalysisReport, ElementPhase, PersonClick, SegmentationResult
+from .utils.geometry import calculate_com_trajectory
 from .utils.profiling import PipelineProfiler
 from .utils.video import VideoMeta, get_video_meta
 
@@ -683,24 +684,74 @@ class AnalysisPipeline:
 
         # Element-specific analysis
         if element_type is not None and element_def is not None:
-            # Parallel stages: metrics AND reference loading
-            metrics_future = asyncio.create_task(
-                self._compute_metrics_async(smoothed, phases, meta.fps, element_def)
+            # Pre-compute CoM once (shared by metrics + 3D physics)
+            com_trajectory = calculate_com_trajectory(smoothed)
+
+            # === Wave 1: 3D lift, phase detection, reference load in parallel ===
+            wave1_tasks: list[asyncio.Task] = []
+
+            if self._compute_3d:
+                wave1_tasks.append(
+                    asyncio.create_task(self._lift_poses_3d_async(smoothed, meta.fps))
+                )
+
+            wave1_tasks.append(
+                asyncio.create_task(
+                    self._detect_phases_async(smoothed, meta.fps, element_type, manual_phases)
+                )
             )
 
             if self._reference_store is not None:
-                ref_future = asyncio.create_task(self._load_reference_async(element_type))
+                wave1_tasks.append(asyncio.create_task(self._load_reference_async(element_type)))
+
+            wave1_results = await asyncio.gather(*wave1_tasks)
+
+            # Unpack wave 1 results
+            result_idx = 0
+            if self._compute_3d:
+                poses_3d, blade_summaries = wave1_results[result_idx]
+                result_idx += 1
             else:
-                ref_future = None
+                poses_3d, blade_summaries = None, None
 
-            metrics = await metrics_future
+            phases = wave1_results[result_idx]
+            result_idx += 1
 
-            if ref_future is not None:
-                reference = await ref_future
+            reference = wave1_results[result_idx] if result_idx < len(wave1_results) else None
+
+            # === Wave 2: physics, metrics in parallel ===
+            wave2_tasks: list[asyncio.Task] = []
+
+            if poses_3d is not None:
+                wave2_tasks.append(
+                    asyncio.create_task(self._compute_physics_async(poses_3d, phases))
+                )
+
+            wave2_tasks.append(
+                asyncio.create_task(
+                    self._compute_metrics_async(
+                        smoothed,
+                        phases,
+                        meta.fps,
+                        element_def,
+                        com_trajectory=com_trajectory,
+                    )
+                )
+            )
+
+            wave2_results = await asyncio.gather(*wave2_tasks)
+
+            # Unpack wave 2 results
+            result_idx = 0
+            if poses_3d is not None:
+                physics_dict = wave2_results[result_idx] or {}
+                result_idx += 1
             else:
-                reference = None
+                physics_dict = {}
 
-            # DTW alignment (if reference available)
+            metrics = wave2_results[result_idx]
+
+            # DTW alignment (needs phases + reference)
             dtw_distance = None
             if reference is not None:
                 aligner = self._get_aligner()
@@ -708,30 +759,6 @@ class AnalysisPipeline:
                     normalized[phases.start : phases.end],
                     reference.poses[reference.phases.start : reference.phases.end],
                 )
-
-            # Physics calculations
-            physics_dict: dict = {}
-            if poses_3d is not None:
-                try:
-                    from .analysis.physics_engine import PhysicsEngine
-
-                    physics_engine = PhysicsEngine(body_mass=60.0)
-
-                    if phases.takeoff > 0 and phases.landing > 0:
-                        trajectory = physics_engine.fit_jump_trajectory(
-                            poses_3d, phases.takeoff, phases.landing
-                        )
-                        physics_dict["jump_height"] = trajectory["height"]
-                        physics_dict["flight_time"] = trajectory["flight_time"]
-                        physics_dict["takeoff_velocity"] = trajectory["takeoff_velocity"]
-                        physics_dict["fit_quality"] = trajectory["fit_quality"]
-
-                    inertia = physics_engine.calculate_moment_of_inertia(
-                        poses_3d[phases.start : phases.end]
-                    )
-                    physics_dict["avg_inertia"] = float(np.mean(inertia))
-                except Exception:
-                    pass
 
             recommender = self._get_recommender()
             recommendations = recommender.recommend(metrics, element_type)
@@ -842,6 +869,7 @@ class AnalysisPipeline:
         phases: ElementPhase,
         fps: float,
         element_def,
+        com_trajectory: np.ndarray | None = None,
     ) -> list:
         """Async biomechanics metrics computation.
 
@@ -850,6 +878,7 @@ class AnalysisPipeline:
             phases: Element phases.
             fps: Video frame rate.
             element_def: Element definition.
+            com_trajectory: Pre-computed CoM trajectory (optional, for caching).
 
         Returns:
             List of MetricResult.
@@ -857,7 +886,9 @@ class AnalysisPipeline:
         # Run in thread pool
         loop = asyncio.get_event_loop()
         analyzer = self._get_analyzer_factory()(element_def)
-        metrics = await loop.run_in_executor(None, analyzer.analyze, poses, phases, fps)
+        metrics = await loop.run_in_executor(
+            None, analyzer.analyze, poses, phases, fps, com_trajectory
+        )
         return metrics
 
     async def _load_reference_async(self, element_type: str):
@@ -878,3 +909,34 @@ class AnalysisPipeline:
             None, self._reference_store.get_best_match, element_type
         )
         return reference
+
+    async def _compute_physics_async(
+        self,
+        poses_3d: np.ndarray,
+        phases: ElementPhase,
+    ) -> dict | None:
+        """Async physics calculations with CoM caching.
+
+        Args:
+            poses_3d: (N, 17, 3) 3D pose array.
+            phases: Element phase boundaries.
+
+        Returns:
+            Physics dict with jump_height, flight_time, avg_inertia, or None on error.
+        """
+        try:
+            from .analysis.physics_engine import PhysicsEngine
+
+            physics_engine = PhysicsEngine(body_mass=60.0)
+            result = physics_engine.analyze(
+                poses_3d, takeoff_idx=phases.takeoff, landing_idx=phases.landing
+            )
+            physics_dict: dict = {
+                "avg_inertia": float(np.mean(result.moment_of_inertia)),
+            }
+            if result.jump_height is not None:
+                physics_dict["jump_height"] = result.jump_height
+                physics_dict["flight_time"] = result.flight_time
+            return physics_dict
+        except Exception:
+            return None

@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from numba import njit  # type: ignore
+from numpy.typing import NDArray
 
 from ..types import (
     ElementPhase,
@@ -116,6 +117,7 @@ class BiomechanicsAnalyzer:
         poses: NormalizedPose,
         phases: ElementPhase,
         fps: float,
+        com_trajectory: NDArray[np.float32] | None = None,
     ) -> list[MetricResult]:
         """Compute all relevant metrics for the element.
 
@@ -123,6 +125,7 @@ class BiomechanicsAnalyzer:
             poses: Normalized pose sequence (num_frames, 17, 2).
             phases: Element phase boundaries.
             fps: Video frame rate.
+            com_trajectory: Pre-computed CoM trajectory (optional, for caching).
 
         Returns:
             List of MetricResult with computed values and goodness assessment.
@@ -132,7 +135,7 @@ class BiomechanicsAnalyzer:
         # Compute metrics based on element type
         if self._element_def.rotations > 0:
             # Jump metrics
-            results.extend(self._analyze_jump(poses, phases, fps))
+            results.extend(self._analyze_jump(poses, phases, fps, com_trajectory=com_trajectory))
         else:
             # Step/edge metrics
             results.extend(self._analyze_step(poses, phases, fps))
@@ -155,6 +158,7 @@ class BiomechanicsAnalyzer:
         poses: NormalizedPose,
         phases: ElementPhase,
         fps: float,
+        com_trajectory: NDArray[np.float32] | None = None,
     ) -> list[MetricResult]:
         """Analyze jump-specific metrics."""
         results: list[MetricResult] = []
@@ -172,7 +176,7 @@ class BiomechanicsAnalyzer:
         )
 
         # Jump height (CoM-based for physics accuracy)
-        height = self.compute_jump_height_com(poses, phases)
+        height = self.compute_jump_height_com(poses, phases, com_trajectory=com_trajectory)
         results.append(
             MetricResult(
                 name="max_height",
@@ -242,7 +246,7 @@ class BiomechanicsAnalyzer:
             )
         )
 
-        rel_height = self.compute_relative_jump_height(poses, phases)
+        rel_height = self.compute_relative_jump_height(poses, phases, com_trajectory=com_trajectory)
         results.append(
             MetricResult(
                 name="relative_jump_height",
@@ -430,7 +434,12 @@ class BiomechanicsAnalyzer:
 
         return float(landing_y - peak_y)
 
-    def compute_jump_height_com(self, poses: NormalizedPose, phases: ElementPhase) -> float:
+    def compute_jump_height_com(
+        self,
+        poses: NormalizedPose,
+        phases: ElementPhase,
+        com_trajectory: NDArray[np.float32] | None = None,
+    ) -> float:
         """Compute jump height using Center of Mass trajectory.
 
         This method provides physics-accurate jump height independent of
@@ -444,6 +453,7 @@ class BiomechanicsAnalyzer:
         Args:
             poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries.
+            com_trajectory: Pre-computed CoM trajectory (optional, for caching).
 
         Returns:
             Maximum jump height in normalized units (peak - takeoff CoM).
@@ -453,8 +463,8 @@ class BiomechanicsAnalyzer:
             - Zatsiorsky (2002) - Kinetics of human motion
             - Gemini Research (2026) - 60% error in hip-only method
         """
-        # Calculate CoM trajectory for the entire sequence
-        com_trajectory = calculate_com_trajectory(poses)
+        if com_trajectory is None:
+            com_trajectory = calculate_com_trajectory(poses)
 
         # Get CoM at takeoff (baseline)
         takeoff_com = com_trajectory[phases.takeoff]
@@ -731,7 +741,12 @@ class BiomechanicsAnalyzer:
         avg_asymmetry = float(np.mean(asymmetries))
         return float(max(0, 1 - avg_asymmetry))
 
-    def compute_relative_jump_height(self, poses: NormalizedPose, phases: ElementPhase) -> float:
+    def compute_relative_jump_height(
+        self,
+        poses: NormalizedPose,
+        phases: ElementPhase,
+        com_trajectory: NDArray[np.float32] | None = None,
+    ) -> float:
         """Compute jump height normalized by spine length (camera-independent).
 
         This metric provides a camera-independent measure of jump height by
@@ -746,6 +761,7 @@ class BiomechanicsAnalyzer:
         Args:
             poses: NormalizedPose (num_frames, 17, 2).
             phases: Element phase boundaries.
+            com_trajectory: Pre-computed CoM trajectory (optional, for caching).
 
         Returns:
             Relative jump height as ratio (CoM displacement / spine length).
@@ -773,8 +789,8 @@ class BiomechanicsAnalyzer:
 
         avg_spine = float(np.mean(valid_spines))
 
-        # Calculate CoM trajectory
-        com_trajectory = calculate_com_trajectory(poses)
+        if com_trajectory is None:
+            com_trajectory = calculate_com_trajectory(poses)
 
         # Get CoM at takeoff
         takeoff_com = com_trajectory[phases.takeoff]
