@@ -18,11 +18,6 @@ dependencies = [
     "trimesh>=4.11.5",
     "pygltflib>=1.16.5",
     "ultralytics>=8.0.0",
-    "arq>=0.27.0",
-    "boto3>=1.42.83",
-    "redis>=5.0.0",
-    "structlog>=25.5.0",
-    "skating-backend @ file:///home/michael/Github/skating-biomechanics-ml/backend",
     "aiobotocore>=3.4.0",
 ]
 

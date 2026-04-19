@@ -1,6 +1,6 @@
 """arq worker for video processing pipeline.
 
-Run with: uv run python -m src.worker
+Run with: uv run python -m app.worker
 
 Dispatches all processing to Vast.ai Serverless GPU.
 No local GPU fallback.
@@ -19,9 +19,9 @@ import numpy as np
 from arq import Retry
 from arq.connections import RedisSettings
 
-from backend.app.config import get_settings
-from backend.app.storage import download_file
-from backend.app.task_manager import (
+from app.config import get_settings
+from app.storage import download_file
+from app.task_manager import (
     TaskStatus,
     get_valkey_client,
     is_cancelled,
@@ -205,9 +205,9 @@ async def process_video_task(
             mapping={"status": TaskStatus.RUNNING, "started_at": now},
         )
 
-        from backend.app.crud.session import get_by_id
-        from backend.app.database import async_session  # type: ignore[import-untyped]
-        from src.vastai.client import process_video_remote_async
+        from app.crud.session import get_by_id
+        from app.database import async_session  # type: ignore[import-untyped]
+        from app.vastai.client import process_video_remote_async
 
         # Fetch element_type from session if session_id provided
         element_type = None
@@ -283,9 +283,9 @@ async def process_video_task(
         # Save analysis results to Postgres if session_id was provided
         if session_id and vast_result.metrics:
             try:
-                from backend.app.crud.session import update_session_analysis
-                from backend.app.database import async_session  # type: ignore[import-untyped]
-                from backend.app.services.session_saver import save_analysis_results
+                from app.crud.session import update_session_analysis
+                from app.database import async_session  # type: ignore[import-untyped]
+                from app.services.session_saver import save_analysis_results
 
                 async with async_session() as db:
                     # Save pose data and frame metrics as JSON
@@ -347,7 +347,7 @@ async def detect_video_task(
 
         import cv2
 
-        from backend.app.storage import download_file
+        from app.storage import download_file
         from src.device import DeviceConfig
         from src.pose_estimation.pose_extractor import PoseExtractor
         from src.utils.video import get_video_meta

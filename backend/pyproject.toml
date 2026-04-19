@@ -24,6 +24,7 @@ dependencies = [
     "msaf>=0.1.0",
     "librosa>=0.10.0",
     "aiobotocore>=3.4.0",
+    "skating-ml @ file:///home/michael/Github/skating-biomechanics-ml/ml",
 ]
 
 [tool.uv.extra-build-dependencies]
