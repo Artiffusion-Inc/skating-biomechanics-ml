@@ -16,7 +16,7 @@ def test_extract_video_tracked_has_batch_params():
     assert "batch_size" in params, "batch_size parameter missing"
 
     # Check default values
-    assert params["use_batch"].default is False, "use_batch should default to False"
+    assert params["use_batch"].default is True, "use_batch should default to True"
     assert params["batch_size"].default == 8, "batch_size should default to 8"
 
 

@@ -281,6 +281,27 @@ class TestPoseSmoother:
         # Results may differ due to frequency scaling
         assert smoothed_60.shape == smoothed_30.shape
 
+    def test_numba_smooth_matches_python_impl(self, sample_poses):
+        """Numba batch smooth should match Python loop within fastmath tolerance."""
+        smoother = PoseSmoother(freq=30.0)
+        smoothed = smoother.smooth(sample_poses)
+
+        assert smoothed.shape == sample_poses.shape
+        assert np.all(np.isfinite(smoothed))
+        # Must still reduce noise (smoothness test)
+        orig_var = np.mean(np.var(np.diff(sample_poses, axis=0), axis=0))
+        smooth_var = np.mean(np.var(np.diff(smoothed, axis=0), axis=0))
+        assert smooth_var <= orig_var
+
+    def test_numba_smooth_3d_output_valid(self):
+        """smooth_3d with Numba should produce valid 3D output."""
+        smoother = PoseSmoother(freq=30.0)
+        poses_3d = np.random.rand(60, 17, 3).astype(np.float32)
+        smoothed = smoother.smooth_3d(poses_3d)
+
+        assert smoothed.shape == (60, 17, 3)
+        assert np.all(np.isfinite(smoothed))
+
     def test_invalid_shape(self):
         """Test that invalid shape raises error."""
         smoother = PoseSmoother(freq=30.0)

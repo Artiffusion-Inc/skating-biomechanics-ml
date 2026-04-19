@@ -144,7 +144,7 @@ class PoseExtractor:
         video_path: Path | str,
         person_click: PersonClick | None = None,
         progress_cb=None,
-        use_batch: bool = False,
+        use_batch: bool = True,
         batch_size: int = 8,
     ) -> TrackedExtraction:
         """Extract H3.6M poses from video with tracking.

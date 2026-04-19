@@ -12,12 +12,12 @@ from app.schemas import (
     DetectResultResponse,
     TaskStatusResponse,
 )
-from app.storage import upload_bytes
+from app.storage import upload_bytes_async
 from app.task_manager import (
     TaskStatus,
     create_task_state,
     get_task_state,
-    get_valkey_client,
+    get_valkey,
 )
 
 router = APIRouter()
@@ -34,15 +34,12 @@ async def enqueue_detect(
     video_key = f"input/{uuid.uuid4().hex}{suffix}"
 
     content = await video.read()
-    upload_bytes(content, video_key)
+    await upload_bytes_async(content, video_key)
 
     task_id = f"det_{uuid.uuid4().hex[:12]}"
 
-    valkey = await get_valkey_client()
-    try:
-        await create_task_state(task_id, video_key=video_key, valkey=valkey)
-    finally:
-        await valkey.close()
+    valkey = get_valkey()
+    await create_task_state(task_id, video_key=video_key, valkey=valkey)
 
     await request.app.state.arq_pool.enqueue_job(
         "detect_video_task",
@@ -58,11 +55,8 @@ async def enqueue_detect(
 @router.get("/detect/{task_id}/status", response_model=TaskStatusResponse)
 async def get_detect_status(task_id: str):
     """Poll detection task status."""
-    valkey = await get_valkey_client()
-    try:
-        state = await get_task_state(task_id, valkey=valkey)
-    finally:
-        await valkey.close()
+    valkey = get_valkey()
+    state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
         raise HTTPException(status_code=404, detail="Task not found")
@@ -84,11 +78,8 @@ async def get_detect_status(task_id: str):
 @router.get("/detect/{task_id}/result", response_model=DetectResultResponse)
 async def get_detect_result(task_id: str):
     """Get detection result (persons, preview)."""
-    valkey = await get_valkey_client()
-    try:
-        state = await get_task_state(task_id, valkey=valkey)
-    finally:
-        await valkey.close()
+    valkey = get_valkey()
+    state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
         raise HTTPException(status_code=404, detail="Task not found")

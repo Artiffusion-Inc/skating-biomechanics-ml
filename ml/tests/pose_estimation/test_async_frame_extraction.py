@@ -95,7 +95,7 @@ class TestPoseExtractorIntegration:
             pytest.raises(ValueError, match="No valid pose"),
         ):
             mock_meta.return_value = MagicMock(num_frames=10, fps=30.0, width=640, height=480)
-            extractor.extract_video_tracked(video_path)
+            extractor.extract_video_tracked(video_path, use_batch=False)
 
     @patch("src.pose_estimation.pose_extractor.AsyncFrameReader")
     def test_async_reader_created_with_frame_skip(self, MockReader):
@@ -114,7 +114,7 @@ class TestPoseExtractorIntegration:
             pytest.raises(ValueError, match="No valid pose"),
         ):
             mock_meta.return_value = MagicMock(num_frames=10, fps=30.0, width=640, height=480)
-            extractor.extract_video_tracked(video_path)
+            extractor.extract_video_tracked(video_path, use_batch=False)
 
         MockReader.assert_called_once()
         call_kwargs = MockReader.call_args
