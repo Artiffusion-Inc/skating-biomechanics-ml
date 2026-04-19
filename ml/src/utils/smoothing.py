@@ -373,7 +373,7 @@ class PoseSmoother:
         return self._filters[key]
 
     def smooth(self, poses: NormalizedPose) -> NormalizedPose:
-        """Smooth pose sequence using One-Euro Filter.
+        """Smooth pose sequence using One-Euro Filter (Numba batch path).
 
         Args:
             poses: NormalizedPose (num_frames, num_joints, 2).
@@ -388,30 +388,25 @@ class PoseSmoother:
             msg = f"Expected shape (N, J, 2), got {poses.shape}"
             raise ValueError(msg)
 
-        # Support both H3.6M (17) and BlazePose (33) formats
         if num_joints not in (17, 33):
             msg = f"Expected 17 or 33 joints, got {num_joints}"
             raise ValueError(msg)
 
-        # Create output array
         smoothed = np.zeros_like(poses)
 
-        # Filter each joint and coordinate independently
         for joint_idx in range(num_joints):
-            for coord_idx in range(num_coords):
-                # Extract time series for this joint/coordinate
-                series = poses[:, joint_idx, coord_idx]
-
-                # Get filter and apply
-                filter_obj = self._get_filter(joint_idx, coord_idx)
-                smoothed[:, joint_idx, coord_idx] = filter_obj.reset_and_filter(series)
+            smoothed[:, joint_idx, :] = smooth_trajectory_2d_numba(
+                poses[:, joint_idx, :],
+                fps=self.config.freq,
+                min_cutoff=self.config.min_cutoff,
+                beta=self.config.beta,
+                d_cutoff=self.config.derivative_cutoff,
+            )
 
         return smoothed
 
     def smooth_3d(self, poses_3d: NDArray[np.float32]) -> NDArray[np.float32]:
-        """Smooth 3D pose sequence using One-Euro Filter.
-
-        Processes x, y, z coordinates independently for each joint.
+        """Smooth 3D pose sequence using One-Euro Filter (Numba batch path).
 
         Args:
             poses_3d: 3D poses (num_frames, 17, 3) with x, y, z in meters.
@@ -425,18 +420,23 @@ class PoseSmoother:
             msg = f"Expected shape (N, 17, 3), got {poses_3d.shape}"
             raise ValueError(msg)
 
-        # Create output array
         smoothed = np.zeros_like(poses_3d)
 
-        # Filter each joint and coordinate independently
         for joint_idx in range(num_joints):
-            for coord_idx in range(num_coords):  # x, y, z
-                # Extract time series for this joint/coordinate
-                series = poses_3d[:, joint_idx, coord_idx]
-
-                # Get filter and apply
-                filter_obj = self._get_filter(joint_idx, coord_idx)
-                smoothed[:, joint_idx, coord_idx] = filter_obj.reset_and_filter(series)
+            smoothed[:, joint_idx, :2] = smooth_trajectory_2d_numba(
+                poses_3d[:, joint_idx, :2],
+                fps=self.config.freq,
+                min_cutoff=self.config.min_cutoff,
+                beta=self.config.beta,
+                d_cutoff=self.config.derivative_cutoff,
+            )
+            smoothed[:, joint_idx, 2] = _one_euro_filter_sequence_numba(
+                poses_3d[:, joint_idx, 2],
+                self.config.freq,
+                self.config.min_cutoff,
+                self.config.beta,
+                self.config.derivative_cutoff,
+            )
 
         return smoothed
 
@@ -487,12 +487,14 @@ class PoseSmoother:
         return smoothed
 
     def set_frequency(self, freq: float) -> None:
-        """Update sampling frequency and reset filters.
-
-        Args:
-            freq: New sampling frequency in Hz.
-        """
+        """Update sampling frequency and reset filters."""
         self.freq = freq
+        self.config = OneEuroFilterConfig(
+            freq=freq,
+            min_cutoff=self.config.min_cutoff,
+            beta=self.config.beta,
+            derivative_cutoff=self.config.derivative_cutoff,
+        )
         self._filters.clear()
 
 
