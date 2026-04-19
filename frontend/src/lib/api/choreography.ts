@@ -216,6 +216,26 @@ export function useDeleteProgram() {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (id: string) => apiDelete(`/choreography/programs/${id}`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["programs"] }),
+    onMutate: async (id) => {
+      await qc.cancelQueries({ queryKey: ["programs"] })
+      const previous = qc.getQueryData(["programs"])
+      qc.setQueryData(["programs"], (old: z.infer<typeof ProgramListResponseSchema> | undefined) => {
+        if (!old) return old
+        return {
+          ...old,
+          programs: old.programs.filter(p => p.id !== id),
+          total: old.total - 1,
+        }
+      })
+      return { previous }
+    },
+    onError: (_err, _id, context) => {
+      if (context?.previous) {
+        qc.setQueryData(["programs"], context.previous)
+      }
+    },
+    onSettled: () => {
+      qc.invalidateQueries({ queryKey: ["programs"] })
+    },
   })
 }
