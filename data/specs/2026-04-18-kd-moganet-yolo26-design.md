@@ -34,14 +34,14 @@ Figure skating pose estimator: YOLO26-Pose model optimized for figure skating, t
 
 | Dataset | Pose GT | Format | Conversion Needed | Volume (est.) |
 |---------|---------|--------|-------------------|---------------|
-| FineFS | 17kp 3D (NPZ) | (frames, 17, 3) | 3D->2D projection + COCO JSON | 1,167 videos -> ~350K frames @10fps |
-| FSAnno | 4D pose (PKL) | 4DHuman format | Extract 17kp -> COCO JSON | 3,700 clips -> ~50K frames @10fps |
-| FSC-64 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 5,031 seq -> ~150K frames |
-| MCFS-129 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 2,617 seq -> ~80K frames |
+| FineFS | 17kp 3D (NPZ) | (frames, 17, 3) | 3D->2D projection + COCO JSON | 1,167 videos, NPZ shape (4350, 17, 3) per video |
+| FSAnno | 4D pose (PKL) | 4DHuman format | Extract 17kp -> COCO JSON | 3,700 clips |
+| FSC-64 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 5,031 seq |
+| MCFS-129 | 17kp 2D (NPY) | (T, 17, 2) | Frame->image + bbox + COCO JSON | 2,617 seq |
 | AthletePose3D | 17kp 2D (COCO JSON) | Already COCO | None (already done) | 71K frames |
 | COCO train2017 | 17kp (COCO JSON) | Already COCO | None | ~15% mix |
 
-**Total estimated training data: ~500-700K frames**
+**Total training data: TBD — measure actual frame counts after conversion (Task 2-5). FineFS alone is ~5M raw frames (1,167 videos × 4,350 frames). Budget ($150) is not a constraint — sampling driven by quality and efficiency.**
 
 ### Data Split
 
@@ -49,14 +49,27 @@ Figure skating pose estimator: YOLO26-Pose model optimized for figure skating, t
 - AP3D + COCO: train only (domain diversity, no leakage into val)
 - Val set = skating-only (primary quality metric)
 
+### Sampling Strategy
+
+FineFS alone has ~5M raw frames (1,167 × 4,350). Budget ($150) is NOT a limiting factor — full pipeline at 500K images costs $89 on RTX 4090 (Ultralytics benchmark: 2.8s per 1000 images). Sampling driven by quality and training efficiency.
+
+**Priority order for sampling (best quality first):**
+- FineFS: highest quality (competition GT scores), 1,167 videos
+- FSAnno: competition data with 4D pose, 3,700 clips
+- FSC/MCFS: sequential data, no original video frames (may be excluded)
+- AP3D: already in YOLO format, 71K frames (include all)
+- COCO: 15% mix for domain diversity
+
 ### Preprocessing Steps
 
-1. Extract frames from videos (FineFS, FSAnno) at 10fps
-2. Convert all pose data to COCO JSON format (bbox + keypoints + visibility)
-3. Generate bounding boxes from keypoints (PCK-based padding)
-4. Filter: remove frames with < 5 visible keypoints
-5. Convert to YOLO pose format: images/ + labels/ (txt per image)
-6. Create data.yaml for Ultralytics
+1. Measure actual frame counts per dataset (before conversion)
+2. Decide sampling strategy based on total volume
+3. Extract frames from videos (FineFS, FSAnno) at chosen fps
+4. Convert all pose data to COCO JSON format (bbox + keypoints + visibility)
+5. Generate bounding boxes from keypoints (PCK-based padding)
+6. Filter: remove frames with < 5 visible keypoints
+7. Convert to YOLO pose format: images/ + labels/ (txt per image)
+8. Create data.yaml for Ultralytics
 
 ---
 
@@ -282,13 +295,48 @@ Parallel training of n/s/m with best KD config from Stage 3.
 
 ## 5. Infrastructure
 
+### Budget Constraint
+
+- **Budget:** $150 total
+- **GPU selection:** Based on DLPerf/$/hr ratio (higher is better)
+- **Rental type:** On-Demand, Verified only (unverified may be killed mid-training)
+
+### GPU Selection
+
+| GPU | DLPerf (est.) | $/hr (verified) | $/DLPerf-hr | Max hours on $150 |
+|-----|---------------|-----------------|-------------|-------------------|
+| RTX 4090 | ~55 | $0.28 | **0.005** | 536 hrs |
+| A100 PCIE 40GB | ~52 | $0.52 | 0.010 | 288 hrs |
+| A100 SXM 80GB | ~52 | $0.67 | 0.013 | 224 hrs |
+| H100 SXM 80GB | ~165 | $1.35 | 0.008 | 111 hrs |
+
+**Primary:** RTX 4090 (best $/DLPerf-hr). 24GB VRAM sufficient for YOLO26n/s + MogaNet-B teacher.
+**Fallback:** A100 40GB if VRAM insufficient for YOLO26m + teacher.
+
+### Training Time Estimation
+
+**Reference:** Ultralytics docs — 2.8s compute per 1000 images on RTX 4090 (YOLO26n baseline).
+
+**Full pipeline cost (RTX 4090, $0.28/hr, KD overhead 2.0x):**
+
+| Dataset | Total time | Cost |
+|---------|-----------|------|
+| 50K images | 31.8h | $8.9 |
+| 100K images | 63.5h | $17.8 |
+| 200K images | 127h | $35.6 |
+
+$150 budget is not a limiting factor. Dataset size determined by quality, not cost.
+
 ### Training Environment
 
-- **Platform:** Vast.ai on-demand server
-- **GPU:** RTX 4090 24GB (primary) or A100 40GB (if 4090 insufficient for teacher+student)
+- **Platform:** Vast.ai on-demand
+- **Instance type:** Unverified with smoke test (50-80% cheaper than verified)
+  - Filter: reliability >= 95%, CUDA >= 12
+  - Smoke test: 15 min at 100% GPU load, check temps and clocks
+  - If passes → stable for training. If fails → destroy, rent another.
 - **Container:** Docker/Podman with CUDA, PyTorch, Ultralytics, MMPose
 - **Persistent storage:** Dataset + checkpoints
-- **Rationale:** Keep server running to handle inevitable issues
+- **Checkpointing:** Save best + every 10 epochs (required for interruptible recovery)
 
 ### Evaluation Protocol
 
@@ -333,9 +381,10 @@ experiments/yolo26-pose-kd/
 | Fine-tune kills pretrained (again) | Medium | High | Stage 1 baseline check; early stopping; patience=20 |
 | MogaNet-B domain gap on skating | Medium | Medium | Stage 2.5 teacher adaptation; AP3D contains some skating |
 | Data conversion bugs | High | Medium | Spot-check 10 samples per dataset; visual overlay validation |
-| Insufficient VRAM for teacher+student | Low | High | Use RTX 4090 24GB; if insufficient, offline teacher heatmaps |
+| Insufficient VRAM for teacher+student | Low | Medium | RTX 4090 24GB fits n/s; YOLO26m may need batch=16; fallback A100 40GB |
 | Simulated heatmap resolution mismatch | Medium | Medium | Match teacher heatmap resolution exactly; resize both to same grid |
 | Skating annotations quality varies | Medium | Medium | Filter frames with < 5 visible keypoints; confidence weighting |
+| Unverified instance dies mid-training | Medium | Low | 15-min smoke test; checkpointing every 10 epochs; resume on new instance |
 
 ---
 

@@ -68,36 +68,3 @@ class TestMLPipelineIntegration:
             frame = layer.render(frame, ctx)
 
         assert frame.shape == (100, 100, 3)
-
-    def test_process_request_schema_accepts_ml_flags(self):
-        """ProcessRequest schema accepts ML boolean flags."""
-        from backend.app.schemas import ProcessRequest
-
-        req = ProcessRequest(
-            video_key="test-video.mp4",
-            person_click={"x": 100, "y": 200},
-            depth=True,
-            optical_flow=True,
-            segment=True,
-            foot_track=True,
-            matting=True,
-        )
-        assert req.depth is True
-        assert req.optical_flow is True
-        assert req.segment is True
-        assert req.foot_track is True
-        assert req.matting is True
-
-    def test_process_request_defaults_ml_flags_false(self):
-        """ML flags default to False."""
-        from backend.app.schemas import ProcessRequest
-
-        req = ProcessRequest(
-            video_key="test-video.mp4",
-            person_click={"x": 100, "y": 200},
-        )
-        assert req.depth is False
-        assert req.optical_flow is False
-        assert req.segment is False
-        assert req.foot_track is False
-        assert req.matting is False

@@ -6,6 +6,36 @@
 
 ---
 
+## Task 0: Training Time Estimation
+
+Calculate expected training time using published benchmarks.
+
+**Reference:** Ultralytics docs — **2.8s compute per 1000 images on RTX 4090** (YOLO26n, baseline).
+
+**Full pipeline cost (RTX 4090, $0.28/hr, KD overhead 2.0x):**
+
+| Dataset | Stage 2 (ablation) | Stage 2.5 (teacher) | Stage 3 (KD) | Stage 4 (sizes) | Total | Cost |
+|---------|-------------------|--------------------|--------------------|--------------------|-------|------|
+| 50K | 4.7h | 1.2h | 7.8h | 18.1h | 31.8h | $8.9 |
+| 100K | 9.3h | 2.3h | 15.6h | 36.3h | 63.5h | $17.8 |
+| 200K | 18.7h | 4.7h | 31.1h | 72.6h | 127h | $35.6 |
+
+**Conclusion:** $150 budget is NOT a limiting factor. Even 500K images × full pipeline = $89. Dataset size determined by quality, not budget. No sampling needed unless FineFS alone exceeds reasonable training time.
+
+**VRAM budget (teacher + student):**
+- YOLO26n + MogaNet-B (eval): ~8-10GB → RTX 4090 24GB OK
+- YOLO26s + MogaNet-B (eval): ~12-14GB → RTX 4090 24GB OK
+- YOLO26m + MogaNet-B (eval): ~18-20GB → RTX 4090 24GB tight (batch=16)
+
+**Actions:**
+- [ ] After data conversion (Task 3-5): record actual N_images
+- [ ] Recalculate using table above with real N_images
+- [ ] Verify RTX 4090 24GB is sufficient (if using YOLO26m, plan batch=16)
+
+**Validation:** Total cost < $150 (already confirmed for any realistic N).
+
+---
+
 ## Task 1: Project Structure & Dependencies
 
 Create experiment directory and install dependencies.
@@ -45,15 +75,18 @@ Before writing converters, understand FineFS data.
 
 Convert FineFS dataset to YOLO pose format.
 
+**Context:** FineFS has 1,167 videos, NPZ shape (4,350, 17, 3) per video = ~5M raw frames. Budget is NOT a constraint (full pipeline at 500K images = $89 on RTX 4090). Sampling driven by data quality and training efficiency, not cost.
+
 **Actions:**
 - [ ] Create `experiments/yolo26-pose-kd/scripts/convert_finefs.py`
-- [ ] Extract frames from videos at 10fps (OpenCV)
+- [ ] Extract frames from videos at 10fps (skip uniform/low-motion segments)
 - [ ] Map FineFS 17kp to COCO 17kp (if different order)
 - [ ] 3D→2D projection if needed (take x,y, discard z)
 - [ ] Generate bounding boxes from keypoints (PCK-based padding, factor=0.2)
 - [ ] Filter frames with < 5 visible keypoints
 - [ ] Output: YOLO format (images/ + labels/*.txt per image)
 - [ ] Spot-check: visual overlay of keypoints on 10 random frames
+- [ ] Record actual frame count after sampling
 
 **Input:** `/home/michael/Downloads/FineFS/data/skeleton.zip` + `video.zip`
 **Output:** `experiments/yolo26-pose-kd/data/finefs/train/` and `val/` (80/20 split)
@@ -87,22 +120,25 @@ Convert FSAnno dataset to YOLO pose format.
 
 Convert existing unified numpy data to YOLO pose format.
 
+**Important:** FSC/MCFS have pose sequences (T, 17, 2) but no original video frames. Need to determine if we have the source videos or need to work with skeleton-only data. Skeleton-only images (black bg, white skeleton) are not ideal for YOLO training.
+
 **Actions:**
 - [ ] Create `experiments/yolo26-pose-kd/scripts/convert_fsc_mcfs.py`
 - [ ] Read unified format: `{split}_poses.npy` (shape, dtype, keypoint order)
-- [ ] Render each frame as image from keypoints (black bg, white skeleton) OR
-  - [ ] **Decision needed:** Do we have original video frames for FSC/MCFS?
-- [ ] If no original frames: generate synthetic skeleton images (not ideal for training)
+- [ ] Measure actual frame counts per sequence
+- [ ] Determine: do we have original video frames? Check source data.
+- [ ] If no original frames: assess whether skeleton-only images are viable for YOLO
 - [ ] If frames available: extract from source
 - [ ] Generate bounding boxes from keypoints
 - [ ] Filter frames with < 5 visible keypoints
 - [ ] Output: YOLO format
 - [ ] Spot-check: 10 random samples
+- [ ] Record actual frame count
 
 **Input:** `data/unified/fsc-64/`, `data/unified/mcfs-129/`
 **Output:** `experiments/yolo26-pose-kd/data/fsc/train/`, `data/mcfs/train/`
 
-**Important question:** FSC/MCFS have pose sequences (T, 17, 2) but no original video frames. Need to determine if we have the source videos or need to work with skeleton-only data.
+**Decision point:** If no original frames, FSC/MCFS may need to be excluded from training.
 
 ---
 
@@ -127,17 +163,37 @@ Merge all datasets into single Ultralytics-compatible dataset.
 
 ## Task 7: Vast.ai Environment Setup
 
-Prepare remote training environment.
+Prepare remote training environment on Vast.ai.
+
+**GPU Selection:**
+- Primary: RTX 4090 24GB (DLPerf≈55, ~$0.14-0.28/hr, best $/perf ratio)
+- Fallback: A100 40GB ($0.26-0.52/hr) if VRAM insufficient for YOLO26m + teacher
+
+**Rental Strategy — Unverified + Smoke Test:**
+Unverified ≠ broken, just "not yet evaluated by platform". Verification is fully automated (reliability >= 90%, CUDA >= 12, 500+ Mbps). Real risks: provisioning failures (Docker/SSH), thermal throttling under load. Mitigated by 15-min smoke test. If machine survives 15 min at 100% GPU load → likely stable. Savings: 50-80% vs verified.
 
 **Actions:**
-- [ ] Rent Vast.ai instance (RTX 4090 24GB, 200GB+ disk)
+- [ ] Search Vast.ai for RTX 4090 24GB, 200GB+ disk, on-demand
+- [ ] Filter: reliability >= 95% (even unverified), CUDA >= 12
+- [ ] Rent instance (unverified OK — cheaper, see strategy above)
+- [ ] **Smoke test (15 min):** run `gpu_burn` or training on 100 images at 100% load
+  - Check `nvidia-smi` — temp >85°C or clock drops → destroy instance, rent another
+  - Check network — download test file, if <10 MB/s → destroy
+  - If smoke test passes → proceed with setup
 - [ ] Install: Python 3.11+, PyTorch with CUDA, ultralytics, mmpose
-- [ ] Upload: all YOLO format datasets (rsync)
+- [ ] Upload: all YOLO format datasets (rsync, compress)
 - [ ] Upload: MogaNet-B weights (`moganet_b_ap2d_384x288.pth`)
 - [ ] Upload: pretrained YOLO26 weights (`yolo26n/s/m-pose.pt`)
 - [ ] Verify: MogaNet-B inference works on 1 test image
 - [ ] Verify: YOLO26 validation works on skating val set
 - [ ] Set up persistent tmux/screen session
+- [ ] Set up checkpointing: best + every 10 epochs (required for interruptible recovery)
+
+**Checkpointing Strategy (for unverified instances):**
+- Save best model (by skating val AP)
+- Save every 10 epochs to disk
+- Optionally sync checkpoints to R2 (external storage)
+- If instance dies: resume from last checkpoint on new instance
 
 **Output:** Working remote environment with all data and models.
 
@@ -310,13 +366,15 @@ Document all results.
 ## Dependency Graph
 
 ```
+Task 0 (time estimation) ──→ recalculate after Task 3-5 (actual N_images)
+
 Task 1 (structure)
   ├── Task 2 (explore FineFS) ──→ Task 3 (FineFS converter)
   ├── Task 4 (FSAnno converter)
-  ├── Task 5 (FSC/MCFS converter)
-  └── Task 7 (Vast.ai setup)
+  └── Task 5 (FSC/MCFS converter)
 
-Task 3 + Task 4 + Task 5 ──→ Task 6 (data.yaml) ──→ Task 8 (baseline)
+Task 3 + Task 4 + Task 5 ──→ Task 6 (data.yaml) ──→ Task 7 (Vast.ai setup)
+                                                         └──→ Task 8 (baseline)
 
 Task 8 ──→ Task 9 (fine-tune ablation)
 Task 8 ──→ Task 10 (teacher adaptation)
@@ -333,19 +391,8 @@ Task 9 + Task 10 + Task 12 ──→ Task 13 (KD training)
 
 | Group | Tasks | Can run in parallel? |
 |-------|-------|---------------------|
-| Data converters | 2, 3, 4, 5 | Yes (after Task 1) |
-| Vast.ai setup | 7 | Yes (with data converters) |
-| Baseline + teacher adapation | 8, 10 | Partially (8 first, then 10) |
+| Structure + data explore | 0, 1, 2 | Yes |
+| Data converters | 3, 4, 5 | Yes (after Task 2) |
 | KD modules | 11, 12 | Yes (sequential, 11→12) |
-
-## Estimated Timeline
-
-| Phase | Tasks | Duration (est.) |
-|-------|-------|----------------|
-| Data prep | 1-6 | 2-3 days |
-| Environment | 7 | 0.5 day |
-| Baseline + ablation | 8-10 | 1-2 days |
-| KD implementation | 11-12 | 1-2 days |
-| KD training | 13-14 | 1-2 days |
-| Selection + docs | 15-16 | 0.5 day |
-| **Total** | | **6-10 days** |
+| Vast.ai setup | 7 | After Task 6 (needs data ready) |
+| Baseline + teacher adaptation | 8, 10 | Partially (8 first, then 10) |

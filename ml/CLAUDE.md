@@ -2,7 +2,7 @@
 
 ## Architectural Constraint
 
-**ml depends on backend, never the reverse.** The worker (`src/worker.py`) imports from `backend.app` for DB/storage/task management. The backend has **ZERO** imports from `src`.
+**ml depends on backend for infrastructure, never for ML.** `ml/` is a pure ML library — no knowledge of DB, task queues, or web frameworks. The arq worker (which orchestrates ML dispatch) lives in `backend/app/` and imports from `ml/` for types (`H36Key`, `VastResult`) and GPU dispatch.
 
 ## Project Structure
 
@@ -14,7 +14,6 @@ ml/
 │   ├── device.py                     # DeviceConfig — GPU/CPU auto-detection
 │   ├── pipeline.py                   # AnalysisPipeline orchestrator
 │   ├── cli.py                        # argparse CLI (analyze, build-ref, segment)
-│   ├── worker.py                     # arq worker (process_video_task, detect_video_task)
 │   ├── web_helpers.py                # Preview rendering for detect endpoint
 │   ├── pose_estimation/              # 2D pose extraction
 │   │   ├── pose_extractor.py       # RTMO via rtmlib (COCO 17kp) — PRIMARY
@@ -68,8 +67,6 @@ ml/
 │   ├── datasets/                     # Dataset handling
 │   │   ├── coco_builder.py           # COCO format builder
 │   │   └── projector.py              # 3D projection utilities
-│   ├── vastai/                       # Vast.ai Serverless GPU dispatch
-│   │   └── client.py                 # Worker URL resolution, job submission
 │   └── extras/                       # Optional ML models (not in pipeline)
 │       ├── model_registry.py         # Model download/management
 │       ├── depth_anything.py         # Depth estimation
@@ -97,7 +94,7 @@ ml/
 │   ├── alignment/                    # DTW, aligner
 │   ├── pose_3d/                      # Corrective lens, anchor projection
 │   └── utils/                        # Geometry, smoothing
-└── pyproject.toml                    # ML deps + skating-backend dependency
+└── pyproject.toml                    # ML deps (pure library, no backend deps)
 ```
 
 ## Key Types (`src.types`)
@@ -162,7 +159,7 @@ Compute-intensive functions use Numba JIT for acceleration:
 
 **Note:** TensorRT remains experimental (ONNX by default for serverless compatibility).
 
-## Worker Jobs (`src.worker`)
+## Worker Jobs (`backend/app.worker`)
 
 Two async jobs registered with arq:
 

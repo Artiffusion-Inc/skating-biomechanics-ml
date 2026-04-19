@@ -1,4 +1,4 @@
-name: Container
+name: Container (GPU Worker)
 
 on:
   push:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   build-push:
-    name: Build & Push
+    name: Build & Push GPU Worker
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -49,6 +49,7 @@ jobs:
         uses: docker/setup-buildx-action@v4
 
       - name: Build and push
+        id: build
         uses: docker/build-push-action@v7
         with:
           context: .
@@ -59,3 +60,16 @@ jobs:
             ghcr.io/xpos587/skating-ml-gpu:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+      - name: Build summary
+        if: always()
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+          ## GPU Worker Build
+
+          | Metric | Value |
+          |--------|-------|
+          | Status | \`${{ steps.build.outcome }}\` |
+          | Image | \`ghcr.io/xpos587/skating-ml-gpu:${{ github.sha }}\` |
+
+          EOF

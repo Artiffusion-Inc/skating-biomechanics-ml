@@ -17,6 +17,8 @@ logger = logging.getLogger(__name__)
 TASK_KEY_PREFIX = "task:"
 TASK_CANCEL_PREFIX = "task_cancel:"
 
+_pool: dict[str, aioredis.Redis] = {}
+
 
 class TaskStatus(StrEnum):
     PENDING = "pending"
@@ -24,6 +26,35 @@ class TaskStatus(StrEnum):
     COMPLETED = "completed"
     FAILED = "failed"
     CANCELLED = "cancelled"
+
+
+async def init_valkey_pool() -> None:
+    """Create the shared Valkey connection pool (call once at startup)."""
+    if "valkey" in _pool:
+        return
+    settings = get_settings()
+    _pool["valkey"] = aioredis.Redis(
+        host=settings.valkey.host,
+        port=settings.valkey.port,
+        db=settings.valkey.db,
+        password=settings.valkey.password.get_secret_value(),
+        decode_responses=True,
+    )
+
+
+def get_valkey() -> aioredis.Redis:
+    """Return the shared Valkey connection. Raises RuntimeError if not initialised."""
+    conn = _pool.get("valkey")
+    if conn is None:
+        raise RuntimeError("Call init_valkey_pool() before get_valkey()")
+    return conn
+
+
+async def close_valkey_pool() -> None:
+    """Close the shared Valkey connection pool (call once at shutdown)."""
+    conn = _pool.pop("valkey", None)
+    if conn is not None:
+        await conn.aclose()
 
 
 async def get_valkey_client() -> aioredis.Redis:
@@ -191,6 +222,25 @@ async def set_cancel_signal(task_id: str, valkey: aioredis.Redis | None = None) 
     try:
         ttl = get_settings().app.task_ttl_seconds
         await valkey.setex(f"{TASK_CANCEL_PREFIX}{task_id}", ttl, "1")
+    finally:
+        if close:
+            await valkey.close()
+
+
+TASK_EVENTS_PREFIX = "task_events:"
+
+
+async def publish_task_event(
+    task_id: str,
+    data: dict,
+    valkey: aioredis.Redis | None = None,
+) -> None:
+    """Publish task event to pub/sub channel for SSE streaming."""
+    close = valkey is None
+    if valkey is None:
+        valkey = await get_valkey_client()
+    try:
+        await valkey.publish(f"{TASK_EVENTS_PREFIX}{task_id}", json.dumps(data))
     finally:
         if close:
             await valkey.close()

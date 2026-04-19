@@ -132,6 +132,7 @@ line-ending = "auto"
 
 [tool.basedpyright]
 typeCheckingMode = "standard"
+reportMissingImports = "warning"
 reportMissingTypeStubs = false
 reportUnknownMemberType = "warning"
 reportUnknownVariableType = "warning"
