@@ -153,6 +153,17 @@ jobs:
           name: bundle-analyzer
           path: frontend/.next/analyze/
           retention-days: 14
+
+  fe-test:
+    name: Tests (Vitest)
+    runs-on: ubuntu-latest
+    needs: [fe-lint]
+    steps:
+      - uses: actions/checkout@v6
+      - uses: oven-sh/setup-bun@v2
+      - name: Install deps
+        working-directory: frontend
+        run: bun install --frozen-lockfile
       - name: Vitest coverage
         working-directory: frontend
         run: bun run vitest run --coverage --reporter=junit --outputFile=test-report.junit.xml
@@ -208,7 +219,7 @@ jobs:
   ci-passed:
     name: CI Summary
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, gitleaks, ast-grep, test, fe-lint, fe-typecheck, fe-build, docker-backend, docker-frontend]
+    needs: [lint, typecheck, gitleaks, ast-grep, test, fe-lint, fe-typecheck, fe-build, fe-test, docker-backend, docker-frontend]
     if: always()
     outputs:
       result: ${{ steps.check.outputs.result }}
@@ -223,6 +234,7 @@ jobs:
           FE_LINT: ${{ needs.fe-lint.result }}
           FE_TYPECHECK: ${{ needs.fe-typecheck.result }}
           FE_BUILD: ${{ needs.fe-build.result }}
+          FE_TEST: ${{ needs.fe-test.result }}
           DOCKER_BACKEND: ${{ needs.docker-backend.result }}
           DOCKER_FRONTEND: ${{ needs.docker-frontend.result }}
           AST_GREP: ${{ needs.ast-grep.result }}
@@ -249,6 +261,7 @@ jobs:
           check_job "Lint (Biome)" "$FE_LINT"
           check_job "Type Check (tsc)" "$FE_TYPECHECK"
           check_job "Build (Next.js)" "$FE_BUILD"
+          check_job "Tests (Vitest)" "$FE_TEST"
           check_job "Docker Build (Backend)" "$DOCKER_BACKEND"
           check_job "Docker Build (Frontend)" "$DOCKER_FRONTEND"
           echo "| :mag: ast-grep | \`${AST_GREP}\` (informational) |" >> "$GITHUB_STEP_SUMMARY"
