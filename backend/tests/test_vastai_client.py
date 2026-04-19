@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-from src.vastai.client import VastResult, _get_worker_url
+from app.vastai.client import VastResult, _get_worker_url
 
 
 def test_get_worker_url_success():
@@ -13,7 +13,7 @@ def test_get_worker_url_success():
     mock_resp.json.return_value = {"url": "https://worker-1.vast.ai:8000"}
     mock_resp.raise_for_status = MagicMock()
 
-    with patch("src.vastai.client.httpx.post", return_value=mock_resp) as mock_post:
+    with patch("app.vastai.client.httpx.post", return_value=mock_resp) as mock_post:
         url = _get_worker_url("skating-ml-gpu", "test-key")
 
     assert url == "https://worker-1.vast.ai:8000"
@@ -37,10 +37,10 @@ def test_vast_result_fields():
     assert r.stats == {"frames": 100}
 
 
-@patch("src.vastai.client.httpx.post")
+@patch("app.vastai.client.httpx.post")
 def test_process_video_remote_passes_r2_key(mock_post):
     # Reset global worker URL cache (may be set by earlier tests)
-    import src.vastai.client as _vc
+    import app.vastai.client as _vc
 
     _vc._worker_url_cache = None
     _vc._worker_url_cache_time = 0.0
@@ -62,7 +62,7 @@ def test_process_video_remote_passes_r2_key(mock_post):
 
     mock_post.side_effect = [mock_route_resp, mock_process_resp]
 
-    with patch("src.vastai.client.get_settings") as mock_settings:
+    with patch("app.vastai.client.get_settings") as mock_settings:
         s = MagicMock()
         s.vastai.api_key.get_secret_value.return_value = "test-key"
         s.vastai.endpoint_name = "skating-ml-gpu"
@@ -72,7 +72,7 @@ def test_process_video_remote_passes_r2_key(mock_post):
         s.r2.bucket = "test-bucket"
         mock_settings.return_value = s
 
-        from src.vastai.client import process_video_remote
+        from app.vastai.client import process_video_remote
 
         result = process_video_remote(
             video_key="input/test.mp4",
