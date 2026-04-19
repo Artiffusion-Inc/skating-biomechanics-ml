@@ -32,6 +32,17 @@ _WORKER_URL_TTL = 60  # Cache for 60 seconds
 # Lock for thread-safe cache access
 _worker_url_lock = threading.Lock()
 
+# Shared async HTTP client (lazy-init, reused across requests)
+_async_client: httpx.AsyncClient | None = None
+
+
+def _get_async_client() -> httpx.AsyncClient:
+    """Return a shared httpx.AsyncClient, creating it on first use."""
+    global _async_client  # noqa: PLW0603
+    if _async_client is None or _async_client.is_closed:
+        _async_client = httpx.AsyncClient(timeout=REQUEST_TIMEOUT)
+    return _async_client
+
 
 @dataclass
 class VastResult:
@@ -136,19 +147,19 @@ async def _asyncio_get_worker_url(endpoint_name: str, api_key: str) -> str:
     with _worker_url_lock:
         if _worker_url_cache and (now - _worker_url_cache_time) < _WORKER_URL_TTL:
             return _worker_url_cache
-        async with httpx.AsyncClient() as client:
-            resp = await client.post(
-                ROUTE_URL,
-                headers={"Authorization": f"Bearer {api_key}"},
-                json={"endpoint": endpoint_name},
-                timeout=ROUTE_TIMEOUT,
-            )
-            resp.raise_for_status()
-            data = resp.json()
-            url = data["url"]
-            _worker_url_cache = url  # noqa: PLW0603
-            _worker_url_cache_time = now  # noqa: PLW0603
-            return url
+        client = _get_async_client()
+        resp = await client.post(
+            ROUTE_URL,
+            headers={"Authorization": f"Bearer {api_key}"},
+            json={"endpoint": endpoint_name},
+            timeout=ROUTE_TIMEOUT,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        url = data["url"]
+        _worker_url_cache = url  # noqa: PLW0603
+        _worker_url_cache_time = now  # noqa: PLW0603
+        return url
 
 
 async def process_video_remote_async(
@@ -189,14 +200,14 @@ async def process_video_remote_async(
         "r2_secret_access_key": settings.r2.secret_access_key.get_secret_value(),
         "r2_bucket": settings.r2.bucket,
     }
-    async with httpx.AsyncClient() as client:
-        resp = await client.post(
-            f"{worker_url}/process",
-            json=payload,
-            timeout=REQUEST_TIMEOUT,
-        )
-        resp.raise_for_status()
-        result = resp.json()
+    client = _get_async_client()
+    resp = await client.post(
+        f"{worker_url}/process",
+        json=payload,
+        timeout=REQUEST_TIMEOUT,
+    )
+    resp.raise_for_status()
+    result = resp.json()
 
     # 3. Return R2 keys directly (no download)
     return VastResult(

@@ -119,3 +119,19 @@ def test_get_worker_url_uses_cache():
     assert url1 == "https://cached.vast.ai:8000"
     assert url2 == "https://cached.vast.ai:8000"
     mock_post.assert_called_once()  # Only one HTTP call, second uses cache
+
+
+async def test_async_client_is_reused_across_calls():
+    """Verify _get_async_client returns the same client instance."""
+    import app.vastai.client as _vc
+
+    # Reset module-level client
+    _vc._async_client = None
+
+    c1 = _vc._get_async_client()
+    c2 = _vc._get_async_client()
+    assert c1 is c2
+
+    # Cleanup
+    await c1.aclose()
+    _vc._async_client = None
