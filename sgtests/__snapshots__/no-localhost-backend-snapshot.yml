@@ -1,0 +1,20 @@
+id: no-localhost-backend
+snapshots:
+  '"http://127.0.0.1:8000/api"':
+    labels:
+    - source: '"http://127.0.0.1:8000/api"'
+      style: primary
+      start: 0
+      end: 27
+  '"postgresql+asyncpg://user:pass@localhost:5432/db"':
+    labels:
+    - source: '"postgresql+asyncpg://user:pass@localhost:5432/db"'
+      style: primary
+      start: 0
+      end: 50
+  '"redis://localhost:6379/0"':
+    labels:
+    - source: '"redis://localhost:6379/0"'
+      style: primary
+      start: 0
+      end: 26

@@ -1,0 +1,20 @@
+id: no-localhost-frontend
+snapshots:
+  '"http://127.0.0.1:3000/callback"':
+    labels:
+    - source: http://127.0.0.1:3000/callback
+      style: primary
+      start: 1
+      end: 31
+  '"http://localhost:8000/api/v1/upload"':
+    labels:
+    - source: http://localhost:8000/api/v1/upload
+      style: primary
+      start: 1
+      end: 36
+  const url = "ws://localhost:8000/ws":
+    labels:
+    - source: ws://localhost:8000/ws
+      style: primary
+      start: 13
+      end: 35

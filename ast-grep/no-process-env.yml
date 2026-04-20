@@ -1,0 +1,18 @@
+id: no-process-env
+language: tsx
+message: |
+  Don't access process.env directly in source code. Centralize env access in a config module.
+
+  Instead of:  if (process.env.NEXT_PUBLIC_SKIP_AUTH === "true")
+  Use:         import { skipAuth } from "@/lib/env"; if (skipAuth)
+severity: warning
+note: |
+  All env access should go through a single config module so values are typed,
+  validated, and easy to audit. Allowed in next.config.ts.
+rule:
+  any:
+    - pattern: process.env.$NAME
+    - pattern: process.env[$KEY]
+ignores:
+  - "frontend/next.config.ts"
+  - "frontend/next.config.*"

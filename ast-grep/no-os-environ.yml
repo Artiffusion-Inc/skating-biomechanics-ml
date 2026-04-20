@@ -1,0 +1,25 @@
+id: no-os-environ
+language: python
+message: |
+  Don't read env vars with os.environ/os.getenv in application code. Use config.py (Pydantic BaseSettings).
+
+  Instead of:  os.getenv("LOG_LEVEL", "INFO")
+  Use:         settings.log_level  (defined in backend/app/config.py)
+severity: warning
+note: |
+  Allowed in config.py, conftest.py, and ML device setup (CUDA/OMP env vars).
+  For setting CUDA/OMP runtime vars (os.environ.setdefault), this is acceptable
+  in device/worker initialization but prefer config when possible.
+rule:
+  any:
+    - pattern: os.getenv($$$ARGS)
+    - pattern: os.environ.get($$$ARGS)
+    - pattern: os.environ[$KEY]
+    - pattern: os.environ.setdefault($$$ARGS)
+ignores:
+  - "backend/app/config.py"
+  - "backend/**/conftest.py"
+  - "backend/tests/**"
+  - "ml/src/device.py"
+  - "ml/src/pose_estimation/multi_gpu_extractor.py"
+  - "ml/gpu_server/**"

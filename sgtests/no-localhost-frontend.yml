@@ -1,0 +1,8 @@
+id: no-localhost-frontend
+valid:
+  - 'const url = "https://api.example.com/v1"'
+  - 'const url = envConfig.apiUrl'
+invalid:
+  - '"http://localhost:8000/api/v1/upload"'
+  - '"http://127.0.0.1:3000/callback"'
+  - 'const url = "ws://localhost:8000/ws"'

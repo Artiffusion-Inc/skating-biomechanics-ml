@@ -1,0 +1,9 @@
+id: no-process-env
+valid:
+  - "import { apiUrl } from '@/lib/env'; fetch(apiUrl)"
+  - "const x = someConfigValue"
+invalid:
+  - 'process.env.NEXT_PUBLIC_API_URL'
+  - 'process.env.NODE_ENV'
+  - 'if (process.env.SKIP_AUTH === "true") {}'
+  - 'process.env["SOME_KEY"]'
