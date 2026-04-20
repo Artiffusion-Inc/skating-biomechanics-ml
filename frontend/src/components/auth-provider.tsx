@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useContext, useState } from "react"
+import { SKIP_AUTH } from "@/lib/api-client"
 import type { UserResponse } from "@/lib/auth"
 import * as auth from "@/lib/auth"
-import { SKIP_AUTH } from "@/lib/api-client"
 import { useMountEffect } from "@/lib/useMountEffect"
 
 const MOCK_USER: UserResponse = {
