@@ -24,8 +24,8 @@ def compute_fingerprint(audio_path: str) -> str | None:
         fp, _ = chromaprint.decode_file(str(path))
         if fp:
             return fp
-    except Exception:  # noqa: BLE001
-        logger.debug("chromaprint not available or failed, using fallback hash")
+    except (ImportError, OSError, ValueError, AttributeError) as _fp_err:
+        logger.debug("chromaprint not available or failed, using fallback hash: %s", _fp_err)
 
     try:
         h = hashlib.sha256()

@@ -6,15 +6,15 @@ import type React from "react"
 import { useTranslations } from "@/i18n"
 import type { Session } from "@/types"
 
-function relativeTime(dateStr: string): string {
+function relativeTime(dateStr: string, t: (key: string, params?: Record<string, number>) => string): string {
   const diff = Date.now() - new Date(dateStr).getTime()
   const mins = Math.floor(diff / 60000)
-  if (mins < 1) return "только что"
-  if (mins < 60) return `${mins} мин назад`
+  if (mins < 1) return t("justNow")
+  if (mins < 60) return t("minsAgo", { n: mins })
   const hours = Math.floor(mins / 60)
-  if (hours < 24) return `${hours} ч назад`
+  if (hours < 24) return t("hoursAgo", { n: hours })
   const days = Math.floor(hours / 24)
-  return `${days} дн назад`
+  return t("daysAgo", { n: days })
 }
 
 function scoreStyle(score: number | null): React.CSSProperties {
@@ -26,17 +26,18 @@ function scoreStyle(score: number | null): React.CSSProperties {
 
 export function SessionCard({ session }: { session: Session }) {
   const hasPR = session.metrics.some(m => m.is_pr)
-  const t = useTranslations("elements")
+  const te = useTranslations("elements")
+  const ts = useTranslations("session")
 
   return (
     <Link href={`/sessions/${session.id}`} className="block">
       <div className="rounded-2xl border border-border p-3 sm:p-4 hover:bg-accent/30 transition-colors">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <p className="font-medium truncate">{t(session.element_type)}</p>
+            <p className="font-medium truncate">{te(session.element_type)}</p>
             <p className="text-xs text-muted-foreground flex items-center gap-1">
               <Clock className="h-3 w-3 shrink-0" />
-              {relativeTime(session.created_at)}
+              {relativeTime(session.created_at, ts)}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -53,8 +54,8 @@ export function SessionCard({ session }: { session: Session }) {
           <div className="mt-2 flex items-center gap-2 text-sm text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
             {session.status === "running" || session.status === "processing"
-              ? "Анализ..."
-              : "Ожидание..."}
+              ? ts("analyzing")
+              : ts("waiting")}
           </div>
         ) : (
           <div className="mt-2 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted-foreground">

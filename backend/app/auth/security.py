@@ -22,7 +22,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a password against a bcrypt hash."""
     try:
         return pwd_context.verify(plain_password, hashed_password)
-    except Exception:
+    except (ValueError, TypeError):
+        # ValueError: invalid hash format; TypeError: wrong types passed
         return False
 
 

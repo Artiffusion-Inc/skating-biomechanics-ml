@@ -212,7 +212,16 @@
     }
   },
   "coach": {
-    "noProblems": "Проблем не обнаружено"
+    "noProblems": "Проблем не обнаружено",
+    "studentFallback": "Ученик"
+  },
+  "session": {
+    "justNow": "только что",
+    "minsAgo": "{n} мин назад",
+    "hoursAgo": "{n} ч назад",
+    "daysAgo": "{n} дн назад",
+    "analyzing": "Анализ...",
+    "waiting": "Ожидание..."
   },
   "choreography": {
     "title": "Планировщик программ",
@@ -226,6 +235,14 @@
     "womens_singles": "Женское одиночное",
     "generate": "Сгенерировать",
     "generating": "Генерация...",
+    "noLayouts": "Не удалось сгенерировать раскладку. Попробуйте добавить больше элементов.",
+    "generateError": "Ошибка при генерации раскладки. Попробуйте ещё раз.",
+    "snapOff": "Без привязки",
+    "snapBeats": "К битам",
+    "snapPhrases": "К фразам",
+    "jumpsTrack": "Прыжки",
+    "spinsTrack": "Вращения",
+    "sequencesTrack": "Последов.",
     "selectLayout": "Выберите раскладку",
     "music": {
       "title": "Музыка",
@@ -233,7 +250,8 @@
       "dropzoneHint": "MP3, WAV, OGG до 50 МБ",
       "analyzing": "Анализ музыки...",
       "uploading": "Загрузка файла...",
-      "processing": "Обработка на сервере..."
+      "processing": "Обработка на сервере...",
+      "uploadPrompt": "Загрузите музыку"
     },
     "inventory": {
       "title": "Инвентарь элементов",
@@ -256,7 +274,13 @@
     },
     "rink": {
       "loading": "Загрузка...",
-      "empty": "Раскладка не выбрана"
+      "empty": "Раскладка не выбрана",
+      "title": "Схема катка",
+      "show": "Показать каток",
+      "hide": "Скрыть каток",
+      "jump": "Прыжок",
+      "spin": "Вращение",
+      "sequence": "Послед."
     },
     "elements": "Элементы",
     "noPrograms": "Нет сохранённых программ",
@@ -280,9 +304,11 @@
       "rinkPreset": "Размер катка",
       "rinkCustom": "Другой",
       "backHalf": "2-я половина",
+      "backHalfShort": "2H",
       "validationErrors": "Ошибки валидации",
       "validationWarnings": "Предупреждения",
       "search": "Поиск элемента...",
+      "searchLabel": "Поиск элемента",
       "notFound": "Не найдено",
       "duration": "Длительность (с)",
       "goe": "GOE"

@@ -17,3 +17,6 @@ ignores:
   - "**/tests/**"
   - "**/conftest.py"
   - "experiments/**"
+  - "ml/scripts/**"
+  - "scripts/**"
+  - "data/experiments/**"

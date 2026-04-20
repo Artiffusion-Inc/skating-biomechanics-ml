@@ -85,7 +85,7 @@ export function ElementEditor({ elementId, onClose }: ElementEditorProps) {
             removeElement(elementId)
             onClose()
           }}
-          className="flex flex-1 items-center justify-center gap-1 rounded px-2 py-1 text-xs text-red-500 hover:bg-red-500/10"
+          className="flex flex-1 items-center justify-center gap-1 rounded px-2 py-1 text-xs text-destructive hover:bg-destructive/10"
         >
           <Trash2 className="h-3 w-3" />
           Delete

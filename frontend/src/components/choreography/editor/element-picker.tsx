@@ -2,6 +2,7 @@
 
 import { Plus } from "lucide-react"
 import { useMemo, useState } from "react"
+import { useTranslations } from "@/i18n"
 import type { TrackType } from "@/types/choreography"
 
 interface ElementPickerProps {
@@ -69,6 +70,7 @@ const ELEMENTS_BY_TYPE: Record<TrackType, { code: string; name: string; bv: numb
 
 export function ElementPicker({ trackType, onSelect, onClose }: ElementPickerProps) {
   const [search, setSearch] = useState("")
+  const t = useTranslations("choreography.timeline")
   const items = ELEMENTS_BY_TYPE[trackType]
 
   const filtered = useMemo(() => {
@@ -90,14 +92,14 @@ export function ElementPicker({ trackType, onSelect, onClose }: ElementPickerPro
       }}
     >
       <label htmlFor="element-search" className="sr-only">
-        Search element
+        {t("searchLabel")}
       </label>
       <input
         id="element-search"
         type="text"
         value={search}
         onChange={e => setSearch(e.target.value)}
-        placeholder="Поиск элемента..."
+        placeholder={t("search")}
         className="mb-2 w-full rounded-md border border-border bg-muted/30 px-2 py-1 text-sm outline-none focus:border-primary"
       />
       <div className="max-h-60 overflow-y-auto">
@@ -116,7 +118,7 @@ export function ElementPicker({ trackType, onSelect, onClose }: ElementPickerPro
           </button>
         ))}
         {filtered.length === 0 && (
-          <p className="py-2 text-center text-xs text-muted-foreground">Не найдено</p>
+          <p className="py-2 text-center text-xs text-muted-foreground">{t("notFound")}</p>
         )}
       </div>
     </div>
