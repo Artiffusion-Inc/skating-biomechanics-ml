@@ -175,12 +175,13 @@ export function useGenerateLayouts() {
       segment: "short_program" | "free_skate"
       inventory: { jumps: string[]; spins: string[]; combinations: string[] }
       count?: number
-    }) => apiPost("/choreography/generate", GenerateResponseSchema, {
-      music_id: body.music_analysis_id,
-      discipline: body.discipline,
-      segment: body.segment,
-      inventory: body.inventory,
-    }),
+    }) =>
+      apiPost("/choreography/generate", GenerateResponseSchema, {
+        music_id: body.music_analysis_id,
+        discipline: body.discipline,
+        segment: body.segment,
+        inventory: body.inventory,
+      }),
   })
 }
 
@@ -190,11 +191,12 @@ export function useValidateLayout() {
       discipline: "mens_singles" | "womens_singles"
       segment: "short_program" | "free_skate"
       layout: { elements: Array<{ code: string; timestamp: number; goe: number }> }
-    }) => apiPost("/choreography/validate", ValidationResultSchema, {
-      discipline: body.discipline,
-      segment: body.segment,
-      elements: body.layout.elements,
-    }),
+    }) =>
+      apiPost("/choreography/validate", ValidationResultSchema, {
+        discipline: body.discipline,
+        segment: body.segment,
+        elements: body.layout.elements,
+      }),
   })
 }
 

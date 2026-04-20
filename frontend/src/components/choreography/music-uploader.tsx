@@ -84,7 +84,10 @@ export function MusicUploader({ analysis, onUpload, isUploading }: MusicUploader
             <div className="h-2 overflow-hidden rounded-full bg-muted">
               <div
                 className={`h-full rounded-full transition-all duration-300 ${progress >= 100 ? "animate-pulse" : "bg-primary"}`}
-                style={{ width: `${progress}%`, backgroundColor: progress >= 100 ? "oklch(var(--muted-foreground))" : undefined }}
+                style={{
+                  width: `${progress}%`,
+                  backgroundColor: progress >= 100 ? "oklch(var(--muted-foreground))" : undefined,
+                }}
               />
             </div>
             <p className="text-xs text-muted-foreground">

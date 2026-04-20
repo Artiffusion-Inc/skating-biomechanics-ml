@@ -78,7 +78,7 @@ export class ChunkedUploader {
       body: JSON.stringify({
         upload_id: init.upload_id,
         key: init.key,
-        parts: init.parts.map((p) => ({ part_number: p.part_number, etag: "" })),
+        parts: init.parts.map(p => ({ part_number: p.part_number, etag: "" })),
       }),
     })
 
