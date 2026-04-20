@@ -1,0 +1,9 @@
+id: no-os-environ
+valid:
+  - "settings.log_level"
+  - "config.database_url"
+invalid:
+  - 'os.getenv("LOG_LEVEL", "INFO")'
+  - 'os.environ.get("DATABASE_URL")'
+  - 'os.environ["API_KEY"]'
+  - 'os.environ.setdefault("REDIS_URL", "redis://localhost")'

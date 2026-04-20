@@ -1,0 +1,17 @@
+id: no-localhost-backend
+language: python
+message: |
+  Hardcoded localhost URL detected. Use environment variable or config.py default.
+
+  Instead of:  "postgresql+asyncpg://user:pass@localhost:5432/db"
+  Use:         Define in config.py with env var override: url: str = Field(...)
+severity: warning
+note: |
+  Allowed in config.py (default values for local dev) and test files.
+rule:
+  kind: string
+  regex: '\b(localhost|127\.0\.0\.1|0\.0\.0\.0)\b'
+ignores:
+  - "backend/app/config.py"
+  - "backend/tests/**"
+  - "backend/**/conftest.py"

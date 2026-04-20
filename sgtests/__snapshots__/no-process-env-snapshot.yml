@@ -1,0 +1,26 @@
+id: no-process-env
+snapshots:
+  if (process.env.SKIP_AUTH === "true") {}:
+    labels:
+    - source: process.env.SKIP_AUTH
+      style: primary
+      start: 4
+      end: 25
+  process.env.NEXT_PUBLIC_API_URL:
+    labels:
+    - source: process.env.NEXT_PUBLIC_API_URL
+      style: primary
+      start: 0
+      end: 31
+  process.env.NODE_ENV:
+    labels:
+    - source: process.env.NODE_ENV
+      style: primary
+      start: 0
+      end: 20
+  process.env["SOME_KEY"]:
+    labels:
+    - source: process.env["SOME_KEY"]
+      style: primary
+      start: 0
+      end: 23

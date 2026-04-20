@@ -1,0 +1,8 @@
+id: no-localhost-backend
+valid:
+  - 'url = settings.database_url'
+  - 'host = "db.internal.example.com"'
+invalid:
+  - '"postgresql+asyncpg://user:pass@localhost:5432/db"'
+  - '"redis://localhost:6379/0"'
+  - '"http://127.0.0.1:8000/api"'

@@ -1,0 +1,26 @@
+id: no-os-environ
+snapshots:
+  os.environ.get("DATABASE_URL"):
+    labels:
+    - source: os.environ.get("DATABASE_URL")
+      style: primary
+      start: 0
+      end: 30
+  os.environ.setdefault("REDIS_URL", "redis://localhost"):
+    labels:
+    - source: os.environ.setdefault("REDIS_URL", "redis://localhost")
+      style: primary
+      start: 0
+      end: 55
+  os.environ["API_KEY"]:
+    labels:
+    - source: os.environ["API_KEY"]
+      style: primary
+      start: 0
+      end: 21
+  os.getenv("LOG_LEVEL", "INFO"):
+    labels:
+    - source: os.getenv("LOG_LEVEL", "INFO")
+      style: primary
+      start: 0
+      end: 30

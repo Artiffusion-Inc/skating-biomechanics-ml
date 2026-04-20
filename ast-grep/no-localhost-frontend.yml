@@ -1,0 +1,19 @@
+id: no-localhost-frontend
+language: tsx
+message: |
+  Hardcoded localhost URL detected. Use environment variable or config.
+
+  Instead of:  "http://localhost:8000/api/v1/..."
+  Use:         process.env.NEXT_PUBLIC_API_URL + "/v1/..."
+severity: warning
+note: |
+  Allowed in next.config.ts (proxy config) and test files.
+rule:
+  kind: string_fragment
+  regex: '\b(localhost|127\.0\.0\.1|0\.0\.0\.0)\b'
+ignores:
+  - "frontend/next.config.ts"
+  - "frontend/next.config.*"
+  - "frontend/**/*.test.*"
+  - "frontend/**/*.spec.*"
+  - "frontend/**/__tests__/**"
