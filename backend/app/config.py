@@ -122,6 +122,7 @@ class AppConfig(BaseSettings):
     worker_max_jobs_remote: int = 5
     worker_retry_delays: list[int] = [30, 120]
     log_level: str = "INFO"
+    omp_num_threads: int = 2
     task_ttl_seconds: int = 86400
     skip_auth: bool = False
 

@@ -12,6 +12,9 @@ rule:
   pattern: print($$$ARGS)
 ignores:
   - "ml/scripts/**"
+  - "scripts/**"
   - "experiments/**"
   - "data/**"
   - "**/__main__.py"
+  - "**/tests/**"
+  - "**/test_*.py"

@@ -209,7 +209,16 @@
     }
   },
   "coach": {
-    "noProblems": "No problems detected"
+    "noProblems": "No problems detected",
+    "studentFallback": "Student"
+  },
+  "session": {
+    "justNow": "just now",
+    "minsAgo": "{n} min ago",
+    "hoursAgo": "{n} h ago",
+    "daysAgo": "{n} d ago",
+    "analyzing": "Analyzing...",
+    "waiting": "Waiting..."
   },
   "choreography": {
     "title": "Program Planner",
@@ -223,6 +232,14 @@
     "womens_singles": "Women's Singles",
     "generate": "Generate",
     "generating": "Generating...",
+    "noLayouts": "Could not generate layouts. Try adding more elements.",
+    "generateError": "Error generating layouts. Please try again.",
+    "snapOff": "No snap",
+    "snapBeats": "Snap to beats",
+    "snapPhrases": "Snap to phrases",
+    "jumpsTrack": "Jumps",
+    "spinsTrack": "Spins",
+    "sequencesTrack": "Sequences",
     "selectLayout": "Select layout",
     "music": {
       "title": "Music",
@@ -230,7 +247,8 @@
       "dropzoneHint": "MP3, WAV, OGG up to 50 MB",
       "analyzing": "Analyzing music...",
       "uploading": "Uploading file...",
-      "processing": "Processing on server..."
+      "processing": "Processing on server...",
+      "uploadPrompt": "Upload music"
     },
     "inventory": {
       "title": "Element inventory",
@@ -253,7 +271,13 @@
     },
     "rink": {
       "loading": "Loading...",
-      "empty": "No layout selected"
+      "empty": "No layout selected",
+      "title": "Rink diagram",
+      "show": "Show rink",
+      "hide": "Hide rink",
+      "jump": "Jump",
+      "spin": "Spin",
+      "sequence": "Seq."
     },
     "elements": "Elements",
     "noPrograms": "No saved programs",
@@ -277,9 +301,11 @@
       "rinkPreset": "Rink size",
       "rinkCustom": "Custom",
       "backHalf": "Back half",
+      "backHalfShort": "2H",
       "validationErrors": "Validation errors",
       "validationWarnings": "Warnings",
       "search": "Search element...",
+      "searchLabel": "Search element",
       "notFound": "Not found",
       "duration": "Duration (s)",
       "goe": "GOE"

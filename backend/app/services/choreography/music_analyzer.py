@@ -42,8 +42,8 @@ def _run_analysis(audio_path: str) -> dict:
             if len(beat_frames) > 1:
                 intervals = np.diff(beat_frames) * 512 / sr
                 bpm = float(60.0 / np.median(intervals))
-        except Exception:  # noqa: BLE001
-            logger.warning("madmom beat tracking failed, using librosa fallback")
+        except (ImportError, ValueError, OSError, RuntimeError) as _bpm_err:
+            logger.warning("madmom beat tracking failed, using librosa fallback: %s", _bpm_err)
 
         if bpm is None:
             tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
@@ -65,8 +65,8 @@ def _run_analysis(audio_path: str) -> dict:
             rms_normalized = (rms - rms.min()) / (rms.max() - rms.min() + 1e-8)
             peak_indices, _ = find_peaks(rms_normalized, height=0.6, distance=4)
             peaks = [timestamps[i] for i in peak_indices]
-        except Exception:  # noqa: BLE001
-            logger.warning("Peak detection failed")
+        except (ImportError, ValueError, RuntimeError) as _peak_err:
+            logger.warning("Peak detection failed: %s", _peak_err)
 
         return peaks, energy_curve
 
@@ -85,8 +85,10 @@ def _run_analysis(audio_path: str) -> dict:
                         "end": float(boundaries[i + 1]),
                     }
                 )
-        except Exception:  # noqa: BLE001
-            logger.warning("MSAF structure analysis failed -- using empty structure")
+        except (ImportError, OSError, ValueError, RuntimeError) as _struct_err:
+            logger.warning(
+                "MSAF structure analysis failed -- using empty structure: %s", _struct_err
+            )
 
         return structure
 

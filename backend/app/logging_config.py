@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-import os
-
 import structlog
+
+from app.config import settings
 
 
 def configure_logging() -> None:
-    log_level = os.getenv("LOG_LEVEL", "INFO").upper()
+    log_level = settings.app.log_level.upper()
 
     if log_level == "JSON":
         structlog.configure(

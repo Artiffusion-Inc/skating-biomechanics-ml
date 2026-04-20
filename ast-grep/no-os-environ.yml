@@ -20,6 +20,7 @@ ignores:
   - "backend/app/config.py"
   - "backend/**/conftest.py"
   - "backend/tests/**"
+  - "backend/app/worker.py"
   - "ml/src/device.py"
   - "ml/src/pose_estimation/multi_gpu_extractor.py"
   - "ml/gpu_server/**"

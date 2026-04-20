@@ -15,6 +15,7 @@ from app.crud.choreography import (
     create_music_analysis,
     create_program,
     delete_program,
+    find_music_by_fingerprint,
     get_music_analysis_by_id,
     get_program_by_id,
     list_programs_by_user,
@@ -65,8 +66,13 @@ async def upload_music(
     db: DbDep,
     file: UploadFile,
 ):
-    """Upload an audio file and enqueue analysis job."""
+    """Upload an audio file and enqueue analysis job.
+
+    Deduplicates by SHA256 fingerprint — returns cached result if
+    the same file was already analyzed (by any user).
+    """
     import asyncio
+    import hashlib
     import logging
 
     logger = logging.getLogger(__name__)
@@ -74,8 +80,16 @@ async def upload_music(
     suffix = (
         f".{file.filename.rsplit('.', 1)[-1]}" if file.filename and "." in file.filename else ".mp3"
     )
+    content = await file.read()
+
+    # Dedup: check if this exact file was already analyzed
+    fingerprint = hashlib.sha256(content).hexdigest()
+    existing = await find_music_by_fingerprint(db, fingerprint)
+    if existing:
+        logger.info("Music fingerprint hit: %s (existing=%s)", fingerprint, existing.id)
+        return UploadMusicResponse(music_id=existing.id, filename=existing.filename)
+
     with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
-        content = await file.read()
         tmp.write(content)
         tmp_path = tmp.name
 
@@ -87,6 +101,7 @@ async def upload_music(
         audio_url="",
         duration_sec=0,
         status="pending",
+        fingerprint=fingerprint,
     )
 
     try:
@@ -104,7 +119,7 @@ async def upload_music(
             _queue_name="skating:queue:fast",
         )
         logger.info("Enqueued analyze_music_task for music_id=%s", music.id)
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError) as e:
         logger.exception("Failed to upload or enqueue music analysis")
         await update_music_analysis(db, music, status="failed")
         raise HTTPException(
@@ -272,8 +287,8 @@ async def create_new_program(body: SaveProgramRequest, user: CurrentUser, db: Db
     program = await create_program(
         db,
         user_id=user.id,
-        discipline="mens_singles",
-        segment="free_skate",
+        discipline=body.discipline or "mens_singles",
+        segment=body.segment or "free_skate",
         title=body.title,
         layout=body.layout,
         total_tes=body.total_tes,

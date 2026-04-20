@@ -35,8 +35,9 @@ from src.types import H36Key
 
 logger = logging.getLogger(__name__)
 
-# Configure OpenMP threads for better CPU performance
-os.environ.setdefault("OMP_NUM_THREADS", "2")
+# Configure OpenMP threads for better CPU performance (runtime env var for C library)
+_settings = get_settings()
+os.environ.setdefault("OMP_NUM_THREADS", str(_settings.app.omp_num_threads))
 
 
 def _sample_poses(
@@ -294,7 +295,7 @@ async def process_video_task(
                         {"status": "running", "progress": 0.85, "message": "Preparing results..."},
                         valkey=valkey,
                     )
-            except Exception as pose_err:  # noqa: BLE001
+            except (OSError, ValueError, RuntimeError) as pose_err:
                 logger.warning("Failed to prepare pose data: %s", pose_err)
 
         response_data = {
@@ -333,19 +334,19 @@ async def process_video_task(
                         recommendations=vast_result.recommendations or [],
                     )
                     await db.commit()
-            except Exception as save_err:  # noqa: BLE001
+            except (OSError, ValueError, RuntimeError) as save_err:
                 logger.warning("Failed to save session results: %s", save_err)
 
         return response_data
 
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.exception("Pipeline task %s failed", task_id)
         await store_error(task_id, str(e), valkey=valkey)
         try:
             await publish_task_event(
                 task_id, {"status": "failed", "progress": 0.0, "message": str(e)}, valkey=valkey
             )
-        except Exception:  # noqa: BLE001
+        except (OSError, RuntimeError):
             logger.warning("Failed to publish error event for task %s", task_id)
         error_msg = str(e).lower()
         if any(term in error_msg for term in ["timeout", "connection", "network"]):
@@ -487,14 +488,14 @@ async def detect_video_task(
             )
             return result_data
 
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.exception("Detection task %s failed", task_id)
         await store_error(task_id, str(e), valkey=valkey)
         try:
             await publish_task_event(
                 task_id, {"status": "failed", "progress": 0.0, "message": str(e)}, valkey=valkey
             )
-        except Exception:  # noqa: BLE001
+        except (OSError, RuntimeError):
             logger.warning("Failed to publish error event for task %s", task_id)
         raise
     finally:
@@ -618,7 +619,7 @@ async def analyze_music_task(
                     "duration_sec": result["duration_sec"],
                 }
 
-    except Exception as e:
+    except (OSError, ValueError, RuntimeError, ConnectionError, TimeoutError) as e:
         logger.exception("Music analysis task failed for music_id=%s", music_id)
 
         # Update DB status to failed
@@ -631,16 +632,13 @@ async def analyze_music_task(
                 if music:
                     await update_music_analysis(db, music, status="failed")
                     await db.commit()
-        except Exception:  # noqa: BLE001
+        except (OSError, RuntimeError):
             logger.warning("Failed to update music status to failed")
 
         raise
 
     finally:
         await valkey.close()
-
-
-_settings = get_settings()
 
 
 class FastWorkerSettings:

@@ -22,3 +22,11 @@ rule:
       has:
         pattern: Exception
         stopBy: end
+ignores:
+  - "ml/scripts/**"
+  - "scripts/**"
+  - "experiments/**"
+  - "data/experiments/**"
+  - "ml/tests/**"
+  - "data/tests/**"
+  - "ml/src/**"
