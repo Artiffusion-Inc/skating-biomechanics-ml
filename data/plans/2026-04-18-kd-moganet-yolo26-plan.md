@@ -8,16 +8,28 @@
 
 ## Task 0: Training Time & Risk Estimation
 
-Calculate expected training time using published benchmarks.
+**Reference:** Ultralytics docs — "baseline: ~2.8s compute per 1000 images on RTX 4090". **WARNING:** This is an internal cost-estimator coefficient, NOT wall-clock time. Cross-check with Ultralytics cost table shows 72× discrepancy between formula and real cost-derived time. No reliable per-epoch benchmark available.
 
-**Reference:** Ultralytics docs — **2.8s compute per 1000 images per epoch on RTX 4090** (YOLO26n). "Number of Epochs: Direct multiplier on training time." Source: docs.ultralytics.com/platform/cloud-training/.
+**Approach: Measure, don't estimate.**
 
-**Base calculation (343K images, 100 epochs):**
-- 1 epoch = 343 × 2.8s = 960s = 16 min
-- 100 epochs = 26.7h on RTX 4090
-- KD overhead (simulated heatmap + KL, no teacher model): ~1.1× → **29h**
+### Step 0: Calibration Run (first thing on rented GPU)
 
-**RTX 5090 speedup:** DLPerf 199 vs 4090's 95 → 2.1× faster → 100 epochs KD = **14h**
+Before any training, run 5 epochs on actual data to get real wall-clock time:
+
+```bash
+yolo train model=yolo26n-pose.pt data=skating_full.yaml epochs=5 batch=32 imgsz=640 device=0
+# Record: total_wall_time / 5 = seconds_per_epoch
+```
+
+Then extrapolate:
+```
+total_hours = (seconds_per_epoch / 3600) × planned_epochs × KD_overhead
+```
+
+**Budget assumption (pessimistic, until calibrated):**
+- Use previous estimate: **$46 on RTX 4090, $23 on RTX 5090** (with 1.5× contingency)
+- If calibration shows faster → free up budget for gated stages or more data
+- If calibration shows slower → cut gated stages or reduce epochs
 
 ### Risk Mitigation Strategies
 
@@ -37,50 +49,37 @@ for img, label in dataset:
 Previous experiment: freeze=20 was best (0.517 vs 0.406 at freeze=0). Start KD from pretrained + freeze=10-20. Fallback to ablation only if KD fails.
 
 **3. Gate Stage 2.5 — skip if teacher already good on skating**
-Run MogaNet-B eval on 100 skating val images first. If AP > 0.85: skip teacher adaptation. Expected: MogaNet-B AP=0.962 on AP3D, likely > 0.85 on skating.
+Run MogaNet-B eval on 100 skating val images first. If AP > 0.85: skip teacher adaptation.
 
 **4. Gate Stage 3.5 — skip if gap is small**
-After Stage 3 converges: check teacher-student gap. gap < 0.08 → DONE, skip TDE. 50% probability of saving ~6h.
+After Stage 3 converges: check teacher-student gap. gap < 0.08 → DONE, skip TDE.
 
 **5. Progressive sizing — n first, then s/m only if needed**
-Train YOLO26n (100 epochs). If AP >= 0.85 → DONE. Saves ~3h if n is sufficient.
+Train YOLO26n (100 epochs). If AP >= 0.85 → DONE.
 
 **6. Data validation locally — zero GPU cost**
-Convert ALL datasets locally. Spot-check: visual overlay on 10 random frames per dataset. `yolo val` on 100 images to verify format. Fix bugs BEFORE renting GPU.
+Convert ALL datasets locally. Spot-check: visual overlay on 10 random frames per dataset. `yolo val` on 100 images to verify format.
 
 **7. Heatmap resolution — verify from model, don't assume**
-Load MogaNet-B weights, run `model.forward()` on test crop → check exact `heatmap.shape`. Match in `keypoints_to_heatmap()`.
+Load MogaNet-B weights, run `model.forward()` on test crop → check exact `heatmap.shape`.
 
-### Revised Pipeline (risk-mitigated)
-
-| Stage | 4090 h | 5090 h | Probability |
-|-------|--------|--------|-------------|
-| Data conversion (LOCAL, no GPU) | 0h | 0h | 100% |
-| Teacher heatmap pre-compute (top-down, GT boxes) | 3h | 1.5h | 100% |
-| Stage 1: Baseline val | 0.5h | 0.3h | 100% |
-| Stage 3: KD (100 epochs, offline heatmaps) | 29h | 14h | 100% |
-| Stage 2.5: Teacher adap (gated) | 2h | 1h | 50% |
-| Stage 3.5: TDE (gated) | 12h | 6h | 50% |
-| YOLO26s fallback (progressive) | 6h | 3h | 50% |
-| **Expected total** | **~43h** | **~21h** | |
-| **With 1.5× contingency** | **~65h** | **~31h** | |
-
-**Cost estimate (with 1.5× contingency):**
+### Budget (pessimistic, until calibration)
 
 | GPU | ETA | Cost | Remaining ($150) |
 |-----|-----|------|-------------------|
-| RTX 5090 ($0.305/hr) | 31h | **$9** | $141 (94%) |
-| RTX 4090 ($0.295/hr) | 65h | **$19** | $131 (87%) |
+| RTX 5090 ($0.305/hr) | ~74h | **$23** | $127 (85%) |
+| RTX 4090 ($0.295/hr) | ~155h | **$46** | $104 (70%) |
 
-**VRAM:** Not a concern with offline heatmaps. Teacher model NOT in GPU during training. Any 24GB GPU works for YOLO26n/s/m.
+**After calibration:** Replace ETA with `(seconds_per_epoch / 3600) × planned_epochs`. Update cost accordingly.
 
 **Actions:**
-- [ ] After data conversion (Task 3-4): record actual N_images
-- [ ] Recalculate using formula: `total = (N/1000 × 2.8s × epochs × KD_overhead) / 3600`
+- [ ] Rent GPU, run 5-epoch calibration → record `seconds_per_epoch`
+- [ ] Recalculate ALL estimates using real measurement
 - [ ] Verify MogaNet-B heatmap shape before pre-compute (Task 11)
-- [ ] Pre-compute teacher heatmaps as first step on rented GPU (one-time, ~1.5-3h)
+- [ ] Pre-compute teacher heatmaps after calibration
+- [ ] After data conversion (Task 3-4): record actual N_images
 
-**Validation:** Total cost < $150 with >85% margin.
+**Validation:** Calibration run completes without errors, real numbers replace estimates.
 
 ---
 

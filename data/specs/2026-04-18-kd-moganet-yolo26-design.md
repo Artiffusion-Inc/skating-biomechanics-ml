@@ -373,35 +373,23 @@ Progressive sizing is now part of Stage 3 (train n first, s/m only if needed).
 
 ### Training Time Estimation
 
-**Reference:** Ultralytics docs — **2.8s compute per 1000 images per epoch** on RTX 4090 (YOLO26n). "Number of Epochs: Direct multiplier on training time." Source: docs.ultralytics.com/platform/cloud-training/.
+**WARNING:** Ultralytics docs claim "baseline: ~2.8s compute per 1000 images on RTX 4090", but cross-checking with their own cost table shows 72× discrepancy. This is an internal cost-estimator coefficient, not wall-clock time.
 
-**Base calculation (343K images):**
-- 1 epoch = 343 × 2.8s = 960s = 16 min
-- 100 epochs = 26.7h on RTX 4090
-- KD overhead (simulated heatmap + KL, no teacher): ~1.1× → **29h**
-- RTX 5090 (2.1× faster via DLPerf): **14h**
+**Approach: Calibration run.** Before any training, run 5 epochs on actual data to measure real `seconds_per_epoch`. Then extrapolate:
+```
+total_hours = (seconds_per_epoch / 3600) × planned_epochs × KD_overhead
+```
 
-**Pipeline cost with offline heatmaps:**
+**Budget (pessimistic, until calibrated):**
 
-| Stage | RTX 4090 | RTX 5090 | Probability |
-|-------|----------|----------|-------------|
-| Teacher heatmap pre-compute (top-down, GT boxes) | 3h | 1.5h | 100% |
-| Baseline validation | 0.5h | 0.3h | 100% |
-| KD training (100 epochs, ~343K images) | 29h | 14h | 100% |
-| Teacher adaptation (gated) | 2h | 1h | 50% |
-| TDE (gated) | 12h | 6h | 50% |
-| YOLO26s fallback (progressive) | 6h | 3h | 50% |
-| **Expected total** | **~43h** | **~21h** | |
-| **With 1.5× contingency** | **~65h** | **~31h** | |
+| GPU | ETA | Cost | Remaining ($150) |
+|-----|-----|------|-------------------|
+| RTX 5090 ($0.305/hr) | ~74h | **$23** | $127 (85%) |
+| RTX 4090 ($0.295/hr) | ~155h | **$46** | $104 (70%) |
 
-**Cost estimate (with 1.5× contingency):**
+**After calibration:** Replace ETA with measured value.
 
-| GPU | Cost | Remaining ($150) |
-|-----|------|-------------------|
-| RTX 5090 ($0.305/hr) | **$9** | $141 (94%) |
-| RTX 4090 ($0.295/hr) | **$19** | $131 (87%) |
-
-$150 budget is not a limiting factor. Dataset size determined by quality, not cost.
+$150 budget is not a limiting factor even at pessimistic estimates.
 
 ### Training Environment
 
