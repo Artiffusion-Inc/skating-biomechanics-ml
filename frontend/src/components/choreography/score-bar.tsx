@@ -23,11 +23,10 @@ export function ScoreBar({ layout, discipline, segment }: ScoreBarProps) {
   const duration = segment === "short_program" ? "2:40" : "4:10"
 
   return (
-    <div className="flex items-center gap-3 overflow-x-auto rounded-2xl border border-border bg-card px-4 py-3 text-sm sm:gap-5">
+    <div className="flex items-center gap-4 overflow-x-auto text-sm sm:gap-6">
       <Stat label={t("score.tes")} value={tes.toFixed(2)} highlight />
-      <Stat label={t("score.goe")} value={tes > 0 ? `+${(tes * 0.4).toFixed(2)}` : "0.00"} />
-      <Stat label={t("score.pcs")} value="0.00" />
       <Stat label={t("score.total")} value={tes > 0 ? (tes * 1.4).toFixed(2) : "0.00"} highlight />
+      <div className="h-4 w-px shrink-0 bg-border" />
       <Stat label={t("score.duration")} value={duration} />
       <Stat
         label={t("score.jumps")}
@@ -55,10 +54,10 @@ function Stat({
   warn?: boolean
 }) {
   return (
-    <div className="shrink-0 text-center">
-      <p className="text-xs text-muted-foreground">{label}</p>
+    <div className="shrink-0">
+      <p className="text-[10px] leading-tight text-muted-foreground">{label}</p>
       <p
-        className={`text-sm font-medium ${
+        className={`text-sm font-medium leading-tight ${
           highlight ? "text-primary" : warn ? "text-[oklch(var(--score-bad))]" : ""
         }`}
       >

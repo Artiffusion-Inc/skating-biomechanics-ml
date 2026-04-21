@@ -32,6 +32,7 @@ export default function NewProgramPage() {
   const [segment, setSegment] = useState<"short_program" | "free_skate">("short_program")
   const [inventory, setInventory] = useState<Inventory>(DEFAULT_INVENTORY)
   const [selectedLayout, setSelectedLayout] = useState<Layout | null>(null)
+  const [error, setError] = useState<string | null>(null)
 
   const [uploading, setUploading] = useState(false)
   const { data: analysis } = useMusicAnalysis(musicId ?? undefined)
@@ -52,6 +53,7 @@ export default function NewProgramPage() {
 
   function handleGenerate() {
     if (!musicId) return
+    setError(null)
     generateLayouts.mutate(
       {
         music_analysis_id: musicId,
@@ -67,12 +69,16 @@ export default function NewProgramPage() {
             setStep("result")
           }
         },
+        onError: err => {
+          setError(err instanceof Error ? err.message : t("generateError"))
+        },
       },
     )
   }
 
   function handleSave() {
     if (!selectedLayout) return
+    setError(null)
     saveProgram.mutate(
       {
         music_analysis_id: musicId ?? undefined,
@@ -89,6 +95,9 @@ export default function NewProgramPage() {
       {
         onSuccess: program => {
           router.push(`/choreography/programs/${program.id}`)
+        },
+        onError: err => {
+          setError(err instanceof Error ? err.message : tc("error"))
         },
       },
     )
@@ -170,6 +179,18 @@ export default function NewProgramPage() {
           <Sparkles className="h-5 w-5" />
           {generateLayouts.isPending ? t("generating") : t("generate")}
         </button>
+
+        {error && (
+          <p className="mt-3 rounded-xl bg-destructive/10 px-4 py-2 text-center text-sm text-destructive">
+            {error}
+          </p>
+        )}
+
+        {!error && !generateLayouts.isPending && generateLayouts.data?.layouts.length === 0 && (
+          <p className="mt-3 rounded-xl bg-muted px-4 py-2 text-center text-sm text-muted-foreground">
+            {t("noLayouts")}
+          </p>
+        )}
       </section>
 
       {/* Step 4: Pick layout + save */}

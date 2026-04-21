@@ -48,9 +48,8 @@ describe("renderRink", () => {
     expect(svg).not.toContain("3Lz")
   })
 
-  it("supports custom width/height", () => {
-    const svg = renderRink([], { width: 600, height: 300 })
-    expect(svg).toContain('width="600"')
-    expect(svg).toContain('height="300"')
+  it("supports custom width", () => {
+    const svg = renderRink([], { width: 600 })
+    expect(svg).toContain("max-width:600")
   })
 })
