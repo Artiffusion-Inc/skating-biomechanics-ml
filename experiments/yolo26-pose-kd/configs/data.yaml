@@ -1,0 +1,45 @@
+# Knowledge Distillation Dataset Configuration
+# Merges FineFS (primary) + AP3D-FS (figure skating) + COCO (catastrophic forgetting prevention)
+#
+# Data budget (2026-04-21):
+#   - FineFS: 8,904 train / 2,007 val (figure skating, tier 1)
+#   - AP3D-FS: 35,705 train / 21,368 val (figure skating S1+S2, human-verified 3D->2D)
+#   - COCO: 10% dynamic (to be added for catastrophic forgetting prevention)
+#   - Total train: ~44.6K (without COCO)
+#
+# Note: COCO 10% mix will be added via helper script to prevent catastrophic forgetting.
+# Monitor val AP every 5 epochs — if drops >5% relative, increase COCO mix to 15-20%.
+
+# Dataset root (absolute path required for Ultralytics)
+# NOTE: Server path — update for local training
+path: /root/skating-biomechanics-ml/experiments/yolo26-pose-kd/data
+
+# Training images (multiple directories supported)
+train:
+  - finefs/train/images  # Primary: FineFS figure skating (2fps sampling)
+  - ap3d-fs/train/images  # Secondary: AthletePose3D figure skating (S1+S2 only)
+  - coco-10pct/train/images  # Catastrophic forgetting prevention (5,659 images)
+
+# Validation images (FineFS for domain-specific quality, AP3D-FS for coverage)
+val:
+  - finefs/val/images
+  - ap3d-fs/valid/images
+
+# Keypoint shape: [num_keypoints, num_dimensions]
+# H3.6M 17 keypoints: [x, y, visibility] where visibility=0 (occluded), 1 (visible), 2 (hidden/unknown)
+kpt_shape: [17, 3]
+
+# Class names (single class: person)
+names:
+  0: person
+
+# Dataset statistics (updated 2026-04-21):
+#   FineFS train: 8,904 images / val: 2,007 images
+#   AP3D-FS train: 35,705 images / val: 21,368 images (S1+S2 figure skating only)
+#   AP3D-FS test: 20,324 images (held out)
+#   AP3D-FS action distribution (all splits):
+#     Flip: 11,392 | Salchow: 11,158 | Loop: 11,144 | Toeloop: 10,913
+#     Axel: 10,635 | Lutz: 10,310 | Comb: 5,801 | vid(S2): 6,044
+#   Total train: 44,609 images (without COCO)
+#   COCO 10%: ~11,828 images (to be added)
+#   Total train (target): ~56,437 images

@@ -610,16 +610,20 @@ class DistilPoseTrainer:
         # 2. Standard GT loss using pre-computed preds
         gt_loss, loss_items = self._original_loss(batch, preds)
 
-        # 3. KD losses (skip during warmup)
+        # 3. KD losses: skip during validation and warmup
+        # Pad loss_items with zeros to maintain consistent size (6 base + 3 KD)
+        kd_pad = torch.zeros(3, device=gt_loss.device)
+        if not model.training:
+            return gt_loss, torch.cat([loss_items, kd_pad])
         if self._current_epoch < self.warmup_epochs:
-            return gt_loss, loss_items
+            return gt_loss, torch.cat([loss_items, kd_pad])
 
         # 4. Compute KD weight decay
         w_kd = self.compute_kd_weight()
 
         # Stage 2: Self-KD uses student as teacher (no external teacher data)
         if self.stage2:
-            return gt_loss, loss_items
+            return gt_loss, torch.cat([loss_items, kd_pad])
 
         # 5. Load teacher heatmaps
         teacher_hm = None
@@ -629,7 +633,7 @@ class DistilPoseTrainer:
                 teacher_hm = self.loader.load(list(im_files))
 
         if teacher_hm is None:
-            return gt_loss, loss_items
+            return gt_loss, torch.cat([loss_items, kd_pad])
 
         # Move teacher heatmaps to correct device
         teacher_hm = teacher_hm.to(gt_loss.device)
@@ -714,53 +718,17 @@ class DistilPoseTrainer:
         student_log = F.log_softmax(student_flat, dim=-1)
         logit_loss = F.kl_div(student_log, teacher_probs, reduction="batchmean")
 
-        # 10. Feature distillation (optional, only if teacher features provided)
-        feat_loss = torch.tensor(0.0, device=gt_loss.device)
+        # 10. Feature distillation removed (frozen backbone = dead gradient path)
+        #     feat_loss stays at 0.0
 
-        if self.feat_loader is not None:
-            im_files = batch.get("im_file", [])
-            if isinstance(im_files, (list, tuple)):
-                teacher_feats = self.feat_loader.load(list(im_files))
-
-                if teacher_feats is not None:
-                    student_feats = extract_backbone_features(
-                        model,
-                        batch["img"],
-                        layer_indices=self.feature_layers,
-                    )
-                    layer_losses = []
-                    for layer_idx in self.feature_layers:
-                        if layer_idx not in teacher_feats or layer_idx not in student_feats:
-                            continue
-                        teacher_feat = teacher_feats[layer_idx].to(gt_loss.device)
-                        student_feat = student_feats[layer_idx]
-                        if student_feat.shape[2:] != teacher_feat.shape[2:]:
-                            student_feat = F.interpolate(
-                                student_feat,
-                                size=teacher_feat.shape[2:],
-                                mode="bilinear",
-                                align_corners=False,
-                            )
-                        if student_feat.shape[1] != teacher_feat.shape[1]:
-                            adapter = self._get_or_create_adapter(
-                                layer_idx,
-                                teacher_feat.shape[1],
-                                student_feat.shape[1],
-                                gt_loss.device,
-                            )
-                            teacher_feat = adapter(teacher_feat)
-                        layer_losses.append(F.mse_loss(student_feat, teacher_feat))
-                    if layer_losses:
-                        feat_loss = torch.stack(layer_losses).mean()
-
-        # 11. Total loss with weight decay
-        kd_total = self.alpha * feat_loss + self.beta * logit_loss
+        # 11. Total loss with weight decay (logit-only KD)
+        kd_total = self.beta * logit_loss
         total_loss = gt_loss + w_kd * kd_total
 
         kd_items = torch.cat(
             [
                 loss_items,
-                torch.tensor([logit_loss.item(), feat_loss.item(), w_kd], device=gt_loss.device),
+                torch.tensor([logit_loss.item(), 0.0, w_kd], device=gt_loss.device),
             ]
         )
         return total_loss, kd_items
