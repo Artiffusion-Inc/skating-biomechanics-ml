@@ -138,6 +138,8 @@ class TeacherCoordLoader:
 class DistilPoseTrainer:
     """v35b KD Trainer: Coordinate distillation with progressive unfreeze."""
 
+    _CACHED_ORIG_LOSS = None  # class-level cache for original loss (survives deepcopy)
+
     def __init__(
         self,
         teacher_coords_path: str | Path | None = None,
@@ -175,6 +177,9 @@ class DistilPoseTrainer:
     def __setstate__(self, state):
         """Restore state and re-open HDF5 on unpickle."""
         self.__dict__.update(state)
+        # Re-acquire original loss from class cache after unpickle
+        if self._original_loss is None and self.teacher_coords_path:
+            self._original_loss = type(self)._CACHED_ORIG_LOSS
 
     def set_epoch(self, epoch: int):
         self._current_epoch = epoch
@@ -203,6 +208,11 @@ class DistilPoseTrainer:
         if self.teacher_coords_path:
             self._coord_loader = TeacherCoordLoader(self.teacher_coords_path)
 
+        # Cache original loss at class level (survives deepcopy/EMA)
+        self._original_loss = model.loss
+        if type(self)._CACHED_ORIG_LOSS is None:
+            type(self)._CACHED_ORIG_LOSS = model.loss
+
         # Stage 2: freeze backbone completely
         if self.stage2:
             for name, param in model.named_parameters():
@@ -217,7 +227,6 @@ class DistilPoseTrainer:
                 else:
                     param.requires_grad = False
 
-        self._original_loss = model.loss
         self._model = model
         model.loss = self.kd_loss  # type: ignore[assignment]
 
