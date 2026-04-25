@@ -108,11 +108,9 @@ def main():
             continue
 
         parts = rel_path.split("/")
-        split_parts = parts[0].split("/")
-        if len(split_parts) == 2:
-            ds, split = split_parts
-        else:
+        if len(parts) < 3:
             continue
+        ds, split = parts[0], parts[1]
 
         label_dir = output_root / ds / split / "labels"
         label_dir.mkdir(parents=True, exist_ok=True)
@@ -131,10 +129,9 @@ def main():
     print("\nCreating image symlinks...")
     for rel_path in tqdm(img_entries.keys(), desc="Symlinks"):
         parts = rel_path.split("/")
-        split_parts = parts[0].split("/")
-        if len(split_parts) != 2:
+        if len(parts) < 3:
             continue
-        ds, split = split_parts
+        ds, split = parts[0], parts[1]
 
         src_img = base_path / rel_path
         dst_dir = output_root / ds / split / "images"
