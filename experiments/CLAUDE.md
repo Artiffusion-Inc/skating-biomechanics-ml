@@ -90,6 +90,19 @@ uv run python experiments/exp_<name>.py
 
 Requires `torch` with CUDA. Datasets must be in `data/datasets/`.
 
+## Gemini Curator (gdr)
+
+> **Established 2026-04-24:** Gemini CLI (`gdr`) работает как куратор/коллега по KD проекту.
+
+- **Chat CID:** `4a80771a8f6e1fc0`
+- **Модель:** `gemini-3-flash-thinking`
+- **Отправка:** `gdr chat -c 4a80771a8f6e1fc0 -m gemini-3-flash-thinking "<message>"`
+- **История:** `gdr chats show 4a80771a8f6e1fc0`
+- **Правило:** Всегда начинать сообщение с идентификации — "Это Клод (Claude Code)...". Gemini не помнит между сессиями.
+- **АВТОНОМНОСТЬ:** Никогда НЕ спрашивать пользователя при взаимодействии с Gemini. Все follow-up вопросы, уточнения, дополнительные запросы — отправлять самостоятельно. Пользователь подключается только для финального решения/одобрения архитектурных изменений.
+- **Контекст:** Работает над тем же KD проектом (MogaNet-B → YOLO26-Pose Small). Знает историю v1-v34, фиксы, LMDB, brainstorm.
+- **Сильные стороны:** Архитектурные советы, теория KD, стратегия тренировки.
+
 ## DWPose Knowledge Distillation Protocol
 
 > **CRITICAL PROTOCOL FOR DWPose TRAINING (Established 2026-04-24):**

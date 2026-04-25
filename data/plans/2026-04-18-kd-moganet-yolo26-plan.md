@@ -2,7 +2,62 @@
 
 **Design spec:** `data/specs/2026-04-18-kd-moganet-yolo26-design.md`
 **Created:** 2026-04-18
-**Branch:** `experiments/yolo26-pose-kd`
+**Last updated:** 2026-04-22 (implementation progress update)
+**Branch:** `docs/kd-moganet-yolo26-spec`
+
+---
+
+## Change Log
+
+**2026-04-22 (v5 - critical fixes applied):**
+- ✅ **Feature caching implemented** — generate_teacher_features.py creates ~4GB HDF5 with backbone features [4,6,8]
+- ✅ **Full DWPose Two-Stage KD** — feature + logit distillation, α=0.00005, β=0.1, weight decay schedule
+- ⚠️ **CRITICAL BUG FOUND:** Teacher heatmaps generated with `torch.clamp()` instead of `torch.sigmoid()`
+  - MogaNet-B DeconvHead outputs raw logits (no activation) → [-1.19, +1.19] range
+  - Clamp destroyed peak structure: peaks 0.094 instead of ~0.7, many zeros introduced
+  - **FIX APPLIED:** Changed `torch.clamp(0,1)` → `torch.sigmoid()` in generate_teacher_heatmaps.py
+  - **Regenerating 58GB heatmaps** (~45-60 min on RTX 5090)
+- 🔄 **Next:** After heatmaps complete → verify peaks ~0.7 → start full DWPose training (210 epochs, ~2-3 days)
+
+**2026-04-22 (final v3 - research + implementation complete):**
+- ✅ **Teacher heatmaps GENERATED** — (264,874, 17, 72, 96), 62GB, MSRA Gaussian, batch=128 (1.3h)
+- ✅ **Critical fixes applied** — MSRA norm, Adam(lr=0.001), kd_weight=0.001, data clamp
+- ✅ **Research completed** — 4 parallel agents analyzed DistilPose, YOLO-KD, best practices
+- ✅ **Key findings:**
+  - DistilPose: model-level integration, online teacher, multi-loss
+  - YOLO-KD: MGD best for detection (+2.8% mAP), DWPose for pose
+  - Best practice: two-stage scheduling (0.1→1.0), temperature annealing (3→1)
+- ⚠️ **Issue discovered:** `yolo train` does NOT support KD losses (baseline only!)
+- ✅ **Solution:** Use `distill_trainer.py` directly (already working, 13/13 tests pass)
+
+**2026-04-22 (final v2 - critical fixes applied):**
+- ✅ Task 12: distill_trainer.py — 13/13 tests pass, 6 bugs fixed (softplus→sigmoid, teacher norm, mosaic=0, padding, lr0, student conf)
+- ✅ Task 11: simulate_heatmap.py — MSRA encoding, 12/12 tests pass
+- ✅ MogaNet-B verified — (1,17,72,96) output, 33.8ms/crop on RTX 5090
+- ✅ ultralytics 8.4.41 + YOLO26n/s-pose.pt — sigma head verified
+- ✅ AP3D-FS — 35,705 train / 21,368 val
+- ✅ COCO 10% — 5,659 train images
+- ✅ FineFS v2 complete — 229,169 train / 57,943 val (287K total) via 24× multiprocessing
+- ✅ Training configs — calibration.yaml, stage3_distill.yaml, stage3_baseline.yaml
+- ✅ **CRITICAL FIXES APPLIED (2026-04-22 16:00 UTC):**
+  - ❌ **Heatmap norm:** Per-channel [0,1] → **MSRA Gaussian (raw + clamp)** — destroys spatial structure!
+  - ❌ **LR:** optimizer=auto(lr=0.01) → **Adam(lr=0.001)** — too aggressive for pose KD
+  - ❌ **kd_weight:** 1.0 → **0.001** — DistilPose uses 0.0005
+  - ✅ **score_weight:** 0.01 (already correct)
+  - ✅ **Data clamp:** Added to AP3D-FS converter (FineFS already had it)
+
+**Sources for fixes:**
+- DistilPose: `configs/.../DistilPose_S_coco_256x192.py` — Adam(lr=1e-3), kd_weight=0.0005
+- MMPose: `mmpose/codecs/utils/gaussian_heatmap.py:167-169` — MSRA encoding peak=1.0
+- Ultralytics: `default.yaml` — "SGD=1e-2, Adam/AdamW=1e-3"
+
+**2026-04-21:**
+- ✅ Pre-flight checks completed (FineFS quality, Sigma head, HDF5 benchmark, FSAnno availability)
+- ✅ **DISCOVERY:** YOLO26 has built-in sigma head (no architecture changes needed)
+- ✅ **DISCOVERY:** AP3D contains 50% figure skating data (not just athletic proxy)
+- ❌ FSAnno SKIPPED (61.5% YouTube videos unavailable)
+- 📊 Data budget updated: ~280K train (vs 632K original — actual counts after conversion)
+- 💰 Budget: RTX 5090 rented at $0.593/hr ($0.371 GPU + $0.223 disk 800GB)
 
 ---
 
@@ -34,7 +89,7 @@ total_hours = (seconds_per_epoch / 3600) × planned_epochs × KD_overhead
 ### Risk Mitigation Strategies
 
 **1. Offline teacher heatmaps (biggest cost saving)**
-Pre-compute MogaNet-B heatmaps ONCE for all training images, store as **single HDF5 file** (not individual .npy — 343K files = I/O bottleneck). Eliminates 1.5× teacher overhead during KD, eliminates VRAM concern.
+Pre-compute MogaNet-B heatmaps ONCE for all training images, store as **single HDF5 file** (not individual .npy — 632K files = I/O bottleneck). Eliminates 1.5× teacher overhead during KD, eliminates VRAM concern.
 
 **CRITICAL: MogaNet-B is top-down.** Requires bounding boxes as input — use GT boxes from YOLO labels. Algorithm:
 ```python
@@ -44,6 +99,7 @@ for img, label in dataset:
     hm = moganet_topdown_inference(crop)
     save to HDF5
 ```
+**Pre-flight validated (2026-04-21):** HDF5 throughput = 4330 heatmaps/sec (43× target). Single file sufficient.
 
 **2. Skip Stage 2 ablation — POST-MORTEM already answered**
 Previous experiment: freeze=20 was best (0.517 vs 0.406 at freeze=0). Start KD from pretrained + freeze=10-20. Fallback to ablation only if KD fails.
@@ -58,28 +114,39 @@ After Stage 3 converges: check teacher-student gap. gap < 0.08 → DONE, skip TD
 Train YOLO26n (100 epochs). If AP >= 0.85 → DONE.
 
 **6. Data validation locally — zero GPU cost**
-Convert ALL datasets locally. Spot-check: visual overlay on 10 random frames per dataset. `yolo val` on 100 images to verify format.
+**COMPLETED (2026-04-21):**
+- ✅ FineFS quality: 94.1% visible, H3.6M-compatible, zero artifacts
+- ✅ Sigma head: exists in YOLO26, pretrained weights available
+- ✅ HDF5 performance: 4330 heatmaps/sec (43× target)
+- ✅ FSAnno: 61.5% YouTube unavailable → SKIPPED
+- ✅ AP3D-fs: 50% IS figure skating → KEEP (350K samples)
 
-**7. Heatmap resolution — verify from model, don't assume**
-Load MogaNet-B weights, run `model.forward()` on test crop → check exact `heatmap.shape`.
+**7. Heatmap resolution — VERIFIED**
+MogaNet-B output shape confirmed: (17, 72, 96) for 384×288 input (stride=4).
 
-### Budget (pessimistic, until calibration)
+### Budget (updated 2026-04-21)
 
-| GPU | ETA | Cost | Remaining ($150) |
-|-----|-----|------|-------------------|
-| RTX 5090 ($0.305/hr) | ~74h | **$23** | $127 (85%) |
-| RTX 4090 ($0.295/hr) | ~155h | **$46** | $104 (70%) |
+**Data budget increased:**
+- FineFS: 272K train (validated excellent)
+- AP3D-fs: 350K train (figure skating only, not tnf/rm)
+- COCO: 10K train (10% dynamic)
+- **Total: 632K train** (vs 369K in original plan = 1.7× increase)
+
+| GPU | ETA (280K images) | Cost | Notes |
+|-----|-------------------|------|-------|
+| RTX 5090 ($0.593/hr) | ~95h | **$56** | GPU $0.371 + Disk $0.223 (800GB) |
+
+**Note:** Actual cost = $0.593/hr (not $0.305 — that's GPU-only). Disk 800GB adds $0.223/hr.
 
 **After calibration:** Replace ETA with `(seconds_per_epoch / 3600) × planned_epochs`. Update cost accordingly.
 
 **Actions:**
+- [x] Pre-flight checks COMPLETED (all validations passed)
 - [ ] Rent GPU, run 5-epoch calibration → record `seconds_per_epoch`
 - [ ] Recalculate ALL estimates using real measurement
-- [ ] Verify MogaNet-B heatmap shape before pre-compute (Task 11)
 - [ ] Pre-compute teacher heatmaps after calibration
-- [ ] After data conversion (Task 3-4): record actual N_images
 
-**Validation:** Calibration run completes without errors, real numbers replace estimates.
+**Validation:** Pre-flight checks complete, calibration run completes without errors.
 
 ---
 
@@ -149,30 +216,15 @@ Convert FineFS dataset to YOLO pose format.
 
 ---
 
-## Task 4: FSAnno → YOLO Converter
+## ~~Task 4: FSAnno → YOLO Converter~~
 
-Convert FSAnno dataset to YOLO pose format.
+**Status:** **SKIPPED** — YouTube videos unavailable (61.5% deleted/private)
 
-**Context:** FSAnno has 3,700 clips with 4DHuman pose outputs. Available via `rclone` at `gdrive-advanced:FSAnno/`. NOT downloaded locally yet. 4DHuman format — need to map to COCO 17kp.
+**Reason:** Pre-flight check (2026-04-21) tested 13 random YouTube URLs from video_sources.json. Only 5/13 (38.5%) were available. Without source videos, FSAnno annotations cannot be used for video-based training.
 
-**Sampling:** ~20 frames/clip at 2fps → 74K raw. After filter → **~59K frames**.
+**Data available:** FSAnno annotations and metadata are intact but unusable without videos.
 
-**Actions:**
-- [ ] Download FSAnno from GDrive (`rclone copy gdrive-advanced:FSAnno ...`)
-- [ ] Explore PKL format in `4dhuman_outputs/` — determine keypoint count, format
-- [ ] Map 4DHuman keypoints to COCO 17kp
-- [ ] **Assert** `keypoints.shape == (N, 17, 2)` after mapping — 4DHuman usually 17 COCO but verify order
-- [ ] Extract frames from videos at 2fps (OpenCV)
-- [ ] Generate bounding boxes from keypoints (PCK-based padding)
-- [ ] Filter frames with < 5 visible keypoints
-- [ ] Split: 80% train / 20% val (clip-level)
-- [ ] Output: YOLO format
-- [ ] Spot-check: visual overlay on 10 random frames
-
-**Input:** `gdrive-advanced:FSAnno/4dhuman_outputs/`
-**Output:** `experiments/yolo26-pose-kd/data/fsanno/train/` (~47K) and `val/` (~12K)
-
-**Validation:** Count total frames, spot-check.
+**Impact:** MINIMAL. FineFS + AP3D-fs provide sufficient skating data (620K+ frames).
 
 ---
 
@@ -191,30 +243,63 @@ Convert FSAnno dataset to YOLO pose format.
 
 ---
 
+## Task 4.5: AP3D-FS → YOLO Converter
+
+**NEW TASK:** Convert AthletePose3D figure skating portion to YOLO format.
+
+**Context:** AP3D contains 350,674 figure skating samples (49.9% of dataset). Pre-flight check (2026-04-21) revealed AP3D-fs is direct domain match — not proxy data.
+
+**AP3D structure:**
+- Location: `data/datasets/athletepose3d/pose_2d/`
+- Format: COCO-style annotations (`annotations/train_set.json`)
+- Content: 350K fs action samples (Axel, Flip, Loop, Lutz, Salchow, Toeloop, combinations)
+- Resolution: Various (multi-camera setup)
+- Keypoint format: COCO 17kp (H3.6M compatible)
+
+**Action:** SKIP conversion — AP3D already in COCO format! Just need path configuration.
+
+**Quality:** Human-verified 3D annotations projected to 2D. Tier 1 (high quality).
+
+---
+
+## Task 5: ~~FSC + MCFS~~ → EXCLUDED
+
+**Status:** EXCLUDED — source videos unavailable. (Same as FSAnno)
+
+---
+
 ## Task 6: Combine Datasets → data.yaml
 
 Merge all datasets into single Ultralytics-compatible dataset.
 
-**Expected data budget:**
+**Expected data budget (UPDATED 2026-04-21):**
 
 | Dataset | Train | Val | Role |
 |---------|-------|-----|------|
-| FineFS (2fps, 80% filter) | ~216K | ~54K | Primary skating domain |
-| FSAnno (2fps, 80% filter) | ~47K | ~12K | Skating domain supplement |
-| AthletePose3D | 71K | — | Multi-sport generalization (train only) |
-| COCO (15% mix) | ~8.5K | — | Prevents catastrophic forgetting |
-| **TOTAL** | **~343K** | **~66K** | |
+| FineFS (2fps) | ~272K | ~68K | Skating domain (tier 1 — validated excellent) |
+| AP3D-fs (figure skating) | ~350K | — | Skating domain (tier 1 — direct fs data) |
+| ~~AP3D-tnf/rm~~ | ~~353K~~ | — | ~~DROPPED (not skating-relevant)~~ |
+| ~~FSAnno~~ | ~~17K~~ | ~~4K~~ | ~~SKIPPED (YouTube unavailable)~~ |
+| COCO (10% dynamic) | ~10K | — | Catastrophic forgetting prevention |
+| **TOTAL** | **~632K** | **~68K** | **2.2× original estimate!** |
 
-**Critical:** COCO mix in every batch. Domain-only fine-tuning killed model before (-38% AP, see POST-MORTEM). COCO = insurance against forgetting general poses.
+**Key changes from plan:**
+- ✅ FineFS: Validated — 94.1% visible, H3.6M-compatible, zero artifacts
+- ✅ AP3D-fs: KEEP — 50% IS figure skating, not proxy data
+- ❌ AP3D-tnf/rm: DROP — track&field/running not skating-relevant
+- ❌ FSAnno: SKIP — 61.5% YouTube videos unavailable
+- ✅ COCO: 10% dynamic (not 15% fixed) — monitor val AP, adjust mix
+
+**Critical:** COCO dynamic mix — monitor COCO val AP every 5 epochs. If AP drops >5% relative → increase COCO mix to 15-20%.
 
 **Actions:**
 - [ ] Create `experiments/yolo26-pose-kd/configs/data.yaml`
-- [ ] Paths for train: finefs_train + fsanno_train + ap3d_train + coco_15pct
-- [ ] Paths for val: finefs_val + fsanno_val (skating-only, primary quality metric)
+- [ ] Paths for train: finefs_train + ap3d_train (fs only) + coco_10pct
+- [ ] Paths for val: finefs_val (skating-only, primary quality metric)
 - [ ] `kpt_shape: [17, 3]` (COCO 17kp + visibility)
 - [ ] `names: ['person']`
 - [ ] Verify: `yolo val model=yolo26n-pose.pt data=data.yaml` runs without errors
-- [ ] Count actual train/val images (may differ from estimates)
+- [ ] Count actual train/val images
 
 **Output:** `data.yaml` with all dataset paths.
 
@@ -311,50 +396,136 @@ Measure pretrained baselines on skating val. CRITICAL before any training.
 
 ---
 
-## Task 11: Simulated Heatmap Module
+## Task 11: Simulated Heatmap Module + Built-in Sigma
 
-Implement MSRA encoding for DistilPose KD.
+Implement MSRA encoding for DistilPose-style KD using YOLO26's **built-in sigma head**.
+
+**Source:** DistilPose `distilpose/models/losses/dist_loss.py` — `Reg2HMLoss` class.
+
+**DISCOVERY (2026-04-21):** YOLO26-Pose **already has sigma head** — `cv4_sigma` with 34 channels (17kp × 2). Pre-trained weights available. NO architecture modification needed!
+
+**How it works:** Student uses built-in `kpts_sigma` from YOLO26 forward output. From `(x, y, sigma_x, sigma_y)`, a 2D Gaussian heatmap is generated via MSRA unbiased encoding. This heatmap is compared via MSE against teacher's heatmap.
+
+```python
+# YOLO26 already provides sigma during training:
+pred = model.forward(x)  # Returns kpts + kpts_sigma
+kpts = pred["kpts"]     # (B, 51, anchors) → 17kp × 3
+sigma = pred["kpts_sigma"]  # (B, 34, anchors) → 17kp × 2
+
+# Fully differentiable (vectorized, no loops)
+mu_x = kpts_x * W  # normalized [0,1] → pixel coords
+mu_y = kpts_y * H
+sigma_x = sigma[:, 0::2]  # Extract sigma_x from sigma output
+sigma_y = sigma[:, 1::2]  # Extract sigma_y
+g = exp(-0.5 * ((x - mu_x)^2 / (sigma_x^2 + eps) + (y - mu_y)^2 / (sigma_y^2 + eps)))
+```
 
 **Actions:**
-- [ ] Load MogaNet-B weights, run `model.forward()` on test crop → record exact `heatmap.shape`
+- [ ] Load MogaNet-B weights, run `model.forward()` on test crop → record exact `heatmap.shape` (confirmed: (17, 72, 96) for 384×288 input)
 - [ ] Create `experiments/yolo26-pose-kd/scripts/simulate_heatmap.py`
-- [ ] Function `keypoints_to_heatmap(keypoints, visibility, sigma=2.0, hm_shape=<verified>)`
-  - **hm_shape MUST match MogaNet-B output exactly** (likely (17, 48, 64) for 384×288 input, but VERIFY)
-- [ ] MSRA Gaussian encoding around each predicted keypoint
-- [ ] Visibility masking: zero out invisible keypoints
-- [ ] Unit tests: known keypoints → expected heatmap peaks
-- [ ] Benchmark: verify output shape matches MogaNet heatmap resolution
+- [ ] Function `keypoints_to_heatmap(kpts, sigma, visibility, hm_shape=(17, 72, 96))`
+  - Input: `kpts [B,K,2]` normalized [0,1], `sigma [B,K,2]` from YOLO26 cv4_sigma, `visibility [B,K]`
+  - Output: `heatmap [B,K,H,W]` — 2D Gaussian per keypoint
+  - **hm_shape = (17, 72, 96) confirmed from MogaNet-B**
+- [ ] MSRA unbiased encoding: vectorized grid computation
+- [ ] Visibility masking: zero out invisible keypoints (visibility=0)
+- [ ] Unit tests: known (x,y,sigma) → expected heatmap peak location and width
+- [ ] Test differentiability: `heatmap.sum().backward()` must work
 
-**Output:** `simulate_heatmap.py` with verified heatmap shape.
+**Implementation note:** YOLO26 sigma head is already trained. Fine-tune only sigma head on skating data:
+```python
+for name, param in model.model.named_parameters():
+    if 'sigma' in name:
+        param.requires_grad = True  # Unfreeze sigma
+```
+
+**Output:** `simulate_heatmap.py` with verified heatmap shape and differentiability test.
 
 ---
 
-## Task 12: DistilPoseTrainer Implementation (Offline Heatmaps)
+## Task 12: DistilPoseTrainer Implementation (Offline Heatmaps + Built-in Sigma)
 
-Implement custom Ultralytics trainer with KD loss using **pre-computed offline teacher heatmaps stored in HDF5**.
+Implement custom Ultralytics trainer with DistilPose-style KD loss using **pre-computed offline teacher heatmaps** and **YOLO26's built-in sigma head**.
 
-**Key change:** Teacher model NOT loaded during training. Heatmaps pre-computed once (Task 13 step 0), stored in single HDF5 file (not 343K individual .npy — that's an I/O bottleneck). Eliminates 1.5× overhead and VRAM concern.
+**Key changes from original plan:**
+1. Teacher model NOT loaded during training (heatmaps pre-computed)
+2. YOLO26 already has sigma head — use it, don't add new one
+3. HDF5 single file sufficient (4330 heatmaps/sec = 43× target)
+4. MSE not KL divergence (no temperature parameter)
+
+**Source:** DistilPose `distilpose/models/losses/dist_loss.py` + pre-flight findings.
+
+**DistilPose KD Loss (verified):**
+```
+L_total = L_gt + 1.0 * L_reg2hm + 0.01 * L_score
+```
+| Component | Loss | Weight | What it does |
+|-----------|------|--------|-------------|
+| L_gt | Standard YOLO pose loss | 1.0 | GT keypoints regression |
+| L_reg2hm | MSE | 1.0 | Simulated heatmap vs teacher heatmap |
+| L_score | L1 | 0.01 | Student confidence vs teacher value at pred location |
+
+**Implementation approach (Option A - monkey-patch):**
+
+```python
+class DistilPoseTrainer(PoseTrainer):
+    def setup_model(self):
+        super().setup_model()
+        # Unfreeze sigma head only
+        for name, param in self.model.model.named_parameters():
+            if 'sigma' in name:
+                param.requires_grad = True
+            else:
+                param.requires_grad = False  # Freeze backbone
+    
+    def preprocess_batch(self, batch):
+        # Attach teacher heatmaps from HDF5 to batch
+        batch["teacher_hm"] = self.load_teacher_heatmaps(batch["im_file"])
+        return batch
+    
+    def compute_loss(self, batch):
+        # GT loss
+        gt_loss = super().compute_loss(batch)
+        
+        # Extract student outputs
+        preds = self.model(batch["img"])
+        kpts = preds["kpts"]  # (B, 51, anchors)
+        sigma = preds["kpts_sigma"]  # (B, 34, anchors)
+        
+        # Generate simulated heatmap from kpts + sigma
+        sim_hm = keypoints_to_heatmap(kpts, sigma, batch["keypoints_visible"])
+        
+        # Load teacher heatmaps (pre-computed)
+        teacher_hm = batch["teacher_hm"]  # (B, 17, 72, 96)
+        
+        # KD loss: MSE (not KL!)
+        kd_loss = F.mse_loss(sim_hm, teacher_hm)
+        
+        # Optional ScoreLoss
+        student_conf = kpts[..., 2]  # visibility channel
+        teacher_conf_at_pred = extract_teacher_value(teacher_hm, kpts[..., :2])
+        score_loss = F.l1_loss(student_conf, teacher_conf_at_pred)
+        
+        return gt_loss + 1.0 * kd_loss + 0.01 * score_loss
+```
 
 **Actions:**
 - [ ] Create `experiments/yolo26-pose-kd/scripts/distill_trainer.py`
-- [ ] Subclass `BaseTrainer` from Ultralytics
-- [ ] Override `get_dataset()` to open HDF5 file and index heatmaps by image path/index
-- [ ] Override `compute_loss()`:
-  - Get GT loss from `super().compute_loss(batch)`
-  - Extract student keypoints from current batch predictions
-  - Convert to simulated heatmaps (Task 11, verified shape)
-  - Load pre-computed teacher heatmaps for current batch from HDF5 (no teacher model needed)
-  - Compute KL divergence with temperature scaling
-  - Return `gt_loss + alpha * kd_loss`
-- [ ] Alpha annealing: 0.5 → 0.3 linearly over training
-- [ ] Warm-up: alpha=0 for first 10 epochs
+- [ ] Subclass PoseTrainer (not BaseTrainer)
+- [ ] Override `setup_model()` to unfreeze sigma head
+- [ ] Override `preprocess_batch()` to load teacher heatmaps from HDF5
+- [ ] Override `compute_loss()` with monkey-patch approach above
+- [ ] HDF5 config: `h5py.File(path, 'r', libver='latest', swmr=True)` for concurrent read
+- [ ] Warm-up: reg2hm_loss=0 for first 5 epochs (let student learn coordinates)
+- [ ] No annealing needed (DistilPose uses fixed weight=1.0)
 - [ ] Test: run 1 epoch on 10 images, verify loss decreases
 
-**HDF5 structure:**
+**HDF5 structure (verified):**
 ```python
 # teacher_heatmaps.h5
-# /heatmaps: shape (N_images, 17, H, W), dtype float16
-# /indices: image path → row index mapping (JSON sidecar)
+# /heatmaps: shape (N_images, 17, 72, 96), dtype float16
+# /indices: image path → row index (JSON sidecar)
+# Performance: 4330 heatmaps/sec (43× target)
 ```
 
 **Output:** `distill_trainer.py` with DistilPoseTrainer class.
