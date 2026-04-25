@@ -418,6 +418,13 @@ class DistilPoseTrainer:
     def kd_loss(self, batch: dict[str, Any], preds=None) -> tuple[torch.Tensor, torch.Tensor]:
         """Compute v35b KD loss: L_gt + coord_alpha * L_coord * batch_size."""
         model = self._model
+        if model is None:
+            # After deepcopy (EMA), _model is None — just compute GT loss
+            if self._original_loss is None:
+                self._original_loss = type(self)._CACHED_ORIG_LOSS
+            gt_loss, loss_items = self._original_loss(batch, preds)
+            kd_pad = torch.zeros(2, device=gt_loss.device)
+            return gt_loss, torch.cat([loss_items, kd_pad])
 
         # Progressive unfreeze at unfreeze_epoch
         if (
