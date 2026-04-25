@@ -418,14 +418,29 @@ class DistilPoseTrainer:
 
         # Build student detection bboxes from keypoints
         # student_kpts: (B, N_anchors, K, 3)
-        # For each anchor, compute bbox from all keypoints
-        # Use all keypoints regardless of visibility for bbox (student may not have vis flag right)
-        sx = student_kpts[..., 0]  # (B, N_anchors, K)
-        sy = student_kpts[..., 1]  # (B, N_anchors, K)
+        # For each anchor, compute bbox from VISIBLE keypoints only (P1-2 fix)
+        # Invisible keypoints may have arbitrary coords that dominate bbox
+        vis_mask = student_kpts[..., 2] > 0.5  # (B, N_anchors, K) sigmoid threshold
+        sx = student_kpts[..., 0].where(
+            vis_mask, torch.tensor(float("inf"), device=student_kpts.device)
+        )
+        sy = student_kpts[..., 1].where(
+            vis_mask, torch.tensor(float("inf"), device=student_kpts.device)
+        )
         student_x1 = sx.min(dim=-1).values  # (B, N_anchors)
         student_y1 = sy.min(dim=-1).values
-        student_x2 = sx.max(dim=-1).values
-        student_y2 = sy.max(dim=-1).values
+        student_x2 = (
+            student_kpts[..., 0]
+            .where(vis_mask, torch.tensor(float("-inf"), device=student_kpts.device))
+            .max(dim=-1)
+            .values
+        )
+        student_y2 = (
+            student_kpts[..., 1]
+            .where(vis_mask, torch.tensor(float("-inf"), device=student_kpts.device))
+            .max(dim=-1)
+            .values
+        )
 
         selected = torch.zeros(B, K, 3, device=student_kpts.device)
         for img_i in range(B):
@@ -619,9 +634,9 @@ class DistilPoseTrainer:
                                 1.0,  # LSHOULDER
                                 0.8,  # LELBOW
                                 0.8,  # LWRIST
-                                0.5,  # RSHOULDER
-                                0.5,  # RELBOW
-                                1.5,  # RWRIST
+                                1.0,  # RSHOULDER (P1-3 fix: was 0.5, now matches LSHOULDER)
+                                0.8,  # RELBOW (P1-3 fix: was 0.5, now matches LELBOW)
+                                0.8,  # RWRIST (P1-3 fix: was 1.5, now matches LWRIST)
                             ],
                             device=gt_loss.device,
                         )  # (17,)
