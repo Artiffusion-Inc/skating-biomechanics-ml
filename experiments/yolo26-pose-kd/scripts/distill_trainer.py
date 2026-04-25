@@ -20,6 +20,9 @@ Fixes applied from code review (2026-04-25):
     v35c: ARCH-1 Letterboxing: use batch['img_shape'] for normalization
     v35c: ARCH-3 Per-kp biomechanical weights, normalize by visible count
     v35c: ARCH-4 Optimizer split: weight (wd) vs bias/bn (no wd) groups
+    v35d: P0-1 Teacher coords transformed to letterbox [0,1] to match student space
+    v35d: P0-2 Stride decode verified correct (make_anchors returns feature-map space)
+    v35d: P0-3 Student normalization uses letterbox dims (same for all images in batch)
 
 Usage:
     python3 distill_trainer.py train \\
@@ -330,6 +333,47 @@ class DistilPoseTrainer:
 
         return torch.stack([global_x, global_y], dim=-1)  # (B, K, 2)
 
+    def _orig_to_letterbox_norm(
+        self, orig_norm_coords: torch.Tensor, orig_hw: torch.Tensor, letterbox_hw: tuple[int, int]
+    ) -> torch.Tensor:
+        """Transform coords from original image [0,1] to letterbox [0,1].
+
+        Matches Ultralytics LetterBox transform: scale to fit within imgsz,
+        center with padding, then normalize by imgsz.
+
+        For a 16:9 image (e.g. 1280x720) letterboxed to 384x384:
+            scale = min(384/720, 384/1280) = 0.3
+            new_h = round(720*0.3) = 216, new_w = round(1280*0.3) = 384
+            pad_h = (384-216)/2 = 84, pad_w = (384-384)/2 = 0
+            orig center (0.5, 0.5) -> letterbox ((0.5*1280*0.3)/384, (0.5*720*0.3+84)/384) = (0.5, 0.5)
+
+        Args:
+            orig_norm_coords: (B, K, 2) — coords in original image [0,1] space
+            orig_hw: (B, 2) — original (h, w) per image in pixels
+            letterbox_hw: (lb_h, lb_w) — letterbox dimensions (e.g. (384, 384))
+
+        Returns:
+            lb_norm_coords: (B, K, 2) — coords in letterbox [0,1] space
+        """
+        lb_h, lb_w = float(letterbox_hw[0]), float(letterbox_hw[1])
+        orig_h = orig_hw[:, 0].float()  # (B,)
+        orig_w = orig_hw[:, 1].float()  # (B,)
+
+        # Ultralytics LetterBox: scale to fit, center with padding
+        scale = torch.min(lb_h / orig_h, lb_w / orig_w)  # (B,)
+        new_h = (orig_h * scale).round()  # (B,)
+        new_w = (orig_w * scale).round()  # (B,)
+        pad_h = (lb_h - new_h) / 2  # (B,)
+        pad_w = (lb_w - new_w) / 2  # (B,)
+
+        # orig [0,1] -> orig pixels -> scaled pixels -> + padding -> / letterbox
+        px = orig_norm_coords[..., 0] * orig_w.unsqueeze(1)  # (B, K)
+        py = orig_norm_coords[..., 1] * orig_h.unsqueeze(1)  # (B, K)
+        lb_x = (px * scale.unsqueeze(1) + pad_w.unsqueeze(1)) / lb_w  # (B, K)
+        lb_y = (py * scale.unsqueeze(1) + pad_h.unsqueeze(1)) / lb_h  # (B, K)
+
+        return torch.stack([lb_x, lb_y], dim=-1)  # (B, K, 2)
+
     def _select_best_anchor(self, student_kpts, batch_idx, gt_kpts, B, K):
         """Select best anchor per image using IoU matching.
 
@@ -499,31 +543,29 @@ class DistilPoseTrainer:
                     batch_idx = batch.get("batch_idx")
 
                     if gt_kpts is not None and batch_idx is not None:
-                        # Get image dimensions — prefer original sizes (before letterboxing)
-                        if "img_shape" in batch:
-                            # batch["img_shape"]: (B, 2) with original (h, w) per image
-                            img_shapes = batch["img_shape"]  # (B, 2)
-                            img_h = img_shapes[0, 0].item()  # Use first image's original height
-                            img_w = img_shapes[0, 1].item()  # Use first image's original width
-                        else:
-                            # Fallback: letterboxed size (less accurate for non-square images)
-                            img_h, img_w = batch["img"].shape[2], batch["img"].shape[3]
+                        # Letterbox dimensions (same for all images in batch)
+                        lb_h, lb_w = batch["img"].shape[2], batch["img"].shape[3]
 
                         # Select best anchor per image via IoU matching
                         student_selected = self._select_best_anchor(
                             student_kpts, batch_idx, gt_kpts, B, K
-                        )  # (B, K, 3) in pixel space
+                        )  # (B, K, 3) in letterbox pixel space
 
-                        # Normalize student coords to [0,1]
+                        # Normalize student coords to letterbox [0,1]
                         student_xy_norm = student_selected[..., :2].clone()
-                        student_xy_norm[..., 0] /= img_w
-                        student_xy_norm[..., 1] /= img_h
+                        student_xy_norm[..., 0] /= lb_w
+                        student_xy_norm[..., 1] /= lb_h
 
-                        # Transform teacher coords from crop to global [0,1]
+                        # Transform teacher coords: crop [0,1] -> original [0,1] -> letterbox [0,1]
                         valid_cp = teacher_crop_params[:, 0] >= 0  # (B,) has crop params
                         teacher_global = self._inverse_affine_transform(
                             teacher_coords, teacher_crop_params
-                        )
+                        )  # (B, K, 2) in original [0,1]
+                        # Original image dims from crop_params: (x1, y1, cw, ch, img_w, img_h)
+                        orig_hw = teacher_crop_params[:, [5, 4]].contiguous()  # (B, 2) as (h, w)
+                        teacher_lb = self._orig_to_letterbox_norm(
+                            teacher_global, orig_hw, (lb_h, lb_w)
+                        )  # (B, K, 2) in letterbox [0,1]
 
                         # Visibility mask from GT (primary person, first GT per image)
                         batch_idx_flat = batch_idx.long().flatten()
@@ -585,9 +627,9 @@ class DistilPoseTrainer:
                         )  # (17,)
                         weight = weight * kp_weights.unsqueeze(0)  # (B, K) broadcast
 
-                        per_kp_loss = ((student_xy_norm - teacher_global) ** 2).sum(
+                        per_kp_loss = ((student_xy_norm - teacher_lb) ** 2).sum(
                             dim=-1
-                        )  # (B, K)
+                        )  # (B, K) in letterbox [0,1] space
 
                         # ARCH-3: Normalize by visible count per image, not weight_sum
                         visible_count = vis_mask.sum(dim=-1).clamp(min=1.0)  # (B,)
@@ -976,6 +1018,111 @@ def run_tests():
         assert w == 1.0, f"Epoch 210: expected w=1.0, got {w}"
 
     test("KD weight progressive growth", test_kd_weight)
+
+    # Test 6: orig_to_letterbox with 16:9 image (common phone video)
+    def test_orig_to_letterbox_16_9():
+        # 1280x720 image letterboxed to 384x384
+        # scale = min(384/720, 384/1280) = min(0.5333, 0.3) = 0.3
+        # new_h = round(720*0.3) = 216, new_w = round(1280*0.3) = 384
+        # pad_h = (384-216)/2 = 84, pad_w = (384-384)/2 = 0
+        kd = DistilPoseTrainer()
+        # Center of original image
+        orig_coords = torch.tensor([[[0.5, 0.5]]])  # center of 1280x720
+        orig_hw = torch.tensor([[720.0, 1280.0]])  # (h, w)
+        lb_coords = kd._orig_to_letterbox_norm(orig_coords, orig_hw, (384, 384))
+        # Expected: x = (0.5*1280*0.3 + 0) / 384 = 192/384 = 0.5
+        #           y = (0.5*720*0.3 + 84) / 384 = (108+84)/384 = 192/384 = 0.5
+        assert abs(lb_coords[0, 0, 0].item() - 0.5) < 1e-4, (
+            f"Expected x~0.5, got {lb_coords[0, 0, 0].item()}"
+        )
+        assert abs(lb_coords[0, 0, 1].item() - 0.5) < 1e-4, (
+            f"Expected y~0.5, got {lb_coords[0, 0, 1].item()}"
+        )
+
+    test("orig_to_letterbox 16:9 center", test_orig_to_letterbox_16_9)
+
+    # Test 7: orig_to_letterbox corner mapping
+    def test_orig_to_letterbox_corners():
+        # 1280x720 image letterboxed to 384x384
+        # scale=0.3, new_h=216, new_w=384, pad_h=84, pad_w=0
+        kd = DistilPoseTrainer()
+        # Top-left of original image (0,0)
+        orig_coords = torch.tensor([[[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]]])
+        orig_hw = torch.tensor([[720.0, 1280.0]])
+        lb_coords = kd._orig_to_letterbox_norm(orig_coords, orig_hw, (384, 384))
+        # Top-left (0,0): x = (0+0)/384 = 0, y = (0+84)/384 = 84/384 = 0.21875
+        assert abs(lb_coords[0, 0, 0].item()) < 1e-4, (
+            f"TL x: expected 0, got {lb_coords[0, 0, 0].item()}"
+        )
+        assert abs(lb_coords[0, 0, 1].item() - 84.0 / 384.0) < 1e-4, (
+            f"TL y: expected {84 / 384:.4f}, got {lb_coords[0, 0, 1].item()}"
+        )
+        # Top-right (1,0): x = (1280*0.3+0)/384 = 384/384 = 1.0
+        assert abs(lb_coords[0, 1, 0].item() - 1.0) < 1e-4, (
+            f"TR x: expected 1.0, got {lb_coords[0, 1, 0].item()}"
+        )
+        # Bottom-left (0,1): y = (720*0.3+84)/384 = 300/384 = 0.78125
+        assert abs(lb_coords[0, 2, 1].item() - 300.0 / 384.0) < 1e-4, (
+            f"BL y: expected {300 / 384:.4f}, got {lb_coords[0, 2, 1].item()}"
+        )
+
+    test("orig_to_letterbox corner mapping", test_orig_to_letterbox_corners)
+
+    # Test 8: orig_to_letterbox with square image (no padding)
+    def test_orig_to_letterbox_square():
+        # 640x640 image letterboxed to 384x384 — scale_fill behavior (scaleup=False)
+        # scale = min(384/640, 384/640) = 0.6
+        # new_h = 384, new_w = 384, pad_h = 0, pad_w = 0
+        kd = DistilPoseTrainer()
+        orig_coords = torch.tensor([[[0.25, 0.75]]])
+        orig_hw = torch.tensor([[640.0, 640.0]])
+        lb_coords = kd._orig_to_letterbox_norm(orig_coords, orig_hw, (384, 384))
+        # x = (0.25*640*0.6 + 0)/384 = 96/384 = 0.25
+        # y = (0.75*640*0.6 + 0)/384 = 288/384 = 0.75
+        assert abs(lb_coords[0, 0, 0].item() - 0.25) < 1e-4, (
+            f"Square x: expected 0.25, got {lb_coords[0, 0, 0].item()}"
+        )
+        assert abs(lb_coords[0, 0, 1].item() - 0.75) < 1e-4, (
+            f"Square y: expected 0.75, got {lb_coords[0, 0, 1].item()}"
+        )
+
+    test("orig_to_letterbox square identity", test_orig_to_letterbox_square)
+
+    # Test 9: end-to-end — teacher crop -> letterbox matches student normalization
+    def test_end_to_end_coord_space():
+        # Simulate: teacher sees a 384x288 crop from a 1280x720 image
+        # Teacher predicts keypoint at center of crop: (0.5, 0.5) in crop [0,1]
+        # Crop params: x1=200, y1=100, crop_w=640, crop_h=360, img_w=1280, img_h=720
+        kd = DistilPoseTrainer()
+        teacher_crop_coords = torch.tensor([[[0.5, 0.5]]])
+        crop_params = torch.tensor([[200.0, 100.0, 640.0, 360.0, 1280.0, 720.0]])
+
+        # Step 1: crop [0,1] -> original [0,1]
+        teacher_global = kd._inverse_affine_transform(teacher_crop_coords, crop_params)
+        # Expected: x = (200 + 0.5*384*(640/384)) / 1280 = (200+320)/1280 = 520/1280 = 0.40625
+        #           y = (100 + 0.5*288*(360/288)) / 720 = (100+180)/720 = 280/720 = 0.38889
+        assert abs(teacher_global[0, 0, 0].item() - 520.0 / 1280.0) < 1e-4
+        assert abs(teacher_global[0, 0, 1].item() - 280.0 / 720.0) < 1e-4
+
+        # Step 2: original [0,1] -> letterbox [0,1] (384x384)
+        orig_hw = crop_params[:, [5, 4]].contiguous()  # (1, 2) = (720, 1280)
+        teacher_lb = kd._orig_to_letterbox_norm(teacher_global, orig_hw, (384, 384))
+
+        # Student: same keypoint decoded to letterbox pixel space, then /384
+        # In letterbox 384x384 with 1280x720 original:
+        #   scale=0.3, new_h=216, new_w=384, pad_h=84, pad_w=0
+        #   orig pixel (520, 280) -> lb pixel (520*0.3+0, 280*0.3+84) = (156, 168)
+        #   lb norm = (156/384, 168/384) = (0.40625, 0.43750)
+        expected_lb_x = (520.0 * 0.3 + 0) / 384.0
+        expected_lb_y = (280.0 * 0.3 + 84.0) / 384.0
+        assert abs(teacher_lb[0, 0, 0].item() - expected_lb_x) < 1e-4, (
+            f"E2E x: expected {expected_lb_x:.4f}, got {teacher_lb[0, 0, 0].item():.4f}"
+        )
+        assert abs(teacher_lb[0, 0, 1].item() - expected_lb_y) < 1e-4, (
+            f"E2E y: expected {expected_lb_y:.4f}, got {teacher_lb[0, 0, 1].item():.4f}"
+        )
+
+    test("End-to-end coord space alignment", test_end_to_end_coord_space)
 
     print(f"\n{'=' * 60}")
     print(f"Results: {passed} passed, {failed} failed")
