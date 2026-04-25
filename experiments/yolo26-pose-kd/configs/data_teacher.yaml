@@ -1,0 +1,20 @@
+# Teacher-labeled dataset: MogaNet-B predictions as YOLO training labels
+# Standard fine-tuning — no custom KD loss needed
+#
+# Data: 270,533 training images with MogaNet-B pseudo-labels
+# Coverage: FineFS 229,169 + AP3D-FS 35,705 + COCO 5,659 = 270,533
+
+path: /root/skating-biomechanics-ml/experiments/yolo26-pose-kd/data/teacher-labels
+
+train:
+  - finefs/train/images
+  - ap3d-fs/train/images
+  - coco-10pct/train/images
+
+val:
+  - ap3d-fs/valid/images
+
+kpt_shape: [17, 3]
+
+names:
+  0: person
