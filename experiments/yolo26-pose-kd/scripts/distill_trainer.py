@@ -515,23 +515,23 @@ class DistilPoseTrainer:
                         # LELBOW(12), LWRIST(13), RSHOULDER(14), RELBOW(15), RWRIST(16)
                         kp_weights = torch.tensor(
                             [
-                                3.0,
-                                2.5,
-                                2.5,
-                                2.0,
-                                2.5,
-                                2.5,
-                                2.0,
-                                2.0,
-                                2.0,
-                                2.0,
-                                1.5,
-                                1.5,
-                                1.0,
-                                1.0,
-                                1.5,
-                                1.0,
-                                1.0,
+                                3.0,  # HIP_CENTER
+                                2.5,  # RHIP
+                                2.5,  # RKNEE
+                                2.0,  # RFOOT
+                                2.0,  # LHIP
+                                2.0,  # LKNEE
+                                2.0,  # LFOOT
+                                2.0,  # SPINE
+                                2.0,  # THORAX
+                                1.5,  # NECK
+                                1.0,  # HEAD
+                                1.0,  # LSHOULDER
+                                0.8,  # LELBOW
+                                0.8,  # LWRIST
+                                0.5,  # RSHOULDER
+                                0.5,  # RELBOW
+                                1.5,  # RWRIST
                             ],
                             device=gt_loss.device,
                         )  # (17,)
