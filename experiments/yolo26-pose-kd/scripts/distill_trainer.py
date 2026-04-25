@@ -163,6 +163,19 @@ class DistilPoseTrainer:
         self._base_lr = 0.002
         self._trainer_ref = None
 
+    def __getstate__(self):
+        """Exclude non-picklable objects (h5py, model) for deepcopy/EMA."""
+        state = self.__dict__.copy()
+        state["_coord_loader"] = None
+        state["_model"] = None
+        state["_original_loss"] = None
+        state["_trainer_ref"] = None
+        return state
+
+    def __setstate__(self, state):
+        """Restore state and re-open HDF5 on unpickle."""
+        self.__dict__.update(state)
+
     def set_epoch(self, epoch: int):
         self._current_epoch = epoch
 
