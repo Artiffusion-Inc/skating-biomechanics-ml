@@ -3,6 +3,7 @@
 default_scope = "mmpose"
 
 from mmengine.dataset import DefaultSampler
+from mmengine.hooks.ema_hook import EMAHook
 from mmpose.datasets import CocoDataset
 from mmpose.datasets.transforms import (
     GetBBoxCenterScale,
@@ -12,7 +13,6 @@ from mmpose.datasets.transforms import (
     RandomHalfBody,
     TopdownAffine,
 )
-from mmpose.engine.hooks import ExpMomentumEMA
 from mmpose.models import TopdownPoseEstimator
 from mmpose.models.backbones import CSPNeXt
 from mmpose.models.heads import RTMCCHead
@@ -191,7 +191,7 @@ default_hooks = dict(
     logger=dict(type="LoggerHook", interval=50),
 )
 
-custom_hooks = [dict(type=ExpMomentumEMA, momentum=0.0002, priority=49)]
+custom_hooks = [dict(type=EMAHook, momentum=0.0002, priority=49)]
 
 # === Runtime ===
 load_from = "checkpoints/rtmpose-s_simcc-coco_pt-aic-coco_420e-256x192-8edcf0d7_20230127.pth"
