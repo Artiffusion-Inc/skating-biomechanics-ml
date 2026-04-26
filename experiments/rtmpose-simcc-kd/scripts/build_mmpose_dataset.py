@@ -38,6 +38,9 @@ def build_coco_json(image_dirs, coords_path, output_path):
         index = json.loads(f.attrs["index"])
         index_map = {v: k for k, v in index.items()}
 
+    # Resolve project root once for consistent relative paths
+    project_root = Path(__file__).parent.parent.parent.parent.resolve()
+
     for img_dir in image_dirs:
         img_dir = Path(img_dir)
         for img_path in tqdm(sorted(img_dir.glob("*.jpg")), desc=f"Processing {img_dir}"):
@@ -46,13 +49,15 @@ def build_coco_json(image_dirs, coords_path, output_path):
                 continue
             h, w = img.shape[:2]
 
-            rel_path = str(img_path.relative_to(img_dir.parent.parent))
+            # Use path relative to project root to match teacher index
+            rel_path = str(img_path.resolve().relative_to(project_root))
             idx = index_map.get(rel_path)
 
+            # Absolute path for mmengine (ignores data_root/data_prefix)
             images.append(
                 {
                     "id": img_id,
-                    "file_name": str(img_path),
+                    "file_name": str(img_path.resolve()),
                     "height": h,
                     "width": w,
                 }
