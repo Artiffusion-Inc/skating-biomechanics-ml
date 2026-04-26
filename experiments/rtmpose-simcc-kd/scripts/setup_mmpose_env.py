@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: S603, PLW1510, S607
 """Set up isolated mmpose environment for RTMPose-s SimCC distillation.
 
 Usage:
