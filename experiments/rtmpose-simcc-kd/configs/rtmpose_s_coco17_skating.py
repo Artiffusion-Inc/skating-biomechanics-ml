@@ -93,7 +93,6 @@ train_pipeline = [
         scale_factor=[0.6, 1.4],
     ),
     dict(type=TopdownAffine, input_size=(192, 256)),
-    dict(type="mmdet.YOLOXHSVRandomAug"),
     dict(
         type="Albumentation",
         transforms=[
@@ -204,53 +203,6 @@ custom_hooks = [
         momentum=0.0002,
         priority=49,
         update_buffers=True,
-    ),
-    dict(
-        type="mmdet.PipelineSwitchHook",
-        switch_epoch=390,
-        switch_pipeline=[
-            dict(type=LoadImage),
-            dict(type=GetBBoxCenterScale),
-            dict(type=RandomFlip, direction="horizontal"),
-            dict(type=RandomHalfBody),
-            dict(
-                type="RandomBBoxTransform",
-                rotate_factor=60,
-                scale_factor=[0.75, 1.25],
-                shift_factor=0.0,
-            ),
-            dict(type=TopdownAffine, input_size=(192, 256)),
-            dict(type="mmdet.YOLOXHSVRandomAug"),
-            dict(
-                type="Albumentation",
-                transforms=[
-                    dict(type="Blur", p=0.1),
-                    dict(type="MedianBlur", p=0.1),
-                    dict(
-                        type="CoarseDropout",
-                        max_holes=1,
-                        max_height=0.4,
-                        max_width=0.4,
-                        min_holes=1,
-                        min_height=0.2,
-                        min_width=0.2,
-                        p=0.5,
-                    ),
-                ],
-            ),
-            dict(
-                type="GenerateTarget",
-                encoder=dict(
-                    type="SimCCLabel",
-                    input_size=(192, 256),
-                    sigma=(4.9, 5.66),
-                    simcc_split_ratio=2.0,
-                    normalize=False,
-                    use_dark=False,
-                ),
-            ),
-            dict(type=PackPoseInputs),
-        ],
     ),
 ]
 
