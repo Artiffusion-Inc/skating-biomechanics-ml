@@ -89,7 +89,7 @@ train_pipeline = [
     dict(type=RandomHalfBody),
     dict(
         type="RandomBBoxTransform",
-        rotate_factor=80,
+        rotate_factor=30,
         scale_factor=[0.6, 1.4],
     ),
     dict(type=TopdownAffine, input_size=(192, 256)),
@@ -116,7 +116,7 @@ val_pipeline = [
 
 train_dataloader = dict(
     batch_size=256,
-    num_workers=10,
+    num_workers=16,
     persistent_workers=True,
     sampler=dict(type=DefaultSampler, shuffle=True),
     dataset=dict(
@@ -131,7 +131,7 @@ train_dataloader = dict(
 
 val_dataloader = dict(
     batch_size=64,
-    num_workers=10,
+    num_workers=16,
     persistent_workers=True,
     drop_last=False,
     sampler=dict(type=DefaultSampler, shuffle=False),
