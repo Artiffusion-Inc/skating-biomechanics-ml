@@ -96,8 +96,6 @@ train_pipeline = [
     dict(
         type="Albumentation",
         transforms=[
-            dict(type="Blur", p=0.1),
-            dict(type="MedianBlur", p=0.1),
             dict(
                 type="CoarseDropout",
                 max_holes=1,
