@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -40,6 +41,7 @@ def build_coco_json(image_dirs, coords_path, output_path):
 
     # Resolve project root once for consistent relative paths
     project_root = Path(__file__).parent.parent.parent.parent.resolve()
+    project_root_str = str(project_root)
 
     for img_dir in image_dirs:
         img_dir = Path(img_dir)
@@ -49,15 +51,20 @@ def build_coco_json(image_dirs, coords_path, output_path):
                 continue
             h, w = img.shape[:2]
 
-            # Use path relative to project root to match teacher index
-            rel_path = str(img_path.resolve().relative_to(project_root))
+            # Normalize path (resolves .. but NOT symlinks) to match teacher index
+            norm_path = os.path.normpath(str(Path.cwd() / img_path))
+            if norm_path.startswith(project_root_str + os.sep):
+                rel_path = norm_path[len(project_root_str) + 1 :]
+            else:
+                rel_path = str(img_path)
             idx = index_map.get(rel_path)
 
-            # Absolute path for mmengine (ignores data_root/data_prefix)
+            # Absolute resolved path for mmengine (follows symlinks to actual file)
+            abs_path = str(img_path.resolve())
             images.append(
                 {
                     "id": img_id,
-                    "file_name": str(img_path.resolve()),
+                    "file_name": abs_path,
                     "height": h,
                     "width": w,
                 }
