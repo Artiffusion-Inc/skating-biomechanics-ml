@@ -36,8 +36,8 @@ def build_coco_json(image_dirs, coords_path, output_path):
         all_coords = f["coords"][:]
         all_conf = f["confidence"][:]
         all_crop_params = f["crop_params"][:]
-        index = json.loads(f.attrs["index"])
-        index_map = {v: k for k, v in index.items()}
+        # index is {rel_path: idx}; keep as-is for lookup by path
+        index_map = dict(json.loads(f.attrs["index"]))
 
     # Resolve project root once for consistent relative paths
     project_root = Path(__file__).parent.parent.parent.parent.resolve()
