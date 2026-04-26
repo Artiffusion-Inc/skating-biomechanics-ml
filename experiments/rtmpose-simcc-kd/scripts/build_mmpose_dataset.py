@@ -27,7 +27,7 @@ def build_coco_json(image_dirs, simcc_path, output_path):
     ann_id = 0
 
     simcc_data = np.load(simcc_path) if simcc_path else None
-    index_map = json.loads(simcc_data["index"]) if simcc_data else {}
+    index_map = json.loads(simcc_data["index"].item()) if simcc_data else {}
 
     for img_dir in image_dirs:
         img_dir = Path(img_dir)
