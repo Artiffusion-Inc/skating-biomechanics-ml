@@ -2,9 +2,42 @@
 
 import torch
 import torch.nn.functional as F
+from mmengine.registry import MODELS
 from torch import nn
 
 
+@MODELS.register_module()
+class CombinedLoss(nn.Module):
+    """Combine multiple losses with their respective forward signatures."""
+
+    def __init__(self, losses):
+        super().__init__()
+        self.losses = nn.ModuleList()
+        for loss_cfg in losses:
+            from mmengine.registry import MODELS
+
+            loss = MODELS.build(loss_cfg)
+            self.losses.append(loss)
+
+    def forward(self, pred_simcc, target, target_weight=None, teacher_simcc=None):
+        """
+        Args:
+            pred_simcc: (simcc_x, simcc_y) from RTMCCHead.
+            target: ground-truth target (ignored for KD losses).
+            target_weight: visibility mask.
+            teacher_simcc: optional teacher SimCC labels passed via train_step.
+        """
+        total_loss = 0.0
+        for loss in self.losses:
+            if isinstance(loss, (KLDistillationLoss, L1CoordinateLoss)):
+                if teacher_simcc is not None:
+                    total_loss += loss(pred_simcc, teacher_simcc, target_weight)
+            else:
+                total_loss += loss(pred_simcc, target, target_weight)
+        return total_loss
+
+
+@MODELS.register_module()
 class KLDistillationLoss(nn.Module):
     """KL divergence between student and teacher SimCC distributions."""
 
@@ -42,6 +75,7 @@ class KLDistillationLoss(nn.Module):
         return loss * self.loss_weight
 
 
+@MODELS.register_module()
 class L1CoordinateLoss(nn.Module):
     """L1 loss on decoded coordinates (response distillation)."""
 

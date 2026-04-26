@@ -1,10 +1,6 @@
 """RTMPose-s config for COCO 17kp figure skating."""
 
-from mmengine.config import read_base
-
-with read_base():
-    from mmpose.configs._base_.default_runtime import *
-    from mmpose.configs._base_.schedules.schedule_420e import *
+default_scope = "mmpose"
 
 from mmengine.dataset import DefaultSampler
 from mmpose.datasets import CocoDataset
@@ -200,3 +196,16 @@ custom_hooks = [dict(type=ExpMomentumEMA, momentum=0.0002, priority=49)]
 # === Runtime ===
 load_from = "checkpoints/rtmpose-s_simcc-coco_pt-aic-coco_420e-256x192-8edcf0d7_20230127.pth"
 resume = False
+
+env_cfg = dict(
+    cudnn_benchmark=False,
+    mp_cfg=dict(mp_start_method="fork", opencv_num_threads=0),
+    dist_cfg=dict(backend="nccl"),
+)
+
+vis_backends = [dict(type="LocalVisBackend")]
+visualizer = dict(type="PoseLocalVisualizer", vis_backends=vis_backends, name="visualizer")
+
+log_processor = dict(type="LogProcessor", window_size=50, by_epoch=True, num_digits=6)
+log_level = "INFO"
+backend_args = dict(backend="local")

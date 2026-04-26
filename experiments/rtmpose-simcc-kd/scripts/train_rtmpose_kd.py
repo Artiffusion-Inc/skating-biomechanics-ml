@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import argparse
 
+from kd_losses import KLDistillationLoss, L1CoordinateLoss  # noqa: F401 — register custom losses
 from mmengine.config import Config, DictAction
 from mmengine.runner import Runner
 
