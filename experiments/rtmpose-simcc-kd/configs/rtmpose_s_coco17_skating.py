@@ -44,7 +44,7 @@ model = dict(
     ),
     head=dict(
         type=RTMCCHead,
-        in_channels=384,
+        in_channels=512,
         out_channels=17,
         input_size=(192, 256),
         in_featuremap_size=(24, 32),
