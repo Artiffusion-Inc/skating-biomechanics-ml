@@ -11,6 +11,10 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).parent.parent / "tools"))
 
 from kd_losses import KLDistillationLoss, L1CoordinateLoss  # noqa: F401 — register custom losses
 from mmengine.config import Config, DictAction
