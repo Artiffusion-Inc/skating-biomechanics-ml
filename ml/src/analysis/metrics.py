@@ -306,6 +306,18 @@ class BiomechanicsAnalyzer:
             )
         )
 
+        # GOE Proxy Score
+        goe = self.compute_goe_score(poses, phases, fps)
+        results.append(
+            MetricResult(
+                name="goe_score",
+                value=goe,
+                unit="score",
+                is_good=False,
+                reference_range=(0, 0),
+            )
+        )
+
         return results
 
     def _analyze_step(
@@ -978,6 +990,52 @@ class BiomechanicsAnalyzer:
 
         # Return normalized height
         return com_displacement / avg_spine
+
+    def compute_goe_score(
+        self,
+        poses: NormalizedPose,
+        phases: ElementPhase,
+        fps: float,
+    ) -> float:
+        """Compute GOE proxy score (0-10) from body kinematics.
+
+        Components (each normalized to [0,1]):
+        - Jump height (20%): relative CoM displacement
+        - Rotation speed (15%): peak angular velocity
+        - Landing quality (25%): smoothness + knee stability average
+        - Airtime (15%): flight duration
+        - Torso control (15%): trunk recovery after landing
+        - Approach consistency (10%): direction change / 90 deg
+
+        Returns: GOE proxy score in [0.0, 10.0]
+        """
+        rel_height = self.compute_relative_jump_height(poses, phases)
+        height_score = min(1.0, rel_height / 1.0)
+
+        rot_speed = self.compute_rotation_speed(poses, phases, fps)
+        rot_score = min(1.0, rot_speed / 720.0)
+
+        landing_smooth = self.compute_landing_smoothness(poses, phases, fps)
+        landing_stab = self.compute_landing_knee_stability(poses, phases)
+        landing_score = (landing_smooth + landing_stab) / 2.0
+
+        airtime = self.compute_airtime(phases, fps)
+        airtime_score = min(1.0, airtime / 1.0)
+
+        trunk_recovery = self.compute_landing_trunk_recovery(poses, phases)
+
+        approach_change = self.compute_approach_direction_change(poses, phases, fps)
+        approach_score = min(1.0, approach_change / 90.0)
+
+        goe = (
+            height_score * 0.20
+            + rot_score * 0.15
+            + landing_score * 0.25
+            + airtime_score * 0.15
+            + trunk_recovery * 0.15
+            + approach_score * 0.10
+        )
+        return float(goe * 10.0)
 
 
 @dataclass

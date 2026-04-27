@@ -787,3 +787,14 @@ class TestMetricResult:
         assert result.unit == "s"
         assert result.is_good is True
         assert result.reference_range == (0.4, 0.6)
+
+
+def test_goe_score_range():
+    """GOE score must be in [0, 10]."""
+    element_def = get_element_def("waltz_jump")
+    analyzer = BiomechanicsAnalyzer(element_def)
+
+    poses = np.ones((20, 17, 2), dtype=np.float32) * 0.5
+    phases = ElementPhase(name="waltz_jump", start=0, takeoff=5, peak=10, landing=15, end=19)
+    goe = analyzer.compute_goe_score(poses, phases, fps=30.0)
+    assert 0.0 <= goe <= 10.0
