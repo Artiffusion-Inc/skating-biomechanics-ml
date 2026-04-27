@@ -7,6 +7,7 @@ from src.types import H36Key
 from src.utils.geometry import (
     calculate_center_of_mass,
     calculate_com_trajectory,
+    calculate_com_trajectory_2d,
     get_mid_hip,
     get_mid_shoulder,
 )
@@ -179,6 +180,14 @@ class TestCalculateComTrajectoryVectorized:
         poses = rng.uniform(-0.5, 0.5, size=(100, 17, 2)).astype(np.float32)
         com = calculate_com_trajectory(poses)
         assert com.shape == (100,)
+
+    def test_calculate_com_trajectory_2d_y_matches_scalar(self, sample_normalized_poses):
+        """Y component of 2D CoM trajectory must match scalar 1D trajectory."""
+        com_1d = calculate_com_trajectory(sample_normalized_poses)
+        com_2d = calculate_com_trajectory_2d(sample_normalized_poses)
+
+        assert com_2d.shape == (len(sample_normalized_poses), 2)
+        np.testing.assert_allclose(com_2d[:, 1], com_1d, atol=1e-5)
 
 
 class TestNormalizePosesVectorized:

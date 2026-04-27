@@ -333,3 +333,53 @@ def calculate_com_trajectory(poses: NormalizedPose) -> NDArray[np.float32]:
     )
 
     return com_y.astype(np.float32)
+
+
+def calculate_com_trajectory_2d(poses: NormalizedPose) -> NDArray[np.float32]:
+    """Calculate 2D Center of Mass trajectory for entire pose sequence.
+
+    Vectorized implementation — computes (x, y) CoM for all frames at once.
+
+    Args:
+        poses: NormalizedPose (num_frames, 17, 2).
+
+    Returns:
+        CoM (x, y) coordinates (num_frames, 2) in normalized units.
+    """
+    # Segment mass ratios (Dempster 1955)
+    head_mass = 0.081
+    torso_mass = 0.497
+    arm_mass = 0.050  # per arm (upper arm + forearm + hand)
+    thigh_mass = 0.100  # per thigh
+    leg_mass = 0.161  # per leg (shin + foot)
+
+    # Vectorized segment positions: (N, 2)
+    head = poses[:, H36Key.HEAD]
+
+    torso = (
+        poses[:, H36Key.LSHOULDER]
+        + poses[:, H36Key.RSHOULDER]
+        + poses[:, H36Key.LHIP]
+        + poses[:, H36Key.RHIP]
+    ) / 4
+
+    l_upper_arm = (poses[:, H36Key.LSHOULDER] + poses[:, H36Key.LELBOW]) / 2
+    r_upper_arm = (poses[:, H36Key.RSHOULDER] + poses[:, H36Key.RELBOW]) / 2
+    l_forearm = (poses[:, H36Key.LELBOW] + poses[:, H36Key.LWRIST]) / 2
+    r_forearm = (poses[:, H36Key.RELBOW] + poses[:, H36Key.RWRIST]) / 2
+
+    l_thigh = (poses[:, H36Key.LHIP] + poses[:, H36Key.LKNEE]) / 2
+    r_thigh = (poses[:, H36Key.RHIP] + poses[:, H36Key.RKNEE]) / 2
+    l_leg = (poses[:, H36Key.LKNEE] + poses[:, H36Key.LFOOT]) / 2
+    r_leg = (poses[:, H36Key.RKNEE] + poses[:, H36Key.RFOOT]) / 2
+
+    # Weighted sum of (x, y) coordinates: (N, 2)
+    com = (
+        head_mass * head
+        + torso_mass * torso
+        + arm_mass * (l_upper_arm + r_upper_arm + l_forearm + r_forearm)
+        + thigh_mass * (l_thigh + r_thigh)
+        + leg_mass * (l_leg + r_leg)
+    )
+
+    return com.astype(np.float32)
