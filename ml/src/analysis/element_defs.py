@@ -80,6 +80,11 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
             "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
             "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
+            "landing_com_velocity": (-2.0, 0.0),
+            "landing_smoothness": (0.5, 1.0),
+            "approach_torso_lean": (-30, 30),
+            "approach_direction_change": (0, 90),
+            "goe_score": (5.0, 10.0),
         },
     ),
     "toe_loop": ElementDef(
@@ -106,6 +111,11 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
             "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
             "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
+            "landing_com_velocity": (-2.0, 0.0),
+            "landing_smoothness": (0.5, 1.0),
+            "approach_torso_lean": (-30, 30),
+            "approach_direction_change": (0, 90),
+            "goe_score": (5.0, 10.0),
         },
     ),
     "flip": ElementDef(
@@ -132,6 +142,11 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
             "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
             "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
+            "landing_com_velocity": (-2.0, 0.0),
+            "landing_smoothness": (0.5, 1.0),
+            "approach_torso_lean": (5, 30),
+            "approach_direction_change": (0, 45),
+            "goe_score": (5.0, 10.0),
         },
     ),
     "salchow": ElementDef(
@@ -158,6 +173,11 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
             "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
             "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
+            "landing_com_velocity": (-2.0, 0.0),
+            "landing_smoothness": (0.5, 1.0),
+            "approach_torso_lean": (-30, 30),
+            "approach_direction_change": (0, 90),
+            "goe_score": (5.0, 10.0),
         },
     ),
     "loop": ElementDef(
@@ -183,6 +203,11 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
             "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
             "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
+            "landing_com_velocity": (-2.0, 0.0),
+            "landing_smoothness": (0.5, 1.0),
+            "approach_torso_lean": (-30, 30),
+            "approach_direction_change": (0, 90),
+            "goe_score": (5.0, 10.0),
         },
     ),
     "lutz": ElementDef(
@@ -209,6 +234,11 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
             "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
             "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
+            "landing_com_velocity": (-2.0, 0.0),
+            "landing_smoothness": (0.5, 1.0),
+            "approach_torso_lean": (-30, -5),
+            "approach_direction_change": (20, 90),
+            "goe_score": (5.0, 10.0),
         },
     ),
     "axel": ElementDef(
@@ -235,6 +265,11 @@ ELEMENT_DEFS: dict[str, ElementDef] = {
             "landing_knee_stability": (0.5, 1.0),  # Knee stability after landing
             "landing_trunk_recovery": (0.5, 1.0),  # Trunk stays upright after landing
             "relative_jump_height": (0.3, 1.5),  # Height normalized by spine length
+            "landing_com_velocity": (-2.0, 0.0),
+            "landing_smoothness": (0.5, 1.0),
+            "approach_torso_lean": (-30, 30),
+            "approach_direction_change": (0, 90),
+            "goe_score": (5.0, 10.0),
         },
     ),
 }
