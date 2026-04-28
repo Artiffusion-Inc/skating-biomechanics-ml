@@ -282,6 +282,18 @@ class BiomechanicsAnalyzer:
             )
         )
 
+        # Toe assist proxy (clean edge detection)
+        toe_assist = self.compute_toe_assist_proxy(poses, phases, fps)
+        results.append(
+            MetricResult(
+                name="toe_assist_proxy",
+                value=toe_assist,
+                unit="score",
+                is_good=False,
+                reference_range=(0, 0),
+            )
+        )
+
         # Approach torso lean
         approach_lean = self.compute_approach_torso_lean(poses, phases)
         results.append(
@@ -714,6 +726,54 @@ class BiomechanicsAnalyzer:
         # 0.2 norm/s std threshold for "unstable"
         smoothness = max(0.0, 1.0 - std_velocity / 0.2)
         return float(smoothness)
+
+    def compute_toe_assist_proxy(
+        self,
+        poses: NormalizedPose,
+        phases: ElementPhase,
+        fps: float,
+    ) -> float:
+        """Detect toe assist vs clean edge landing via CoM velocity spike.
+
+        Toe assist = sudden impact spike at landing (high deceleration).
+        Clean edge = smooth deceleration over multiple frames.
+
+        Args:
+            poses: NormalizedPose (num_frames, 17, 2).
+            phases: Element phase boundaries.
+            fps: Frame rate.
+
+        Returns:
+            Score in [0.0, 1.0] where 1.0 = clean edge, 0.0 = toe assist.
+        """
+        if phases.landing <= 0 or phases.landing >= len(poses) - 1:
+            return 1.0  # Cannot assess
+
+        com_trajectory = calculate_com_trajectory(poses)
+
+        # Compute vertical velocity (Y increases downward, so negative = upward)
+        vy_y = -(com_trajectory[1:] - com_trajectory[:-1]) * fps
+
+        # Look at landing frame and 2 frames after
+        landing_idx = phases.landing
+        post_end = min(landing_idx + 3, len(vy_y))
+
+        if post_end <= landing_idx:
+            return 1.0
+
+        # Compute acceleration (change in vy)
+        start_idx = max(0, landing_idx - 1)
+        ay = np.diff(vy_y[start_idx:post_end])
+        if len(ay) == 0:
+            return 1.0
+
+        # Peak deceleration (most negative = hardest impact)
+        peak_decel = np.min(ay)
+
+        # Threshold: -5.0 norm/s^2 = toe assist territory
+        # 0.0 = gentle deceleration
+        score = max(0.0, min(1.0, 1.0 + peak_decel / 5.0))
+        return float(score)
 
     def compute_approach_torso_lean(self, poses: NormalizedPose, phases: ElementPhase) -> float:
         """Compute average torso lean during the approach phase.
