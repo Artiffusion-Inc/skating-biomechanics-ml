@@ -72,6 +72,13 @@
       "enabled": true
     }
   },
+  "assist": {
+    "actions": {
+      "source": {
+        "organizeImports": "off"
+      }
+    }
+  },
   "overrides": [
     {
       "includes": ["**/*.test.{ts,tsx}", "**/*.spec.{ts,tsx}", "src/test/**/*"],
