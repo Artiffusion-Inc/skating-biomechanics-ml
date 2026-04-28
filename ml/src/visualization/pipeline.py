@@ -25,6 +25,7 @@ from src.visualization import (
 if TYPE_CHECKING:
     from numpy.typing import NDArray
 
+    from src.types import PersonClick, VideoMeta
     from src.visualization.layers.base import Frame
 
 
@@ -45,7 +46,7 @@ class VizPipeline:
         frame_indices: Frame index mapping (N,). Defaults to ``np.arange(N)``.
     """
 
-    meta: object
+    meta: VideoMeta
     poses_norm: NDArray[np.float32]
     poses_px: NDArray[np.float32] | None = None
     poses_3d: NDArray[np.float32] | None = None
@@ -112,6 +113,8 @@ class VizPipeline:
 
         # Skeleton (always drawn when pose available)
         if pose_idx is not None and pose_idx < len(self.poses_norm):
+            if self.poses_px is None:
+                raise ValueError("poses_px is None but pose_idx is valid")
             skel_pose = self.poses_px[pose_idx].copy()
             frame = draw_skeleton(
                 frame,
@@ -224,6 +227,8 @@ class VizPipeline:
         Returns:
             Tuple of (current_pose_idx_or_None, next_pose_idx).
         """
+        if self.frame_indices is None:
+            raise ValueError("frame_indices is None")
         while pose_idx < len(self.frame_indices):
             if self.frame_indices[pose_idx] == frame_idx:
                 return pose_idx, pose_idx + 1
@@ -264,7 +269,7 @@ class PreparedPoses:
     poses_3d: NDArray[np.float32] | None  # (N, 17, 3) 3D poses for GLB export
     confs: NDArray[np.float32]  # (N, 17) per-keypoint confidence
     frame_indices: NDArray[np.intp]  # (N,) frame index mapping
-    meta: object  # video metadata (width, height, fps, num_frames)
+    meta: VideoMeta  # video metadata (width, height, fps, num_frames)
     n_valid: int  # valid (non-interpolated) frames
     n_total: int  # total video frames
 
@@ -289,7 +294,7 @@ def _resolve_model_3d(path: Path | str | None = None) -> Path | None:
 
 def prepare_poses(
     video_path: Path | str,
-    person_click: object | None = None,
+    person_click: PersonClick | None = None,
     *,
     frame_skip: int = 1,
     tracking: str = "auto",
@@ -333,7 +338,6 @@ def prepare_poses(
     extractor = PoseExtractor(
         output_format="normalized",
         conf_threshold=0.3,
-        det_frequency=max(1, frame_skip),
         frame_skip=frame_skip,
         device=cfg.device,
         tracking_mode=tracking,
