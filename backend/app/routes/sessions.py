@@ -103,8 +103,17 @@ async def list_sessions(
         sort=sort,
     )
     total = await count_by_user(db, user_id=target_user_id, element_type=element_type)
+    limit_int = int(limit) if isinstance(limit, int) else limit.default
+    offset_int = int(offset) if isinstance(offset, int) else offset.default
+    page = (offset_int // limit_int) + 1 if limit_int else 1
+    pages = (total + limit_int - 1) // limit_int if limit_int else 1
+
     return SessionListResponse(
-        sessions=[await _session_to_response(s) for s in sessions], total=total
+        sessions=[await _session_to_response(s) for s in sessions],
+        total=total,
+        page=page,
+        page_size=limit_int,
+        pages=pages,
     )
 
 

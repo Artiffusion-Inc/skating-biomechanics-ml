@@ -289,9 +289,17 @@ async def list_programs(
     """List user's choreography programs."""
     programs = await list_programs_by_user(db, user.id, limit=limit, offset=offset)
     total = await count_programs_by_user(db, user.id)
+    limit_int = int(limit) if isinstance(limit, int) else limit.default
+    offset_int = int(offset) if isinstance(offset, int) else offset.default
+    page = (offset_int // limit_int) + 1 if limit_int else 1
+    pages = (total + limit_int - 1) // limit_int if limit_int else 1
+
     return ProgramListResponse(
         programs=[_program_to_response(p) for p in programs],
         total=total,
+        page=page,
+        page_size=limit_int,
+        pages=pages,
     )
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import pytest
-from app.schemas import ErrorResponse, ValidationErrorDetail
+from app.schemas import ErrorResponse, PaginatedResponse, ValidationErrorDetail
 from pydantic import ValidationError
 
 
@@ -41,3 +41,29 @@ class TestErrorResponse:
         assert d["message"] == "Msg"
         assert d["path"] == "/api/v1/users"
         assert d["details"] is None
+
+
+class TestPaginatedResponse:
+    def test_defaults(self):
+        p = PaginatedResponse(total=50)
+        assert p.total == 50
+        assert p.page == 1
+        assert p.page_size == 20
+        assert p.pages == 1
+        assert not p.has_next
+        assert not p.has_prev
+
+    def test_has_next(self):
+        p = PaginatedResponse(total=50, page=1, page_size=20, pages=3)
+        assert p.has_next
+        assert not p.has_prev
+
+    def test_has_prev(self):
+        p = PaginatedResponse(total=50, page=2, page_size=20, pages=3)
+        assert p.has_next
+        assert p.has_prev
+
+    def test_last_page(self):
+        p = PaginatedResponse(total=50, page=3, page_size=20, pages=3)
+        assert not p.has_next
+        assert p.has_prev
