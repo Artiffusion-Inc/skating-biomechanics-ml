@@ -8,6 +8,20 @@ from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+
+class ValidationErrorDetail(BaseModel):
+    field: str
+    message: str
+    value: Any
+
+
+class ErrorResponse(BaseModel):
+    error: str
+    message: str
+    details: dict | list[ValidationErrorDetail] | None = None
+    path: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
@@ -266,9 +280,25 @@ class SessionResponse(BaseModel):
         return str(v)
 
 
-class SessionListResponse(BaseModel):
-    sessions: list[SessionResponse]
+class PaginatedResponse(BaseModel):
+    """Base for all paginated list responses."""
+
     total: int
+    page: int = 1
+    page_size: int = 20
+    pages: int = 1
+
+    @property
+    def has_next(self) -> bool:
+        return self.page < self.pages
+
+    @property
+    def has_prev(self) -> bool:
+        return self.page > 1
+
+
+class SessionListResponse(PaginatedResponse):
+    sessions: list[SessionResponse]
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +367,7 @@ class ConnectionResponse(BaseModel):
         return str(v)
 
 
-class ConnectionListResponse(BaseModel):
+class ConnectionListResponse(PaginatedResponse):
     connections: list[ConnectionResponse]
 
 
@@ -454,9 +484,8 @@ class ChoreographyProgramResponse(BaseModel):
         return str(v)
 
 
-class ProgramListResponse(BaseModel):
+class ProgramListResponse(PaginatedResponse):
     programs: list[ChoreographyProgramResponse]
-    total: int
 
 
 class SaveProgramRequest(BaseModel):

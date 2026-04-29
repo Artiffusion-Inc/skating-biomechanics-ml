@@ -18,7 +18,7 @@ def app():
     from fastapi import FastAPI
 
     app = FastAPI()
-    app.include_router(router, prefix="/api/v1")
+    app.include_router(router, prefix="/api/v1/process")
     app.state.arq_pool = AsyncMock()
     return app
 
@@ -181,7 +181,9 @@ async def test_process_status_not_found(client: AsyncClient):
         response = await client.get("/api/v1/process/proc_nonexist/status")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Task not found"
+    data = response.json()["detail"]
+    assert data["error"] == "NotFound"
+    assert data["message"] == "Task not found"
 
 
 @pytest.mark.asyncio

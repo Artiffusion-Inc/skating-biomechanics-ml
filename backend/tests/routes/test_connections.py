@@ -19,7 +19,7 @@ def app():
     from fastapi import FastAPI
 
     app = FastAPI()
-    app.include_router(router, prefix="/api/v1")
+    app.include_router(router, prefix="/api/v1/connections")
     return app
 
 
@@ -100,7 +100,9 @@ async def test_invite_user_not_found(client: AsyncClient, auth_headers_a):
         headers=auth_headers_a,
     )
     assert response.status_code == 404
-    assert response.json()["detail"] == "User not found"
+    data = response.json()["detail"]
+    assert data["error"] == "NotFound"
+    assert data["message"] == "User not found"
 
 
 @pytest.mark.asyncio
@@ -112,7 +114,9 @@ async def test_invite_duplicate(client: AsyncClient, user_a: User, user_b: User,
 
     second = await client.post("/api/v1/connections/invite", json=payload, headers=auth_headers_a)
     assert second.status_code == 409
-    assert second.json()["detail"] == "Connection already exists"
+    data = second.json()["detail"]
+    assert data["error"] == "Conflict"
+    assert data["message"] == "Connection already exists"
 
 
 # ---------------------------------------------------------------------------
@@ -151,7 +155,9 @@ async def test_accept_invite_not_found(client: AsyncClient, auth_headers_b):
         headers=auth_headers_b,
     )
     assert response.status_code == 404
-    assert response.json()["detail"] == "Connection not found"
+    data = response.json()["detail"]
+    assert data["error"] == "NotFound"
+    assert data["message"] == "Connection not found"
 
 
 @pytest.mark.asyncio
@@ -164,7 +170,9 @@ async def test_accept_invite_wrong_user(
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    assert response.json()["detail"] == "Not authorized"
+    data = response.json()["detail"]
+    assert data["error"] == "Forbidden"
+    assert data["message"] == "Not authorized"
 
 
 @pytest.mark.asyncio
@@ -183,7 +191,9 @@ async def test_accept_invite_already_active(
         headers=auth_headers_b,
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Not an active invite"
+    data = response.json()["detail"]
+    assert data["error"] == "BadRequest"
+    assert data["message"] == "Not an active invite"
 
 
 # ---------------------------------------------------------------------------
@@ -243,7 +253,9 @@ async def test_end_connection_not_found(client: AsyncClient, auth_headers_a):
         headers=auth_headers_a,
     )
     assert response.status_code == 404
-    assert response.json()["detail"] == "Connection not found"
+    data = response.json()["detail"]
+    assert data["error"] == "NotFound"
+    assert data["message"] == "Connection not found"
 
 
 @pytest.mark.asyncio
@@ -263,7 +275,9 @@ async def test_end_connection_not_party(
         headers=headers,
     )
     assert response.status_code == 403
-    assert response.json()["detail"] == "Not authorized"
+    data = response.json()["detail"]
+    assert data["error"] == "Forbidden"
+    assert data["message"] == "Not authorized"
 
 
 @pytest.mark.asyncio
@@ -280,7 +294,9 @@ async def test_end_connection_already_ended(
         headers=auth_headers_a,
     )
     assert response.status_code == 400
-    assert response.json()["detail"] == "Already ended"
+    data = response.json()["detail"]
+    assert data["error"] == "BadRequest"
+    assert data["message"] == "Already ended"
 
 
 # ---------------------------------------------------------------------------

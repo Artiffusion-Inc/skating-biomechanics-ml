@@ -7,9 +7,10 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Request, status
 from sse_starlette.sse import EventSourceResponse
 
+from app.routes import raise_api_error
 from app.schemas import (
     MLModelFlags,
     ProcessRequest,
@@ -32,7 +33,7 @@ router = APIRouter()
 SSE_STREAM_TIMEOUT = 60  # seconds
 
 
-@router.post("/process/queue", response_model=QueueProcessResponse)
+@router.post("/queue", response_model=QueueProcessResponse)
 async def enqueue_process(request: Request, req: ProcessRequest):
     """Enqueue video processing job and return task_id immediately."""
     task_id = f"proc_{uuid.uuid4().hex[:12]}"
@@ -66,14 +67,19 @@ async def enqueue_process(request: Request, req: ProcessRequest):
     return QueueProcessResponse(task_id=task_id)
 
 
-@router.get("/process/{task_id}/status", response_model=TaskStatusResponse)
+@router.get("/{task_id}/status", response_model=TaskStatusResponse)
 async def get_process_status(task_id: str):
     """Poll task status."""
     valkey = get_valkey()
     state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Task not found",
+            details={"task_id": task_id},
+        )
 
     result = None
     if state.get("result"):
@@ -89,14 +95,14 @@ async def get_process_status(task_id: str):
     )
 
 
-@router.post("/process/{task_id}/cancel")
+@router.post("/{task_id}/cancel")
 async def cancel_queued_process(task_id: str):
     """Cancel a queued or running task via Valkey signal."""
     await set_cancel_signal(task_id)
     return {"status": "cancel_requested", "task_id": task_id}
 
 
-@router.get("/process/{task_id}/stream")
+@router.get("/{task_id}/stream")
 async def stream_process_status(task_id: str):
     """SSE endpoint for real-time task progress streaming."""
 

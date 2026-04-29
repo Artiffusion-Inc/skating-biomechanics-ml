@@ -7,7 +7,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Query, Request, UploadFile, status
 
 from app.auth.deps import CurrentUser, DbDep  # noqa: TC001 — runtime FastAPI Depends
 from app.crud.choreography import (
@@ -22,6 +22,7 @@ from app.crud.choreography import (
     update_music_analysis,
     update_program,
 )
+from app.routes import raise_api_error
 from app.schemas import (
     ChoreographyProgramResponse,
     ExportRequest,
@@ -56,7 +57,7 @@ def _program_to_response(program) -> ChoreographyProgramResponse:
 
 
 @router.post(
-    "/choreography/music/upload",
+    "/music/upload",
     response_model=UploadMusicResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -122,10 +123,11 @@ async def upload_music(
     except (OSError, ValueError, RuntimeError) as e:
         logger.exception("Failed to upload or enqueue music analysis")
         await update_music_analysis(db, music, status="failed")
-        raise HTTPException(
+        raise_api_error(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Upload failed: {type(e).__name__}: {e}",
-        ) from e
+            error="UnprocessableEntity",
+            message=f"Upload failed: {type(e).__name__}: {e}",
+        )
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -133,17 +135,25 @@ async def upload_music(
 
 
 @router.get(
-    "/choreography/music/{music_id}/analysis",
+    "/music/{music_id}/analysis",
 )
 async def get_music_analysis(music_id: str, user: CurrentUser, db: DbDep):
     """Get music analysis result."""
     music = await get_music_analysis_by_id(db, music_id)
     if not music:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Music analysis not found"
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Music analysis not found",
+            details={"music_id": music_id},
         )
     if music.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"music_id": music_id},
+        )
     return {
         "id": music.id,
         "user_id": music.user_id,
@@ -168,18 +178,26 @@ async def get_music_analysis(music_id: str, user: CurrentUser, db: DbDep):
 
 
 @router.post(
-    "/choreography/generate",
+    "/generate",
     response_model=GenerateResponse,
 )
 async def generate_layout(body: GenerateRequest, user: CurrentUser, db: DbDep):
     """Generate choreography layouts via CSP solver."""
     music = await get_music_analysis_by_id(db, body.music_id)
     if not music:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Music analysis not found"
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Music analysis not found",
+            details={"music_id": body.music_id},
         )
     if music.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"music_id": body.music_id},
+        )
 
     analysis = {
         "duration_sec": music.duration_sec,
@@ -220,7 +238,7 @@ async def generate_layout(body: GenerateRequest, user: CurrentUser, db: DbDep):
 
 
 @router.post(
-    "/choreography/validate",
+    "/validate",
     response_model=ValidateResponse,
 )
 async def validate_choreography(body: ValidateRequest):
@@ -243,7 +261,7 @@ async def validate_choreography(body: ValidateRequest):
 # ---------------------------------------------------------------------------
 
 
-@router.post("/choreography/render-rink")
+@router.post("/render-rink")
 async def render_rink_diagram(body: RenderRinkRequest):
     """Render an SVG rink diagram with element markers."""
     svg = render_rink(
@@ -261,7 +279,7 @@ async def render_rink_diagram(body: RenderRinkRequest):
 # ---------------------------------------------------------------------------
 
 
-@router.get("/choreography/programs", response_model=ProgramListResponse)
+@router.get("/programs", response_model=ProgramListResponse)
 async def list_programs(
     user: CurrentUser,
     db: DbDep,
@@ -271,14 +289,22 @@ async def list_programs(
     """List user's choreography programs."""
     programs = await list_programs_by_user(db, user.id, limit=limit, offset=offset)
     total = await count_programs_by_user(db, user.id)
+    limit_int = int(limit) if isinstance(limit, int) else limit.default
+    offset_int = int(offset) if isinstance(offset, int) else offset.default
+    page = (offset_int // limit_int) + 1 if limit_int else 1
+    pages = (total + limit_int - 1) // limit_int if limit_int else 1
+
     return ProgramListResponse(
         programs=[_program_to_response(p) for p in programs],
         total=total,
+        page=page,
+        page_size=limit_int,
+        pages=pages,
     )
 
 
 @router.post(
-    "/choreography/programs",
+    "/programs",
     response_model=ChoreographyProgramResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -302,18 +328,28 @@ async def create_new_program(body: SaveProgramRequest, user: CurrentUser, db: Db
     return _program_to_response(program)
 
 
-@router.get("/choreography/programs/{program_id}", response_model=ChoreographyProgramResponse)
+@router.get("/programs/{program_id}", response_model=ChoreographyProgramResponse)
 async def get_program(program_id: str, user: CurrentUser, db: DbDep):
     """Get a choreography program."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
     return _program_to_response(program)
 
 
-@router.put("/choreography/programs/{program_id}", response_model=ChoreographyProgramResponse)
+@router.put("/programs/{program_id}", response_model=ChoreographyProgramResponse)
 async def update_existing_program(
     program_id: str,
     body: SaveProgramRequest,
@@ -323,9 +359,19 @@ async def update_existing_program(
     """Update a choreography program."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
     program = await update_program(
         db,
         program,
@@ -343,16 +389,26 @@ async def update_existing_program(
 
 
 @router.delete(
-    "/choreography/programs/{program_id}",
+    "/programs/{program_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_existing_program(program_id: str, user: CurrentUser, db: DbDep):
     """Delete a choreography program."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
     await delete_program(db, program)
 
 
@@ -361,7 +417,7 @@ async def delete_existing_program(program_id: str, user: CurrentUser, db: DbDep)
 # ---------------------------------------------------------------------------
 
 
-@router.post("/choreography/programs/{program_id}/export")
+@router.post("/programs/{program_id}/export")
 async def export_program(
     program_id: str,
     body: ExportRequest,
@@ -371,9 +427,19 @@ async def export_program(
     """Export a program as SVG, PDF, or JSON."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
 
     if body.format == "json":
         return {

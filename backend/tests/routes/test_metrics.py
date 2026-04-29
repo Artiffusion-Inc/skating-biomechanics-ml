@@ -27,7 +27,7 @@ def app():
     from fastapi import FastAPI
 
     app = FastAPI()
-    app.include_router(router, prefix="/api/v1")
+    app.include_router(router, prefix="/api/v1/metrics")
     return app
 
 
@@ -200,7 +200,9 @@ async def test_trend_unknown_metric(client: AsyncClient, auth_headers_a):
         headers=auth_headers_a,
     )
     assert response.status_code == 400
-    assert "Unknown metric" in response.json()["detail"]
+    data = response.json()["detail"]
+    assert data["error"] == "BadRequest"
+    assert "Unknown metric" in data["message"]
 
 
 @pytest.mark.asyncio
@@ -216,7 +218,9 @@ async def test_trend_coach_access_denied(client: AsyncClient, auth_headers_a, us
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    assert "Not a coach" in response.json()["detail"]
+    data = response.json()["detail"]
+    assert data["error"] == "Forbidden"
+    assert "Not a coach" in data["message"]
 
 
 @pytest.mark.asyncio
@@ -460,7 +464,9 @@ async def test_prs_coach_access_denied(client: AsyncClient, auth_headers_a, user
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    assert "Not a coach" in response.json()["detail"]
+    data = response.json()["detail"]
+    assert data["error"] == "Forbidden"
+    assert "Not a coach" in data["message"]
 
 
 @pytest.mark.asyncio
@@ -562,7 +568,9 @@ async def test_diagnostics_coach_access_denied(client: AsyncClient, auth_headers
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    assert "Not a coach" in response.json()["detail"]
+    data = response.json()["detail"]
+    assert data["error"] == "Forbidden"
+    assert "Not a coach" in data["message"]
 
 
 @pytest.mark.asyncio

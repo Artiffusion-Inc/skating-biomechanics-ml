@@ -5,8 +5,9 @@ from __future__ import annotations
 import uuid
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Request, UploadFile
 
+from app.routes import raise_api_error
 from app.schemas import (
     DetectQueueResponse,
     DetectResultResponse,
@@ -23,7 +24,7 @@ from app.task_manager import (
 router = APIRouter()
 
 
-@router.post("/detect", response_model=DetectQueueResponse)
+@router.post("", response_model=DetectQueueResponse)
 async def enqueue_detect(
     request: Request,
     video: UploadFile,
@@ -52,14 +53,19 @@ async def enqueue_detect(
     return DetectQueueResponse(task_id=task_id, video_key=video_key)
 
 
-@router.get("/detect/{task_id}/status", response_model=TaskStatusResponse)
+@router.get("/{task_id}/status", response_model=TaskStatusResponse)
 async def get_detect_status(task_id: str):
     """Poll detection task status."""
     valkey = get_valkey()
     state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise_api_error(
+            status_code=404,
+            error="NotFound",
+            message="Task not found",
+            details={"task_id": task_id},
+        )
 
     result = None
     if state.get("result"):
@@ -75,19 +81,34 @@ async def get_detect_status(task_id: str):
     )
 
 
-@router.get("/detect/{task_id}/result", response_model=DetectResultResponse)
+@router.get("/{task_id}/result", response_model=DetectResultResponse)
 async def get_detect_result(task_id: str):
     """Get detection result (persons, preview)."""
     valkey = get_valkey()
     state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise_api_error(
+            status_code=404,
+            error="NotFound",
+            message="Task not found",
+            details={"task_id": task_id},
+        )
 
     if state.get("status") != TaskStatus.COMPLETED:
-        raise HTTPException(status_code=400, detail="Task not completed yet")
+        raise_api_error(
+            status_code=400,
+            error="BadRequest",
+            message="Task not completed yet",
+            details={"task_id": task_id},
+        )
 
     if not state.get("result"):
-        raise HTTPException(status_code=500, detail="No result stored")
+        raise_api_error(
+            status_code=500,
+            error="InternalServerError",
+            message="No result stored",
+            details={"task_id": task_id},
+        )
 
     return DetectResultResponse(**state["result"])

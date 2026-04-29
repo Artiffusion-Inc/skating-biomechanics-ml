@@ -135,7 +135,8 @@ async def test_upload_music_handles_upload_failure(
             await upload_music(mock_request, mock_user, mock_db, mock_file)
 
         assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "Upload failed" in exc_info.value.detail
+        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
+        assert "Upload failed" in exc_info.value.detail["message"]
         mock_update.assert_called_once_with(mock_db, mock_music, status="failed")
 
 

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import uuid
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 from pydantic import BaseModel
 
 from app.auth.deps import CurrentUser
 from app.config import get_settings
+from app.routes import raise_api_error
 from app.storage import _client
 
 router = APIRouter(tags=["uploads"])
@@ -16,7 +17,7 @@ router = APIRouter(tags=["uploads"])
 CHUNK_SIZE = 5 * 1024 * 1024  # 5MB
 
 
-@router.post("/uploads/init")
+@router.post("/init")
 async def init_upload(
     user: CurrentUser,
     file_name: str = Query(..., min_length=1),
@@ -67,7 +68,7 @@ class CompleteUploadRequest(BaseModel):
     parts: list[dict]
 
 
-@router.post("/uploads/complete")
+@router.post("/complete")
 async def complete_upload(user: CurrentUser, body: CompleteUploadRequest):
     """Complete a multipart upload. Returns the final object key."""
     r2 = _client()
@@ -79,7 +80,12 @@ async def complete_upload(user: CurrentUser, body: CompleteUploadRequest):
     ]
 
     if not multipart_parts:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No parts provided")
+        raise_api_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error="BadRequest",
+            message="No parts provided",
+            details={"upload_id": body.upload_id, "key": body.key},
+        )
 
     r2.complete_multipart_upload(
         Bucket=bucket,

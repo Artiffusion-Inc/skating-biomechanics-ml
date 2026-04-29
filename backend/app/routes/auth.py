@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 
 from app.auth.deps import DbDep
 from app.auth.security import (
@@ -18,6 +18,7 @@ from app.crud.refresh_token import create as create_refresh_token_crud
 from app.crud.refresh_token import get_active_by_hash, revoke
 from app.crud.user import create as create_user
 from app.crud.user import get_by_email
+from app.routes import raise_api_error
 from app.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -49,7 +50,12 @@ async def register(body: RegisterRequest, db: DbDep):
     """Register a new user."""
     existing = await get_by_email(db, body.email)
     if existing:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
+        raise_api_error(
+            status_code=status.HTTP_409_CONFLICT,
+            error="Conflict",
+            message="Email already registered",
+            details={"email": body.email},
+        )
 
     user = await create_user(
         db,
@@ -65,8 +71,10 @@ async def login(body: LoginRequest, db: DbDep):
     """Authenticate and return tokens."""
     user = await get_by_email(db, body.email)
     if not user or not verify_password(body.password, user.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password"
+        raise_api_error(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error="Unauthorized",
+            message="Invalid email or password",
         )
     return await _issue_token_pair(db, user.id)
 
@@ -77,8 +85,10 @@ async def refresh(body: RefreshRequest, db: DbDep):
     token_hash = hash_token(body.refresh_token)
     existing = await get_active_by_hash(db, token_hash)
     if not existing:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired refresh token"
+        raise_api_error(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            error="Unauthorized",
+            message="Invalid or expired refresh token",
         )
     await revoke(db, existing)
     return await _issue_token_pair(db, existing.user_id, family_id=existing.family_id)

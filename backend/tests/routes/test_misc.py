@@ -41,7 +41,9 @@ async def test_serve_output_not_found(client: AsyncClient):
     with patch("app.routes.misc.object_exists_async", new_callable=AsyncMock, return_value=False):
         response = await client.get("/api/v1/outputs/nonexistent/video.mp4")
     assert response.status_code == 404
-    assert response.json()["detail"] == "File not found"
+    data = response.json()["detail"]
+    assert data["error"] == "NotFound"
+    assert data["message"] == "File not found"
 
 
 @pytest.mark.asyncio

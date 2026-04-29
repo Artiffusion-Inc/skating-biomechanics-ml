@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
 from app.auth.deps import CurrentUser, DbDep
 from app.crud.connection import is_connected_as
 from app.crud.session import count_by_user, create, get_by_id, list_by_user, soft_delete, update
 from app.models.connection import ConnectionType
+from app.routes import raise_api_error
 from app.schemas import (
     CreateSessionRequest,
     PatchSessionRequest,
@@ -55,7 +56,7 @@ async def _session_to_response(session) -> SessionResponse:
     )
 
 
-@router.post("/sessions", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(body: CreateSessionRequest, user: CurrentUser, db: DbDep):
     session = await create(
         db,
@@ -67,7 +68,7 @@ async def create_session(body: CreateSessionRequest, user: CurrentUser, db: DbDe
     return await _session_to_response(session)
 
 
-@router.get("/sessions", response_model=SessionListResponse)
+@router.get("", response_model=SessionListResponse)
 async def list_sessions(
     user: CurrentUser,
     db: DbDep,
@@ -86,8 +87,11 @@ async def list_sessions(
             db, from_user_id=user.id, to_user_id=user_id, connection_type=ConnectionType.COACHING
         )
     ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not a coach for this user"
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not a coach for this user",
+            details={"user_id": user_id},
         )
 
     sessions = await list_by_user(
@@ -99,27 +103,46 @@ async def list_sessions(
         sort=sort,
     )
     total = await count_by_user(db, user_id=target_user_id, element_type=element_type)
+    limit_int = int(limit) if isinstance(limit, int) else limit.default
+    offset_int = int(offset) if isinstance(offset, int) else offset.default
+    page = (offset_int // limit_int) + 1 if limit_int else 1
+    pages = (total + limit_int - 1) // limit_int if limit_int else 1
+
     return SessionListResponse(
-        sessions=[await _session_to_response(s) for s in sessions], total=total
+        sessions=[await _session_to_response(s) for s in sessions],
+        total=total,
+        page=page,
+        page_size=limit_int,
+        pages=pages,
     )
 
 
-@router.get("/sessions/{session_id}", response_model=SessionResponse)
+@router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(session_id: str, user: CurrentUser, db: DbDep):
     session = await get_by_id(db, session_id)
     if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Session not found",
+            details={"session_id": session_id},
+        )
     if session.user_id != user.id and not await is_connected_as(
         db,
         from_user_id=user.id,
         to_user_id=session.user_id,
         connection_type=ConnectionType.COACHING,
     ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"session_id": session_id},
+        )
     return await _session_to_response(session)
 
 
-@router.patch("/sessions/{session_id}", response_model=SessionResponse)
+@router.patch("/{session_id}", response_model=SessionResponse)
 async def patch_session(
     session_id: str,
     body: PatchSessionRequest,
@@ -128,18 +151,38 @@ async def patch_session(
 ):
     session = await get_by_id(db, session_id)
     if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Session not found",
+            details={"session_id": session_id},
+        )
     if session.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"session_id": session_id},
+        )
     session = await update(db, session, **body.model_dump(exclude_unset=True))
     return await _session_to_response(session)
 
 
-@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_session(session_id: str, user: CurrentUser, db: DbDep):
     session = await get_by_id(db, session_id)
     if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Session not found",
+            details={"session_id": session_id},
+        )
     if session.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"session_id": session_id},
+        )
     await soft_delete(db, session)
