@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import NoReturn
+
 from fastapi import HTTPException, Request, status
 
 from app.schemas import ErrorResponse
@@ -13,7 +15,7 @@ def raise_api_error(
     message: str,
     details: dict | list | None = None,
     request: Request | None = None,
-) -> None:
+) -> NoReturn:
     """Raise an HTTPException with a structured ErrorResponse body.
 
     Usage:

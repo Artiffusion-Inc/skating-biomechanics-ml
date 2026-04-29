@@ -153,7 +153,7 @@ async def test_refresh_with_completely_unknown_token(client: AsyncClient):
         json={"refresh_token": "a" * 64},
     )
     assert response.status_code == 401
-    assert "Invalid or expired" in response.json()["detail"]
+    assert "Invalid or expired" in response.json()["detail"]["message"]
 
 
 async def test_logout_with_valid_token(client: AsyncClient, db_session: AsyncSession):

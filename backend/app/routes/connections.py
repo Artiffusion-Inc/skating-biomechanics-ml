@@ -142,11 +142,15 @@ async def end_connection(conn_id: str, user: CurrentUser, db: DbDep):
 async def list_connections(user: CurrentUser, db: DbDep):
     """List all connections for the current user."""
     conns = await list_for_user(db, user.id)
-    return ConnectionListResponse(connections=[_conn_to_response(c) for c in conns])
+    return ConnectionListResponse(
+        total=len(conns), connections=[_conn_to_response(c) for c in conns]
+    )
 
 
 @router.get("/pending", response_model=ConnectionListResponse)
 async def list_pending(user: CurrentUser, db: DbDep):
     """List pending invites received by the current user."""
     conns = await list_pending_for_user(db, user.id)
-    return ConnectionListResponse(connections=[_conn_to_response(c) for c in conns])
+    return ConnectionListResponse(
+        total=len(conns), connections=[_conn_to_response(c) for c in conns]
+    )
