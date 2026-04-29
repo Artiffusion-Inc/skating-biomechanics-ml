@@ -112,7 +112,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] BoundingBox type
 
 **Files:** `detection/person_detector.py`
-**Tests:** `tests/detection/test_person_detector.py`
+**Tests:** `ml/tests/detection/test_person_detector.py`
 
 ---
 
@@ -126,7 +126,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] 3D normalizer (`pose_3d/normalizer_3d.py`)
 - [x] All metrics updated for 17kp format
 
-**Files:** `pose_3d/`, `src/types.py`, `src/normalizer.py`
+**Files:** `pose_3d/`, `ml/src/types.py`, `ml/src/normalizer.py`
 **Tests:** 263 tests passing, 59% coverage
 
 ---
@@ -141,7 +141,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] Runtime validation (assert_pose_format)
 
 **Files:** `pose_2d/normalizer.py`, `types.py` (coordinate types)
-**Tests:** `tests/pose_2d/test_normalizer.py`
+**Tests:** `ml/tests/pose_2d/test_normalizer.py`
 
 ---
 
@@ -155,7 +155,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] Normalized-space smoothing
 
 **Files:** `utils/smoothing.py`
-**Tests:** `tests/utils/test_smoothing.py`
+**Tests:** `ml/tests/utils/test_smoothing.py`
 
 ---
 
@@ -171,7 +171,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] BiomechanicsAnalyzer class
 
 **Files:** `analysis/metrics.py`
-**Tests:** `tests/analysis/test_metrics.py`
+**Tests:** `ml/tests/analysis/test_metrics.py`
 
 ---
 
@@ -192,7 +192,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - Falls back to blade detection if CoM confidence low
 
 **Files:** `analysis/phase_detector.py`
-**Tests:** `tests/analysis/test_phase_detector.py`
+**Tests:** `ml/tests/analysis/test_phase_detector.py`
 
 ---
 
@@ -207,7 +207,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [ ] Alignment quality metrics (future enhancement)
 
 **Files:** `alignment/aligner.py`, `alignment/motion_dtw.py`
-**Tests:** `tests/alignment/test_aligner.py`, `tests/alignment/test_motion_dtw.py`
+**Tests:** `ml/tests/alignment/test_aligner.py`, `ml/tests/alignment/test_motion_dtw.py`
 
 ---
 
@@ -222,7 +222,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] Recommender class
 
 **Files:** `analysis/recommender.py`, `analysis/rules/`
-**Tests:** `tests/analysis/test_recommender.py`
+**Tests:** `ml/tests/analysis/test_recommender.py`
 
 ---
 
@@ -235,7 +235,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - [x] Element definitions (ideal ranges)
 - [x] Reference directory structure
 
-**Files:** `references/element_defs.py`, `references/reference_builder.py`, `references/reference_store.py`
+**Files:** `ml/src/references/element_defs.py`, `ml/src/references/reference_builder.py`, `ml/src/references/reference_store.py`
 
 **Usage:**
 ```bash
@@ -258,7 +258,7 @@ uv run python -m skating_biomechanics_ml.cli build-ref expert.mp4 \
 **Issue:** Segments include too much context (preparation, recovery)
 **Priority:** LOW - core functionality works
 
-**Files:** `segmentation/element_segmenter.py`, `scripts/visualize_segmentation.py`
+**Files:** `segmentation/element_segmenter.py`, `ml/scripts/visualize_segmentation.py`
 
 ---
 
@@ -274,8 +274,8 @@ uv run python -m skating_biomechanics_ml.cli build-ref expert.mp4 \
 - [x] Cyrillic text support (Pillow)
 - [x] Frame-perfect synchronization
 
-**Files:** `utils/visualization.py`, `scripts/visualize_with_skeleton.py`
-**Tests:** `tests/utils/test_visualization.py` (19 passing)
+**Files:** `utils/visualization.py`, `ml/scripts/visualize_with_skeleton.py`
+**Tests:** `ml/tests/utils/test_visualization.py` (19 passing)
 
 ---
 
@@ -299,10 +299,10 @@ uv run python -m skating_biomechanics_ml.cli build-ref expert.mp4 --element thre
 uv run python -m skating_biomechanics_ml.cli segment video.mp4
 
 # Visualize with debug overlay
-uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 3
+uv run python ml/scripts/visualize_with_skeleton.py video.mp4 --layer 3
 ```
 
-**Files:** `cli.py`, `pipeline.py`
+**Files:** `ml/src/cli.py`, `ml/src/pipeline.py`
 
 ---
 
@@ -335,7 +335,7 @@ uv run python scripts/visualize_with_skeleton.py video.mp4 --layer 3
 4. **ISU + Omega** (2026) - Multi-camera system achieving millimeter accuracy
 
 **Files:** `utils/blade_edge_detector.py`, `types.py` (BladeType enum)
-**Tests:** `tests/utils/test_blade_edge_detector.py` (19 passing)
+**Tests:** `ml/tests/utils/test_blade_edge_detector.py` (19 passing)
 
 **Usage:**
 ```python
@@ -378,16 +378,16 @@ summary = detector.get_blade_summary(states)
    - Layer 0: 3D skeleton overlay
    - Layer 1: CoM trajectory visualization
 
-**Files:** `src/pose_estimation/h36m_extractor.py`, `src/analysis/physics_engine.py`, `src/pose_3d/athletepose_extractor.py`, `src/models/motionagformer/`, `src/models/tcpformer/`
-**Tests:** `tests/pose_3d/` (11 passing), `tests/analysis/test_physics_engine.py` (18 passing)
+**Files:** `ml/src/pose_estimation/h36m_extractor.py`, `ml/src/analysis/physics_engine.py`, `ml/src/pose_3d/athletepose_extractor.py`, `ml/src/models/motionagformer/`, `ml/src/models/tcpformer/`
+**Tests:** `ml/tests/pose_3d/` (11 passing), `ml/tests/analysis/test_physics_engine.py` (18 passing)
 
 **Usage:**
 ```bash
 # Visualize with 3D skeleton
-uv run python scripts/visualize_with_skeleton.py video.mp4 --3d --layer 3
+uv run python ml/scripts/visualize_with_skeleton.py video.mp4 --3d --layer 3
 
 # With specific model
-uv run python scripts/visualize_with_skeleton.py video.mp4 --3d \
+uv run python ml/scripts/visualize_with_skeleton.py video.mp4 --3d \
     --model-3d data/models/motionagformer-s-ap3d.pth.tr
 ```
 
@@ -446,19 +446,19 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 1. **Replace Flight Time with CoM Trajectory** ✅ DONE
    - `compute_jump_height_com()` uses parabolic CoM trajectory
    - Deprecation warning added to hip-only method (60% error)
-   - **Files:** `src/metrics.py`
+   - **Files:** `ml/src/metrics.py`
 
 2. **Physics-Informed Pose Validator** ✅ DONE
    - Hampel filter for outlier rejection (MAD-based)
    - Enhanced Kalman filter with 6-state model [x, vx, ax, y, vy, ay]
    - RTS smoother for bidirectional filtering
-   - **Files:** `src/pose_filtering.py`
+   - **Files:** `ml/src/pose_filtering.py`
 
 3. **Fix Auto Phase Detection** ✅ DONE
    - Improved CoM-based detection with adaptive sigma thresholds
    - 2-sigma for takeoff, 3-sigma for landing
    - Physical plausibility validation (min 0.3s airtime)
-   - **Files:** `src/phase_detector.py`
+   - **Files:** `ml/src/phase_detector.py`
 
 ### Phase B: Multi-Person Tracking ✅ COMPLETE (2026-03-28)
 
@@ -466,7 +466,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
    - PoseTracker class with constant acceleration Kalman filter
    - Anatomical ratio Re-ID (shoulder/torso, femur/tibia, arm_span/height)
    - Solves skeleton switching with identical clothing
-   - **Files:** `src/detection/pose_tracker.py`, `src/skeletons.py`
+   - **Files:** `ml/src/detection/pose_tracker.py`, `ml/src/skeletons.py`
    - **Tests:** 14 tests for tracker, 14 tests for skeleton hierarchy
 
 5. **Integrate Blade Detection into Pipeline** ❌ DEPRIORITIZED
@@ -521,12 +521,12 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - ONNX Runtime backend (fast on CPU, CUDA on GPU)
     - Built-in tracking via PoseTracker
     - Default pose backend (--pose-backend rtmlib)
-    - Files: `src/pose_estimation/rtmlib_extractor.py`, `src/pose_estimation/halpe26.py`
+    - Files: `ml/src/pose_estimation/rtmlib_extractor.py`, `ml/src/pose_estimation/halpe26.py`
 
 14. **Sports2D Angle Integration** ✅ DONE (2026-04-01)
     - Foot angle functions: segment_angle, foot_angle, ankle_dorsiflexion
     - Used in blade edge detection pipeline
-    - Files: `src/pose_estimation/halpe26.py`
+    - Files: `ml/src/pose_estimation/halpe26.py`
 
 15. **Monitor Pose3DM-L** 📝 WATCH
     - New SOTA 3D lifter: 37.9mm MPJPE (vs MotionAGFormer 38.4mm)
@@ -543,42 +543,42 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - PersonClick + TrackedExtraction types
     - Interactive person selection (--select-person)
     - Track migration via anatomical biometrics
-    - Files: `src/pose_estimation/h36m_extractor.py`, `src/types.py`
+    - Files: `ml/src/pose_estimation/h36m_extractor.py`, `ml/src/types.py`
 
 18. **GapFiller** ✅ DONE
     - 3-tier gap filling: linear interp, velocity extrapolation, split+warn
     - Phase-aware (splits at phase boundaries)
-    - Files: `src/utils/gap_filling.py`
+    - Files: `ml/src/utils/gap_filling.py`
 
 19. **Per-Frame Spatial Reference** ✅ DONE
     - Adaptive camera pose estimation every 30 frames
-    - Files: `src/detection/spatial_reference.py`
+    - Files: `ml/src/detection/spatial_reference.py`
 
 20. **Pipeline Restructure** ✅ DONE
     - _extract_and_track() replaces direct extract_video() calls
-    - Files: `src/pipeline.py`, `src/cli.py`, `src/references/reference_builder.py`
+    - Files: `ml/src/pipeline.py`, `ml/src/cli.py`, `ml/src/references/reference_builder.py`
 
 ### Phase G: 3D-Corrected Overlay (2026-04-01) ✅ DONE
 
 21. **Kinematic Constraints** ✅ DONE
     - Bone length enforcement, joint angle limits
     - 3 iterations, kinematic chain order
-    - Files: `src/pose_3d/kinematic_constraints.py`
+    - Files: `ml/src/pose_3d/kinematic_constraints.py`
 
 22. **Anchor-Based Projection** ✅ DONE
     - 3D→2D projection with per-frame torso scale
     - Confidence blending (trust corrected at low confidence)
-    - Files: `src/pose_3d/anchor_projection.py`
+    - Files: `ml/src/pose_3d/anchor_projection.py`
 
 23. **CorrectiveLens Pipeline** ✅ DONE
     - Orchestrates: 3D lift → constraints → project → blend
     - Falls back to Biomechanics3DEstimator
-    - Files: `src/pose_3d/corrective_pipeline.py`
+    - Files: `ml/src/pose_3d/corrective_pipeline.py`
 
 24. **3D Overlay in Visualization** ✅ DONE
     - --3d flag uses CorrectiveLens instead of PIP window
     - PIP window deprecated
-    - Files: `scripts/visualize_with_skeleton.py`, `src/visualization/skeleton/drawer.py`
+    - Files: `ml/scripts/visualize_with_skeleton.py`, `ml/src/visualization/skeleton/drawer.py`
 
 ### Phase H: Performance & GPU (2026-04-01) ✅ DONE
 
@@ -586,24 +586,24 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - onnxruntime-gpu with CUDA 12 compat libs on CUDA 13.x system
     - 7.1x speedup (5.6s vs 39.4s for 364 frames)
     - setup_cuda_compat.sh for persistence
-    - Files: `scripts/setup_cuda_compat.sh`
+    - Files: `ml/scripts/setup_cuda_compat.sh`
 
 26. **Frame Skip & Render Scale** ✅ DONE
     - frame_skip=8: extract every 8th frame, interpolate rest
     - render-scale 0.5/0.33: downscale rendering
     - det_frequency=8: detect person every 8 frames
-    - Files: `scripts/visualize_with_skeleton.py`
+    - Files: `ml/scripts/visualize_with_skeleton.py`
 
 27. **Comparison Tool** ✅ DONE
     - Side-by-side and overlay modes
     - Selectable overlays (skeleton, angles, timer, axis)
     - Pose caching for instant re-render
-    - Files: `src/visualization/comparison.py`
+    - Files: `ml/src/visualization/comparison.py`
 
 28. **Interactive Person Selection** ✅ DONE
     - --select-person flag with numbered preview
     - --person-click X Y for scripted use
-    - Files: `src/cli.py`, `src/pose_estimation/h36m_extractor.py`
+    - Files: `ml/src/cli.py`, `ml/src/pose_estimation/h36m_extractor.py`
 
 ### Phase I: OOFSkate-Approach — Body Kinematics Quality Analysis (2026-04-11)
 
@@ -616,14 +616,14 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - Hard landing detection (velocity spike > threshold)
     - Landing stability (ankle/knee angle consistency post-landing)
     - Clean edge vs toe assist proxy: sudden velocity change = likely toe pick
-    - **Files:** `src/analysis/metrics.py`
+    - **Files:** `ml/src/analysis/metrics.py`
     - **Estimated:** 2-3 hours
 
 30. **Torso Lean & Approach Arc** 📝 PLANNED
     - Torso lean angle relative to vertical (spine→neck vector)
     - Approach trajectory curvature (CoM x-z path)
     - Proxy for edge type: lutz (lean back, long outside arc) vs flip (lean forward, inside arc)
-    - **Files:** `src/analysis/metrics.py`, `src/analysis/physics_engine.py`
+    - **Files:** `ml/src/analysis/metrics.py`, `ml/src/analysis/physics_engine.py`
     - **Estimated:** 3-4 hours
 
 31. **Element Quality Scoring (GOE proxy)** 📝 PLANNED
@@ -631,7 +631,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - Based on: height, rotation, landing quality, airtime, torso control
     - Comparison against reference database averages
     - Russian text output: "Оценка качества: +1.2 GOE"
-    - **Files:** `src/analysis/metrics.py`, `src/analysis/recommender.py`
+    - **Files:** `ml/src/analysis/metrics.py`, `ml/src/analysis/recommender.py`
     - **Estimated:** 4-6 hours
 
 32. **Reference Database Expansion** 📝 PLANNED
@@ -655,19 +655,19 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 **Status:** Fully implemented, GPU-accelerated
 
 17. **Dual-Video Comparison** ✅ DONE
-    - `src/visualization/comparison.py` — ComparisonRenderer module
+    - `ml/src/visualization/comparison.py` — ComparisonRenderer module
     - Side-by-side and overlay modes
     - Configurable overlays: skeleton, axis, angles, timer
     - Pose caching for instant re-render
 
 18. **Vertical Axis Layer** ✅ DONE
-    - `src/visualization/layers/vertical_axis_layer.py`
+    - `ml/src/visualization/layers/vertical_axis_layer.py`
 
 19. **Joint Angle Layer** ✅ DONE
-    - `src/visualization/layers/joint_angle_layer.py`
+    - `ml/src/visualization/layers/joint_angle_layer.py`
 
 20. **Timer Layer** ✅ DONE
-    - `src/visualization/layers/timer_layer.py`
+    - `ml/src/visualization/layers/timer_layer.py`
 
 21. **Pose Validation** ✅ DONE
     - Gap-based filling, spread threshold
