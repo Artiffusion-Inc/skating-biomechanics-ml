@@ -34,4 +34,4 @@ docs/
 
 - `research/RESEARCH_SUMMARY_2026-03-28.md` — comprehensive summary of 41 papers across 5 themes
 - `research/RESEARCH_POSE_TOOLS_2026-03-31.md` — YOLO, RTMPose, Pose3DM comparison
-- `DATASETS.md` — dataset registry with download links and relationships
+- `../data/DATASETS.md` — dataset registry with download links and relationships

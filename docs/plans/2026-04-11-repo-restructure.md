@@ -1,7 +1,7 @@
 ---
 title: "Repo Restructure: frontend/, backend/, ml/ at Root"
 date: "2026-04-11"
-status: planned
+status: completed
 ---
 # Repo Restructure: frontend/, backend/, ml/ at Root
 

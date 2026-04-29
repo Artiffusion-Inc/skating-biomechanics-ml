@@ -1,7 +1,7 @@
 ---
 title: "Strava for Figure Skating — Coach Dashboard MVP"
 date: "2026-04-11"
-status: planned
+status: completed
 ---
 # Strava for Figure Skating — Coach Dashboard MVP
 

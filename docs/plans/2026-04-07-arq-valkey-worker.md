@@ -1,7 +1,7 @@
 ---
 title: "arq + Valkey Worker Implementation Plan"
 date: "2026-04-07"
-status: planned
+status: completed
 ---
 # arq + Valkey Worker Implementation Plan
 
