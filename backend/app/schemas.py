@@ -8,6 +8,20 @@ from typing import Any
 
 from pydantic import BaseModel, EmailStr, Field, field_validator
 
+
+class ValidationErrorDetail(BaseModel):
+    field: str
+    message: str
+    value: Any
+
+
+class ErrorResponse(BaseModel):
+    error: str
+    message: str
+    details: dict | list[ValidationErrorDetail] | None = None
+    path: str = ""
+
+
 # ---------------------------------------------------------------------------
 # Auth
 # ---------------------------------------------------------------------------
