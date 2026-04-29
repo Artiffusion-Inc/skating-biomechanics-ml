@@ -2,15 +2,15 @@
 
 ## Tech Stack
 
-- **Framework**: Next.js 16 with Turbopack (middleware NOT supported — use server components for auth)
+- **Framework**: Next.js 16 + Turbopack. No middleware → server components for auth
 - **Language**: TypeScript, React 19
 - **Styling**: Tailwind CSS v4, shadcn/ui, OKLCH color system
 - **State**: React Query (@tanstack/react-query) + Zod schema validation
-- **i18n**: next-intl (messages in `frontend/messages/ru.json`, `en.json`)
+- **i18n**: next-intl. Messages: `frontend/messages/ru.json`, `en.json`
 - **React Query**: @tanstack/react-query for server state
 - **Icons**: Lucide React
 - **Charts**: Recharts
-- **Runtime**: bun (NOT npm/npx)
+- **Runtime**: bun. No npm/npx
 
 ## Project Structure
 
@@ -80,7 +80,7 @@ frontend/
 
 ### No useEffect (enforced)
 
-**Never use `useEffect` directly.** Use these replacements:
+No `useEffect` directly. Use these:
 
 | Instead of useEffect for... | Use |
 |----------------------------|-----|
@@ -91,7 +91,7 @@ frontend/
 
 ### Data Fetching
 
-Always use React Query with Zod validation:
+React Query + Zod validation:
 ```typescript
 export function useSessions(userId?: string) {
   return useQuery({
@@ -116,10 +116,10 @@ export function Component({ prop }: Props) {
 
 ## Auth Architecture
 
-**No middleware** — Turbopack doesn't reliably support it. Instead:
+No middleware — Turbopack unreliable.
 
 1. **Server-side gate**: `(app)/layout.tsx` checks `sb_auth` cookie via `cookies()` + `redirect()`
-2. **Auth layout**: `(auth)/layout.tsx` redirects authenticated users away from login/register
+2. **Auth layout**: `(auth)/layout.tsx` redirects authenticated users from login/register
 3. **Client state**: `auth-provider.tsx` provides `user`, `isLoading`, `logout` via React context
 4. **Token refresh**: On mount, validates access token, falls back to refresh token, hard-redirects to `/login` on failure via `window.location.href`
 5. **Cookie sync**: `setTokens()` sets `sb_auth=1` cookie, `clearTokens()` deletes it
@@ -131,8 +131,8 @@ export function Component({ prop }: Props) {
 - **Bottom dock**: visible on iPhone + iPad (`lg:hidden`), hidden on MacBook
 - **Desktop nav**: hidden on mobile (`hidden md:flex`), handles desktop tabs
 - **Safe area**: `pb-[env(safe-area-inset-bottom)]` on bottom dock, `pt-[env(safe-area-inset-top)]` on auth layout
-- **Viewport**: `min-h-[dvh]` for correct mobile height
-- **Touch targets**: `px-4 py-1.5 rounded-lg` minimum on interactive elements
+- **Viewport**: `min-h-[dvh]` for mobile height
+- **Touch targets**: `px-4 py-1.5 rounded-lg` min on interactive elements
 
 ## Theming
 
@@ -141,11 +141,11 @@ export function Component({ prop }: Props) {
 - **Typography**: Inter Variable, `.nike-h1` (2rem/500), `.nike-h2` (1.5rem/500), `.nike-h3` (1.125rem/600), `.nike-body` (1rem/400)
 - **Border radius**: `--radius-sm` (0.5rem), `--radius-md` (1.25rem), `--radius-lg` (1.875rem)
 - **Dark mode**: Class-based via `next-themes` (`attribute="class"`)
-- **No hard-coded colors** — use CSS custom properties via inline `style={{ color: "oklch(var(--score-good))" }}`
+- **No hard-coded colors** — CSS custom properties via inline `style={{ color: "oklch(var(--score-good))" }}`
 
 ## Element Labels
 
-Use i18n, not local constants:
+Use i18n. No local constants:
 ```typescript
 const te = useTranslations("elements")
 const label = te("waltz_jump") // "Вальсовый" / "Waltz Jump"

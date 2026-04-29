@@ -7,16 +7,16 @@
 
 ## Project Overview
 
-ML-based AI coach for figure skating. Analyzes video, compares attempts to professional references, provides biomechanical feedback in Russian.
+ML AI coach for figure skating. Analyze video, compare to pro refs, biomech feedback in Russian.
 
 **Vision:** AI-тренер по фигурному катанию — анализ видео и рекомендации на русском.
 
 ## Coding Principles
 
-- **Think first** — state assumptions explicitly. If unclear, ask before coding. Present tradeoffs when multiple approaches exist.
-- **Minimum code** — no speculative features, abstractions, or "flexibility" not requested. If 200 lines could be 50, rewrite.
-- **Surgical changes** — every changed line must trace to the request. Don't refactor working code or "improve" adjacent code. Match existing style even if you'd do it differently.
-- **Verifiable goals** — transform tasks into testable outcomes. "Fix the bug" → write a failing test first, then fix. State a verify step for each plan step.
+- **Think first** — state assumptions. Unclear? Ask before code. Present tradeoffs.
+- **Minimum code** — no speculative features, abstractions, "flexibility" unrequested. 200 lines → 50? Rewrite.
+- **Surgical changes** — each line trace to request. No refactor working code. Match style.
+- **Verifiable goals** — tasks → testable outcomes. "Fix bug" → failing test first, then fix. Verify step per plan step.
 
 ## Directory Structure
 
@@ -66,7 +66,6 @@ skating-biomechanics-ml/
 └── pyproject.toml                    # Root config (shared dev deps)
 ```
 
-
 ## Architecture
 
 ```
@@ -83,14 +82,14 @@ ML Pipeline:
     → Rule-based Recommender → Russian Text Report
 ```
 
-**Key architectural constraint:** Backend (`backend/`) does not import ML pipeline internals (pose estimation, analysis, visualization). The arq worker may import ML types (`H36Key`, `VastResult`) and dispatch to ML, but never calls pipeline internals directly. All heavy ML computation runs on GPU (local or Vast.ai Serverless).
+**Key architectural constraint:** Backend (`backend/`) no import ML pipeline internals (pose estimation, analysis, visualization). arq worker may import ML types (`H36Key`, `VastResult`) and dispatch to ML, never call pipeline internals direct. Heavy ML → GPU (local or Vast.ai Serverless).
 
 **Key decisions:**
 - **rtmlib**: sole pose estimation backend — RTMO (COCO 17kp), ONNX (CPU+GPU)
-- **RTMO (COCO 17kp)** as primary format, directly compatible with H3.6M 17kp
-- **CorrectiveLens**: 3D lifting as corrective layer for 2D skeleton (Kinovea-style angles)
-- **PoseTracker**: anatomical biometric Re-ID instead of color (solves black clothing on ice)
-- **CoM trajectory** instead of flight time (eliminates 60% error for low jumps)
+- **RTMO (COCO 17kp)** primary format, direct compatible H3.6M 17kp
+- **CorrectiveLens**: 3D lift corrective layer 2D skeleton (Kinovea-style angles)
+- **PoseTracker**: anatomical biometric Re-ID not color (solves black clothing on ice)
+- **CoM trajectory** not flight time (eliminates 60% error low jumps)
 
 ## Tech Stack
 
@@ -109,7 +108,7 @@ ML Pipeline:
 
 - **Format**: `feature/<short-name>` (e.g., `feature/onnx-export`)
 - **Main branch**: `master`
-- **Before push**: `git fetch origin && git merge origin/master`
+- **Pre-push**: `git fetch origin && git merge origin/master`
 
 ### Commits
 
@@ -123,60 +122,59 @@ ML Pipeline:
 |-------|-------|
 | Base branch | `master` |
 | Title | Same format as commit |
-| Description | Must include "Что сделано" and "Как проверить" sections |
+| Description | Include "Что сделано" and "Как проверить" sections |
 
 ## GPU Requirements
 
-**GPU-only. CPU inference is forbidden.** Always use `device='cuda'`.
-Before running: `bash ml/scripts/setup_cuda_compat.sh` (required after `uv sync`).
-System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-compat/`.
+**GPU-only. CPU inference forbidden.** Always use `device='cuda'`.
+Pre-run: `bash ml/scripts/setup_cuda_compat.sh` (required after `uv sync`).
+System CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs `.venv/cuda-compat/`.
 
 ## Key Concepts
 
-- `poses_norm` — Normalized [0,1], `poses_px` — Pixel coordinates. Validate with `assert_pose_format()`.
-- RTMO directly outputs H3.6M 17kp format (no conversion needed)
+- `poses_norm` — Normalized [0,1], `poses_px` — Pixel coords. Validate `assert_pose_format()`.
+- RTMO direct output H3.6M 17kp format (no conversion)
 - **CorrectiveLens**: 2D → MotionAGFormer 3D lift → kinematic constraints → anchor projection → blend.
-- **CUDA compat**: standalone CUDA 12 libs in `.venv/cuda-compat/` with patched RUNPATH.
+- **CUDA compat**: standalone CUDA 12 libs `.venv/cuda-compat/` with patched RUNPATH.
 
 ## Remote GPU Processing (Vast.ai Serverless)
 
-Worker dispatches to Vast.ai Serverless GPU when `VASTAI_API_KEY` is set, falls back to local GPU. Worker code lives in `backend/app/worker.py`, Vast.ai server in `ml/gpu_server/`.
+Worker dispatches Vast.ai Serverless GPU when `VASTAI_API_KEY` set, fallback local GPU. Worker code `backend/app/worker.py`, Vast.ai server `ml/gpu_server/`.
 
 **Image**: `ghcr.io/xpos587/skating-ml-gpu:latest` — multi-stage, 4.9GB, no torch/timm/triton.
 
-
 ## Tracking Debugging Workflow
 
-When tracking quality degrades (skeleton jumps to wrong person), follow this data-driven analysis approach. **Do NOT guess — extract data and find the exact divergence frame.**
+Tracking degrades (skeleton jumps wrong person) → data-driven analysis. **Do NOT guess — extract data, find exact divergence frame.**
 
 ### Step 1: Isolate the layer
 
-The tracking pipeline has 3 layers that can independently cause track switches:
+Tracking pipeline 3 layers, each can cause track switches:
 1. **Sports2DTracker** — per-frame centroid association (Kalman-predicted distance matrix)
-2. **Anti-steal logic** — in `ml/src/pose_estimation/rtmlib_extractor.py`, guards against centroid jumps
-3. **Tracklet merger** — post-hoc NaN gap filling with biometric re-association
+2. **Anti-steal logic** — `ml/src/pose_estimation/rtmlib_extractor.py`, guards centroid jumps
+3. **Tracklet merger** — post-hoc NaN gap fill with biometric re-association
 
 ### Step 2: Analyze centroid trajectories
 
-In the CSV, look for:
-- **Sports2D misassignment**: track ID on wrong detection index without anti-steal trigger
-- **Anti-steal false positive**: `target_track_id` switched even though Sports2D assigned correctly
-- **Tracklet merger error**: wrong track merged into the gap
+CSV check:
+- **Sports2D misassignment**: track ID wrong detection index, no anti-steal trigger
+- **Anti-steal false positive**: `target_track_id` switched though Sports2D assigned correct
+- **Tracklet merger error**: wrong track merged into gap
 
-### Step 3: Fix the root cause
+### Step 3: Fix root cause
 
-Key lessons learned:
-- **Anti-steal must use AND (not OR)** for combining position + biometric signals.
+Lessons:
+- **Anti-steal use AND (not OR)** position + biometric signals.
 - **Kalman dt=1.0 (frame-based), not dt=1/fps**.
-- **Figure skating movements are NOT anomalies** — leg swings, rotations are normal.
+- **Figure skating movements NOT anomalies** — leg swings, rotations normal.
 
 ### Anti-steal thresholds
 
-- Centroid jump: `> 0.15` (normalized coordinates)
+- Centroid jump: `> 0.15` (normalized coords)
 - Skeletal anomaly: `> 0.25` (bone ratio change)
-- **Logic: AND** — both must exceed threshold simultaneously
+- **Logic: AND** — both exceed threshold same time
 
 ## References
 
 - @ROADMAP.md — project status (SINGLE SOURCE OF TRUTH)
-- @docs/CLAUDE.md — documentation index (research, specs, plans)
+- @docs/CLAUDE.md — docs index (research, specs, plans)

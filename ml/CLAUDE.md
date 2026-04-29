@@ -2,7 +2,7 @@
 
 ## Architectural Constraint
 
-**ml depends on backend for infrastructure, never for ML.** `ml/` is a pure ML library — no knowledge of DB, task queues, or web frameworks. The arq worker (which orchestrates ML dispatch) lives in `backend/app/` and imports from `ml/` for types (`H36Key`, `VastResult`) and GPU dispatch.
+**ml use backend for infra, never for ML.** `ml/` = pure ML lib. No DB, queue, web framework knowledge. arq worker (orchestrate ML dispatch) live in `backend/app/`, import `ml/` for types (`H36Key`, `VastResult`) and GPU dispatch.
 
 ## Project Structure
 
@@ -101,9 +101,9 @@ ml/
 
 | Type | Purpose |
 |------|---------|
-| `H36Key` (IntEnum) | H3.6M 17-keypoint indices (primary format) |
+| `H36Key` (IntEnum) | H3.6M 17-keypoint indices. Primary format |
 | `FrameKeypoints` | Single frame: (17, 2) or (17, 3) array |
-| `PersonClick` | User's person selection (x, y, frame) |
+| `PersonClick` | User person selection (x, y, frame) |
 | `TrackedExtraction` | Per-person tracked pose sequence |
 | `ElementPhase` | takeoff/flight/landing phase markers |
 | `BladeType` (Enum) | INSIDE/OUTSIDE/FLAT/TOE_PICK/UNKNOWN |
@@ -122,7 +122,7 @@ Video → PoseExtractor (RTMO COCO 17kp)
 
 ## GPU Requirements
 
-**GPU-only. CPU inference is forbidden.** Always use `device='cuda'`.
+**GPU only. CPU inference forbidden.** Always use `device='cuda'`.
 
 ```bash
 # Required after every uv sync
@@ -145,38 +145,38 @@ cfg.onnx_providers                  # ["CUDAExecutionProvider", "CPUExecutionPro
 
 ## Numba JIT Optimizations
 
-Compute-intensive functions use Numba JIT for acceleration:
+Compute-heavy fn use Numba JIT:
 
 - **Geometry:** `_angle_3pt_rad_numba()`, `angle_3pt_batch()` - 5M+ ops/sec
 - **Smoothing:** `_one_euro_filter_sequence_numba()`, `smooth_trajectory_2d_numba()` - 44M+ frames/sec
 - **Metrics:** `_compute_knee_angle_series_numba()`, `_compute_trunk_lean_series_numba()` - 50K+ ops/sec
 
-**Expected speedup:** 10-100x for repeated operations (after JIT compilation).
+**Expected speedup:** 10-100x repeated ops (after JIT compile).
 
-**Usage:** Automatic - no API changes required. First call is slower (compilation), subsequent calls are fast.
+**Usage:** Auto. No API change. First call slow (compile), later fast.
 
 **Benchmark:** `uv run python ml/scripts/benchmark_numba.py`
 
-**Note:** TensorRT remains experimental (ONNX by default for serverless compatibility).
+**Note:** TensorRT experimental. ONNX default for serverless compat.
 
 ## Worker Jobs (`backend/app.worker`)
 
-Two async jobs registered with arq:
+Two async arq jobs:
 
 | Job | Trigger | What it does |
 |-----|---------|-------------|
-| `process_video_task` | `POST /process` | Full ML pipeline → save results to DB |
-| `detect_video_task` | `POST /detect` | RTMPose extraction → render preview → store in Valkey |
+| `process_video_task` | `POST /process` | Full ML pipeline → save to DB |
+| `detect_video_task` | `POST /detect` | RTMPose → render preview → store Valkey |
 
-Both jobs download video from R2, process on GPU, and store results. When `VASTAI_API_KEY` is set, jobs dispatch to Vast.ai Serverless GPU.
+Both jobs download video from R2, process on GPU, store results. When `VASTAI_API_KEY` set, dispatch to Vast.ai Serverless GPU.
 
 ## CorrectiveLens (Disabled by Default)
 
-3D lifting as corrective layer for 2D skeleton. Adds ~3px max shift — not worth the compute for most use cases. Enable with `--3d` flag in visualization scripts.
+3D lift as corrective layer for 2D skeleton. ~3px max shift. Not worth compute for most. Enable with `--3d` flag in viz scripts.
 
 ## Tracking Debugging
 
-When skeleton jumps to wrong person, follow the data-driven approach in @CLAUDE.md (Tracking Debugging Workflow section).
+Skeleton jump to wrong person → follow data-driven approach in @CLAUDE.md (Tracking Debugging Workflow).
 
 ## Before Committing
 

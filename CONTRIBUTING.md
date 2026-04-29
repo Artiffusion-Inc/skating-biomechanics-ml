@@ -30,7 +30,7 @@ git clone <repo-url> && cd skating-biomechanics-ml
 uv sync
 
 # Install frontend dependencies
-cd src/frontend && bun install && cd ../..
+cd frontend && bun install && cd ../..
 
 # Setup CUDA compatibility (required after uv sync)
 bash scripts/setup_cuda_compat.sh
@@ -46,15 +46,15 @@ git config commit.template .gitmessage
 
 ```bash
 # Backend (Python)
-uv run pytest tests/ -v -m "not slow" --tb=short
-uv run ruff check src/ tests/ scripts/
-uv run basedpyright --level error src/
+uv run pytest backend/tests/ ml/tests/ -v -m "not slow" --tb=short
+uv run ruff check backend/ ml/
+uv run basedpyright --level error backend/app ml/src/
 
 # Frontend
-cd src/frontend && bunx biome check . && cd ../..
+cd frontend && bunx biome check . && cd ../..
 
 # All checks (via Taskfile)
-task ci
+go-task ci
 ```
 
 ---
@@ -66,7 +66,7 @@ task ci
 ```bash
 git checkout master
 git pull
-git checkout -b <username>/<feature-name>
+git checkout -b feature/<short-name>
 ```
 
 ### Commits
@@ -117,8 +117,8 @@ lefthook run biome-check # Run biome on frontend
 Ruff handles both. Config in `pyproject.toml`.
 
 ```bash
-uv run ruff check src/ tests/ scripts/ --fix  # Lint
-uv run ruff format src/ tests/ scripts/        # Format
+uv run ruff check backend/ ml/ --fix  # Lint
+uv run ruff format backend/ ml/        # Format
 ```
 
 ### Type Checking
@@ -126,7 +126,7 @@ uv run ruff format src/ tests/ scripts/        # Format
 Basedpyright (strict fork of pyright). Config in `pyproject.toml`.
 
 ```bash
-uv run basedpyright --level error src/
+uv run basedpyright --level error backend/app ml/src/
 ```
 
 ### Testing
@@ -134,10 +134,10 @@ uv run basedpyright --level error src/
 Pytest with coverage. 431+ tests.
 
 ```bash
-uv run pytest tests/ -v                        # All tests
-uv run pytest tests/ -v -m "not slow"          # Skip slow tests
-uv run pytest tests/ -v -k "test_tracker"      # By name
-uv run pytest tests/ --cov=src --cov-report=html  # With coverage
+uv run pytest backend/tests/ ml/tests/ -v                        # All tests
+uv run pytest backend/tests/ ml/tests/ -v -m "not slow"          # Skip slow tests
+uv run pytest backend/tests/ ml/tests/ -v -k "test_tracker"      # By name
+uv run pytest backend/tests/ ml/tests/ --cov=backend/app --cov=ml/src --cov-report=html  # With coverage
 ```
 
 ### Key Conventions
@@ -153,13 +153,13 @@ uv run pytest tests/ --cov=src --cov-report=html  # With coverage
 Task runner for common development workflows:
 
 ```bash
-task ci           # Run all quality checks (Python + frontend)
-task test         # Run Python test suite
-task lint         # Run ruff lint
-task format       # Run ruff format
-task typecheck    # Run basedpyright
-task biome-check  # Run biome on frontend
-task security     # Run bandit security scan
+go-task ci           # Run all quality checks (Python + frontend)
+go-task test         # Run Python test suite
+go-task lint         # Run ruff lint
+go-task format       # Run ruff format
+go-task typecheck    # Run basedpyright
+go-task biome-check  # Run biome on frontend
+go-task security     # Run bandit security scan
 ```
 
 ### Security
@@ -167,7 +167,7 @@ task security     # Run bandit security scan
 Security scanning with [bandit](https://bandit.readthedocs.io/):
 
 ```bash
-uv run bandit -r src/
+uv run bandit -r backend/app ml/src
 ```
 
 ### Logging
