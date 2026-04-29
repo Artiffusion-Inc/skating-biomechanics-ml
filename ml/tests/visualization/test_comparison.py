@@ -140,10 +140,15 @@ class TestBuildLayers:
 class TestComparisonRendererInit:
     """Test renderer initialization."""
 
-    @patch("src.visualization.comparison.SkeletonLayer")
-    @patch("src.visualization.comparison.VerticalAxisLayer")
-    def test_default_init(self, mock_axis, mock_skeleton):
+    @patch("src.visualization.comparison._build_layers")
+    def test_default_init(self, mock_build):
         """Renderer with default config should build default layers."""
+        mock_build.return_value = [
+            MagicMock(z_index=0),
+            MagicMock(z_index=1),
+            MagicMock(z_index=2),
+            MagicMock(z_index=3),
+        ]
         renderer = ComparisonRenderer()
         assert renderer.config is not None
         assert renderer.config.mode == ComparisonMode.SIDE_BY_SIDE
@@ -190,7 +195,7 @@ class TestSavePoseCache:
         poses = [np.zeros((17, 2), dtype=np.float32) for _ in range(3)]
         renderer._save_pose_cache(video, poses)
         mock_savez.assert_called_once()
-        args, kwargs = mock_savez.call_args
+        kwargs = mock_savez.call_args.kwargs
         assert "poses" in kwargs
         assert kwargs["poses"].shape == (3, 17, 2)
 
@@ -485,18 +490,27 @@ class TestProcess:
         athlete.write_bytes(b"")
         reference.write_bytes(b"")
 
-        renderer = ComparisonRenderer()
+        cfg = ComparisonConfig(max_frames=3)
+        renderer = ComparisonRenderer(config=cfg)
         renderer.process(athlete, reference, output)
         mock_writer.close.assert_called_once()
 
-    @patch("src.visualization.comparison.cv2.VideoCapture")
-    @patch("src.visualization.comparison.get_video_meta")
+    @patch("src.visualization.comparison.draw_skeleton")
+    @patch("src.visualization.comparison.get_skating_optimized_config")
+    @patch("src.visualization.comparison.PoseSmoother")
+    @patch("src.visualization.comparison.PoseExtractor")
     @patch("src.visualization.comparison.H264Writer")
+    @patch("src.visualization.comparison.get_video_meta")
+    @patch("src.visualization.comparison.cv2.VideoCapture")
     def test_cannot_open_athlete_video(
         self,
-        mock_writer_cls,
-        mock_get_meta,
         mock_cap_cls,
+        mock_get_meta,
+        mock_writer_cls,
+        mock_extractor_cls,
+        mock_smoother_cls,
+        mock_get_config,
+        mock_draw,
         tmp_path,
         mock_video_meta,
     ):
@@ -508,24 +522,44 @@ class TestProcess:
         mock_writer = MagicMock()
         mock_writer_cls.return_value = mock_writer
 
+        extractor_instance = MagicMock()
+        tracked = MagicMock()
+        tracked.poses = np.zeros((5, 17, 3), dtype=np.float32)
+        extractor_instance.extract_video_tracked.return_value = tracked
+        mock_extractor_cls.return_value = extractor_instance
+
+        smoother_instance = MagicMock()
+        smoother_instance.smooth.side_effect = lambda x: x
+        mock_smoother_cls.return_value = smoother_instance
+        mock_get_config.return_value = {}
+
         athlete = tmp_path / "athlete.mp4"
         reference = tmp_path / "reference.mp4"
         output = tmp_path / "output.mp4"
         athlete.write_bytes(b"")
         reference.write_bytes(b"")
 
-        renderer = ComparisonRenderer()
+        cfg = ComparisonConfig(max_frames=5)
+        renderer = ComparisonRenderer(config=cfg)
         renderer.process(athlete, reference, output)
         mock_writer.close.assert_called_once()
 
-    @patch("src.visualization.comparison.cv2.VideoCapture")
-    @patch("src.visualization.comparison.get_video_meta")
+    @patch("src.visualization.comparison.draw_skeleton")
+    @patch("src.visualization.comparison.get_skating_optimized_config")
+    @patch("src.visualization.comparison.PoseSmoother")
+    @patch("src.visualization.comparison.PoseExtractor")
     @patch("src.visualization.comparison.H264Writer")
+    @patch("src.visualization.comparison.get_video_meta")
+    @patch("src.visualization.comparison.cv2.VideoCapture")
     def test_cannot_open_reference_video(
         self,
-        mock_writer_cls,
-        mock_get_meta,
         mock_cap_cls,
+        mock_get_meta,
+        mock_writer_cls,
+        mock_extractor_cls,
+        mock_smoother_cls,
+        mock_get_config,
+        mock_draw,
         tmp_path,
         mock_video_meta,
     ):
@@ -539,13 +573,25 @@ class TestProcess:
         mock_writer = MagicMock()
         mock_writer_cls.return_value = mock_writer
 
+        extractor_instance = MagicMock()
+        tracked = MagicMock()
+        tracked.poses = np.zeros((5, 17, 3), dtype=np.float32)
+        extractor_instance.extract_video_tracked.return_value = tracked
+        mock_extractor_cls.return_value = extractor_instance
+
+        smoother_instance = MagicMock()
+        smoother_instance.smooth.side_effect = lambda x: x
+        mock_smoother_cls.return_value = smoother_instance
+        mock_get_config.return_value = {}
+
         athlete = tmp_path / "athlete.mp4"
         reference = tmp_path / "reference.mp4"
         output = tmp_path / "output.mp4"
         athlete.write_bytes(b"")
         reference.write_bytes(b"")
 
-        renderer = ComparisonRenderer()
+        cfg = ComparisonConfig(max_frames=5)
+        renderer = ComparisonRenderer(config=cfg)
         renderer.process(athlete, reference, output)
         good_cap.release.assert_called_once()
         mock_writer.close.assert_called_once()
@@ -573,10 +619,10 @@ class TestProcess:
         """When one video ends before the other, last frame should be reused."""
         mock_get_meta.return_value = mock_video_meta
 
-        # Athlete cap yields 3 frames then ends
+        # Athlete cap yields 5 frames then ends
         cap_a = MagicMock()
         cap_a.isOpened.return_value = True
-        frames_a = [(True, np.ones((480, 640, 3), dtype=np.uint8) * i * 40) for i in range(3)] + [
+        frames_a = [(True, np.ones((480, 640, 3), dtype=np.uint8) * i * 40) for i in range(5)] + [
             (False, None)
         ]
         cap_a.read.side_effect = frames_a
