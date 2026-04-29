@@ -42,7 +42,6 @@ ENV/
 
 # Claude Code (local memory — per-machine, not shared)
 .claude/
-.agents/
 
 # Testing
 .pytest_cache/
