@@ -13,6 +13,18 @@ from src.pose_estimation.pose_extractor import PoseExtractor, extract_poses
 from src.types import PersonClick, TrackedExtraction, VideoMeta
 
 
+@pytest.fixture(autouse=True)
+def evict_rtmo_batch():
+    """Remove cached rtmo_batch so each test gets a fresh import."""
+    for key in list(sys.modules.keys()):
+        if "rtmo_batch" in key:
+            del sys.modules[key]
+    import src.pose_estimation
+
+    if hasattr(src.pose_estimation, "rtmo_batch"):
+        delattr(src.pose_estimation, "rtmo_batch")
+
+
 @pytest.fixture
 def dummy_video_meta():
     """Return a minimal VideoMeta for mocking."""
