@@ -32,23 +32,9 @@ def _run_analysis(audio_path: str) -> dict:
 
     # Define parallel analysis functions
     def _compute_bpm(y, sr):
-        """Compute BPM using madmom with librosa fallback."""
-        bpm = None
-        try:
-            from madmom.features.beats import DBNBeatTracker  # type: ignore[import-untyped]
-
-            act = DBNBeatTracker.preprocess(y, sr=sr)
-            beat_frames = DBNBeatTracker.detect(act, fps=sr / 512)
-            if len(beat_frames) > 1:
-                intervals = np.diff(beat_frames) * 512 / sr
-                bpm = float(60.0 / np.median(intervals))
-        except (ImportError, ValueError, OSError, RuntimeError) as _bpm_err:
-            logger.warning("madmom beat tracking failed, using librosa fallback: %s", _bpm_err)
-
-        if bpm is None:
-            tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
-            bpm = float(np.squeeze(tempo))
-        return round(bpm, 1)
+        """Compute BPM using librosa."""
+        tempo, _ = librosa.beat.beat_track(y=y, sr=sr)
+        return round(float(np.squeeze(tempo)), 1)
 
     def _compute_energy_peaks(y, sr):
         """Compute RMS energy curve and detect peaks."""
