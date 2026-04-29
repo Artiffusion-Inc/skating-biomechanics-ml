@@ -11,9 +11,7 @@ describe("cn", () => {
   })
 
   it("filters out falsy values", () => {
-    expect(cn("btn", false && "hidden", null, undefined, "active")).toBe(
-      "btn active"
-    )
+    expect(cn("btn", false && "hidden", null, undefined, "active")).toBe("btn active")
   })
 
   it("handles conditional classes with objects", () => {
