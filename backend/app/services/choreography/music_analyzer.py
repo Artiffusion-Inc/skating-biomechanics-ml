@@ -63,14 +63,15 @@ def _run_analysis(audio_path: str) -> dict:
             import msaf  # type: ignore[import-untyped]
 
             boundaries, labels = msaf.process(audio_path, boundaries_id="sf", labels_id="foote")
-            for i in range(len(boundaries) - 1):
-                structure.append(
-                    {
-                        "type": labels[i] if i < len(labels) else "unknown",
-                        "start": float(boundaries[i]),
-                        "end": float(boundaries[i + 1]),
-                    }
-                )
+            if boundaries is not None and labels is not None:
+                for i in range(len(boundaries) - 1):
+                    structure.append(
+                        {
+                            "type": labels[i] if i < len(labels) else "unknown",
+                            "start": float(boundaries[i]),
+                            "end": float(boundaries[i + 1]),
+                        }
+                    )
         except (ImportError, OSError, ValueError, RuntimeError) as _struct_err:
             logger.warning(
                 "MSAF structure analysis failed -- using empty structure: %s", _struct_err

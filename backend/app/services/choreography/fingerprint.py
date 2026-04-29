@@ -21,7 +21,7 @@ def compute_fingerprint(audio_path: str) -> str | None:
     try:
         import chromaprint
 
-        fp, _ = chromaprint.decode_file(str(path))
+        fp, _ = chromaprint.decode_file(str(path))  # type: ignore[reportAttributeAccessIssue]
         if fp:
             return fp
     except (ImportError, OSError, ValueError, AttributeError) as _fp_err:
