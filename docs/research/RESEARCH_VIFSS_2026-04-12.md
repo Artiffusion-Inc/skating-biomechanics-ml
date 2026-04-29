@@ -1,3 +1,9 @@
+---
+title: "VIFSS: View-Invariant Figure Skating-Specific Pose Representation"
+date: "2026-04-12"
+status: active
+citekey: "tanaka2025vifssviewinvari"
+---
 # VIFSS: View-Invariant Figure Skating-Specific Pose Representation
 
 **Paper:** arXiv:2508.10281 (submitted 2025-08-14)

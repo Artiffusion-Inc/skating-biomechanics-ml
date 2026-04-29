@@ -1,3 +1,7 @@
+---
+title: "Pipeline Profiling Results"
+date: "2026-04-18"
+---
 # Pipeline Profiling Results
 
 **Date:** 2026-04-18

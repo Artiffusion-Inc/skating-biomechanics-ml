@@ -1,3 +1,8 @@
+---
+title: "Sports2D-Inspired Visualization & Biomechanics Upgrade"
+date: "2026-04-03"
+status: planned
+---
 # Sports2D-Inspired Visualization & Biomechanics Upgrade
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

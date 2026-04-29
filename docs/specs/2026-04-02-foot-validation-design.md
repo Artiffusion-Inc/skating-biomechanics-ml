@@ -1,3 +1,8 @@
+---
+title: "Foot Keypoint Projection Validation"
+date: "2026-04-02"
+status: draft
+---
 # Foot Keypoint Projection Validation
 
 **Date:** 2026-04-02

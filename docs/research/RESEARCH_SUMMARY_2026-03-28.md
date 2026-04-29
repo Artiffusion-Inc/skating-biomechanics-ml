@@ -1,3 +1,9 @@
+---
+title: "Research Summary: Figure Skating ML System Enhancements"
+date: "2026-03-28"
+status: active
+citekey: "leuthold2025physicsinformed"
+---
 # Research Summary: Figure Skating ML System Enhancements
 **Date:** 2026-03-28
 **Sources:** Exa Web Search + Gemini Deep Research

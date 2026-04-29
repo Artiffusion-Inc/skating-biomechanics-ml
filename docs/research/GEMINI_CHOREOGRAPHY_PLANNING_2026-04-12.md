@@ -1,3 +1,8 @@
+---
+title: "**Automated Figure Skating Choreography Planning System: Technical and Strategic Assessment**"
+date: "2026-04-12"
+status: planned
+---
 # **Automated Figure Skating Choreography Planning System: Technical and Strategic Assessment**
 
 ## **Introduction**

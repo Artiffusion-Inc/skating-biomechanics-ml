@@ -1,3 +1,7 @@
+---
+title: "AthletePose3D Integration Plan"
+date: "2026-03-28"
+---
 # AthletePose3D Integration Plan
 
 **Date:** 2026-03-28

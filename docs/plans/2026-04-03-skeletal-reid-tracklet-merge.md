@@ -1,3 +1,8 @@
+---
+title: "Robust Person Re-ID: 3D Skeletal Identity + Tracklet Merging"
+date: "2026-04-03"
+status: planned
+---
 # Robust Person Re-ID: 3D Skeletal Identity + Tracklet Merging
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

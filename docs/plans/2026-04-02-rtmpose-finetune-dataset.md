@@ -1,3 +1,8 @@
+---
+title: "RTMPose Fine-Tune Dataset Preparation (v2)"
+date: "2026-04-02"
+status: planned
+---
 # RTMPose Fine-Tune Dataset Preparation (v2)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

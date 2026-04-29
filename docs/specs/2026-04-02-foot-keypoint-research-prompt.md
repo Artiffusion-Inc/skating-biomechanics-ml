@@ -1,3 +1,8 @@
+---
+title: "Research Prompt: Best Approach for Foot Keypoint Annotations in Pose Estimation Fine-Tuning"
+date: "2026-04-02"
+status: draft
+---
 # Research Prompt: Best Approach for Foot Keypoint Annotations in Pose Estimation Fine-Tuning
 
 ## Context

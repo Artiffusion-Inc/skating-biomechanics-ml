@@ -1,3 +1,7 @@
+---
+title: "Deep Research Prompt: Spatial Reference & Camera Calibration for Skating Analysis"
+status: active
+---
 # Deep Research Prompt: Spatial Reference & Camera Calibration for Skating Analysis
 
 ## Context

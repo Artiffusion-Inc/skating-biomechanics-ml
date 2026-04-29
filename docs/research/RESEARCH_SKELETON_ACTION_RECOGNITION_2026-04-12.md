@@ -1,3 +1,8 @@
+---
+title: "Skeleton-Based Action Recognition: Deep Research (2024-2026)"
+date: "2026-04-12"
+status: active
+---
 # Skeleton-Based Action Recognition: Deep Research (2024-2026)
 
 **Date:** 2026-04-12

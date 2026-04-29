@@ -1,3 +1,8 @@
+---
+title: "Research Prompt: Person Re-Identification Across Full Occlusion in Monocular Figure Skating Video"
+date: "2026-04-03"
+status: active
+---
 # Research Prompt: Person Re-Identification Across Full Occlusion in Monocular Figure Skating Video
 
 **Target:** Gemini Deep Research

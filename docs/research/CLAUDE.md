@@ -1,3 +1,6 @@
+---
+title: "docs/research/CLAUDE.md — Research Documentation"
+---
 # docs/research/CLAUDE.md — Research Documentation
 
 ## Structure

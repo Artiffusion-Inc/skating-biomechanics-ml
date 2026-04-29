@@ -1,3 +1,8 @@
+---
+title: "Research: Path to 80% Classification Accuracy"
+date: "2026-04-12"
+status: active
+---
 # Research: Path to 80% Classification Accuracy
 **Date:** 2026-04-12
 **Sources:** 4 research agents + Gemini Deep Research (24 papers, 33 citations) + prior research

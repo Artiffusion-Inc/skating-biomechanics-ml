@@ -1,3 +1,8 @@
+---
+title: "Parallelization & Performance Optimization Design"
+date: "2026-04-17"
+status: draft
+---
 # Parallelization & Performance Optimization Design
 
 **Date:** 2026-04-17

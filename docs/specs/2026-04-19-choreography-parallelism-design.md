@@ -1,3 +1,8 @@
+---
+title: "Choreography Pipeline: Parallelism & Async Design"
+date: "2026-04-19"
+status: draft
+---
 # Choreography Pipeline: Parallelism & Async Design
 
 **Date:** 2026-04-19

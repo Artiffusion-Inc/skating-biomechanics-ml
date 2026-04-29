@@ -1,3 +1,7 @@
+---
+title: "Deep Research Prompt: Enhanced Visualization for Figure Skating Analysis"
+status: active
+---
 # Deep Research Prompt: Enhanced Visualization for Figure Skating Analysis
 
 ## Context

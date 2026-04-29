@@ -1,3 +1,7 @@
+---
+title: "Spatial Reference Research Summary (Exa)"
+date: "2026-03-28"
+---
 # Spatial Reference Research Summary (Exa)
 **Date:** 2026-03-28
 **Source:** Exa Web Search (20 results)

@@ -1,3 +1,8 @@
+---
+title: "Авто-экспорт данных при визуализации"
+date: "2026-04-03"
+status: planned
+---
 # Авто-экспорт данных при визуализации
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

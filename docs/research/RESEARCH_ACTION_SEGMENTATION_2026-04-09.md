@@ -1,3 +1,8 @@
+---
+title: "Figure Skating Action Segmentation — Research"
+date: "2026-04-09"
+status: active
+---
 # Figure Skating Action Segmentation — Research
 **Date:** 2026-04-09
 **Source:** https://github.com/mayupei/figure-skating-action-segmentation

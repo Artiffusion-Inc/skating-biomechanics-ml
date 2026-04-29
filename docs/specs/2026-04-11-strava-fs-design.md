@@ -1,3 +1,8 @@
+---
+title: "Strava for Figure Skating — Coach Dashboard MVP"
+date: "2026-04-11"
+status: draft
+---
 # Strava for Figure Skating — Coach Dashboard MVP
 
 **Date:** 2026-04-11

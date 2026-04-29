@@ -1,3 +1,8 @@
+---
+title: "Phase 1: Auth + PostgreSQL + User Profiles"
+date: "2026-04-11"
+status: draft
+---
 # Phase 1: Auth + PostgreSQL + User Profiles
 
 **Date:** 2026-04-11

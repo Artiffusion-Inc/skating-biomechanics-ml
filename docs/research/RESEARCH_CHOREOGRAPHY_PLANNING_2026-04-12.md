@@ -1,3 +1,8 @@
+---
+title: "Automated Figure Skating Choreography Planning — Research"
+date: "2026-04-12"
+status: planned
+---
 # Automated Figure Skating Choreography Planning — Research
 **Date:** 2026-04-12
 **Sources:** Exa web search, GitHub API, Gemini Deep Research (~91 sources)

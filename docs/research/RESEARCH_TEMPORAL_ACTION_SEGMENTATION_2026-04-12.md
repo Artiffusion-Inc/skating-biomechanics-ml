@@ -1,3 +1,8 @@
+---
+title: "Temporal Action Segmentation (TAS) for Figure Skating — Deep Research"
+date: "2026-04-12"
+status: active
+---
 # Temporal Action Segmentation (TAS) for Figure Skating — Deep Research
 **Date:** 2026-04-12
 **Sources:** arXiv papers (2410.20427, 2408.16638, 2110.08568, 2303.17959, 2412.04353, 2006.09220), GitHub repos, survey TPAMI 2023

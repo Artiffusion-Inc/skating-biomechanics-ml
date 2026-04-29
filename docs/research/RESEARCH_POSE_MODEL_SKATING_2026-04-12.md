@@ -1,3 +1,8 @@
+---
+title: "Pose Model Research & SkatingVerse Analysis (2026-04-12)"
+date: "2026-04-12"
+status: active
+---
 # Pose Model Research & SkatingVerse Analysis (2026-04-12)
 
 ## DeepGlint 1st Place — SkatingVerse 95.73% (28 classes)

@@ -1,3 +1,8 @@
+---
+title: "Strava for Figure Skating — Coach Dashboard MVP"
+date: "2026-04-11"
+status: planned
+---
 # Strava for Figure Skating — Coach Dashboard MVP
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.

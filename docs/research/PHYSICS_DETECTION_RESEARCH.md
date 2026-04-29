@@ -1,3 +1,8 @@
+---
+title: "Deep Research Prompt: Physics-Based Figure Skating Detection System"
+status: active
+citekey: "leuthold2025physicsinformed"
+---
 # Deep Research Prompt: Physics-Based Figure Skating Detection System
 
 **Research Date:** 2026-03-27

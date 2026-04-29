@@ -1,3 +1,8 @@
+---
+title: "S3-Only Storage Migration Design"
+date: "2026-04-11"
+status: draft
+---
 # S3-Only Storage Migration Design
 
 **Date:** 2026-04-11

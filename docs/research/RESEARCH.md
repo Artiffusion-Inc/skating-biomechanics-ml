@@ -1,3 +1,7 @@
+---
+title: "Research Memory Bank"
+status: active
+---
 # Research Memory Bank
 
 > Index of all research materials. Documents are kept for historical context — decisions made, alternatives evaluated, and dead ends explored.

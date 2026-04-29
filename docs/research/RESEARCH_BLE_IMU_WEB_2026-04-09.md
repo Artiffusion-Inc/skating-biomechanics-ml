@@ -1,3 +1,8 @@
+---
+title: "BLE IMU Web Integration Research"
+date: "2026-04-09"
+status: active
+---
 # BLE IMU Web Integration Research
 **Date:** 2026-04-09
 **Goal:** Technical feasibility of connecting Bluetooth IMU sensors to a web application (React + FastAPI) for real-time figure skating analysis

@@ -1,3 +1,8 @@
+---
+title: "Research: Pose Estimation Tools for Figure Skating (2026-03-31)"
+date: "2026-03-31"
+status: active
+---
 # Research: Pose Estimation Tools for Figure Skating (2026-03-31)
 
 **Sources:** Web search + GitHub repos + documentation

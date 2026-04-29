@@ -1,3 +1,8 @@
+---
+title: "Pose Paradigm Research: SimCC vs RLE & Beyond (2026-04-25)"
+date: "2026-04-25"
+status: active
+---
 # Pose Paradigm Research: SimCC vs RLE & Beyond (2026-04-25)
 
 ## Context

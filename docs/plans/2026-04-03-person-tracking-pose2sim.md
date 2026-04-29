@@ -1,3 +1,8 @@
+---
+title: "Интеграция трекинга Pose2Sim"
+date: "2026-04-03"
+status: planned
+---
 # Интеграция трекинга Pose2Sim
 
 > **Для agentic-работников:** ОБЯЗАТЕЛЬНАЯ SUB-SKILL: Используй superpowers:subagent-driven-development (рекомендуется) или superpowers:executing-plans для реализации плана задача-за-задачей. Шаги используют чекбоксы (`- [ ]`) для отслеживания.

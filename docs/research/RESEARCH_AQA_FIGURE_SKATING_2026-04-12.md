@@ -1,3 +1,8 @@
+---
+title: "Action Quality Assessment for Figure Skating: Deep Research"
+date: "2026-04-12"
+status: active
+---
 # Action Quality Assessment for Figure Skating: Deep Research
 
 **Date:** 2026-04-12

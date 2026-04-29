@@ -1,3 +1,8 @@
+---
+title: "IMU Sensors for Figure Skating — Research"
+date: "2026-04-09"
+status: active
+---
 # IMU Sensors for Figure Skating — Research
 **Date:** 2026-04-09
 **Sources:** Claude Code research + Grok research + Ozon product pages

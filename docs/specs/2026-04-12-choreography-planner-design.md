@@ -1,3 +1,8 @@
+---
+title: "Choreography Planner — Design Spec"
+date: "2026-04-12"
+status: planned
+---
 # Choreography Planner — Design Spec
 
 **Date:** 2026-04-12
