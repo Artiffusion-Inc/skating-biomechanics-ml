@@ -7,7 +7,7 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, HTTPException, Request, status
 from sse_starlette.sse import EventSourceResponse
 
 from app.schemas import (
@@ -73,7 +73,7 @@ async def get_process_status(task_id: str):
     state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
-        raise HTTPException(status_code=404, detail="Task not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
 
     result = None
     if state.get("result"):
