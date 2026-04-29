@@ -56,7 +56,7 @@ def _program_to_response(program) -> ChoreographyProgramResponse:
 
 
 @router.post(
-    "/choreography/music/upload",
+    "/music/upload",
     response_model=UploadMusicResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -133,7 +133,7 @@ async def upload_music(
 
 
 @router.get(
-    "/choreography/music/{music_id}/analysis",
+    "/music/{music_id}/analysis",
 )
 async def get_music_analysis(music_id: str, user: CurrentUser, db: DbDep):
     """Get music analysis result."""
@@ -168,7 +168,7 @@ async def get_music_analysis(music_id: str, user: CurrentUser, db: DbDep):
 
 
 @router.post(
-    "/choreography/generate",
+    "/generate",
     response_model=GenerateResponse,
 )
 async def generate_layout(body: GenerateRequest, user: CurrentUser, db: DbDep):
@@ -220,7 +220,7 @@ async def generate_layout(body: GenerateRequest, user: CurrentUser, db: DbDep):
 
 
 @router.post(
-    "/choreography/validate",
+    "/validate",
     response_model=ValidateResponse,
 )
 async def validate_choreography(body: ValidateRequest):
@@ -243,7 +243,7 @@ async def validate_choreography(body: ValidateRequest):
 # ---------------------------------------------------------------------------
 
 
-@router.post("/choreography/render-rink")
+@router.post("/render-rink")
 async def render_rink_diagram(body: RenderRinkRequest):
     """Render an SVG rink diagram with element markers."""
     svg = render_rink(
@@ -261,7 +261,7 @@ async def render_rink_diagram(body: RenderRinkRequest):
 # ---------------------------------------------------------------------------
 
 
-@router.get("/choreography/programs", response_model=ProgramListResponse)
+@router.get("/programs", response_model=ProgramListResponse)
 async def list_programs(
     user: CurrentUser,
     db: DbDep,
@@ -278,7 +278,7 @@ async def list_programs(
 
 
 @router.post(
-    "/choreography/programs",
+    "/programs",
     response_model=ChoreographyProgramResponse,
     status_code=status.HTTP_201_CREATED,
 )
@@ -302,7 +302,7 @@ async def create_new_program(body: SaveProgramRequest, user: CurrentUser, db: Db
     return _program_to_response(program)
 
 
-@router.get("/choreography/programs/{program_id}", response_model=ChoreographyProgramResponse)
+@router.get("/programs/{program_id}", response_model=ChoreographyProgramResponse)
 async def get_program(program_id: str, user: CurrentUser, db: DbDep):
     """Get a choreography program."""
     program = await get_program_by_id(db, program_id)
@@ -313,7 +313,7 @@ async def get_program(program_id: str, user: CurrentUser, db: DbDep):
     return _program_to_response(program)
 
 
-@router.put("/choreography/programs/{program_id}", response_model=ChoreographyProgramResponse)
+@router.put("/programs/{program_id}", response_model=ChoreographyProgramResponse)
 async def update_existing_program(
     program_id: str,
     body: SaveProgramRequest,
@@ -343,7 +343,7 @@ async def update_existing_program(
 
 
 @router.delete(
-    "/choreography/programs/{program_id}",
+    "/programs/{program_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
 async def delete_existing_program(program_id: str, user: CurrentUser, db: DbDep):
@@ -361,7 +361,7 @@ async def delete_existing_program(program_id: str, user: CurrentUser, db: DbDep)
 # ---------------------------------------------------------------------------
 
 
-@router.post("/choreography/programs/{program_id}/export")
+@router.post("/programs/{program_id}/export")
 async def export_program(
     program_id: str,
     body: ExportRequest,

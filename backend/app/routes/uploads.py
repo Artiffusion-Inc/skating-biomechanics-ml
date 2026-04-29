@@ -16,7 +16,7 @@ router = APIRouter(tags=["uploads"])
 CHUNK_SIZE = 5 * 1024 * 1024  # 5MB
 
 
-@router.post("/uploads/init")
+@router.post("/init")
 async def init_upload(
     user: CurrentUser,
     file_name: str = Query(..., min_length=1),
@@ -67,7 +67,7 @@ class CompleteUploadRequest(BaseModel):
     parts: list[dict]
 
 
-@router.post("/uploads/complete")
+@router.post("/complete")
 async def complete_upload(user: CurrentUser, body: CompleteUploadRequest):
     """Complete a multipart upload. Returns the final object key."""
     r2 = _client()

@@ -23,7 +23,7 @@ from app.task_manager import (
 router = APIRouter()
 
 
-@router.post("/detect", response_model=DetectQueueResponse)
+@router.post("", response_model=DetectQueueResponse)
 async def enqueue_detect(
     request: Request,
     video: UploadFile,
@@ -52,7 +52,7 @@ async def enqueue_detect(
     return DetectQueueResponse(task_id=task_id, video_key=video_key)
 
 
-@router.get("/detect/{task_id}/status", response_model=TaskStatusResponse)
+@router.get("/{task_id}/status", response_model=TaskStatusResponse)
 async def get_detect_status(task_id: str):
     """Poll detection task status."""
     valkey = get_valkey()
@@ -75,7 +75,7 @@ async def get_detect_status(task_id: str):
     )
 
 
-@router.get("/detect/{task_id}/result", response_model=DetectResultResponse)
+@router.get("/{task_id}/result", response_model=DetectResultResponse)
 async def get_detect_result(task_id: str):
     """Get detection result (persons, preview)."""
     valkey = get_valkey()

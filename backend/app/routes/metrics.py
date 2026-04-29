@@ -30,7 +30,7 @@ from app.services.diagnostics import (
 router = APIRouter(tags=["metrics"])
 
 
-@router.get("/metrics/registry")
+@router.get("/registry")
 async def get_registry():
     """Static metric definitions for frontend."""
     return {
@@ -47,7 +47,7 @@ async def get_registry():
     }
 
 
-@router.get("/metrics/trend", response_model=TrendResponse)
+@router.get("/trend", response_model=TrendResponse)
 async def get_trend(
     user: CurrentUser,
     db: DbDep,
@@ -137,7 +137,7 @@ async def get_trend(
     )
 
 
-@router.get("/metrics/prs")
+@router.get("/prs")
 async def get_prs(
     user: CurrentUser,
     db: DbDep,
@@ -190,7 +190,7 @@ async def get_prs(
     return {"prs": prs}
 
 
-@router.get("/metrics/diagnostics", response_model=DiagnosticsResponse)
+@router.get("/diagnostics", response_model=DiagnosticsResponse)
 async def get_diagnostics(
     user: CurrentUser,
     db: DbDep,

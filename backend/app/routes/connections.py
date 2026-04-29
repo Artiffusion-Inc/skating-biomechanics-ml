@@ -39,9 +39,7 @@ def _conn_to_response(conn: Connection) -> ConnectionResponse:
     return data
 
 
-@router.post(
-    "/connections/invite", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED
-)
+@router.post("/invite", response_model=ConnectionResponse, status_code=status.HTTP_201_CREATED)
 async def invite(body: InviteRequest, user: CurrentUser, db: DbDep):
     """User invites another user to a connection."""
     to_user = await get_by_email(db, body.to_user_email)
@@ -67,7 +65,7 @@ async def invite(body: InviteRequest, user: CurrentUser, db: DbDep):
     return _conn_to_response(conn)
 
 
-@router.post("/connections/{conn_id}/accept", response_model=ConnectionResponse)
+@router.post("/{conn_id}/accept", response_model=ConnectionResponse)
 async def accept_invite(conn_id: str, user: CurrentUser, db: DbDep):
     """Invitee accepts a connection."""
     conn = await get_conn_by_id(db, conn_id)
@@ -84,7 +82,7 @@ async def accept_invite(conn_id: str, user: CurrentUser, db: DbDep):
     return _conn_to_response(conn)
 
 
-@router.post("/connections/{conn_id}/end", response_model=ConnectionResponse)
+@router.post("/{conn_id}/end", response_model=ConnectionResponse)
 async def end_connection(conn_id: str, user: CurrentUser, db: DbDep):
     """Either party ends the connection."""
     conn = await get_conn_by_id(db, conn_id)
@@ -102,14 +100,14 @@ async def end_connection(conn_id: str, user: CurrentUser, db: DbDep):
     return _conn_to_response(conn)
 
 
-@router.get("/connections", response_model=ConnectionListResponse)
+@router.get("", response_model=ConnectionListResponse)
 async def list_connections(user: CurrentUser, db: DbDep):
     """List all connections for the current user."""
     conns = await list_for_user(db, user.id)
     return ConnectionListResponse(connections=[_conn_to_response(c) for c in conns])
 
 
-@router.get("/connections/pending", response_model=ConnectionListResponse)
+@router.get("/pending", response_model=ConnectionListResponse)
 async def list_pending(user: CurrentUser, db: DbDep):
     """List pending invites received by the current user."""
     conns = await list_pending_for_user(db, user.id)

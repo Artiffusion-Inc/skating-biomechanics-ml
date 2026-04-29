@@ -55,7 +55,7 @@ async def _session_to_response(session) -> SessionResponse:
     )
 
 
-@router.post("/sessions", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
+@router.post("", response_model=SessionResponse, status_code=status.HTTP_201_CREATED)
 async def create_session(body: CreateSessionRequest, user: CurrentUser, db: DbDep):
     session = await create(
         db,
@@ -67,7 +67,7 @@ async def create_session(body: CreateSessionRequest, user: CurrentUser, db: DbDe
     return await _session_to_response(session)
 
 
-@router.get("/sessions", response_model=SessionListResponse)
+@router.get("", response_model=SessionListResponse)
 async def list_sessions(
     user: CurrentUser,
     db: DbDep,
@@ -104,7 +104,7 @@ async def list_sessions(
     )
 
 
-@router.get("/sessions/{session_id}", response_model=SessionResponse)
+@router.get("/{session_id}", response_model=SessionResponse)
 async def get_session(session_id: str, user: CurrentUser, db: DbDep):
     session = await get_by_id(db, session_id)
     if not session:
@@ -119,7 +119,7 @@ async def get_session(session_id: str, user: CurrentUser, db: DbDep):
     return await _session_to_response(session)
 
 
-@router.patch("/sessions/{session_id}", response_model=SessionResponse)
+@router.patch("/{session_id}", response_model=SessionResponse)
 async def patch_session(
     session_id: str,
     body: PatchSessionRequest,
@@ -135,7 +135,7 @@ async def patch_session(
     return await _session_to_response(session)
 
 
-@router.delete("/sessions/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{session_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_session(session_id: str, user: CurrentUser, db: DbDep):
     session = await get_by_id(db, session_id)
     if not session:
