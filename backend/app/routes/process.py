@@ -7,9 +7,10 @@ import json
 import logging
 import uuid
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, Request, status
 from sse_starlette.sse import EventSourceResponse
 
+from app.routes import raise_api_error
 from app.schemas import (
     MLModelFlags,
     ProcessRequest,
@@ -73,7 +74,12 @@ async def get_process_status(task_id: str):
     state = await get_task_state(task_id, valkey=valkey)
 
     if state is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Task not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Task not found",
+            details={"task_id": task_id},
+        )
 
     result = None
     if state.get("result"):

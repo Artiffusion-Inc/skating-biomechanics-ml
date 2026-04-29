@@ -3,12 +3,13 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 
 from app.auth.deps import CurrentUser, DbDep
 from app.crud.connection import is_connected_as
 from app.crud.session import count_by_user, create, get_by_id, list_by_user, soft_delete, update
 from app.models.connection import ConnectionType
+from app.routes import raise_api_error
 from app.schemas import (
     CreateSessionRequest,
     PatchSessionRequest,
@@ -86,8 +87,11 @@ async def list_sessions(
             db, from_user_id=user.id, to_user_id=user_id, connection_type=ConnectionType.COACHING
         )
     ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not a coach for this user"
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not a coach for this user",
+            details={"user_id": user_id},
         )
 
     sessions = await list_by_user(
@@ -108,14 +112,24 @@ async def list_sessions(
 async def get_session(session_id: str, user: CurrentUser, db: DbDep):
     session = await get_by_id(db, session_id)
     if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Session not found",
+            details={"session_id": session_id},
+        )
     if session.user_id != user.id and not await is_connected_as(
         db,
         from_user_id=user.id,
         to_user_id=session.user_id,
         connection_type=ConnectionType.COACHING,
     ):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"session_id": session_id},
+        )
     return await _session_to_response(session)
 
 
@@ -128,9 +142,19 @@ async def patch_session(
 ):
     session = await get_by_id(db, session_id)
     if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Session not found",
+            details={"session_id": session_id},
+        )
     if session.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"session_id": session_id},
+        )
     session = await update(db, session, **body.model_dump(exclude_unset=True))
     return await _session_to_response(session)
 
@@ -139,7 +163,17 @@ async def patch_session(
 async def delete_session(session_id: str, user: CurrentUser, db: DbDep):
     session = await get_by_id(db, session_id)
     if not session:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Session not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Session not found",
+            details={"session_id": session_id},
+        )
     if session.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"session_id": session_id},
+        )
     await soft_delete(db, session)

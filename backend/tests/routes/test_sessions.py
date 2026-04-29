@@ -212,7 +212,9 @@ async def test_list_sessions_coach_access_denied(
         )
 
     assert response.status_code == 403
-    assert "Not a coach" in response.json()["detail"]
+    data = response.json()["detail"]
+    assert data["error"] == "Forbidden"
+    assert "Not a coach" in data["message"]
 
 
 @pytest.mark.asyncio

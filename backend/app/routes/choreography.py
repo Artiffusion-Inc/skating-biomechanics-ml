@@ -7,7 +7,7 @@ import asyncio
 import tempfile
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, Query, Request, UploadFile, status
+from fastapi import APIRouter, Query, Request, UploadFile, status
 
 from app.auth.deps import CurrentUser, DbDep  # noqa: TC001 — runtime FastAPI Depends
 from app.crud.choreography import (
@@ -22,6 +22,7 @@ from app.crud.choreography import (
     update_music_analysis,
     update_program,
 )
+from app.routes import raise_api_error
 from app.schemas import (
     ChoreographyProgramResponse,
     ExportRequest,
@@ -122,10 +123,11 @@ async def upload_music(
     except (OSError, ValueError, RuntimeError) as e:
         logger.exception("Failed to upload or enqueue music analysis")
         await update_music_analysis(db, music, status="failed")
-        raise HTTPException(
+        raise_api_error(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=f"Upload failed: {type(e).__name__}: {e}",
-        ) from e
+            error="UnprocessableEntity",
+            message=f"Upload failed: {type(e).__name__}: {e}",
+        )
     finally:
         Path(tmp_path).unlink(missing_ok=True)
 
@@ -139,11 +141,19 @@ async def get_music_analysis(music_id: str, user: CurrentUser, db: DbDep):
     """Get music analysis result."""
     music = await get_music_analysis_by_id(db, music_id)
     if not music:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Music analysis not found"
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Music analysis not found",
+            details={"music_id": music_id},
         )
     if music.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"music_id": music_id},
+        )
     return {
         "id": music.id,
         "user_id": music.user_id,
@@ -175,11 +185,19 @@ async def generate_layout(body: GenerateRequest, user: CurrentUser, db: DbDep):
     """Generate choreography layouts via CSP solver."""
     music = await get_music_analysis_by_id(db, body.music_id)
     if not music:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail="Music analysis not found"
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Music analysis not found",
+            details={"music_id": body.music_id},
         )
     if music.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"music_id": body.music_id},
+        )
 
     analysis = {
         "duration_sec": music.duration_sec,
@@ -307,9 +325,19 @@ async def get_program(program_id: str, user: CurrentUser, db: DbDep):
     """Get a choreography program."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
     return _program_to_response(program)
 
 
@@ -323,9 +351,19 @@ async def update_existing_program(
     """Update a choreography program."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
     program = await update_program(
         db,
         program,
@@ -350,9 +388,19 @@ async def delete_existing_program(program_id: str, user: CurrentUser, db: DbDep)
     """Delete a choreography program."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
     await delete_program(db, program)
 
 
@@ -371,9 +419,19 @@ async def export_program(
     """Export a program as SVG, PDF, or JSON."""
     program = await get_program_by_id(db, program_id)
     if not program:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Program not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="Program not found",
+            details={"program_id": program_id},
+        )
     if program.user_id != user.id:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not authorized")
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not authorized",
+            details={"program_id": program_id},
+        )
 
     if body.format == "json":
         return {

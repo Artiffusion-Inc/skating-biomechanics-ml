@@ -130,7 +130,9 @@ async def test_detect_status_not_found(client: AsyncClient):
         response = await client.get("/api/v1/detect/det_nonexist/status")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Task not found"
+    data = response.json()["detail"]
+    assert data["error"] == "NotFound"
+    assert data["message"] == "Task not found"
 
 
 @pytest.mark.asyncio
@@ -283,7 +285,9 @@ async def test_detect_result_not_found(client: AsyncClient):
         response = await client.get("/api/v1/detect/det_ghost/result")
 
     assert response.status_code == 404
-    assert response.json()["detail"] == "Task not found"
+    data = response.json()["detail"]
+    assert data["error"] == "NotFound"
+    assert data["message"] == "Task not found"
 
 
 @pytest.mark.asyncio
@@ -305,7 +309,9 @@ async def test_detect_result_not_completed(client: AsyncClient):
         response = await client.get("/api/v1/detect/det_running/result")
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "Task not completed yet"
+    data = response.json()["detail"]
+    assert data["error"] == "BadRequest"
+    assert data["message"] == "Task not completed yet"
 
 
 @pytest.mark.asyncio
@@ -327,4 +333,6 @@ async def test_detect_result_no_result(client: AsyncClient):
         response = await client.get("/api/v1/detect/det_empty/result")
 
     assert response.status_code == 500
-    assert response.json()["detail"] == "No result stored"
+    data = response.json()["detail"]
+    assert data["error"] == "InternalServerError"
+    assert data["message"] == "No result stored"

@@ -4,9 +4,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, status
 from fastapi.responses import StreamingResponse
 
+from app.routes import raise_api_error
 from app.storage import object_exists_async, stream_object_async
 
 router = APIRouter(tags=["misc"])
@@ -30,7 +31,12 @@ async def health():
 async def serve_output(key: str):
     """Stream file from R2 as a proxy (frontend never talks to R2 directly)."""
     if not await object_exists_async(key):
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="File not found")
+        raise_api_error(
+            status_code=status.HTTP_404_NOT_FOUND,
+            error="NotFound",
+            message="File not found",
+            details={"key": key},
+        )
 
     body, length, ctype = await stream_object_async(key)
     # Prefer extension-based content type over what S3 reports

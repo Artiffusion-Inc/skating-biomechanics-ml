@@ -202,7 +202,9 @@ async def test_complete_upload_empty_parts(client: AsyncClient, auth_headers):
         )
 
     assert response.status_code == 400
-    assert "No parts provided" in response.json()["detail"]
+    data = response.json()["detail"]
+    assert data["error"] == "BadRequest"
+    assert "No parts provided" in data["message"]
 
 
 @pytest.mark.asyncio

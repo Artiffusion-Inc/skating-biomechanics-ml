@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, Query, status
 from sqlalchemy import select
 
 from app.auth.deps import CurrentUser, DbDep
@@ -13,6 +13,7 @@ from app.crud.connection import is_connected_as
 from app.metrics_registry import METRIC_REGISTRY
 from app.models.connection import ConnectionType
 from app.models.session import Session, SessionMetric
+from app.routes import raise_api_error
 from app.schemas import (
     DiagnosticsFinding,
     DiagnosticsResponse,
@@ -64,14 +65,20 @@ async def get_trend(
             db, from_user_id=user.id, to_user_id=user_id, connection_type=ConnectionType.COACHING
         )
     ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not a coach for this user"
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not a coach for this user",
+            details={"user_id": user_id},
         )
 
     mdef = METRIC_REGISTRY.get(metric_name)
     if not mdef:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=f"Unknown metric: {metric_name}"
+        raise_api_error(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            error="BadRequest",
+            message=f"Unknown metric: {metric_name}",
+            details={"metric_name": metric_name},
         )
 
     # Calculate date filter
@@ -153,8 +160,11 @@ async def get_prs(
             db, from_user_id=user.id, to_user_id=user_id, connection_type=ConnectionType.COACHING
         )
     ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not a coach for this user"
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not a coach for this user",
+            details={"user_id": user_id},
         )
 
     query = (
@@ -205,8 +215,11 @@ async def get_diagnostics(
             db, from_user_id=user.id, to_user_id=user_id, connection_type=ConnectionType.COACHING
         )
     ):
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not a coach for this user"
+        raise_api_error(
+            status_code=status.HTTP_403_FORBIDDEN,
+            error="Forbidden",
+            message="Not a coach for this user",
+            details={"user_id": user_id},
         )
 
     findings: list[DiagnosticsFinding] = []
