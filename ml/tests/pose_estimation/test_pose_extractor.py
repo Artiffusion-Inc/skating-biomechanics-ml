@@ -64,8 +64,7 @@ def mock_async_frame_reader(monkeypatch):
         def __init__(self, video_path, buffer_size, frame_skip):
             skip = max(1, frame_skip)
             self._frames = [
-                (i, np.zeros((480, 640, 3), dtype=np.uint8))
-                for i in range(0, 10, skip)
+                (i, np.zeros((480, 640, 3), dtype=np.uint8)) for i in range(0, 10, skip)
             ]
             self._idx = 0
 
@@ -526,9 +525,7 @@ class TestPoseExtractorPreviewPersons:
     ):
         """Should return a list of person dicts and a preview path."""
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
-        persons, preview_path = extractor.preview_persons(
-            "dummy.mp4", num_frames=10
-        )
+        persons, preview_path = extractor.preview_persons("dummy.mp4", num_frames=10)
 
         assert isinstance(persons, list)
         assert len(persons) > 0
@@ -561,9 +558,7 @@ class TestPoseExtractorPreviewPersons:
             property(lambda self: EmptyTracker()),
         )
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
-        persons, preview_path = extractor.preview_persons(
-            "dummy.mp4", num_frames=10
-        )
+        persons, preview_path = extractor.preview_persons("dummy.mp4", num_frames=10)
         assert persons == []
         assert preview_path is None
 
@@ -616,18 +611,14 @@ class TestExtractPoses:
             first_detection_frame=0,
             target_track_id=0,
             fps=30.0,
-            video_meta=VideoMeta(
-                Path("dummy.mp4"), 640, 480, 30.0, 10
-            ),
+            video_meta=VideoMeta(Path("dummy.mp4"), 640, 480, 30.0, 10),
             first_frame=None,
         )
 
         def mock_extract(self, video_path, person_click=None):
             return mock_result
 
-        monkeypatch.setattr(
-            PoseExtractor, "extract_video_tracked", mock_extract
-        )
+        monkeypatch.setattr(PoseExtractor, "extract_video_tracked", mock_extract)
 
         result = extract_poses("dummy.mp4")
         assert result is mock_result
