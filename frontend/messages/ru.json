@@ -27,10 +27,15 @@
     "namePlaceholder": "Ваше имя",
     "password": "Пароль",
     "passwordPlaceholder": "Минимум 8 символов",
+    "confirmPassword": "Подтвердите пароль",
     "hasAccount": "Уже есть аккаунт?",
     "noAccount": "Нет аккаунта?",
     "register": "Зарегистрироваться",
-    "sessionExpired": "Сессия истекла"
+    "sessionExpired": "Сессия истекла",
+    "invalidEmail": "Неверный email",
+    "passwordRequired": "Введите пароль",
+    "passwordTooShort": "Пароль должен быть не менее 8 символов",
+    "passwordsMismatch": "Пароли не совпадают"
   },
   "nav": {
     "analysis": "Анализ",
