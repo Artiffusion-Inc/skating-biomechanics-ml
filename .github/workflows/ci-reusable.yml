@@ -45,7 +45,7 @@ jobs:
       - name: Sync deps
         run: uv sync --frozen --dev
       - name: basedpyright
-        run: uv run basedpyright --level error backend/app
+        run: PYTHONPATH=backend:ml:. uv run basedpyright --level error backend/app
 
   ast-grep:
     name: Lint (ast-grep)
@@ -72,7 +72,7 @@ jobs:
       - name: Sync deps
         run: uv sync --frozen --dev
       - name: pytest
-        run: PYTHONPATH=ml:. uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --cov=backend/app --cov=ml/src --cov-report=xml --junitxml=junit.xml --tb=short
+        run: PYTHONPATH=backend:ml:. uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --cov=backend/app --cov=ml/src --cov-report=xml --junitxml=junit.xml --tb=short
       - name: Upload coverage (backend)
         if: always()
         uses: codecov/codecov-action@v6
