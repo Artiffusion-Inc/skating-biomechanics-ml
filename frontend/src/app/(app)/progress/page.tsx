@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import { PeriodSelector } from "@/components/progress/period-selector"
+import { SkeletonChart } from "@/components/skeleton-chart"
 import { TrendChart } from "@/components/progress/trend-chart"
 import { useTranslations } from "@/i18n"
 import { useMetricRegistry, useTrend } from "@/lib/api/metrics"
@@ -50,7 +51,7 @@ export default function ProgressPage() {
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
-      {trend && <TrendChart data={trend} />}
+      {trend ? <TrendChart data={trend} /> : <SkeletonChart />}
     </div>
   )
 }
