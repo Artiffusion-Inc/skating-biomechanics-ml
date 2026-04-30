@@ -57,6 +57,8 @@ export class ApiError extends Error {
 // Typed fetch
 // ---------------------------------------------------------------------------
 
+const MAX_RETRIES = 3
+
 function authHeaders(): Record<string, string> {
   const token = getAccessToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
@@ -69,23 +71,47 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { auth = true, headers, ...rest } = init ?? {}
 
-  const res = await fetch(`${API_BASE}${path}`, {
-    ...rest,
-    headers: { ...(auth ? authHeaders() : {}), ...headers },
-  })
+  let lastError: ApiError | undefined
 
-  if (!res.ok) {
-    if (res.status === 401 && !SKIP_AUTH) {
-      clearTokens()
-      redirect("/login")
-      throw new ApiError("Unauthorized", res.status)
+  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    if (typeof navigator !== "undefined" && !navigator.onLine) {
+      throw new ApiError("No internet connection", 0)
     }
-    const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-    throw new ApiError(body.detail, res.status)
+
+    if (attempt > 0) {
+      const delay = 300 * Math.pow(2, attempt - 1)
+      await new Promise((resolve) => setTimeout(resolve, delay))
+    }
+
+    let res: Response
+    try {
+      res = await fetch(`${API_BASE}${path}`, {
+        ...rest,
+        headers: { ...(auth ? authHeaders() : {}), ...headers },
+      })
+    } catch (error) {
+      lastError = new ApiError(error instanceof Error ? error.message : "Network error", 0)
+      continue
+    }
+
+    if (!res.ok) {
+      if (res.status === 401 && !SKIP_AUTH) {
+        clearTokens()
+        redirect("/login")
+      }
+      const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
+      lastError = new ApiError(body.detail, res.status)
+      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
+        throw lastError
+      }
+      continue
+    }
+
+    if (res.status === 204) return undefined as T
+    return schema.parse(await res.json())
   }
 
-  if (res.status === 204) return undefined as T
-  return schema.parse(await res.json())
+  throw lastError ?? new ApiError("Request failed", 0)
 }
 
 // ---------------------------------------------------------------------------
