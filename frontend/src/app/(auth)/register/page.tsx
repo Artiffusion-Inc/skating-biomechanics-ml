@@ -9,17 +9,32 @@ import { FormField } from "@/components/form-field"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/i18n"
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export default function RegisterPage() {
   const router = useRouter()
   const { register } = useAuth()
   const t = useTranslations("auth")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
   const [displayName, setDisplayName] = useState("")
   const [loading, setLoading] = useState(false)
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!EMAIL_RE.test(email)) {
+      toast.error(t("invalidEmail"), { duration: 3000 })
+      return
+    }
+    if (password.length < 8) {
+      toast.error(t("passwordTooShort"), { duration: 3000 })
+      return
+    }
+    if (password !== confirmPassword) {
+      toast.error(t("passwordsMismatch"), { duration: 3000 })
+      return
+    }
     setLoading(true)
     try {
       await register(email, password, displayName || undefined)
@@ -64,6 +79,15 @@ export default function RegisterPage() {
           minLength={8}
           value={password}
           onChange={e => setPassword(e.target.value)}
+          placeholder={t("passwordPlaceholder")}
+        />
+        <FormField
+          label={t("confirmPassword")}
+          id="confirm-password"
+          type="password"
+          required
+          value={confirmPassword}
+          onChange={e => setConfirmPassword(e.target.value)}
           placeholder={t("passwordPlaceholder")}
         />
         <Button type="submit" className="w-full" disabled={loading}>

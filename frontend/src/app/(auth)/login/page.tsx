@@ -9,6 +9,8 @@ import { FormField } from "@/components/form-field"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/i18n"
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
 export default function LoginPage() {
   const router = useRouter()
   const { login } = useAuth()
@@ -19,6 +21,14 @@ export default function LoginPage() {
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    if (!EMAIL_RE.test(email)) {
+      toast.error(t("invalidEmail"), { duration: 3000 })
+      return
+    }
+    if (!password) {
+      toast.error(t("passwordRequired"), { duration: 3000 })
+      return
+    }
     setLoading(true)
     try {
       await login(email, password)

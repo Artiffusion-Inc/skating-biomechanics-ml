@@ -27,10 +27,15 @@
     "namePlaceholder": "Your name",
     "password": "Password",
     "passwordPlaceholder": "Minimum 8 characters",
+    "confirmPassword": "Confirm password",
     "hasAccount": "Already have an account?",
     "noAccount": "Don't have an account?",
     "register": "Sign Up",
-    "sessionExpired": "Session expired"
+    "sessionExpired": "Session expired",
+    "invalidEmail": "Invalid email",
+    "passwordRequired": "Password is required",
+    "passwordTooShort": "Password must be at least 8 characters",
+    "passwordsMismatch": "Passwords do not match"
   },
   "nav": {
     "analysis": "Analysis",

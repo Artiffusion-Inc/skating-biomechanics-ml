@@ -2,18 +2,20 @@
 
 import Link from "next/link"
 import { SessionCard } from "@/components/session/session-card"
+import { SkeletonCard } from "@/components/skeleton-card"
 import { useTranslations } from "@/i18n"
 import { useSessions } from "@/lib/api/sessions"
 
 export default function FeedPage() {
   const { data, isLoading } = useSessions()
-  const tc = useTranslations("common")
   const tf = useTranslations("feed")
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        {tc("loading")}
+      <div className="mx-auto max-w-2xl space-y-3 sm:max-w-3xl">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     )
   }

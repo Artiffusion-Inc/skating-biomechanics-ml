@@ -3,6 +3,7 @@
 import { Loader2 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { PhaseTimeline } from "@/components/analysis/phase-timeline"
+import { SkeletonDetail } from "@/components/skeleton-detail"
 import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
@@ -19,13 +20,11 @@ export default function SessionDetailPage() {
     refetchInterval: isProcessing ? 3000 : false,
   })
   const te = useTranslations("elements")
-  const tc = useTranslations("common")
   const ts = useTranslations("sessions")
 
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300
 
-  if (isLoading)
-    return <div className="py-20 text-center text-muted-foreground">{tc("loading")}</div>
+  if (isLoading) return <SkeletonDetail />
   if (!session)
     return <div className="py-20 text-center text-muted-foreground">{ts("notFound")}</div>
 
