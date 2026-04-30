@@ -1,6 +1,6 @@
 # Figure Skating Biomechanics ML - Roadmap
 
-**Status:** MVP 100% complete | Last updated: 2026-04-11
+**Status:** MVP 100% complete | Last updated: 2026-04-30
 
 > **This is the SINGLE SOURCE OF TRUTH for project status.** All implementation decisions and priority changes must be reflected here first.
 
@@ -16,7 +16,9 @@ AI-тренер по фигурному катанию который анали
 
 ---
 
-## 🎉 Major Milestone: 3D-Only Migration Complete (2026-03-29)
+## Major Milestones
+
+### 🎉 3D-Only Migration Complete (2026-03-29)
 
 **Migration:** BlazePose 2D (33 keypoints) → H3.6M 3D (17 keypoints)
 
@@ -27,7 +29,7 @@ The system has been migrated to use H3.6M 17-keypoint 3D format as the primary p
 - ✅ Pipeline: 3D-first architecture
 - ✅ Tests: 279+ passing
 
-## 🎉 Major Milestone: RTMPose + GPU Pipeline (2026-04-01)
+### 🎉 RTMPose + GPU Pipeline (2026-04-01)
 
 **Migration:** YOLO26-Pose → RTMPose via rtmlib (default), GPU acceleration enabled
 
@@ -40,7 +42,7 @@ The system has been migrated to use H3.6M 17-keypoint 3D format as the primary p
 - ✅ Performance: ~12s for 14.5s video (GPU, frame_skip=8)
 - ✅ Tests: 279+ passing
 
-## 🎉 Strategic Pivot: OOFSkate-Approach (2026-04-11)
+### 🎉 Strategic Pivot: OOFSkate-Approach (2026-04-11)
 
 **Decision:** Body kinematics proxy features instead of direct blade edge detection.
 
@@ -62,13 +64,122 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - Pose backbone → RTMPose confirmed (rtmlib: RTMPose/DWPose/RTMO/RTMW available, none solve edge detection on ice)
 - Foot keypoints (HALPE26 extra 9kp) → kept for future use but not critical
 
+### 🎉 Monorepo Restructure (2026-04-11)
+
+**Restructure:** Flat package → `backend/`, `ml/`, `frontend/` workspace monorepo
+
+- ✅ Three packages with isolated pyproject.toml + lockfiles
+- ✅ Root workspace config (`uv sync --all-packages`)
+- ✅ Import paths updated: `skating_ml` → `src` (ml package)
+- ✅ Backend routes: auth, users, sessions, metrics, uploads, detect, process, connections
+- ✅ arq worker in backend, imports ml types only (no pipeline internals)
+- ✅ CI/CD updated: multi-package pytest, basedpyright, ruff, biome
+- ✅ Tests: 990+ across all suites (545 backend, 438 ml, 7 frontend)
+
+### 🎉 Strava-like Dashboard MVP (2026-04-11)
+
+**Feature:** Full SaaS frontend with coach-student relationships
+
+- ✅ Next.js 16 app with NextAuth JWT auth
+- ✅ Activity feed, upload page, progress charts (Recharts)
+- ✅ Coach dashboard, student profile, diagnostics, connections pages
+- ✅ Chunked S3 multipart upload with presigned URLs
+- ✅ Session CRUD with metrics persistence in Postgres
+- ✅ Metric registry (12+ biomechanical metrics, Russian labels)
+- ✅ PR tracker, trend analysis, diagnostics engine (5 rules)
+- ✅ Relationship API: coach-student invites, accept, end
+
+### 🎉 Nike Design System (2026-04-12)
+
+**Feature:** Complete visual redesign with Nike-inspired flat aesthetic
+
+- ✅ Design tokens: colors, radius, typography (Inter Variable)
+- ✅ Flat cards (no shadow/ring, 20px radius)
+- ✅ Pill buttons (rounded-full, flat, weight-500)
+- ✅ Nike nav (text-only), form inputs (bg-secondary), wider layout
+- ✅ Cyrillic text support via Inter Variable font
+- ✅ Responsive app shell with bottom tabs (mobile) and sidebar (desktop)
+
+### 🎉 Dataset Unification (2026-04-12)
+
+**Feature:** Unified label ontology and PyTorch Dataset for 3 skating datasets
+
+- ✅ Unified label ontology with FSC/MCFS/SkatingVerse mappings
+- ✅ FSC pkl → unified npy converter
+- ✅ MCFS segments.pkl → unified npy converter
+- ✅ SkatingVerse video → unified npy converter
+- ✅ Unified PyTorch Dataset with augmentation pipeline
+- ✅ Skeleton validation utilities
+
+### 🎉 RTMO Migration (2026-04-13)
+
+**Migration:** RTMPose/BodyWithFeet (HALPE26, 26kp) → RTMO/Body (COCO 17kp)
+
+- ✅ RTMO via Custom wrapper in PoseExtractor (primary backend)
+- ✅ PoseExtractor class renamed from RTMPoseExtractor
+- ✅ COCO 17kp → H3.6M 17kp via public `coco_to_h36m()` function
+- ✅ HALPE26 module deleted (foot keypoints no longer used)
+- ✅ Extractor comparison script added
+- ✅ YOLO26-Pose distillation experiment (`experiments/yolo26-pose/`)
+- ✅ RTMO pseudo-labeling scripts for SkatingVerse
+
+### 🎉 Landing Quality Metrics (2026-04-12)
+
+**Feature:** OOFSkate proxy metrics for jump landing quality
+
+- ✅ Landing knee stability score (CoM velocity + smoothness)
+- ✅ Landing trunk recovery score (post-landing torso control)
+- ✅ Knee angle stability (variance post-landing)
+- ✅ GOE proxy score (0-10) combining all landing metrics
+- ✅ Russian recommendation rules for landing quality
+- ✅ Ideal ranges added to element definitions
+- ✅ Wired into jump analysis pipeline
+
+### 🎉 Choreography Planner (2026-04-18)
+
+**Feature:** Full DAW-style choreography timeline editor with ISU rules
+
+- ✅ ISU element database with base values and GOE rules
+- ✅ Score calculator with TES/TSS/PCS breakdown
+- ✅ CSP solver with random search + constraint filtering
+- ✅ Music analysis (librosa + MSAF): BPM, key, segments, beats
+- ✅ Audio fingerprinting (pychromaprint) for duplicate detection
+- ✅ SVG rink renderer with element markers and flow paths
+- ✅ DAW-style timeline editor: track rows, element blocks, transport bar
+- ✅ Client-side rink rendering with three.js preview
+- ✅ Full API: CRUD, music analysis, layout solver, upload
+
+### 🎉 Pipeline Performance (2026-04-18)
+
+**Feature:** Multi-phase performance optimization
+
+- ✅ Phase 1 quick wins: ONNX threads, cuDNN, URL cache, warmup, parallel post-processing
+- ✅ Phase 2 vectorization: Numba JIT for metrics, edge indicators, rotation speed
+- ✅ Phase 2 parallelism: multi-GPU, async I/O (aiobotocore), async Vast.ai
+- ✅ Post-smoothing fan-out: 3-branch parallel analysis with CoM cache
+- ✅ PipelineProfiler: instrument all AnalysisPipeline stages
+- ✅ Deep profiling: ONNX op-level, DeepSORT internals, Conv node breakdown
+- ✅ Measured: ~12s for 14.5s video (GPU, frame_skip=8)
+
+### 🎉 API Design Fixes (2026-04-29)
+
+**Refactor:** Backend API consistency and test coverage boost
+
+- ✅ ErrorResponse schema + `raise_api_error()` helper across all routes
+- ✅ Standardized router prefixes in main.py
+- ✅ PaginatedResponse base with complete pagination fields
+- ✅ `status.HTTP_404_NOT_FOUND` instead of bare `404`
+- ✅ Test coverage: 60% → 96% (524 tests → 545 tests)
+- ✅ Frontend vitest coverage enabled, utility tests added
+- ✅ ast-grep rules for code quality (6 rules, 99 warnings → 0)
+
 ---
 
 ## Architecture Overview
 
 ```
 ┌─────────────┐    ┌──────────────┐    ┌─────────────┐    ┌──────────────┐
-│   Video     │ -> │  RTMPose     │ -> │  Corrective │ -> │ Normalized   │
+│   Video     │ -> │   RTMO       │ -> │  Corrective │ -> │ Normalized   │
 │   Input     │    │  (rtmlib)    │    │  Lens (3D)   │    │   Poses       │
 └─────────────┘    └──────────────┘    └─────────────┘    └──────────────┘
                                                                   v
@@ -84,6 +195,10 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
                                                       │ Russian Text Report │
                                                       └─────────────────────┘
 ```
+
+**SaaS Backend:** FastAPI + Postgres + Valkey (arq) + R2/S3 storage
+**Frontend:** Next.js 16 + React Query + Recharts + next-intl (ru/en)
+**Choreography:** ISU element DB + CSP solver + music analysis + SVG rink renderer
 
 ---
 
@@ -508,27 +623,37 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 
 📚 **Detailed Research:** See `research/RESEARCH_POSE_TOOLS_2026-03-31.md`
 
-11. **YOLO26-Pose Upgrade** ✅ DONE (2026-04-01)
+11. **RTMO Migration** ✅ DONE (2026-04-13)
+    - Switched from RTMPose/BodyWithFeet (HALPE26, 26kp) to RTMO/Body (COCO 17kp)
+    - PoseExtractor class with Custom RTMO wrapper (primary backend)
+    - COCO 17kp → H3.6M 17kp via public `coco_to_h36m()`
+    - HALPE26 module deleted
+    - Files: `ml/src/pose_estimation/pose_extractor.py`
+
+12. **YOLO26-Pose Upgrade** ✅ DONE (2026-04-01)
     - Migrated from YOLOv8/YOLO11 to YOLO26-Pose across all modules
     - NMS-free inference, better occlusion handling
     - All files standardized on `yolo26{size}-pose.pt`
-
-12. **Standardize YOLO Model** ✅ DONE (2026-04-01)
-    - Both extractors now use `yolo26{size}-pose.pt`
+    - YOLO26-Pose distillation experiment (`experiments/yolo26-pose/`)
 
 13. **rtmlib Integration** ✅ DONE (2026-04-01)
     - RTMPoseExtractor: HALPE26 (26kp with foot keypoints)
     - ONNX Runtime backend (fast on CPU, CUDA on GPU)
     - Built-in tracking via PoseTracker
     - Default pose backend (--pose-backend rtmlib)
-    - Files: `ml/src/pose_estimation/rtmlib_extractor.py`, `ml/src/pose_estimation/halpe26.py`
+    - **Note:** RTMO replaced RTMPose as primary in April 2026
 
 14. **Sports2D Angle Integration** ✅ DONE (2026-04-01)
     - Foot angle functions: segment_angle, foot_angle, ankle_dorsiflexion
     - Used in blade edge detection pipeline
-    - Files: `ml/src/pose_estimation/halpe26.py`
+    - Files: `ml/src/pose_estimation/halpe26.py` (**deleted 2026-04-13**)
 
-15. **Monitor Pose3DM-L** 📝 WATCH
+15. **RTMO Pseudo-Labeling** ✅ DONE (2026-04-13)
+    - Scripts for pseudo-labeling SkatingVerse dataset with RTMO
+    - Teacher-student pipeline for semi-supervised learning
+    - Files: `ml/scripts/pseudo_label_rtmo.py`
+
+16. **Monitor Pose3DM-L** 📝 WATCH
     - New SOTA 3D lifter: 37.9mm MPJPE (vs MotionAGFormer 38.4mm)
     - **Code not released yet** (github.com/Reus3237/Pose3DM returns 404)
 
@@ -605,36 +730,36 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - --person-click X Y for scripted use
     - Files: `ml/src/cli.py`, `ml/src/pose_estimation/h36m_extractor.py`
 
-### Phase I: OOFSkate-Approach — Body Kinematics Quality Analysis (2026-04-11)
+### Phase I: OOFSkate-Approach — Body Kinematics Quality Analysis ✅ COMPLETE (2026-04-12)
 
 **Strategy:** Infer element quality from body kinematics proxy features instead of direct blade edge detection. Inspired by MIT OOFSkate (deployed at 2026 Winter Olympics with NBC Sports).
 
 **Why:** Direct blade edge detection requires 14 specialized rink cameras (Omega) or IMU sensors (JudgeAI). No open-source solution works from single-camera phone video. Body kinematics approach works with H3.6M 17kp and validated at Olympic level.
 
-29. **Landing Quality Score** 📝 NEXT
+29. **Landing Quality Score** ✅ DONE
     - Smooth deceleration metric (CoM velocity at landing)
     - Hard landing detection (velocity spike > threshold)
-    - Landing stability (ankle/knee angle consistency post-landing)
+    - Landing stability (knee angle variance post-landing)
     - Clean edge vs toe assist proxy: sudden velocity change = likely toe pick
     - **Files:** `ml/src/analysis/metrics.py`
-    - **Estimated:** 2-3 hours
 
-30. **Torso Lean & Approach Arc** 📝 PLANNED
-    - Torso lean angle relative to vertical (spine→neck vector)
-    - Approach trajectory curvature (CoM x-z path)
-    - Proxy for edge type: lutz (lean back, long outside arc) vs flip (lean forward, inside arc)
-    - **Files:** `ml/src/analysis/metrics.py`, `ml/src/analysis/physics_engine.py`
-    - **Estimated:** 3-4 hours
+30. **Landing Knee Stability** ✅ DONE
+    - Knee angle stability score (variance post-landing)
+    - Wired into jump analysis pipeline
+    - **Files:** `ml/src/analysis/metrics.py`
 
-31. **Element Quality Scoring (GOE proxy)** 📝 PLANNED
-    - Numerical quality score per element (inspired by OOFSkate's GOE estimation)
+31. **Landing Trunk Recovery** ✅ DONE
+    - Post-landing torso control metric
+    - Recovery time to stable posture
+    - **Files:** `ml/src/analysis/metrics.py`
+
+32. **Element Quality Scoring (GOE proxy)** ✅ DONE
+    - Numerical quality score per element (0-10)
     - Based on: height, rotation, landing quality, airtime, torso control
-    - Comparison against reference database averages
-    - Russian text output: "Оценка качества: +1.2 GOE"
+    - Russian text output: "Оценка качества: X.X/10"
     - **Files:** `ml/src/analysis/metrics.py`, `ml/src/analysis/recommender.py`
-    - **Estimated:** 4-6 hours
 
-32. **Reference Database Expansion** 📝 PLANNED
+33. **Reference Database Expansion** 📝 PLANNED
     - Build reference library from competition videos (YouTube)
     - Per-element average metrics from elite skaters
     - Store in `data/references/` as .npz with metadata
@@ -642,11 +767,146 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - **Data available:** AthletePose3D (71GB, 5154 videos), Figure-Skating-Classification (5168 seq)
     - **Estimated:** 1-2 days (extraction + normalization + storage)
 
-33. **GCN Element Classifier** 📝 RESEARCH
+34. **GCN Element Classifier** 📝 RESEARCH
     - See Phase D item 9 above
     - Training data ready: Figure-Skating-Classification (5168 seq, 64 classes)
     - COCO 17kp → H3.6M 17kp mapping required (different skeleton definitions)
     - **Estimated:** 1-2 weeks
+
+### Phase J: SaaS Backend (2026-04-11) ✅ DONE
+
+35. **Database Schema** ✅ DONE
+    - Session, SessionMetric, Relationship ORM models + migration
+    - User model with profile fields (height, weight, language, timezone)
+    - Connection model with ConnectionType enum (coach-student, choreographer)
+    - **Files:** `backend/app/models/`, alembic migrations
+
+36. **Session API** ✅ DONE
+    - CRUD routes for sessions, session metrics
+    - Pose data and frame_metrics JSON columns
+    - Pydantic schemas with nested SessionMetricResponse
+    - **Files:** `backend/app/routes/sessions.py`, `backend/app/schemas.py`
+
+37. **Metrics API** ✅ DONE
+    - Metric registry (12+ metrics, Russian labels, ideal ranges)
+    - Trend endpoint with linear regression (7d/30d/90d/all)
+    - PR tracker, diagnostics engine (5 rule checks)
+    - **Files:** `backend/app/metrics_registry.py`, `backend/app/routes/metrics.py`
+
+38. **Relationship API** ✅ DONE
+    - Coach-student invites, accept, end, list
+    - Permission checks via `is_connected_as(connection_type)`
+    - **Files:** `backend/app/routes/relationships.py`
+
+39. **Upload API** ✅ DONE
+    - Chunked S3 multipart upload (init/chunk/complete)
+    - Presigned URLs for direct R2 upload
+    - **Files:** `backend/app/routes/uploads.py`, `backend/app/storage.py`
+
+40. **Auth API** ✅ DONE
+    - JWT access (15min) + refresh (7d) tokens
+    - Cookie sync `sb_auth=1` for SSR gating
+    - `SKIP_AUTH` dev flag for local testing
+    - **Files:** `backend/app/routes/auth.py`, `backend/app/auth/deps.py`
+
+41. **API Design Fixes** ✅ DONE (2026-04-29)
+    - ErrorResponse schema + `raise_api_error()` across all routes
+    - Standardized router prefixes, PaginatedResponse base
+    - Test coverage: 60% → 96% (524 → 545 tests)
+    - **Files:** `backend/app/main.py`, `backend/app/schemas.py`
+
+### Phase K: Frontend SaaS (2026-04-11) ✅ DONE
+
+42. **Nike Design System** ✅ DONE
+    - Design tokens: colors, radius, typography (Inter Variable)
+    - Flat cards, pill buttons, text-only nav
+    - Responsive app shell: bottom tabs (mobile), sidebar (desktop)
+    - **Files:** `frontend/app/globals.css`, `frontend/components/`
+
+43. **Activity Feed** ✅ DONE
+    - Session cards with element type, date, score
+    - React Query hooks with Zod schemas
+    - **Files:** `frontend/app/(app)/page.tsx`
+
+44. **Upload Flow** ✅ DONE
+    - Element picker, camera recorder, chunked upload
+    - Progress tracking, abort support
+    - **Files:** `frontend/app/(app)/upload/page.tsx`
+
+45. **Progress Dashboard** ✅ DONE
+    - Recharts trend chart with period selector
+    - Metric comparison against reference ranges
+    - **Files:** `frontend/app/(app)/progress/page.tsx`
+
+46. **Coach Dashboard** ✅ DONE
+    - Student list, session review, diagnostics
+    - Connection management (invite/accept)
+    - **Files:** `frontend/app/(app)/coach/`
+
+47. **Profile Page** ✅ DONE
+    - Stats summary, PRs, recent activity
+    - Inline editing, settings modal (theme, body, logout)
+    - **Files:** `frontend/app/(app)/profile/page.tsx`
+
+48. **i18n (ru/en)** ✅ DONE
+    - next-intl with Russian and English messages
+    - Profile, upload, choreography translations
+    - **Files:** `frontend/messages/ru.json`, `frontend/messages/en.json`
+
+### Phase L: Choreography Planner (2026-04-18) ✅ DONE
+
+49. **ISU Element Database** ✅ DONE
+    - Base values, GOE rules, level requirements
+    - Score calculator with TES/TSS/PCS breakdown
+    - **Files:** `backend/app/services/choreography/`
+
+50. **Music Analysis** ✅ DONE
+    - librosa + MSAF: BPM, key, segments, beats
+    - Audio fingerprinting (pychromaprint) for duplicate detection
+    - arq worker integration (non-blocking)
+    - **Files:** `backend/app/services/music_analyzer.py`
+
+51. **CSP Solver** ✅ DONE
+    - Random search + constraint filtering
+    - asyncio.to_thread for non-blocking solve
+    - **Files:** `backend/app/services/choreography/solver.py`
+
+52. **SVG Rink Renderer** ✅ DONE
+    - Element markers, flow paths, trace figures
+    - Client-side rendering with three.js preview
+    - **Files:** `frontend/components/choreography/RinkRenderer.tsx`
+
+53. **DAW Timeline Editor** ✅ DONE
+    - Track rows, element blocks, transport bar
+    - Optimistic UI for program delete
+    - **Files:** `frontend/app/(app)/choreography/editor/page.tsx`
+
+### Phase M: Performance & Experiments (2026-04-18) ✅ DONE
+
+54. **Pipeline Profiling** ✅ DONE
+    - PipelineProfiler instrumenting all AnalysisPipeline stages
+    - Deep profiling: ONNX op-level, DeepSORT internals, Conv node breakdown
+    - **Files:** `ml/src/utils/profiling.py`, `docs/research/PIPELINE_PROFILING_2026-04-18.md`
+
+55. **Numba JIT Vectorization** ✅ DONE
+    - Geometry, smoothing, metrics all JIT-compiled
+    - Expected: 10-100x repeated ops
+    - **Benchmark:** `uv run python ml/scripts/benchmark_numba.py`
+
+56. **Post-Smoothing Fan-Out** ✅ DONE
+    - 3-branch parallel analysis with CoM cache
+    - Phase detection, metrics, recommender run in parallel
+    - **Files:** `ml/src/pipeline.py`
+
+57. **Dataset Unification** ✅ DONE
+    - Unified label ontology (FSC/MCFS/SkatingVerse)
+    - PyTorch Dataset with augmentation
+    - **Files:** `data/data_tools/`
+
+58. **Experiments** 📝 IN PROGRESS
+    - InfoGCN, MotionBERT, GCB-Hybrid, Transformer features
+    - MCFS proper training with GCN
+    - **Files:** `experiments/`
 
 ---
 
@@ -793,7 +1053,10 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 | 0.4 | 2026-03-28 | MVP 95% | Phase 14 complete: MotionAGFormer integration, 3D viz |
 | 0.5 | 2026-03-28 | MVP 96% | Phase A+B complete: Pose filtering + multi-person tracking |
 | 0.6 | 2026-04-01 | MVP 100% | RTMPose + GPU pipeline, Nike design system, SaaS frontend |
-| 0.7 | 2026-04-11 | Strategic pivot | OOFSkate approach (proxy features over blade edge), datasets collected |
+| 0.7 | 2026-04-11 | Strategic pivot | OOFSkate approach, datasets collected, monorepo restructure |
+| 0.8 | 2026-04-13 | Pose upgrade | RTMO migration, YOLO26 distillation, pseudo-labeling |
+| 0.9 | 2026-04-18 | SaaS + Choreo | Strava dashboard, coach-student relationships, choreography planner |
+| 1.0 | 2026-04-29 | Production | API design fixes, test coverage 96%, CI/CD deploy pipeline |
 
 ---
 

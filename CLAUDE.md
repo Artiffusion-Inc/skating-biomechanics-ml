@@ -24,19 +24,20 @@ ML AI coach for figure skating. Analyze video, compare to pro refs, biomech feed
 skating-biomechanics-ml/
 ├── backend/                          # FastAPI API server
 │   ├── app/                          # Python package (backend.app.*)
-│   │   ├── routes/                   # FastAPI routers
-│   │   ├── models/                   # SQLAlchemy ORM models
+│   │   ├── routes/                   # FastAPI routers (auth, sessions, metrics, uploads, choreography, relationships)
+│   │   ├── models/                   # SQLAlchemy ORM models (User, Session, Connection, MusicAnalysis, ChoreographyProgram)
 │   │   ├── crud/                     # Database CRUD operations
-│   │   ├── services/                 # Business logic
+│   │   ├── services/                 # Business logic (diagnostics, music analysis, choreography solver)
 │   │   ├── auth/                     # JWT auth (deps.py)
 │   │   ├── config.py                 # Settings (Pydantic BaseSettings)
 │   │   ├── storage.py                # R2/S3 client
 │   │   ├── task_manager.py           # Valkey task queue helpers
+│   │   ├── metrics_registry.py       # 12+ biomechanical metric definitions
 │   │   ├── vastai/                   # Vast.ai Serverless GPU dispatch
-│   │   ├── worker.py                 # arq worker (process_video_task, detect_video_task)
+│   │   ├── worker.py                 # arq worker (process_video_task, detect_video_task, music_analysis_task)
 │   │   └── schemas.py                # Pydantic request/response schemas
 │   ├── alembic/                      # Database migrations
-│   ├── tests/                        # Backend tests
+│   ├── tests/                        # Backend tests (545+, 96% coverage)
 │   └── pyproject.toml                # Backend-only dependencies
 ├── frontend/                         # Next.js 16 app
 │   ├── app/                          # App router pages
@@ -69,38 +70,48 @@ skating-biomechanics-ml/
 ## Architecture
 
 ```
-Frontend → FastAPI (backend/) → Valkey queue → arq worker (backend/app/)
+Frontend (Next.js 16) → FastAPI (backend/) → Valkey queue → arq worker (backend/app/)
   → [VASTAI_API_KEY set?]
     → YES: upload to R2 → Vast.ai route → GPU worker → download from R2
     → NO:  local GPU (process_video_pipeline)
 
 ML Pipeline:
-  Video → RTMPose (rtmlib, CUDA) → RTMO (COCO 17kp)
-    → GapFiller → Smoothing
+  Video → RTMO (rtmlib, CUDA, COCO 17kp)
+    → COCO→H3.6M conversion → GapFiller → Smoothing (One-Euro, Numba JIT)
     → [Optional] CorrectiveLens (3D lift → kinematic constraints → project back to 2D)
-    → Phase Detection → Biomechanics Metrics → DTW (vs reference)
+    → Phase Detection (CoM-based, adaptive sigma)
+    → Biomechanics Metrics (airtime, height, knee angles, rotation, landing quality)
+    → DTW alignment vs reference → GOE proxy score
     → Rule-based Recommender → Russian Text Report
+
+Choreography Planner:
+  Upload music → librosa/MSAF analysis (BPM, key, segments)
+  → pychromaprint fingerprint → arq worker
+  → ISU element DB + CSP solver → SVG rink renderer + DAW timeline editor
 ```
 
 **Key architectural constraint:** Backend (`backend/`) no import ML pipeline internals (pose estimation, analysis, visualization). arq worker may import ML types (`H36Key`, `VastResult`) and dispatch to ML, never call pipeline internals direct. Heavy ML → GPU (local or Vast.ai Serverless).
 
 **Key decisions:**
-- **rtmlib**: sole pose estimation backend — RTMO (COCO 17kp), ONNX (CPU+GPU)
-- **RTMO (COCO 17kp)** primary format, direct compatible H3.6M 17kp
+- **RTMO via rtmlib**: primary pose estimation — COCO 17kp, ONNX Runtime (CPU+GPU)
+- **COCO 17kp → H3.6M 17kp**: public `coco_to_h36m()` conversion (HALPE26 deprecated)
 - **CorrectiveLens**: 3D lift corrective layer 2D skeleton (Kinovea-style angles)
 - **PoseTracker**: anatomical biometric Re-ID not color (solves black clothing on ice)
 - **CoM trajectory** not flight time (eliminates 60% error low jumps)
+- **OOFSkate proxy features**: landing quality, torso lean, approach arc (no blade edge detection)
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
-| **ML Pipeline** | Python, rtmlib, onnxruntime-gpu, scipy |
+| **ML Pipeline** | Python, rtmlib, onnxruntime-gpu, scipy, numba |
 | **Backend API** | FastAPI, SQLAlchemy, Alembic, arq + Valkey |
-| **Frontend** | Next.js 16, React, Tailwind CSS, shadcn/ui, Recharts |
-| **Storage** | Cloudflare R2 (S3-compatible) |
+| **Frontend** | Next.js 16, React, Tailwind CSS, shadcn/ui, Recharts, three.js |
+| **Storage** | Cloudflare R2 (S3-compatible), Postgres |
 | **Remote GPU** | Vast.ai Serverless |
-| **Testing** | pytest (backend), tsc + next lint (frontend) |
+| **Testing** | pytest (backend, 545+ tests, 96% cov), tsc + next lint + vitest (frontend) |
+| **Task Runner** | go-task (Taskfile.yaml) |
+| **Package Manager** | uv (Python), bun (JS) |
 
 ## Git & GitHub Workflow
 
