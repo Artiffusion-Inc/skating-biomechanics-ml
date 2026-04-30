@@ -8,7 +8,6 @@ import { useSessions } from "@/lib/api/sessions"
 
 export default function FeedPage() {
   const { data, isLoading } = useSessions()
-  const tc = useTranslations("common")
   const tf = useTranslations("feed")
 
   if (isLoading) {

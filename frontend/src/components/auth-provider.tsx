@@ -2,11 +2,10 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useContext, useState } from "react"
+import { devMockAuth, isDevelopment } from "@/lib/env"
 import type { UserResponse } from "@/lib/auth"
 import * as auth from "@/lib/auth"
 import { useMountEffect } from "@/lib/useMountEffect"
-
-const DEV_MOCK_AUTH = process.env.NEXT_PUBLIC_DEV_MOCK_AUTH === "true"
 
 interface AuthContextValue {
   user: UserResponse | null
@@ -25,7 +24,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useMountEffect(() => {
-    if (DEV_MOCK_AUTH && process.env.NODE_ENV === "development") {
+    if (devMockAuth && isDevelopment) {
       setUser({
         id: "dev",
         email: "dev@example.com",

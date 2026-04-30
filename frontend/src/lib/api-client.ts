@@ -79,8 +79,8 @@ export async function apiFetch<T>(
     }
 
     if (attempt > 0) {
-      const delay = 300 * Math.pow(2, attempt - 1)
-      await new Promise((resolve) => setTimeout(resolve, delay))
+      const delay = 300 * 2 ** (attempt - 1)
+      await new Promise(resolve => setTimeout(resolve, delay))
     }
 
     let res: Response

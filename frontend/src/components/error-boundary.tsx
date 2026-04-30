@@ -2,7 +2,7 @@
 
 import { Button } from "@/components/ui/button"
 import { AlertCircle } from "lucide-react"
-import { type ReactNode } from "react"
+import type { ReactNode } from "react"
 import React from "react"
 
 interface Props {
@@ -32,7 +32,7 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   handleReset = () => {
-    this.setState((prev) => ({
+    this.setState(prev => ({
       hasError: false,
       error: undefined,
       resetKey: prev.resetKey + 1,

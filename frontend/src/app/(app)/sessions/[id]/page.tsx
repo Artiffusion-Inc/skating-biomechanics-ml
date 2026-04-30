@@ -20,7 +20,6 @@ export default function SessionDetailPage() {
     refetchInterval: isProcessing ? 3000 : false,
   })
   const te = useTranslations("elements")
-  const tc = useTranslations("common")
   const ts = useTranslations("sessions")
 
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300

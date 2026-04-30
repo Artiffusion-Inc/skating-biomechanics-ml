@@ -14,7 +14,7 @@ function Wrapper() {
   const [shouldThrow, setShouldThrow] = useState(true)
   return (
     <div>
-      <button data-testid="fix" onClick={() => setShouldThrow(false)}>
+      <button type="button" data-testid="fix" onClick={() => setShouldThrow(false)}>
         Fix
       </button>
       <ErrorBoundary>
