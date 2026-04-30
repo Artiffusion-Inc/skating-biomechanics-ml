@@ -2,25 +2,11 @@
 
 import { useRouter } from "next/navigation"
 import { createContext, type ReactNode, useContext, useState } from "react"
-import { SKIP_AUTH } from "@/lib/api-client"
 import type { UserResponse } from "@/lib/auth"
 import * as auth from "@/lib/auth"
 import { useMountEffect } from "@/lib/useMountEffect"
 
-const MOCK_USER: UserResponse = {
-  id: "dev-mock-user",
-  email: "dev@example.com",
-  display_name: "Dev User",
-  avatar_url: null,
-  bio: null,
-  height_cm: null,
-  weight_kg: null,
-  language: "ru",
-  timezone: "Europe/Moscow",
-  theme: "system",
-  is_active: true,
-  created_at: new Date().toISOString(),
-}
+const DEV_MOCK_AUTH = process.env.NEXT_PUBLIC_DEV_MOCK_AUTH === "true"
 
 interface AuthContextValue {
   user: UserResponse | null
@@ -39,8 +25,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true)
 
   useMountEffect(() => {
-    if (SKIP_AUTH) {
-      setUser(MOCK_USER)
+    if (DEV_MOCK_AUTH && process.env.NODE_ENV === "development") {
+      setUser({
+        id: "dev",
+        email: "dev@example.com",
+        display_name: "Dev User",
+        avatar_url: null,
+        bio: null,
+        height_cm: null,
+        weight_kg: null,
+        language: "ru",
+        timezone: "Europe/Moscow",
+        theme: "system",
+        is_active: true,
+        created_at: new Date().toISOString(),
+      })
       setIsLoading(false)
       return
     }
