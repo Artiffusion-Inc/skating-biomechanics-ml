@@ -30,12 +30,14 @@ ENV UV_LINK_MODE=copy \
     UV_COMPILE_BYTECODE=1 \
     PATH="/app/.venv/bin:$PATH"
 
-COPY backend/pyproject.toml backend/uv.lock* ./backend/
-WORKDIR /app/backend
+# Copy root workspace files (lockfile lives at workspace root)
+COPY pyproject.toml uv.lock ./
+COPY backend/pyproject.toml ./backend/
+WORKDIR /app
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv venv /app/.venv \
-    && uv sync --frozen --no-dev --no-install-project
+    && uv sync --frozen --no-dev --package skating-backend --no-install-project
 
 # ---------------------------------------------------------
 # Runtime (no build tools)
