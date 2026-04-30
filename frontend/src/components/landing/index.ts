@@ -1,0 +1,6 @@
+export { LandingPage } from "./landing-page"
+export { HeroSection } from "./hero-section"
+export { FeaturesSection } from "./features-section"
+export { MetricsSection } from "./metrics-section"
+export { DemoSection } from "./demo-section"
+export { CTASection } from "./cta-section"
