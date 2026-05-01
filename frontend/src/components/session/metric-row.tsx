@@ -6,25 +6,26 @@ interface MetricRowProps {
   name: string
   label: string
   value: number
-  unit: string
-  isInRange: boolean | null
-  isPr: boolean
-  prevBest: number | null
-  refRange: [number, number] | null
+  unit?: string
+  isInRange?: boolean | null
+  isPr?: boolean
+  prevBest?: number | null
+  refRange?: [number, number] | null
+  direction?: "higher" | "lower"
 }
 
-function rangeColor(inRange: boolean | null): string {
-  if (inRange === null) return "text-muted-foreground"
+function rangeColor(inRange: boolean | null | undefined): string {
+  if (inRange === null || inRange === undefined) return "text-muted-foreground"
   return "" // color set via style prop
 }
 
-function rangeStyle(inRange: boolean | null) {
-  if (inRange === null) return undefined
+function rangeStyle(inRange: boolean | null | undefined) {
+  if (inRange === null || inRange === undefined) return undefined
   return { color: inRange ? "oklch(var(--score-good))" : "oklch(var(--score-bad))" }
 }
 
 export function MetricRow({ label, value, unit, isInRange, isPr, prevBest }: MetricRowProps) {
-  const delta = isPr && prevBest !== null ? value - prevBest : null
+  const delta = isPr && prevBest != null ? value - prevBest : null
   const deltaStr = delta !== null ? `${delta >= 0 ? "+" : ""}${delta.toFixed(3)}` : null
 
   return (

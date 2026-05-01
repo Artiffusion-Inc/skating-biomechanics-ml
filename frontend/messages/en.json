@@ -256,7 +256,9 @@
     "hoursAgo": "{n} h ago",
     "daysAgo": "{n} d ago",
     "analyzing": "Analyzing...",
-    "waiting": "Waiting..."
+    "waiting": "Waiting...",
+    "overallScore": "Overall Score",
+    "scoreOutOf": "out of 10"
   },
   "choreography": {
     "title": "Program Planner",
