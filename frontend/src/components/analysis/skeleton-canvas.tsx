@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useRef } from "react"
+import { useLayoutEffect, useRef, useState, useCallback } from "react"
 import type { PoseData } from "@/types"
 
 interface SkeletonCanvasProps {
@@ -56,9 +56,67 @@ const JOINT_COLORS = [
   "#FFA500", // 16: r_wrist
 ]
 
+function drawAngleArc(
+  ctx: CanvasRenderingContext2D,
+  a: [number, number],
+  b: [number, number],
+  c: [number, number],
+  width: number,
+  height: number,
+) {
+  const angle = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(a[1] - b[1], a[0] - b[0])
+  const startAngle = Math.atan2(a[1] - b[1], a[0] - b[0])
+  const radius = 25
+  ctx.beginPath()
+  ctx.arc(b[0] * width, b[1] * height, radius, startAngle, startAngle + angle, angle < 0)
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"
+  ctx.lineWidth = 2
+  ctx.stroke()
+}
+
 export function SkeletonCanvas({ poseData, currentFrame, width, height }: SkeletonCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  const [hoverJoint, setHoverJoint] = useState<number | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      setMousePos({ x: mx, y: my })
+
+      const frameIndex = poseData.frames.indexOf(currentFrame)
+      if (frameIndex === -1) return
+      const pose = poseData.poses[frameIndex]
+      if (!pose) return
+
+      let closest = -1
+      let closestDist = Infinity
+      for (let i = 0; i < pose.length; i++) {
+        const joint = pose[i]
+        if (!joint) continue
+        const [x, y, conf] = joint
+        if (conf < 0.3) continue
+        const dx = x * width - mx
+        const dy = y * height - my
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 20 && dist < closestDist) {
+          closest = i
+          closestDist = dist
+        }
+      }
+      setHoverJoint(closest)
+    },
+    [currentFrame, poseData, width, height],
+  )
+
+  const handleMouseLeave = useCallback(() => setHoverJoint(null), [])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mousePos required for tooltip redraw
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -97,6 +155,35 @@ export function SkeletonCanvas({ poseData, currentFrame, width, height }: Skelet
       ctx.stroke()
     }
 
+    // Draw knee angle arcs
+    const rHip = pose[1]
+    const rKnee = pose[2]
+    const rAnkle = pose[3]
+    if (rHip && rKnee && rAnkle) {
+      drawAngleArc(
+        ctx,
+        [rHip[0], rHip[1]],
+        [rKnee[0], rKnee[1]],
+        [rAnkle[0], rAnkle[1]],
+        width,
+        height,
+      )
+    }
+
+    const lHip = pose[4]
+    const lKnee = pose[5]
+    const lAnkle = pose[6]
+    if (lHip && lKnee && lAnkle) {
+      drawAngleArc(
+        ctx,
+        [lHip[0], lHip[1]],
+        [lKnee[0], lKnee[1]],
+        [lAnkle[0], lAnkle[1]],
+        width,
+        height,
+      )
+    }
+
     // Draw joints
     for (let i = 0; i < pose.length; i++) {
       const joint = pose[i]
@@ -110,7 +197,54 @@ export function SkeletonCanvas({ poseData, currentFrame, width, height }: Skelet
       ctx.fillStyle = JOINT_COLORS[i] || "#FFFFFF"
       ctx.fill()
     }
-  }, [poseData, currentFrame, width, height])
 
-  return <canvas ref={canvasRef} width={width} height={height} className="absolute inset-0" />
+    // Draw CoM (center of mass)
+    const pelvis = pose[0]
+    const thorax = pose[8]
+    const neck = pose[9]
+    const head = pose[10]
+    if (pelvis && thorax && neck && head) {
+      const [px, py] = pelvis
+      const [tx, ty] = thorax
+      const [nx, ny] = neck
+      const [hx, hy] = head
+      const comX = (px * 0.5 + tx * 0.3 + nx * 0.15 + hx * 0.05) * width
+      const comY = (py * 0.5 + ty * 0.3 + ny * 0.15 + hy * 0.05) * height
+      ctx.beginPath()
+      ctx.arc(comX, comY, 6, 0, Math.PI * 2)
+      ctx.fillStyle = "#ef4444"
+      ctx.fill()
+      ctx.strokeStyle = "#fff"
+      ctx.lineWidth = 1
+      ctx.stroke()
+    }
+
+    // Draw hover label
+    if (hoverJoint !== null) {
+      const joint = pose[hoverJoint]
+      if (joint) {
+        const [x, y] = joint
+        const px = x * width
+        const py = y * height
+        ctx.font = "12px Inter, sans-serif"
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
+        const text = `Joint ${hoverJoint}`
+        const tw = ctx.measureText(text).width
+        ctx.fillRect(px + 8, py - 16, tw + 8, 20)
+        ctx.fillStyle = "#fff"
+        ctx.fillText(text, px + 12, py - 2)
+      }
+    }
+  }, [poseData, currentFrame, width, height, hoverJoint, mousePos])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={width}
+      height={height}
+      className="absolute inset-0"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    />
+  )
 }

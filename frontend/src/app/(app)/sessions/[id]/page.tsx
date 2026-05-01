@@ -14,8 +14,10 @@ import { useMetricRegistry } from "@/hooks/use-metric-registry"
 import { useProcessStream } from "@/hooks/use-process-stream"
 import { useRetrySession } from "@/lib/api/sessions"
 import { Button } from "@/components/ui/button"
+import { Printer } from "lucide-react"
 import { FrameMetricsChart } from "@/components/analysis/frame-metrics-chart"
 import { SessionDownloads } from "@/components/session/session-downloads"
+import { SessionDiagnostics } from "@/components/analysis/session-diagnostics"
 
 const ThreeJSkeletonViewer = lazy(() =>
   import("@/components/analysis/threejs-skeleton-viewer").then(m => ({
@@ -183,6 +185,17 @@ export default function SessionDetailPage() {
             </ul>
           </div>
         )}
+
+        {session.pose_data && <SessionDiagnostics elementType={session.element_type} />}
+
+        <button
+          type="button"
+          onClick={() => window.print()}
+          className="flex items-center gap-2 rounded-xl border border-border px-3 py-2 text-sm hover:bg-muted print:hidden"
+        >
+          <Printer className="h-4 w-4" />
+          {tSession("printReport")}
+        </button>
 
         <SessionDownloads
           videoUrl={session.processed_video_url ?? session.video_url}
