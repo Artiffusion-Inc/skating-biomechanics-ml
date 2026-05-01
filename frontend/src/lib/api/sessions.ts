@@ -1,5 +1,11 @@
 // src/frontend/src/lib/api/sessions.ts
-import { useMutation, useQuery, useQueryClient, type Query } from "@tanstack/react-query"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type Query,
+  type UseQueryOptions,
+} from "@tanstack/react-query"
 import { z } from "zod"
 import { apiDelete, apiFetch, apiPatch, apiPost } from "@/lib/api-client"
 
@@ -61,6 +67,8 @@ const SessionSchema = z.object({
 
 const SessionListSchema = z.object({ sessions: z.array(SessionSchema), total: z.number() })
 
+type Session = z.infer<typeof SessionSchema>
+
 export function useSessions(userId?: string, elementType?: string) {
   const params = new URLSearchParams()
   if (userId) params.set("user_id", userId)
@@ -71,10 +79,7 @@ export function useSessions(userId?: string, elementType?: string) {
   })
 }
 
-export function useSession(
-  id: string,
-  opts?: { refetchInterval?: number | false | ((query: Query) => number | false) },
-) {
+export function useSession(id: string, opts?: Pick<UseQueryOptions<Session>, "refetchInterval">) {
   return useQuery({
     queryKey: ["session", id],
     queryFn: () => apiFetch(`/sessions/${id}`, SessionSchema),
