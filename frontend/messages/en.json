@@ -402,5 +402,10 @@
       "duration": "Duration (s)",
       "goe": "GOE"
     }
+  },
+  "compare": {
+    "title": "Compare",
+    "selectLeft": "Select left session",
+    "selectRight": "Select right session"
   }
 }
