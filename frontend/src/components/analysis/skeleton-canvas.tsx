@@ -151,6 +151,27 @@ export function SkeletonCanvas({ poseData, currentFrame, width, height }: Skelet
       ctx.fill()
     }
 
+    // Draw CoM (center of mass)
+    const pelvis = pose[0]
+    const thorax = pose[8]
+    const neck = pose[9]
+    const head = pose[10]
+    if (pelvis && thorax && neck && head) {
+      const [px, py] = pelvis
+      const [tx, ty] = thorax
+      const [nx, ny] = neck
+      const [hx, hy] = head
+      const comX = (px * 0.5 + tx * 0.3 + nx * 0.15 + hx * 0.05) * width
+      const comY = (py * 0.5 + ty * 0.3 + ny * 0.15 + hy * 0.05) * height
+      ctx.beginPath()
+      ctx.arc(comX, comY, 6, 0, Math.PI * 2)
+      ctx.fillStyle = "#ef4444"
+      ctx.fill()
+      ctx.strokeStyle = "#fff"
+      ctx.lineWidth = 1
+      ctx.stroke()
+    }
+
     // Draw hover label
     if (hoverJoint !== null) {
       const joint = pose[hoverJoint]
