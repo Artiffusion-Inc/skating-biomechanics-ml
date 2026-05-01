@@ -186,7 +186,10 @@
   "feed": {
     "noSessions": "No sessions",
     "noSessionsHint": "Record a video for analysis",
-    "recordVideo": "Record video"
+    "recordVideo": "Record video",
+    "select": "Select",
+    "deleteSelected": "Delete selected ({count})",
+    "bulkDeleteConfirm": "Delete selected sessions? This action cannot be undone."
   },
   "upload": {
     "uploadingVideo": "Uploading video...",

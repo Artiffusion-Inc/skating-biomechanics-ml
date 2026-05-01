@@ -27,7 +27,14 @@ function scoreStyle(score: number | null): React.CSSProperties {
   return { color: "oklch(var(--score-bad))" }
 }
 
-export function SessionCard({ session }: { session: Session }) {
+interface SessionCardProps {
+  session: Session
+  selectable?: boolean
+  selected?: boolean
+  onSelect?: (id: string) => void
+}
+
+export function SessionCard({ session, selectable, selected, onSelect }: SessionCardProps) {
   const hasPR = session.metrics.some(m => m.is_pr)
   const te = useTranslations("elements")
   const ts = useTranslations("session")
@@ -36,12 +43,23 @@ export function SessionCard({ session }: { session: Session }) {
     <Link href={`/sessions/${session.id}`} className="block">
       <div className="rounded-2xl border border-border p-3 sm:p-4 hover:bg-accent/30 transition-colors">
         <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="font-medium truncate">{te(session.element_type)}</p>
-            <p className="text-xs text-muted-foreground flex items-center gap-1">
-              <Clock className="h-3 w-3 shrink-0" />
-              {relativeTime(session.created_at, ts)}
-            </p>
+          <div className="flex items-center min-w-0">
+            {selectable && (
+              <input
+                type="checkbox"
+                checked={selected}
+                onChange={() => onSelect?.(session.id)}
+                className="mr-2 h-4 w-4 shrink-0"
+                onClick={e => e.stopPropagation()}
+              />
+            )}
+            <div className="min-w-0">
+              <p className="font-medium truncate">{te(session.element_type)}</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3 shrink-0" />
+                {relativeTime(session.created_at, ts)}
+              </p>
+            </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
             {hasPR && <Award className="h-4 w-4" style={{ color: "oklch(var(--accent-gold))" }} />}

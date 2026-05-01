@@ -117,6 +117,14 @@ export function useDeleteSession() {
   })
 }
 
+export function useBulkDeleteSessions() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids: string[]) => apiDelete(`/sessions/bulk?ids=${ids.join(",")}`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
+  })
+}
+
 export function useRetrySession() {
   const qc = useQueryClient()
   return useMutation({

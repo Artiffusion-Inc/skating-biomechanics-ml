@@ -189,7 +189,10 @@
   "feed": {
     "noSessions": "Нет записей",
     "noSessionsHint": "Запишите видео для анализа",
-    "recordVideo": "Записать видео"
+    "recordVideo": "Записать видео",
+    "select": "Выбрать",
+    "deleteSelected": "Удалить выбранное ({count})",
+    "bulkDeleteConfirm": "Удалить выбранные сессии? Это действие необратимо."
   },
   "upload": {
     "uploadingVideo": "Загрузка видео...",

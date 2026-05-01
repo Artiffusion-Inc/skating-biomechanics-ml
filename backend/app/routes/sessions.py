@@ -187,3 +187,24 @@ async def delete_session(session_id: str, user: CurrentUser, db: DbDep):
             details={"session_id": session_id},
         )
     await soft_delete(db, session)
+
+
+@router.delete("/bulk", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_sessions_bulk(
+    ids: str = Query(..., description="Comma-separated session IDs"),
+    user: CurrentUser = None,
+    db: DbDep = None,
+):
+    session_ids = [sid.strip() for sid in ids.split(",") if sid.strip()]
+    for sid in session_ids:
+        session = await get_by_id(db, sid)
+        if not session:
+            continue
+        if session.user_id != user.id:
+            raise_api_error(
+                status_code=status.HTTP_403_FORBIDDEN,
+                error="Forbidden",
+                message="Cannot delete another user's session",
+                details={"session_id": sid},
+            )
+        await soft_delete(db, session)
