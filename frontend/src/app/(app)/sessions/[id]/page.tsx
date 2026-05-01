@@ -7,6 +7,7 @@ import { SkeletonDetail } from "@/components/skeleton-detail"
 import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
+import { SessionDownloads } from "@/components/session/session-downloads"
 import { useTranslations } from "@/i18n"
 import { useSession } from "@/lib/api/sessions"
 import { useAnalysisStore } from "@/stores/analysis"
@@ -65,6 +66,12 @@ export default function SessionDetailPage() {
           </p>
         )}
       </div>
+
+      <SessionDownloads
+        videoUrl={session.video_url}
+        posesUrl={session.poses_url}
+        csvUrl={session.csv_url}
+      />
 
       {session.processed_video_url && session.pose_data && (
         <VideoWithSkeleton
