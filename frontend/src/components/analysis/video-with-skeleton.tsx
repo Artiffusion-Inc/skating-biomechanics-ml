@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect } from "react"
 import { useAnalysisStore } from "@/stores/analysis"
 import type { PhasesData, PoseData } from "@/types"
 import { PhaseLabels } from "./phase-labels"
@@ -11,6 +11,7 @@ interface VideoWithSkeletonProps {
   poseData: PoseData | null
   phases: PhasesData | null
   totalFrames: number
+  fps?: number
   className?: string
 }
 
@@ -19,11 +20,33 @@ export function VideoWithSkeleton({
   poseData,
   phases,
   totalFrames,
+  fps = 30,
   className = "",
 }: VideoWithSkeletonProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { currentFrame, setCurrentFrame } = useAnalysisStore()
+  const { currentFrame, setCurrentFrame, isPlaying } = useAnalysisStore()
+
+  // Sync store currentFrame → video time
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video?.duration || Number.isNaN(video.duration)) return
+    const targetTime = currentFrame / fps
+    if (Math.abs(video.currentTime - targetTime) > 1 / fps) {
+      video.currentTime = targetTime
+    }
+  }, [currentFrame, fps])
+
+  // Sync store isPlaying → video play/pause
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (isPlaying) {
+      video.play().catch(() => {})
+    } else {
+      video.pause()
+    }
+  }, [isPlaying])
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return

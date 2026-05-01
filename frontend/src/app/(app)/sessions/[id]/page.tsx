@@ -96,6 +96,7 @@ export default function SessionDetailPage() {
           poseData={session.pose_data}
           phases={session.phases ?? null}
           totalFrames={totalFrames}
+          fps={session.pose_data.fps}
           className="rounded-xl"
         />
       )}
