@@ -1,20 +1,39 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import Link from "next/link"
 import { SessionCard } from "@/components/session/session-card"
 import { SkeletonCard } from "@/components/skeleton-card"
 import { useTranslations } from "@/i18n"
 import { useSessions, useBulkDeleteSessions } from "@/lib/api/sessions"
+import { ELEMENT_TYPE_KEYS } from "@/lib/constants"
 
 export default function FeedPage() {
   const { data, isLoading } = useSessions()
   const tf = useTranslations("feed")
   const tc = useTranslations("common")
+  const te = useTranslations("elements")
 
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const bulkDelete = useBulkDeleteSessions()
+
+  const [elementFilter, setElementFilter] = useState("")
+  const [dateFilter, setDateFilter] = useState("all")
+
+  const filteredSessions = useMemo(() => {
+    if (!data?.sessions) return []
+    let sessions = [...data.sessions]
+    if (elementFilter) {
+      sessions = sessions.filter(s => s.element_type === elementFilter)
+    }
+    if (dateFilter !== "all") {
+      const days = { "7d": 7, "30d": 30, "90d": 90 }[dateFilter]
+      const cutoff = Date.now() - days! * 86400000
+      sessions = sessions.filter(s => new Date(s.created_at).getTime() >= cutoff)
+    }
+    return sessions
+  }, [data, elementFilter, dateFilter])
 
   const toggleSelect = (id: string) => {
     setSelectedIds(prev => {
@@ -87,7 +106,32 @@ export default function FeedPage() {
         )}
       </div>
 
-      {data.sessions.map(session => (
+      <div className="flex flex-wrap items-center gap-2">
+        <select
+          value={elementFilter}
+          onChange={e => setElementFilter(e.target.value)}
+          className="rounded-lg border border-border bg-transparent px-2 py-1 text-sm"
+        >
+          <option value="">{tf("allElements")}</option>
+          {ELEMENT_TYPE_KEYS.map(key => (
+            <option key={key} value={key}>{te(key)}</option>
+          ))}
+        </select>
+        <div className="flex gap-1">
+          {(["7d", "30d", "90d", "all"] as const).map(d => (
+            <button
+              key={d}
+              type="button"
+              onClick={() => setDateFilter(d)}
+              className={`rounded-lg px-2 py-1 text-xs ${dateFilter === d ? "bg-primary text-primary-foreground" : "border border-border hover:bg-muted"}`}
+            >
+              {tf(`period${d}`)}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {filteredSessions.map(session => (
         <SessionCard
           key={session.id}
           session={session}

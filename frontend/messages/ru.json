@@ -192,7 +192,12 @@
     "recordVideo": "Записать видео",
     "select": "Выбрать",
     "deleteSelected": "Удалить выбранное ({count})",
-    "bulkDeleteConfirm": "Удалить выбранные сессии? Это действие необратимо."
+    "bulkDeleteConfirm": "Удалить выбранные сессии? Это действие необратимо.",
+    "allElements": "Все элементы",
+    "period7d": "7 дн",
+    "period30d": "30 дн",
+    "period90d": "90 дн",
+    "periodall": "Всё"
   },
   "upload": {
     "uploadingVideo": "Загрузка видео...",

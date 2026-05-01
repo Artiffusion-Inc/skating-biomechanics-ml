@@ -189,7 +189,12 @@
     "recordVideo": "Record video",
     "select": "Select",
     "deleteSelected": "Delete selected ({count})",
-    "bulkDeleteConfirm": "Delete selected sessions? This action cannot be undone."
+    "bulkDeleteConfirm": "Delete selected sessions? This action cannot be undone.",
+    "allElements": "All elements",
+    "period7d": "7d",
+    "period30d": "30d",
+    "period90d": "90d",
+    "periodall": "All"
   },
   "upload": {
     "uploadingVideo": "Uploading video...",
