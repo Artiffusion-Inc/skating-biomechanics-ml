@@ -15,9 +15,11 @@ const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
-  const isProcessing = POLLING_STATUSES.has(useSession(id).data?.status ?? "")
   const { data: session, isLoading } = useSession(id, {
-    refetchInterval: isProcessing ? 3000 : false,
+    refetchInterval: (query: any) => {
+      const status = query.state.data?.status
+      return POLLING_STATUSES.has(status ?? "") ? 3000 : false
+    },
   })
   const te = useTranslations("elements")
   const ts = useTranslations("sessions")
