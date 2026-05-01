@@ -47,6 +47,18 @@ describe("ErrorBoundary", () => {
     consoleError.mockRestore()
   })
 
+  it("renders custom fallback when child throws and fallback is provided", () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
+    render(
+      <ErrorBoundary fallback={<div data-testid="custom-fallback">Custom error</div>}>
+        <ThrowOnce shouldThrow={true} />
+      </ErrorBoundary>,
+    )
+    expect(screen.getByTestId("custom-fallback")).toHaveTextContent("Custom error")
+    expect(screen.queryByText("Something went wrong")).not.toBeInTheDocument()
+    consoleError.mockRestore()
+  })
+
   it("resets and shows children after clicking try again", () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {})
     render(<Wrapper />)
