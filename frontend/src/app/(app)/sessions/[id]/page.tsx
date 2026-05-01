@@ -15,6 +15,7 @@ import { useProcessStream } from "@/hooks/use-process-stream"
 import { useRetrySession } from "@/lib/api/sessions"
 import { Button } from "@/components/ui/button"
 import { FrameMetricsChart } from "@/components/analysis/frame-metrics-chart"
+import { SessionDownloads } from "@/components/session/session-downloads"
 
 const ThreeJSkeletonViewer = lazy(() =>
   import("@/components/analysis/threejs-skeleton-viewer").then(m => ({
@@ -182,6 +183,12 @@ export default function SessionDetailPage() {
             </ul>
           </div>
         )}
+
+        <SessionDownloads
+          videoUrl={session.processed_video_url ?? session.video_url}
+          posesUrl={session.poses_url}
+          csvUrl={session.csv_url}
+        />
       </div>
     </div>
   )
