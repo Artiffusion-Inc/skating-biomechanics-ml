@@ -194,6 +194,8 @@ class CreateSessionRequest(BaseModel):
 
 class PatchSessionRequest(BaseModel):
     element_type: str | None = Field(default=None, max_length=50)
+    status: str | None = Field(default=None, max_length=20)
+    process_task_id: str | None = Field(default=None, max_length=50)
 
 
 class SessionMetricResponse(BaseModel):
@@ -266,6 +268,7 @@ class SessionResponse(BaseModel):
     phases: PhasesData | None  # Typed phase markers
     recommendations: list[str] | None
     overall_score: float | None
+    process_task_id: str | None
     created_at: str
     processed_at: str | None
     metrics: list[SessionMetricResponse] = []

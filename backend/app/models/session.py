@@ -43,6 +43,7 @@ class Session(TimestampMixin, Base):
     recommendations: Mapped[list[str] | None] = mapped_column(JSON, nullable=True)
     overall_score: Mapped[float | None] = mapped_column(Float)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    process_task_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
 
     # Relationship to metrics
     metrics: Mapped[list[SessionMetric]] = relationship(

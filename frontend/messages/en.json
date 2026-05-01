@@ -73,11 +73,8 @@
     "demoEyebrow": "Visualization",
     "demoHeadline": "Skeleton overlay in real time",
     "demoCaption": "The algorithm tracks 17 key body points in every frame, builds a 3D skeleton and calculates biomechanical parameters — from CoM to joint angles.",
-    "ctaEyebrow": "Start today",
-    "ctaHeadline": "First analysis is free",
-    "ctaSubtitle": "Upload a video, get a full biomechanical breakdown. No subscriptions for trial analysis.",
-    "ctaPrimary": "Create account",
-    "ctaSecondary": "Already have an account?",
+    "ctaAction": "Создать аккаунт",
+    "ctaLogin": "Уже есть аккаунт?",
     "metricSkeletonPoints": "skeleton points",
     "metricSkeletonFormat": "H3.6M format",
     "metricMetrics": "metrics",
@@ -217,7 +214,12 @@
   "sessions": {
     "notFound": "Session not found",
     "metrics": "Metrics",
-    "recommendations": "Recommendations"
+    "recommendations": "Recommendations",
+    "analyzing": "Analyzing video...",
+    "analyzingHint": "Usually takes 1-3 minutes",
+    "analysisFailed": "Analysis failed",
+    "retry": "Retry",
+    "retrying": "Retrying..."
   },
   "students": {
     "title": "Students",
@@ -258,7 +260,8 @@
     "analyzing": "Analyzing...",
     "waiting": "Waiting...",
     "overallScore": "Overall Score",
-    "scoreOutOf": "out of 10"
+    "scoreOutOf": "out of 10",
+    "cancel": "Cancel"
   },
   "choreography": {
     "title": "Program Planner",

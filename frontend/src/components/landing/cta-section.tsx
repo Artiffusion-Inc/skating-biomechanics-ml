@@ -34,7 +34,7 @@ export function CTASection() {
               className="h-14 rounded-full px-10 text-base font-medium"
               asChild
             >
-              <a href="/register">{t("ctaPrimary")}</a>
+              <a href="/register">{t("ctaAction")}</a>
             </Button>
             <Button
               variant="outline"
@@ -42,7 +42,7 @@ export function CTASection() {
               className="h-14 rounded-full border-background/30 px-8 text-base font-medium text-background hover:bg-background/10"
               asChild
             >
-              <a href="/login">{t("ctaSecondary")}</a>
+              <a href="/login">{t("ctaLogin")}</a>
             </Button>
           </div>
         </div>

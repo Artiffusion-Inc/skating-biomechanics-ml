@@ -1,23 +1,26 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { PhaseTimeline } from "@/components/analysis/phase-timeline"
 import { SkeletonDetail } from "@/components/skeleton-detail"
 import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
+import { SessionStatus } from "@/components/session/session-status"
 import { useTranslations } from "@/i18n"
 import { useSession } from "@/lib/api/sessions"
+import { useCancelProcess } from "@/lib/api/process"
 import { useMetricRegistry } from "@/hooks/use-metric-registry"
-import { useAnalysisStore } from "@/stores/analysis"
+import { useProcessStream } from "@/hooks/use-process-stream"
+import { useRetrySession } from "@/lib/api/sessions"
+import { Button } from "@/components/ui/button"
 
 const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
 
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: session, isLoading } = useSession(id, {
-    refetchInterval: (query: any) => {
+    refetchInterval: query => {
       const status = query.state.data?.status
       return POLLING_STATUSES.has(status ?? "") ? 3000 : false
     },
@@ -26,6 +29,10 @@ export default function SessionDetailPage() {
   const ts = useTranslations("sessions")
   const tSession = useTranslations("session")
   const { data: registry } = useMetricRegistry()
+  const cancelMutation = useCancelProcess()
+
+  const processStream = useProcessStream(session?.process_task_id ?? null)
+  const retryMutation = useRetrySession()
 
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300
 
@@ -35,11 +42,15 @@ export default function SessionDetailPage() {
 
   if (POLLING_STATUSES.has(session.status)) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 px-4 py-20">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="nike-h3">{ts("analyzing")}</p>
-        <p className="text-sm text-muted-foreground">{ts("analyzingHint")}</p>
-      </div>
+      <SessionStatus
+        status={session.status}
+        progress={processStream.state?.progress}
+        onCancel={() => {
+          if (session.process_task_id) {
+            cancelMutation.mutate(session.process_task_id)
+          }
+        }}
+      />
     )
   }
 
@@ -48,6 +59,16 @@ export default function SessionDetailPage() {
       <div className="mx-auto max-w-lg space-y-4 px-4 py-20 text-center">
         <p className="nike-h3 text-destructive">{ts("analysisFailed")}</p>
         <p className="text-sm text-muted-foreground">{session.error_message}</p>
+        {session.video_key && (
+          <Button
+            onClick={() =>
+              retryMutation.mutate({ sessionId: session.id, videoKey: session.video_key as string })
+            }
+            disabled={retryMutation.isPending}
+          >
+            {retryMutation.isPending ? tSession("retrying") : tSession("retry")}
+          </Button>
+        )}
       </div>
     )
   }

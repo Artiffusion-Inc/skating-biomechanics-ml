@@ -49,6 +49,7 @@ async def _session_to_response(session) -> SessionResponse:
             "phases": session.phases,
             "recommendations": session.recommendations,
             "overall_score": session.overall_score,
+            "process_task_id": session.process_task_id,
             "created_at": session.created_at,
             "processed_at": session.processed_at,
             "metrics": session.metrics,

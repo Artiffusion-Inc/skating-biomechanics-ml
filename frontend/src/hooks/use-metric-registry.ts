@@ -13,7 +13,7 @@ const RegistrySchema = z.record(
     direction: z.enum(["higher", "lower"]),
     element_types: z.array(z.string()),
     ideal_range: z.tuple([z.number(), z.number()]),
-  })
+  }),
 )
 
 export type MetricRegistry = z.infer<typeof RegistrySchema>

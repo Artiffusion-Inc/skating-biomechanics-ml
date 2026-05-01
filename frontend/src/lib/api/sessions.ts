@@ -1,5 +1,11 @@
 // src/frontend/src/lib/api/sessions.ts
-import { useMutation, useQuery, useQueryClient, type Query } from "@tanstack/react-query"
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type Query,
+  type UseQueryOptions,
+} from "@tanstack/react-query"
 import { z } from "zod"
 import { apiDelete, apiFetch, apiPatch, apiPost } from "@/lib/api-client"
 
@@ -53,12 +59,15 @@ const SessionSchema = z.object({
   phases: PhasesDataSchema.optional().nullable(), // Updated type
   recommendations: z.array(z.string()).nullable(),
   overall_score: z.number().nullable(),
+  process_task_id: z.string().nullable().optional(),
   created_at: z.string(),
   processed_at: z.string().nullable(),
   metrics: z.array(SessionMetricSchema),
 })
 
 const SessionListSchema = z.object({ sessions: z.array(SessionSchema), total: z.number() })
+
+type Session = z.infer<typeof SessionSchema>
 
 export function useSessions(userId?: string, elementType?: string) {
   const params = new URLSearchParams()
@@ -70,15 +79,12 @@ export function useSessions(userId?: string, elementType?: string) {
   })
 }
 
-export function useSession(
-  id: string,
-  opts?: { refetchInterval?: number | false | ((query: Query) => number | false) },
-) {
+export function useSession(id: string, opts?: Pick<UseQueryOptions<Session>, "refetchInterval">) {
   return useQuery({
     queryKey: ["session", id],
     queryFn: () => apiFetch(`/sessions/${id}`, SessionSchema),
     enabled: !!id,
-    refetchInterval: opts?.refetchInterval as any,
+    refetchInterval: opts?.refetchInterval,
   })
 }
 
@@ -91,12 +97,12 @@ export function useCreateSession() {
   })
 }
 
-export function usePatchSession(id: string) {
+export function usePatchSession() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { element_type?: string }) =>
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
       apiPatch(`/sessions/${id}`, SessionSchema, body),
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ["session", id] })
       qc.invalidateQueries({ queryKey: ["sessions"] })
     },
@@ -108,5 +114,22 @@ export function useDeleteSession() {
   return useMutation({
     mutationFn: (id: string) => apiDelete(`/sessions/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
+  })
+}
+
+export function useRetrySession() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ sessionId, videoKey }: { sessionId: string; videoKey: string }) => {
+      await apiPost("/process/queue", z.any(), {
+        video_key: videoKey,
+        person_click: { x: 0.5, y: 0.5 },
+      })
+      return apiPatch(`/sessions/${sessionId}`, SessionSchema, { status: "queued" })
+    },
+    onSuccess: (_, { sessionId }) => {
+      qc.invalidateQueries({ queryKey: ["session", sessionId] })
+      qc.invalidateQueries({ queryKey: ["sessions"] })
+    },
   })
 }
