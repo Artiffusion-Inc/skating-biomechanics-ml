@@ -1,9 +1,9 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { lazy, Suspense } from "react"
 import { PhaseTimeline } from "@/components/analysis/phase-timeline"
 import { SkeletonDetail } from "@/components/skeleton-detail"
-import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
 import { SessionStatus } from "@/components/session/session-status"
@@ -15,6 +15,12 @@ import { useProcessStream } from "@/hooks/use-process-stream"
 import { useRetrySession } from "@/lib/api/sessions"
 import { Button } from "@/components/ui/button"
 import { FrameMetricsChart } from "@/components/analysis/frame-metrics-chart"
+
+const ThreeJSkeletonViewer = lazy(() =>
+  import("@/components/analysis/threejs-skeleton-viewer").then(m => ({
+    default: m.ThreeJSkeletonViewer,
+  })),
+)
 
 const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
 
@@ -127,11 +133,13 @@ export default function SessionDetailPage() {
       )}
 
       {session.pose_data && session.frame_metrics && (
-        <ThreeJSkeletonViewer
-          poseData={session.pose_data}
-          frameMetrics={session.frame_metrics}
-          className="rounded-xl"
-        />
+        <Suspense fallback={<div className="aspect-square rounded-xl bg-muted animate-pulse" />}>
+          <ThreeJSkeletonViewer
+            poseData={session.pose_data}
+            frameMetrics={session.frame_metrics}
+            className="rounded-xl"
+          />
+        </Suspense>
       )}
 
       {session.metrics.length > 0 && (
