@@ -184,6 +184,51 @@ export function SkeletonCanvas({ poseData, currentFrame, width, height }: Skelet
       )
     }
 
+    // Right hip angle: shoulder -> hip -> knee
+    const rShoulderHip = pose[14]
+    const rHipJoint = pose[1]
+    const rKneeJoint = pose[2]
+    if (rShoulderHip && rHipJoint && rKneeJoint) {
+      drawAngleArc(
+        ctx,
+        [rShoulderHip[0], rShoulderHip[1]],
+        [rHipJoint[0], rHipJoint[1]],
+        [rKneeJoint[0], rKneeJoint[1]],
+        width,
+        height,
+      )
+    }
+
+    // Left hip angle
+    const lShoulderHip = pose[11]
+    const lHipJoint = pose[4]
+    const lKneeJoint = pose[5]
+    if (lShoulderHip && lHipJoint && lKneeJoint) {
+      drawAngleArc(
+        ctx,
+        [lShoulderHip[0], lShoulderHip[1]],
+        [lHipJoint[0], lHipJoint[1]],
+        [lKneeJoint[0], lKneeJoint[1]],
+        width,
+        height,
+      )
+    }
+
+    // Trunk lean: hip -> spine -> neck
+    const hipCenter = pose[0]
+    const spineCenter = pose[7]
+    const neckCenter = pose[9]
+    if (hipCenter && spineCenter && neckCenter) {
+      drawAngleArc(
+        ctx,
+        [hipCenter[0], hipCenter[1]],
+        [spineCenter[0], spineCenter[1]],
+        [neckCenter[0], neckCenter[1]],
+        width,
+        height,
+      )
+    }
+
     // Draw joints
     for (let i = 0; i < pose.length; i++) {
       const joint = pose[i]
