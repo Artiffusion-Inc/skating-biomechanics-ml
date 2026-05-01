@@ -266,7 +266,8 @@
     "scoreOutOf": "из 10",
     "cancel": "Отменить",
     "retry": "Повторить",
-    "retrying": "Повтор..."
+    "retrying": "Повтор...",
+    "printReport": "Печать отчёта"
   },
   "analysis": {
     "frameMetrics": "Метрики по кадрам",

@@ -257,6 +257,34 @@ body {
     }
   }
 
+  @media print {
+    .app-nav,
+    .bottom-dock,
+    button,
+    [role="slider"],
+    .print-hidden {
+      display: none !important;
+    }
+
+    body {
+      background: white !important;
+      color: black !important;
+    }
+
+    .lg\\:grid-cols-2 {
+      grid-template-columns: 1fr !important;
+    }
+
+    .rounded-2xl,
+    .rounded-xl {
+      break-inside: avoid;
+    }
+
+    video {
+      max-height: 50vh;
+    }
+  }
+
   .hero-bounce {
     animation: bounceY 2s ease-in-out infinite;
   }

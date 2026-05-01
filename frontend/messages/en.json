@@ -263,7 +263,8 @@
     "scoreOutOf": "out of 10",
     "cancel": "Cancel",
     "retry": "Retry",
-    "retrying": "Retrying..."
+    "retrying": "Retrying...",
+    "printReport": "Print Report"
   },
   "analysis": {
     "frameMetrics": "Frame Metrics",
