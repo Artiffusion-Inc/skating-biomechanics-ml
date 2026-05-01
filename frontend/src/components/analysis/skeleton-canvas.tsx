@@ -1,6 +1,6 @@
 "use client"
 
-import { useLayoutEffect, useRef } from "react"
+import { useLayoutEffect, useRef, useState, useCallback } from "react"
 import type { PoseData } from "@/types"
 
 interface SkeletonCanvasProps {
@@ -59,6 +59,46 @@ const JOINT_COLORS = [
 export function SkeletonCanvas({ poseData, currentFrame, width, height }: SkeletonCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
+  const [hoverJoint, setHoverJoint] = useState<number | null>(null)
+  const [mousePos, setMousePos] = useState<{ x: number; y: number }>({ x: 0, y: 0 })
+
+  const handleMouseMove = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      const canvas = canvasRef.current
+      if (!canvas) return
+      const rect = canvas.getBoundingClientRect()
+      const mx = e.clientX - rect.left
+      const my = e.clientY - rect.top
+      setMousePos({ x: mx, y: my })
+
+      const frameIndex = poseData.frames.indexOf(currentFrame)
+      if (frameIndex === -1) return
+      const pose = poseData.poses[frameIndex]
+      if (!pose) return
+
+      let closest = -1
+      let closestDist = Infinity
+      for (let i = 0; i < pose.length; i++) {
+        const joint = pose[i]
+        if (!joint) continue
+        const [x, y, conf] = joint
+        if (conf < 0.3) continue
+        const dx = x * width - mx
+        const dy = y * height - my
+        const dist = Math.sqrt(dx * dx + dy * dy)
+        if (dist < 20 && dist < closestDist) {
+          closest = i
+          closestDist = dist
+        }
+      }
+      setHoverJoint(closest)
+    },
+    [currentFrame, poseData, width, height],
+  )
+
+  const handleMouseLeave = useCallback(() => setHoverJoint(null), [])
+
+  // biome-ignore lint/correctness/useExhaustiveDependencies: mousePos required for tooltip redraw
   useLayoutEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
@@ -110,7 +150,33 @@ export function SkeletonCanvas({ poseData, currentFrame, width, height }: Skelet
       ctx.fillStyle = JOINT_COLORS[i] || "#FFFFFF"
       ctx.fill()
     }
-  }, [poseData, currentFrame, width, height])
 
-  return <canvas ref={canvasRef} width={width} height={height} className="absolute inset-0" />
+    // Draw hover label
+    if (hoverJoint !== null) {
+      const joint = pose[hoverJoint]
+      if (joint) {
+        const [x, y] = joint
+        const px = x * width
+        const py = y * height
+        ctx.font = "12px Inter, sans-serif"
+        ctx.fillStyle = "rgba(0, 0, 0, 0.7)"
+        const text = `Joint ${hoverJoint}`
+        const tw = ctx.measureText(text).width
+        ctx.fillRect(px + 8, py - 16, tw + 8, 20)
+        ctx.fillStyle = "#fff"
+        ctx.fillText(text, px + 12, py - 2)
+      }
+    }
+  }, [poseData, currentFrame, width, height, hoverJoint, mousePos])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={width}
+      height={height}
+      className="absolute inset-0"
+      onMouseMove={handleMouseMove}
+      onMouseLeave={handleMouseLeave}
+    />
+  )
 }
