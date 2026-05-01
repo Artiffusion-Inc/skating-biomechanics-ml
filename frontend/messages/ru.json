@@ -264,7 +264,19 @@
     "waiting": "Ожидание...",
     "overallScore": "Общая оценка",
     "scoreOutOf": "из 10",
-    "cancel": "Отменить"
+    "cancel": "Отменить",
+    "retry": "Повторить",
+    "retrying": "Повтор..."
+  },
+  "analysis": {
+    "frameMetrics": "Метрики по кадрам",
+    "knee_angles_r": "Колено (правая)",
+    "knee_angles_l": "Колено (левая)",
+    "hip_angles_r": "Бедро (правая)",
+    "hip_angles_l": "Бедро (левая)",
+    "trunk_lean": "Наклон корпуса",
+    "com_height": "Высота ЦМТ",
+    "loading3D": "Загрузка 3D..."
   },
   "choreography": {
     "title": "Планировщик программ",
