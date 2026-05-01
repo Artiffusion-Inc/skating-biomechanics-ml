@@ -259,7 +259,9 @@
     "hoursAgo": "{n} ч назад",
     "daysAgo": "{n} дн назад",
     "analyzing": "Анализ...",
-    "waiting": "Ожидание..."
+    "waiting": "Ожидание...",
+    "overallScore": "Общая оценка",
+    "scoreOutOf": "из 10"
   },
   "choreography": {
     "title": "Планировщик программ",

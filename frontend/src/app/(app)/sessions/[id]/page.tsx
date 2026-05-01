@@ -23,6 +23,7 @@ export default function SessionDetailPage() {
   })
   const te = useTranslations("elements")
   const ts = useTranslations("sessions")
+  const tSession = useTranslations("session")
 
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300
 
@@ -58,6 +59,11 @@ export default function SessionDetailPage() {
         <p className="text-sm text-muted-foreground">
           {new Date(session.created_at).toLocaleDateString("ru-RU")}
         </p>
+        {session.overall_score !== null && (
+          <p className="text-sm font-medium" style={{ color: "oklch(var(--score-good))" }}>
+            {tSession("overallScore")}: {session.overall_score.toFixed(1)} {tSession("scoreOutOf")}
+          </p>
+        )}
       </div>
 
       {session.processed_video_url && session.pose_data && (
