@@ -110,3 +110,20 @@ export function useDeleteSession() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
   })
 }
+
+export function useRetrySession() {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ sessionId, videoKey }: { sessionId: string; videoKey: string }) => {
+      await apiPost("/process/queue", z.any(), {
+        video_key: videoKey,
+        person_click: { x: 0.5, y: 0.5 },
+      })
+      return apiPatch(`/sessions/${sessionId}`, SessionSchema, { status: "queued" })
+    },
+    onSuccess: (_, { sessionId }) => {
+      qc.invalidateQueries({ queryKey: ["session", sessionId] })
+      qc.invalidateQueries({ queryKey: ["sessions"] })
+    },
+  })
+}

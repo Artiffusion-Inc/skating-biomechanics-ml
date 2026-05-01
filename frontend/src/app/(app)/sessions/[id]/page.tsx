@@ -1,14 +1,15 @@
 "use client"
 
-import { Loader2 } from "lucide-react"
 import { useParams } from "next/navigation"
 import { PhaseTimeline } from "@/components/analysis/phase-timeline"
 import { SkeletonDetail } from "@/components/skeleton-detail"
 import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
+import { SessionStatus } from "@/components/session/session-status"
 import { useTranslations } from "@/i18n"
 import { useSession } from "@/lib/api/sessions"
+import { useCancelProcess } from "@/lib/api/process"
 import { useMetricRegistry } from "@/hooks/use-metric-registry"
 import { useAnalysisStore } from "@/stores/analysis"
 
@@ -26,6 +27,10 @@ export default function SessionDetailPage() {
   const ts = useTranslations("sessions")
   const tSession = useTranslations("session")
   const { data: registry } = useMetricRegistry()
+  const cancelMutation = useCancelProcess()
+
+  // Placeholder: actual useProcessStream integration in next task
+  const processState = null
 
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300
 
@@ -35,11 +40,11 @@ export default function SessionDetailPage() {
 
   if (POLLING_STATUSES.has(session.status)) {
     return (
-      <div className="flex flex-col items-center justify-center gap-4 px-4 py-20">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="nike-h3">{ts("analyzing")}</p>
-        <p className="text-sm text-muted-foreground">{ts("analyzingHint")}</p>
-      </div>
+      <SessionStatus
+        status={session.status}
+        progress={processState?.progress}
+        onCancel={() => cancelMutation.mutate(session.id)}
+      />
     )
   }
 

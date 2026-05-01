@@ -217,7 +217,12 @@
   "sessions": {
     "notFound": "Session not found",
     "metrics": "Metrics",
-    "recommendations": "Recommendations"
+    "recommendations": "Recommendations",
+    "analyzing": "Analyzing video...",
+    "analyzingHint": "Usually takes 1-3 minutes",
+    "analysisFailed": "Analysis failed",
+    "retry": "Retry",
+    "retrying": "Retrying..."
   },
   "students": {
     "title": "Students",
@@ -258,7 +263,8 @@
     "analyzing": "Analyzing...",
     "waiting": "Waiting...",
     "overallScore": "Overall Score",
-    "scoreOutOf": "out of 10"
+    "scoreOutOf": "out of 10",
+    "cancel": "Cancel"
   },
   "choreography": {
     "title": "Program Planner",
