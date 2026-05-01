@@ -7,9 +7,9 @@ import { SkeletonDetail } from "@/components/skeleton-detail"
 import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
-import { SessionDownloads } from "@/components/session/session-downloads"
 import { useTranslations } from "@/i18n"
 import { useSession } from "@/lib/api/sessions"
+import { useMetricRegistry } from "@/hooks/use-metric-registry"
 import { useAnalysisStore } from "@/stores/analysis"
 
 const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
@@ -25,6 +25,7 @@ export default function SessionDetailPage() {
   const te = useTranslations("elements")
   const ts = useTranslations("sessions")
   const tSession = useTranslations("session")
+  const { data: registry } = useMetricRegistry()
 
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300
 
@@ -67,12 +68,6 @@ export default function SessionDetailPage() {
         )}
       </div>
 
-      <SessionDownloads
-        videoUrl={session.video_url}
-        posesUrl={session.poses_url}
-        csvUrl={session.csv_url}
-      />
-
       {session.processed_video_url && session.pose_data && (
         <VideoWithSkeleton
           videoUrl={session.processed_video_url}
@@ -110,19 +105,26 @@ export default function SessionDetailPage() {
       {session.metrics.length > 0 && (
         <div className="rounded-2xl border border-border p-3 sm:p-4">
           <h2 className="text-sm font-medium mb-2">{ts("metrics")}</h2>
-          {session.metrics.map(m => (
-            <MetricRow
-              key={m.id}
-              name={m.metric_name}
-              label={m.metric_name}
-              value={m.metric_value}
-              unit={m.unit ?? (m.metric_name === "score" ? "" : m.metric_name === "deg" ? "°" : "")}
-              isInRange={m.is_in_range}
-              isPr={m.is_pr}
-              prevBest={m.prev_best}
-              refRange={m.reference_value ? [m.reference_value, m.reference_value + 1] : null}
-            />
-          ))}
+          {session.metrics.map(m => {
+            const def = registry?.[m.metric_name]
+            const label = def?.label_ru ?? m.metric_name
+            const unit = def?.unit ?? m.unit ?? ""
+            const direction = def?.direction
+            return (
+              <MetricRow
+                key={m.id}
+                name={m.metric_name}
+                label={label}
+                value={m.metric_value}
+                unit={unit}
+                direction={direction}
+                isInRange={m.is_in_range}
+                isPr={m.is_pr}
+                prevBest={m.prev_best}
+                refRange={m.reference_value ? [m.reference_value, m.reference_value + 1] : null}
+              />
+            )
+          })}
         </div>
       )}
 
