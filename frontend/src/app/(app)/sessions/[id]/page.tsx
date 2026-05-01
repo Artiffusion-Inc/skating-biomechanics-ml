@@ -11,7 +11,9 @@ import { useTranslations } from "@/i18n"
 import { useSession } from "@/lib/api/sessions"
 import { useCancelProcess } from "@/lib/api/process"
 import { useMetricRegistry } from "@/hooks/use-metric-registry"
-import { useAnalysisStore } from "@/stores/analysis"
+import { useProcessStream } from "@/hooks/use-process-stream"
+import { useRetrySession } from "@/lib/api/sessions"
+import { Button } from "@/components/ui/button"
 
 const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
 
@@ -29,6 +31,9 @@ export default function SessionDetailPage() {
   const { data: registry } = useMetricRegistry()
   const cancelMutation = useCancelProcess()
 
+  const processStream = useProcessStream(session?.process_task_id ?? null)
+  const retryMutation = useRetrySession()
+
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300
 
   if (isLoading) return <SkeletonDetail />
@@ -39,8 +44,12 @@ export default function SessionDetailPage() {
     return (
       <SessionStatus
         status={session.status}
-        progress={undefined}
-        onCancel={() => cancelMutation.mutate(session.id)}
+        progress={processStream.state?.progress}
+        onCancel={() => {
+          if (session.process_task_id) {
+            cancelMutation.mutate(session.process_task_id)
+          }
+        }}
       />
     )
   }
@@ -50,6 +59,14 @@ export default function SessionDetailPage() {
       <div className="mx-auto max-w-lg space-y-4 px-4 py-20 text-center">
         <p className="nike-h3 text-destructive">{ts("analysisFailed")}</p>
         <p className="text-sm text-muted-foreground">{session.error_message}</p>
+        {session.video_key && (
+          <Button
+            onClick={() => retryMutation.mutate({ sessionId: session.id, videoKey: session.video_key! })}
+            disabled={retryMutation.isPending}
+          >
+            {retryMutation.isPending ? tSession("retrying") : tSession("retry")}
+          </Button>
+        )}
       </div>
     )
   }

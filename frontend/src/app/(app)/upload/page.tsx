@@ -8,7 +8,7 @@ import { CameraRecorder } from "@/components/upload/camera-recorder"
 import { ElementPicker } from "@/components/upload/element-picker"
 import { useTranslations } from "@/i18n"
 import { enqueueProcess } from "@/lib/api/process"
-import { useCreateSession } from "@/lib/api/sessions"
+import { useCreateSession, usePatchSession } from "@/lib/api/sessions"
 import { ChunkedUploader } from "@/lib/api/uploads"
 import { useMountEffect } from "@/lib/useMountEffect"
 
@@ -47,6 +47,8 @@ export default function UploadPage() {
     setStep("ready")
   }
 
+  const patchSession = usePatchSession()
+
   async function handleUpload() {
     if (!file) return
     setStep("uploading")
@@ -60,11 +62,12 @@ export default function UploadPage() {
         element_type: elementType ?? "auto",
         video_key: videoKey,
       })
-      await enqueueProcess({
+      const processRes = await enqueueProcess({
         video_key: videoKey,
         person_click: { x: -1, y: -1 },
         session_id: session.id,
       })
+      await patchSession.mutateAsync({ id: session.id, body: { process_task_id: processRes.task_id } })
       setStep("done")
       toast.success(t("videoUploaded"))
       if (session?.id) {

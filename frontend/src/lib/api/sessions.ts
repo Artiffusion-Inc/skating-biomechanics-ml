@@ -53,6 +53,7 @@ const SessionSchema = z.object({
   phases: PhasesDataSchema.optional().nullable(), // Updated type
   recommendations: z.array(z.string()).nullable(),
   overall_score: z.number().nullable(),
+  process_task_id: z.string().nullable().optional(),
   created_at: z.string(),
   processed_at: z.string().nullable(),
   metrics: z.array(SessionMetricSchema),
@@ -91,12 +92,12 @@ export function useCreateSession() {
   })
 }
 
-export function usePatchSession(id: string) {
+export function usePatchSession() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { element_type?: string }) =>
+    mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) =>
       apiPatch(`/sessions/${id}`, SessionSchema, body),
-    onSuccess: () => {
+    onSuccess: (_, { id }) => {
       qc.invalidateQueries({ queryKey: ["session", id] })
       qc.invalidateQueries({ queryKey: ["sessions"] })
     },
