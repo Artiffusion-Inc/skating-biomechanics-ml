@@ -284,7 +284,9 @@
     "loading3D": "Загрузка 3D...",
     "viewFront": "Спереди",
     "viewSide": "Сбоку",
-    "viewTop": "Сверху"
+    "viewTop": "Сверху",
+    "wireframe": "Каркас",
+    "solid": "Сплошной"
   },
   "choreography": {
     "title": "Планировщик программ",

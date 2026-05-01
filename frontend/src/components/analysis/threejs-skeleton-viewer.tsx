@@ -63,7 +63,7 @@ function Scene({
   poseData: PoseData
   frameMetrics: FrameMetrics | null
 }) {
-  const { currentFrame } = useAnalysisStore()
+  const { currentFrame, renderMode } = useAnalysisStore()
 
   return (
     <>
@@ -82,7 +82,12 @@ function Scene({
       <Environment preset="city" />
 
       {/* Skeleton */}
-      <SkeletalMesh poseData={poseData} frameMetrics={frameMetrics} currentFrame={currentFrame} />
+      <SkeletalMesh
+        poseData={poseData}
+        frameMetrics={frameMetrics}
+        currentFrame={currentFrame}
+        renderMode={renderMode}
+      />
 
       {/* Grid helper */}
       <Grid
@@ -119,6 +124,22 @@ function CameraPresets() {
         </button>
       ))}
     </div>
+  )
+}
+
+function RenderModeToggle() {
+  const { renderMode, setRenderMode } = useAnalysisStore()
+  const t = useTranslations("analysis")
+
+  return (
+    <button
+      type="button"
+      onClick={() => setRenderMode(renderMode === "wireframe" ? "solid" : "wireframe")}
+      className="absolute top-2 right-2 rounded-lg px-2 py-1 text-xs hover:bg-muted"
+      style={{ backgroundColor: "oklch(var(--background) / 0.7)" }}
+    >
+      {renderMode === "wireframe" ? t("wireframe") : t("solid")}
+    </button>
   )
 }
 
@@ -179,6 +200,8 @@ export function ThreeJSkeletonViewer({
       </Canvas>
 
       <PlaybackControls />
+
+      <RenderModeToggle />
 
       <CameraPresets />
 

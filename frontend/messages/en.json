@@ -281,7 +281,9 @@
     "loading3D": "Loading 3D...",
     "viewFront": "Front",
     "viewSide": "Side",
-    "viewTop": "Top"
+    "viewTop": "Top",
+    "wireframe": "Wireframe",
+    "solid": "Solid"
   },
   "choreography": {
     "title": "Program Planner",

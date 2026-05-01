@@ -1,6 +1,7 @@
 /// <reference path="../../../react-three.d.ts" />
 "use client"
 
+import type {} from "@react-three/fiber"
 import { Line } from "@react-three/drei"
 import { useMemo } from "react"
 import * as THREE from "three"
@@ -30,10 +31,25 @@ function Joint({ position, color }: JointProps) {
   return <Line points={points} color={`#${color.toString(16).padStart(6, "0")}`} lineWidth={8} />
 }
 
+function SolidJoint({ position, color }: JointProps) {
+  const mesh = useMemo(() => {
+    const geometry = new THREE.SphereGeometry(0.015, 8, 8)
+    const material = new THREE.MeshStandardMaterial({
+      color: `#${color.toString(16).padStart(6, "0")}`,
+    })
+    const m = new THREE.Mesh(geometry, material)
+    m.position.set(...position)
+    return m
+  }, [position, color])
+
+  return <primitive object={mesh} />
+}
+
 interface SkeletalMeshProps {
   poseData: PoseData
   frameMetrics: FrameMetrics | null
   currentFrame: number
+  renderMode: "wireframe" | "solid"
 }
 
 // H3.6M 17-keypoint skeleton connections (same as 2D)
@@ -93,7 +109,12 @@ function getJointColor(
   return 0xef4444 // Red
 }
 
-export function SkeletalMesh({ poseData, frameMetrics, currentFrame }: SkeletalMeshProps) {
+export function SkeletalMesh({
+  poseData,
+  frameMetrics,
+  currentFrame,
+  renderMode,
+}: SkeletalMeshProps) {
   const { joints, bones } = useMemo(() => {
     // Find the frame index in sampled data
     const frameIndex = poseData.frames.indexOf(currentFrame)
@@ -162,13 +183,21 @@ export function SkeletalMesh({ poseData, frameMetrics, currentFrame }: SkeletalM
       ))}
 
       {/* Joints */}
-      {joints.map(joint => (
-        <Joint
-          key={`joint-${joint.index}`}
-          position={joint.position as [number, number, number]}
-          color={joint.color}
-        />
-      ))}
+      {joints.map(joint =>
+        renderMode === "solid" ? (
+          <SolidJoint
+            key={`joint-${joint.index}`}
+            position={joint.position as [number, number, number]}
+            color={joint.color}
+          />
+        ) : (
+          <Joint
+            key={`joint-${joint.index}`}
+            position={joint.position as [number, number, number]}
+            color={joint.color}
+          />
+        ),
+      )}
     </>
   )
 }
