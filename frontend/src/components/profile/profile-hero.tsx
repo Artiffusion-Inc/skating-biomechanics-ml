@@ -1,10 +1,11 @@
 "use client"
 
 import { Check, Pencil, X } from "lucide-react"
-import { type FormEvent, useRef, useState } from "react"
+import { type FormEvent, useEffect, useRef, useState } from "react"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth-provider"
 import { useTranslations } from "@/i18n"
+import { updateProfile } from "@/lib/auth"
 
 export function ProfileHero() {
   const { user } = useAuth()
@@ -17,6 +18,30 @@ export function ProfileHero() {
   const nameRef = useRef<HTMLInputElement>(null)
   const bioRef = useRef<HTMLTextAreaElement>(null)
 
+  const [height, setHeight] = useState(user?.height_cm?.toString() ?? "")
+  const [weight, setWeight] = useState(user?.weight_kg?.toString() ?? "")
+  const [saving, setSaving] = useState(false)
+
+  useEffect(() => {
+    setHeight(user?.height_cm?.toString() ?? "")
+    setWeight(user?.weight_kg?.toString() ?? "")
+  }, [user?.height_cm, user?.weight_kg])
+
+  const saveBody = async () => {
+    if (saving) return
+    setSaving(true)
+    try {
+      await updateProfile({
+        height_cm: height ? Number.parseInt(height, 10) : undefined,
+        weight_kg: weight ? Number.parseFloat(weight) : undefined,
+      })
+    } catch {
+      // silent fail
+    } finally {
+      setSaving(false)
+    }
+  }
+
   // Current display values (use edited values when editing, otherwise user values)
   const displayName = editingName ? name : (user?.display_name ?? "")
   const displayBio = editingBio ? bio : (user?.bio ?? "")
@@ -24,7 +49,6 @@ export function ProfileHero() {
 
   async function save() {
     try {
-      const { updateProfile } = await import("@/lib/auth")
       await updateProfile({
         display_name: name || undefined,
         bio: bio || undefined,
@@ -125,6 +149,36 @@ export function ProfileHero() {
           <Pencil className="mx-auto mt-0.5 h-3 w-3 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
         </button>
       )}
+
+      {/* Body measurements */}
+      <div className="mt-3 flex items-center gap-3 text-sm text-muted-foreground">
+        <div className="flex items-center gap-1.5">
+          <span>{t("height")}:</span>
+          <input
+            type="number"
+            value={height}
+            onChange={e => setHeight(e.target.value)}
+            onBlur={saveBody}
+            className="w-16 rounded-md border border-border bg-transparent px-1.5 py-0.5 text-sm text-foreground outline-none focus:border-primary"
+            min={50}
+            max={250}
+          />
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span>{t("weight")}:</span>
+          <input
+            type="number"
+            value={weight}
+            onChange={e => setWeight(e.target.value)}
+            onBlur={saveBody}
+            className="w-16 rounded-md border border-border bg-transparent px-1.5 py-0.5 text-sm text-foreground outline-none focus:border-primary"
+            min={20}
+            max={300}
+            step={0.1}
+          />
+        </div>
+        {saving && <span className="text-xs">{t("saving")}</span>}
+      </div>
     </div>
   )
 }

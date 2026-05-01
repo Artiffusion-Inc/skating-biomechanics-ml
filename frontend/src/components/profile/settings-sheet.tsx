@@ -2,39 +2,17 @@
 
 import { LogOut, Settings, X } from "lucide-react"
 import { useRouter } from "next/navigation"
-import { type FormEvent, useState } from "react"
-import { toast } from "sonner"
+import { useState } from "react"
 import { useAuth } from "@/components/auth-provider"
-import { FormField } from "@/components/form-field"
 import { ThemeToggle } from "@/components/theme-toggle"
-import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/i18n"
 
 export function SettingsSheet() {
   const t = useTranslations("profile")
   const ts = useTranslations("settings")
-  const { user, logout } = useAuth()
+  const { logout } = useAuth()
   const router = useRouter()
   const [open, setOpen] = useState(false)
-  const [height, setHeight] = useState(user?.height_cm?.toString() ?? "")
-  const [weight, setWeight] = useState(user?.weight_kg?.toString() ?? "")
-  const [saving, setSaving] = useState(false)
-
-  async function saveBody() {
-    setSaving(true)
-    try {
-      const { updateProfile } = await import("@/lib/auth")
-      await updateProfile({
-        height_cm: height ? Number.parseInt(height, 10) : undefined,
-        weight_kg: weight ? Number.parseFloat(weight) : undefined,
-      })
-      toast.success(t("updateSuccess"))
-    } catch {
-      toast.error(t("updateError"))
-    } finally {
-      setSaving(false)
-    }
-  }
 
   async function handleLogout() {
     setOpen(false)
@@ -81,40 +59,6 @@ export function SettingsSheet() {
                 <span className="text-sm font-medium">{ts("theme")}</span>
                 <ThemeToggle />
               </div>
-
-              <form
-                onSubmit={(e: FormEvent) => {
-                  e.preventDefault()
-                  saveBody()
-                }}
-                className="space-y-3"
-              >
-                <p className="text-sm font-medium">{t("bodyMeasurements")}</p>
-                <div className="grid grid-cols-2 gap-3">
-                  <FormField
-                    label={t("height")}
-                    id="settings-height"
-                    type="number"
-                    value={height}
-                    onChange={e => setHeight(e.target.value)}
-                    min={50}
-                    max={250}
-                  />
-                  <FormField
-                    label={t("weight")}
-                    id="settings-weight"
-                    type="number"
-                    value={weight}
-                    onChange={e => setWeight(e.target.value)}
-                    min={20}
-                    max={300}
-                    step={0.1}
-                  />
-                </div>
-                <Button type="submit" size="sm" disabled={saving} className="w-full">
-                  {saving ? t("saving") : ts("save")}
-                </Button>
-              </form>
 
               <button
                 type="button"
