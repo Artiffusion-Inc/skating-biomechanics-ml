@@ -1,9 +1,9 @@
 "use client"
 
 import { useParams } from "next/navigation"
+import { lazy, Suspense } from "react"
 import { PhaseTimeline } from "@/components/analysis/phase-timeline"
 import { SkeletonDetail } from "@/components/skeleton-detail"
-import { ThreeJSkeletonViewer } from "@/components/analysis/threejs-skeleton-viewer"
 import { VideoWithSkeleton } from "@/components/analysis/video-with-skeleton"
 import { MetricRow } from "@/components/session/metric-row"
 import { SessionStatus } from "@/components/session/session-status"
@@ -15,6 +15,13 @@ import { useProcessStream } from "@/hooks/use-process-stream"
 import { useRetrySession } from "@/lib/api/sessions"
 import { Button } from "@/components/ui/button"
 import { FrameMetricsChart } from "@/components/analysis/frame-metrics-chart"
+import { SessionDownloads } from "@/components/session/session-downloads"
+
+const ThreeJSkeletonViewer = lazy(() =>
+  import("@/components/analysis/threejs-skeleton-viewer").then(m => ({
+    default: m.ThreeJSkeletonViewer,
+  })),
+)
 
 const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
 
@@ -75,100 +82,114 @@ export default function SessionDetailPage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6 sm:max-w-3xl">
-      <div>
-        <h1 className="text-xl font-semibold">
-          {te(session.element_type) ?? session.element_type}
-        </h1>
-        <p className="text-sm text-muted-foreground">
-          {new Date(session.created_at).toLocaleDateString("ru-RU")}
-        </p>
-        {session.overall_score !== null && (
-          <p className="text-sm font-medium" style={{ color: "oklch(var(--score-good))" }}>
-            {tSession("overallScore")}: {session.overall_score.toFixed(1)} {tSession("scoreOutOf")}
+    <div className="mx-auto max-w-2xl space-y-6 lg:max-w-none lg:grid lg:grid-cols-2 lg:gap-6">
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-xl font-semibold">
+            {te(session.element_type) ?? session.element_type}
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            {new Date(session.created_at).toLocaleDateString("ru-RU")}
           </p>
+          {session.overall_score !== null && (
+            <p className="text-sm font-medium" style={{ color: "oklch(var(--score-good))" }}>
+              {tSession("overallScore")}: {session.overall_score.toFixed(1)}{" "}
+              {tSession("scoreOutOf")}
+            </p>
+          )}
+        </div>
+
+        {session.processed_video_url && session.pose_data && (
+          <VideoWithSkeleton
+            videoUrl={session.processed_video_url}
+            poseData={session.pose_data}
+            phases={session.phases ?? null}
+            totalFrames={totalFrames}
+            fps={session.pose_data.fps}
+            className="rounded-xl"
+          />
+        )}
+
+        {session.pose_data && (
+          <PhaseTimeline totalFrames={totalFrames} phases={session.phases ?? {}} />
+        )}
+
+        {session.pose_data && session.frame_metrics && (
+          <FrameMetricsChart
+            poseData={session.pose_data}
+            frameMetrics={session.frame_metrics}
+            phases={session.phases ?? null}
+            totalFrames={totalFrames}
+          />
+        )}
+
+        {session.processed_video_url && !session.pose_data && (
+          <video src={session.processed_video_url} controls className="w-full rounded-xl">
+            <track kind="captions" />
+          </video>
+        )}
+
+        {!session.processed_video_url && session.video_url && (
+          <video src={session.video_url} controls className="w-full rounded-xl">
+            <track kind="captions" />
+          </video>
         )}
       </div>
 
-      {session.processed_video_url && session.pose_data && (
-        <VideoWithSkeleton
-          videoUrl={session.processed_video_url}
-          poseData={session.pose_data}
-          phases={session.phases ?? null}
-          totalFrames={totalFrames}
-          className="rounded-xl"
+      <div className="space-y-6">
+        {session.pose_data && session.frame_metrics && (
+          <Suspense fallback={<div className="aspect-square rounded-xl bg-muted animate-pulse" />}>
+            <ThreeJSkeletonViewer
+              poseData={session.pose_data}
+              frameMetrics={session.frame_metrics}
+              className="rounded-xl"
+            />
+          </Suspense>
+        )}
+
+        {session.metrics.length > 0 && (
+          <div className="rounded-2xl border border-border p-3 sm:p-4">
+            <h2 className="text-sm font-medium mb-2">{ts("metrics")}</h2>
+            {session.metrics.map(m => {
+              const def = registry?.[m.metric_name]
+              const label = def?.label_ru ?? m.metric_name
+              const unit = def?.unit ?? m.unit ?? ""
+              const direction = def?.direction
+              return (
+                <MetricRow
+                  key={m.id}
+                  name={m.metric_name}
+                  label={label}
+                  value={m.metric_value}
+                  unit={unit}
+                  direction={direction}
+                  isInRange={m.is_in_range}
+                  isPr={m.is_pr}
+                  prevBest={m.prev_best}
+                  refRange={m.reference_value ? [m.reference_value, m.reference_value + 1] : null}
+                />
+              )
+            })}
+          </div>
+        )}
+
+        {session.recommendations && session.recommendations.length > 0 && (
+          <div className="rounded-2xl border border-border p-3 sm:p-4">
+            <h2 className="text-sm font-medium mb-2">{ts("recommendations")}</h2>
+            <ul className="space-y-1 text-sm text-muted-foreground">
+              {session.recommendations.map(r => (
+                <li key={r}>{r}</li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        <SessionDownloads
+          videoUrl={session.processed_video_url ?? session.video_url}
+          posesUrl={session.poses_url}
+          csvUrl={session.csv_url}
         />
-      )}
-
-      {session.pose_data && (
-        <PhaseTimeline totalFrames={totalFrames} phases={session.phases ?? {}} />
-      )}
-
-      {session.pose_data && session.frame_metrics && (
-        <FrameMetricsChart
-          poseData={session.pose_data}
-          frameMetrics={session.frame_metrics}
-          phases={session.phases ?? null}
-          totalFrames={totalFrames}
-        />
-      )}
-
-      {session.processed_video_url && !session.pose_data && (
-        <video src={session.processed_video_url} controls className="w-full rounded-xl">
-          <track kind="captions" />
-        </video>
-      )}
-
-      {!session.processed_video_url && session.video_url && (
-        <video src={session.video_url} controls className="w-full rounded-xl">
-          <track kind="captions" />
-        </video>
-      )}
-
-      {session.pose_data && session.frame_metrics && (
-        <ThreeJSkeletonViewer
-          poseData={session.pose_data}
-          frameMetrics={session.frame_metrics}
-          className="rounded-xl"
-        />
-      )}
-
-      {session.metrics.length > 0 && (
-        <div className="rounded-2xl border border-border p-3 sm:p-4">
-          <h2 className="text-sm font-medium mb-2">{ts("metrics")}</h2>
-          {session.metrics.map(m => {
-            const def = registry?.[m.metric_name]
-            const label = def?.label_ru ?? m.metric_name
-            const unit = def?.unit ?? m.unit ?? ""
-            const direction = def?.direction
-            return (
-              <MetricRow
-                key={m.id}
-                name={m.metric_name}
-                label={label}
-                value={m.metric_value}
-                unit={unit}
-                direction={direction}
-                isInRange={m.is_in_range}
-                isPr={m.is_pr}
-                prevBest={m.prev_best}
-                refRange={m.reference_value ? [m.reference_value, m.reference_value + 1] : null}
-              />
-            )
-          })}
-        </div>
-      )}
-
-      {session.recommendations && session.recommendations.length > 0 && (
-        <div className="rounded-2xl border border-border p-3 sm:p-4">
-          <h2 className="text-sm font-medium mb-2">{ts("recommendations")}</h2>
-          <ul className="space-y-1 text-sm text-muted-foreground">
-            {session.recommendations.map(r => (
-              <li key={r}>{r}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+      </div>
     </div>
   )
 }

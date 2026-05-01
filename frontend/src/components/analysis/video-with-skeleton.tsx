@@ -1,16 +1,18 @@
 "use client"
 
-import { useRef } from "react"
+import { useRef, useEffect, useState, useCallback } from "react"
 import { useAnalysisStore } from "@/stores/analysis"
 import type { PhasesData, PoseData } from "@/types"
 import { PhaseLabels } from "./phase-labels"
 import { SkeletonCanvas } from "./skeleton-canvas"
+import { Play, Pause } from "lucide-react"
 
 interface VideoWithSkeletonProps {
   videoUrl: string
   poseData: PoseData | null
   phases: PhasesData | null
   totalFrames: number
+  fps?: number
   className?: string
 }
 
@@ -19,11 +21,40 @@ export function VideoWithSkeleton({
   poseData,
   phases,
   totalFrames,
+  fps = 30,
   className = "",
 }: VideoWithSkeletonProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { currentFrame, setCurrentFrame } = useAnalysisStore()
+  const { currentFrame, setCurrentFrame, isPlaying, setIsPlaying, playbackSpeed } = useAnalysisStore()
+
+  // Sync store currentFrame → video time
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video?.duration || Number.isNaN(video.duration)) return
+    const targetTime = currentFrame / fps
+    if (Math.abs(video.currentTime - targetTime) > 1 / fps) {
+      video.currentTime = targetTime
+    }
+  }, [currentFrame, fps])
+
+  // Sync store isPlaying → video play/pause
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (isPlaying) {
+      video.play().catch(() => {})
+    } else {
+      video.pause()
+    }
+  }, [isPlaying])
+
+  // Sync store playbackSpeed → video playbackRate
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    video.playbackRate = playbackSpeed
+  }, [playbackSpeed])
 
   const handleTimeUpdate = () => {
     if (!videoRef.current) return
@@ -32,24 +63,25 @@ export function VideoWithSkeleton({
     setCurrentFrame(frame)
   }
 
-  const handleSeek = (
-    e: React.MouseEvent<HTMLDivElement> | React.KeyboardEvent<HTMLDivElement>,
-  ) => {
-    if (!videoRef.current || !containerRef.current) return
+  const [showControls, setShowControls] = useState(true)
+  const hideTimeout = useRef<NodeJS.Timeout | null>(null)
 
-    let clientX: number
-    if ("clientX" in e) {
-      clientX = e.clientX
-    } else {
-      const rect = (e.target as HTMLDivElement).getBoundingClientRect()
-      clientX = rect.left + rect.width / 2
+  const revealControls = useCallback(() => {
+    setShowControls(true)
+    if (hideTimeout.current) clearTimeout(hideTimeout.current)
+    hideTimeout.current = setTimeout(() => setShowControls(false), 2000)
+  }, [])
+
+  const handleTogglePlay = useCallback(() => {
+    setIsPlaying(!isPlaying)
+    revealControls()
+  }, [isPlaying, setIsPlaying, revealControls])
+
+  useEffect(() => {
+    return () => {
+      if (hideTimeout.current) clearTimeout(hideTimeout.current)
     }
-
-    const rect = containerRef.current.getBoundingClientRect()
-    const x = clientX - rect.left
-    const percent = x / rect.width
-    videoRef.current.currentTime = percent * videoRef.current.duration
-  }
+  }, [])
 
   if (!poseData) {
     // Fallback: show video without skeleton
@@ -76,8 +108,12 @@ export function VideoWithSkeleton({
       ref={containerRef}
       className={`relative aspect-video ${className}`}
       style={{ backgroundColor: "oklch(var(--background))" }}
-      onClick={handleSeek}
-      onKeyDown={e => e.key === "Enter" && handleSeek(e)}
+      onKeyDown={e => {
+        if (e.key === " " || e.key === "Enter") {
+          e.preventDefault()
+          handleTogglePlay()
+        }
+      }}
       role="button"
       tabIndex={0}
     >
@@ -90,6 +126,20 @@ export function VideoWithSkeleton({
       />
       <SkeletonCanvas poseData={poseData} currentFrame={currentFrame} width={1920} height={1080} />
       {phases && <PhaseLabels phases={phases} currentFrame={totalFrames} width={1920} />}
+      {poseData && (
+        <div
+          className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}
+          onClick={handleTogglePlay}
+          onMouseMove={revealControls}
+        >
+          <button
+            type="button"
+            className="rounded-full bg-black/50 p-4 text-white hover:bg-black/70"
+          >
+            {isPlaying ? <Pause className="h-8 w-8" /> : <Play className="h-8 w-8" />}
+          </button>
+        </div>
+      )}
     </div>
   )
 }

@@ -4,6 +4,7 @@
 import { Environment, Grid, OrbitControls, PerspectiveCamera } from "@react-three/drei"
 import { Canvas } from "@react-three/fiber"
 import { Suspense } from "react"
+import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { useTranslations } from "@/i18n"
 import { useAnalysisStore } from "@/stores/analysis"
 import type { FrameMetrics, PoseData } from "@/types"
@@ -62,6 +63,50 @@ function Scene({
   )
 }
 
+function PlaybackControls() {
+  const {
+    isPlaying,
+    setIsPlaying,
+    currentFrame,
+    setCurrentFrame,
+    playbackSpeed,
+    setPlaybackSpeed,
+  } = useAnalysisStore()
+
+  return (
+    <div
+      className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5 text-xs"
+      style={{ backgroundColor: "oklch(var(--background) / 0.7)" }}
+    >
+      <button
+        type="button"
+        onClick={() => setCurrentFrame(Math.max(0, currentFrame - 10))}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </button>
+      <button type="button" onClick={() => setIsPlaying(!isPlaying)}>
+        {isPlaying ? (
+          <Pause className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4" />
+        )}
+      </button>
+      <button type="button" onClick={() => setCurrentFrame(currentFrame + 10)}>
+        <ChevronRight className="h-4 w-4" />
+      </button>
+      <select
+        value={playbackSpeed}
+        onChange={e => setPlaybackSpeed(Number(e.target.value))}
+        className="bg-transparent text-xs outline-none"
+      >
+        <option value={0.5}>0.5x</option>
+        <option value={1}>1x</option>
+        <option value={2}>2x</option>
+      </select>
+    </div>
+  )
+}
+
 export function ThreeJSkeletonViewer({
   poseData,
   frameMetrics,
@@ -80,6 +125,8 @@ export function ThreeJSkeletonViewer({
           <Scene poseData={poseData} frameMetrics={frameMetrics} />
         </Suspense>
       </Canvas>
+
+      <PlaybackControls />
 
       {/* Legend */}
       <div
