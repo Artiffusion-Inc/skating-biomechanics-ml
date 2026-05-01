@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod"
-import { apiFetch } from "@/lib/api-client"
+import { apiFetch, apiPost } from "@/lib/api-client"
 
 // ---------------------------------------------------------------------------
 // Detect
@@ -104,4 +104,8 @@ export async function enqueueProcess(params: {
 
 export async function getProcessStatus(taskId: string) {
   return apiFetch(`/process/${taskId}/status`, TaskStatusResponseSchema)
+}
+
+export async function cancelProcess(taskId: string) {
+  return apiPost(`/process/${taskId}/cancel`, z.any(), {})
 }
