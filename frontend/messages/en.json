@@ -264,7 +264,11 @@
     "cancel": "Cancel",
     "retry": "Retry",
     "retrying": "Retrying...",
-    "printReport": "Print Report"
+    "printReport": "Print Report",
+    "share": "Share",
+    "delete": "Delete",
+    "deleteConfirm": "Delete this session? This action cannot be undone.",
+    "deleting": "Deleting..."
   },
   "analysis": {
     "frameMetrics": "Frame Metrics",

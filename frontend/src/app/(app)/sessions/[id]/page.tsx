@@ -16,6 +16,7 @@ import { useRetrySession } from "@/lib/api/sessions"
 import { Button } from "@/components/ui/button"
 import { Printer } from "lucide-react"
 import { FrameMetricsChart } from "@/components/analysis/frame-metrics-chart"
+import { SessionActions } from "@/components/session/session-actions"
 import { SessionDownloads } from "@/components/session/session-downloads"
 import { SessionDiagnostics } from "@/components/analysis/session-diagnostics"
 
@@ -139,6 +140,8 @@ export default function SessionDetailPage() {
       </div>
 
       <div className="space-y-6">
+        <SessionActions sessionId={session.id} />
+
         {session.pose_data && session.frame_metrics && (
           <Suspense fallback={<div className="aspect-square rounded-xl bg-muted animate-pulse" />}>
             <ThreeJSkeletonViewer
