@@ -67,7 +67,10 @@ export default function UploadPage() {
         person_click: { x: -1, y: -1 },
         session_id: session.id,
       })
-      await patchSession.mutateAsync({ id: session.id, body: { process_task_id: processRes.task_id } })
+      await patchSession.mutateAsync({
+        id: session.id,
+        body: { process_task_id: processRes.task_id },
+      })
       setStep("done")
       toast.success(t("videoUploaded"))
       if (session?.id) {

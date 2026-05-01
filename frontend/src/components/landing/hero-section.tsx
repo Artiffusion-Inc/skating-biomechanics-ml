@@ -54,11 +54,7 @@ export function HeroSection() {
         <div
           className={`hero-cta mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center ${mounted ? "hero-visible" : ""}`}
         >
-          <Button
-            size="lg"
-            className="h-14 rounded-full px-10 text-base font-medium"
-            asChild
-          >
+          <Button size="lg" className="h-14 rounded-full px-10 text-base font-medium" asChild>
             <a href="/register">{t("ctaPrimary")}</a>
           </Button>
           <Button
@@ -72,7 +68,9 @@ export function HeroSection() {
         </div>
       </div>
 
-      <div className={`hero-scroll absolute bottom-8 left-1/2 -translate-x-1/2 ${mounted ? "hero-visible" : ""}`}>
+      <div
+        className={`hero-scroll absolute bottom-8 left-1/2 -translate-x-1/2 ${mounted ? "hero-visible" : ""}`}
+      >
         <div className="hero-bounce">
           <ChevronDown className="h-5 w-5 text-muted-foreground/50" />
         </div>

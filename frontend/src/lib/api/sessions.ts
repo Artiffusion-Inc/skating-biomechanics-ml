@@ -79,7 +79,7 @@ export function useSession(
     queryKey: ["session", id],
     queryFn: () => apiFetch(`/sessions/${id}`, SessionSchema),
     enabled: !!id,
-    refetchInterval: opts?.refetchInterval as any,
+    refetchInterval: opts?.refetchInterval,
   })
 }
 

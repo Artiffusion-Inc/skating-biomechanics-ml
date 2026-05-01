@@ -101,7 +101,8 @@ export function DemoSection() {
         <div
           className="absolute inset-0"
           style={{
-            background: "linear-gradient(to bottom right, oklch(0.24 0.03 240), oklch(0.22 0.02 240), oklch(0.24 0.03 240))",
+            background:
+              "linear-gradient(to bottom right, oklch(0.24 0.03 240), oklch(0.22 0.02 240), oklch(0.24 0.03 240))",
           }}
         />
 
@@ -131,19 +132,31 @@ export function DemoSection() {
 
         <div
           className="absolute top-3 left-3 h-6 w-6"
-          style={{ borderTop: "2px solid rgba(255,255,255,0.4)", borderLeft: "2px solid rgba(255,255,255,0.4)" }}
+          style={{
+            borderTop: "2px solid rgba(255,255,255,0.4)",
+            borderLeft: "2px solid rgba(255,255,255,0.4)",
+          }}
         />
         <div
           className="absolute top-3 right-3 h-6 w-6"
-          style={{ borderTop: "2px solid rgba(255,255,255,0.4)", borderRight: "2px solid rgba(255,255,255,0.4)" }}
+          style={{
+            borderTop: "2px solid rgba(255,255,255,0.4)",
+            borderRight: "2px solid rgba(255,255,255,0.4)",
+          }}
         />
         <div
           className="absolute right-3 bottom-3 h-6 w-6"
-          style={{ borderRight: "2px solid rgba(255,255,255,0.4)", borderBottom: "2px solid rgba(255,255,255,0.4)" }}
+          style={{
+            borderRight: "2px solid rgba(255,255,255,0.4)",
+            borderBottom: "2px solid rgba(255,255,255,0.4)",
+          }}
         />
         <div
           className="absolute bottom-3 left-3 h-6 w-6"
-          style={{ borderBottom: "2px solid rgba(255,255,255,0.4)", borderLeft: "2px solid rgba(255,255,255,0.4)" }}
+          style={{
+            borderBottom: "2px solid rgba(255,255,255,0.4)",
+            borderLeft: "2px solid rgba(255,255,255,0.4)",
+          }}
         />
       </div>
 

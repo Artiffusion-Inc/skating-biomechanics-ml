@@ -21,7 +21,7 @@ export function useProcessStream(taskId: string | null) {
     esRef.current = es
 
     es.onopen = () => setIsConnected(true)
-    es.onmessage = (e) => {
+    es.onmessage = e => {
       const data = JSON.parse(e.data)
       setState(data)
       if (["completed", "failed", "cancelled"].includes(data.status)) {

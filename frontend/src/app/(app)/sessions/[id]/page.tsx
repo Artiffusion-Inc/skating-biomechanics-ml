@@ -20,7 +20,7 @@ const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
 export default function SessionDetailPage() {
   const { id } = useParams<{ id: string }>()
   const { data: session, isLoading } = useSession(id, {
-    refetchInterval: (query: any) => {
+    refetchInterval: query => {
       const status = query.state.data?.status
       return POLLING_STATUSES.has(status ?? "") ? 3000 : false
     },
@@ -61,7 +61,9 @@ export default function SessionDetailPage() {
         <p className="text-sm text-muted-foreground">{session.error_message}</p>
         {session.video_key && (
           <Button
-            onClick={() => retryMutation.mutate({ sessionId: session.id, videoKey: session.video_key! })}
+            onClick={() =>
+              retryMutation.mutate({ sessionId: session.id, videoKey: session.video_key as string })
+            }
             disabled={retryMutation.isPending}
           >
             {retryMutation.isPending ? tSession("retrying") : tSession("retry")}

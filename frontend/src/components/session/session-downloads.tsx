@@ -19,14 +19,14 @@ export function SessionDownloads({ videoUrl, posesUrl, csvUrl }: Props) {
     { key: "biomech", url: csvUrl, label: t("biomech"), icon: FileSpreadsheet },
   ]
 
-  const available = downloads.filter((d) => d.url)
+  const available = downloads.filter(d => d.url)
   if (available.length === 0) return null
 
   return (
     <div className="flex flex-wrap gap-2">
       {available.map(({ key, url, label, icon: Icon }) => (
         <Button key={key} variant="outline" size="sm" asChild>
-          <a href={url!} download>
+          <a href={url ?? "#"} download>
             <Icon className="mr-2 h-4 w-4" />
             {label}
           </a>
