@@ -261,7 +261,19 @@
     "waiting": "Waiting...",
     "overallScore": "Overall Score",
     "scoreOutOf": "out of 10",
-    "cancel": "Cancel"
+    "cancel": "Cancel",
+    "retry": "Retry",
+    "retrying": "Retrying..."
+  },
+  "analysis": {
+    "frameMetrics": "Frame Metrics",
+    "knee_angles_r": "Right Knee",
+    "knee_angles_l": "Left Knee",
+    "hip_angles_r": "Right Hip",
+    "hip_angles_l": "Left Hip",
+    "trunk_lean": "Trunk Lean",
+    "com_height": "CoM Height",
+    "loading3D": "Loading 3D..."
   },
   "choreography": {
     "title": "Program Planner",

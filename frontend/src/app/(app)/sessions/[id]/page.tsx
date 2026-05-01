@@ -14,6 +14,7 @@ import { useMetricRegistry } from "@/hooks/use-metric-registry"
 import { useProcessStream } from "@/hooks/use-process-stream"
 import { useRetrySession } from "@/lib/api/sessions"
 import { Button } from "@/components/ui/button"
+import { FrameMetricsChart } from "@/components/analysis/frame-metrics-chart"
 
 const POLLING_STATUSES = new Set(["queued", "uploading", "running", "pending"])
 
@@ -101,6 +102,15 @@ export default function SessionDetailPage() {
 
       {session.pose_data && (
         <PhaseTimeline totalFrames={totalFrames} phases={session.phases ?? {}} />
+      )}
+
+      {session.pose_data && session.frame_metrics && (
+        <FrameMetricsChart
+          poseData={session.pose_data}
+          frameMetrics={session.frame_metrics}
+          phases={session.phases ?? null}
+          totalFrames={totalFrames}
+        />
       )}
 
       {session.processed_video_url && !session.pose_data && (
