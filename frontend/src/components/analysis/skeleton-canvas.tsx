@@ -56,6 +56,24 @@ const JOINT_COLORS = [
   "#FFA500", // 16: r_wrist
 ]
 
+function drawAngleArc(
+  ctx: CanvasRenderingContext2D,
+  a: [number, number],
+  b: [number, number],
+  c: [number, number],
+  width: number,
+  height: number,
+) {
+  const angle = Math.atan2(c[1] - b[1], c[0] - b[0]) - Math.atan2(a[1] - b[1], a[0] - b[0])
+  const startAngle = Math.atan2(a[1] - b[1], a[0] - b[0])
+  const radius = 25
+  ctx.beginPath()
+  ctx.arc(b[0] * width, b[1] * height, radius, startAngle, startAngle + angle, angle < 0)
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.5)"
+  ctx.lineWidth = 2
+  ctx.stroke()
+}
+
 export function SkeletonCanvas({ poseData, currentFrame, width, height }: SkeletonCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -135,6 +153,35 @@ export function SkeletonCanvas({ poseData, currentFrame, width, height }: Skelet
       ctx.moveTo(x1 * width, y1 * height)
       ctx.lineTo(x2 * width, y2 * height)
       ctx.stroke()
+    }
+
+    // Draw knee angle arcs
+    const rHip = pose[1]
+    const rKnee = pose[2]
+    const rAnkle = pose[3]
+    if (rHip && rKnee && rAnkle) {
+      drawAngleArc(
+        ctx,
+        [rHip[0], rHip[1]],
+        [rKnee[0], rKnee[1]],
+        [rAnkle[0], rAnkle[1]],
+        width,
+        height,
+      )
+    }
+
+    const lHip = pose[4]
+    const lKnee = pose[5]
+    const lAnkle = pose[6]
+    if (lHip && lKnee && lAnkle) {
+      drawAngleArc(
+        ctx,
+        [lHip[0], lHip[1]],
+        [lKnee[0], lKnee[1]],
+        [lAnkle[0], lAnkle[1]],
+        width,
+        height,
+      )
     }
 
     // Draw joints
