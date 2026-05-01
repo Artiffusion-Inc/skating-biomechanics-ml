@@ -29,9 +29,6 @@ export default function SessionDetailPage() {
   const { data: registry } = useMetricRegistry()
   const cancelMutation = useCancelProcess()
 
-  // Placeholder: actual useProcessStream integration in next task
-  const processState = null
-
   const totalFrames = session?.pose_data ? Math.max(...session.pose_data.frames) : 300
 
   if (isLoading) return <SkeletonDetail />
@@ -42,7 +39,7 @@ export default function SessionDetailPage() {
     return (
       <SessionStatus
         status={session.status}
-        progress={processState?.progress}
+        progress={undefined}
         onCancel={() => cancelMutation.mutate(session.id)}
       />
     )
