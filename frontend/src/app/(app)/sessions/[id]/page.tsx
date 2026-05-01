@@ -16,6 +16,7 @@ import { useRetrySession } from "@/lib/api/sessions"
 import { Button } from "@/components/ui/button"
 import { FrameMetricsChart } from "@/components/analysis/frame-metrics-chart"
 import { SessionDownloads } from "@/components/session/session-downloads"
+import { SessionDiagnostics } from "@/components/analysis/session-diagnostics"
 
 const ThreeJSkeletonViewer = lazy(() =>
   import("@/components/analysis/threejs-skeleton-viewer").then(m => ({
@@ -183,6 +184,8 @@ export default function SessionDetailPage() {
             </ul>
           </div>
         )}
+
+        {session.pose_data && <SessionDiagnostics elementType={session.element_type} />}
 
         <SessionDownloads
           videoUrl={session.processed_video_url ?? session.video_url}
