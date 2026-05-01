@@ -10,7 +10,7 @@ interface Props {
   onCancel?: () => void
 }
 
-export function SessionStatus({ status, progress, onCancel }: Props) {
+export function SessionStatus({ status: _status, progress, onCancel }: Props) {
   const t = useTranslations("session")
 
   return (
