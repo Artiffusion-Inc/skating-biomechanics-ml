@@ -278,7 +278,10 @@
     "hip_angles_l": "Left Hip",
     "trunk_lean": "Trunk Lean",
     "com_height": "CoM Height",
-    "loading3D": "Loading 3D..."
+    "loading3D": "Loading 3D...",
+    "viewFront": "Front",
+    "viewSide": "Side",
+    "viewTop": "Top"
   },
   "choreography": {
     "title": "Program Planner",

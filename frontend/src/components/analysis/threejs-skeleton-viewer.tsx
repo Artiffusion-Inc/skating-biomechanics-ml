@@ -2,8 +2,8 @@
 "use client"
 
 import { Environment, Grid, OrbitControls, PerspectiveCamera } from "@react-three/drei"
-import { Canvas } from "@react-three/fiber"
-import { Suspense } from "react"
+import { Canvas, useThree } from "@react-three/fiber"
+import { Suspense, useEffect } from "react"
 import { ChevronLeft, ChevronRight, Pause, Play } from "lucide-react"
 import { useTranslations } from "@/i18n"
 import { useAnalysisStore } from "@/stores/analysis"
@@ -25,6 +25,37 @@ function LoadingFallback() {
   )
 }
 
+const CAMERA_PRESETS = {
+  front: {
+    position: [0, 0, 1.5] as [number, number, number],
+    target: [0, 0, 0] as [number, number, number],
+  },
+  side: {
+    position: [1.5, 0, 0] as [number, number, number],
+    target: [0, 0, 0] as [number, number, number],
+  },
+  top: {
+    position: [0, 1.5, 0] as [number, number, number],
+    target: [0, 0, 0] as [number, number, number],
+  },
+}
+
+function CameraController() {
+  const { camera } = useThree()
+  const { cameraPreset } = useAnalysisStore()
+
+  useEffect(() => {
+    const preset = CAMERA_PRESETS[cameraPreset]
+    if (preset) {
+      camera.position.set(...preset.position)
+      camera.lookAt(...preset.target)
+      camera.updateProjectionMatrix()
+    }
+  }, [camera, cameraPreset])
+
+  return null
+}
+
 function Scene({
   poseData,
   frameMetrics,
@@ -36,6 +67,7 @@ function Scene({
 
   return (
     <>
+      <CameraController />
       <PerspectiveCamera makeDefault position={[0, 0, 1.5]} fov={50} />
       <OrbitControls
         enablePan={true}
@@ -63,6 +95,33 @@ function Scene({
   )
 }
 
+function CameraPresets() {
+  const { cameraPreset, setCameraPreset } = useAnalysisStore()
+  const t = useTranslations("analysis")
+  const presets: Array<{ key: "front" | "side" | "top"; label: string }> = [
+    { key: "front", label: t("viewFront") },
+    { key: "side", label: t("viewSide") },
+    { key: "top", label: t("viewTop") },
+  ]
+  return (
+    <div
+      className="absolute top-2 left-2 flex gap-1 rounded-lg p-1"
+      style={{ backgroundColor: "oklch(var(--background) / 0.7)" }}
+    >
+      {presets.map(p => (
+        <button
+          key={p.key}
+          type="button"
+          onClick={() => setCameraPreset(p.key)}
+          className={`rounded-md px-2 py-1 text-xs ${cameraPreset === p.key ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 function PlaybackControls() {
   const {
     isPlaying,
@@ -78,18 +137,11 @@ function PlaybackControls() {
       className="absolute bottom-2 left-1/2 flex -translate-x-1/2 items-center gap-2 rounded-full px-3 py-1.5 text-xs"
       style={{ backgroundColor: "oklch(var(--background) / 0.7)" }}
     >
-      <button
-        type="button"
-        onClick={() => setCurrentFrame(Math.max(0, currentFrame - 10))}
-      >
+      <button type="button" onClick={() => setCurrentFrame(Math.max(0, currentFrame - 10))}>
         <ChevronLeft className="h-4 w-4" />
       </button>
       <button type="button" onClick={() => setIsPlaying(!isPlaying)}>
-        {isPlaying ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4" />
-        )}
+        {isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
       </button>
       <button type="button" onClick={() => setCurrentFrame(currentFrame + 10)}>
         <ChevronRight className="h-4 w-4" />
@@ -127,6 +179,8 @@ export function ThreeJSkeletonViewer({
       </Canvas>
 
       <PlaybackControls />
+
+      <CameraPresets />
 
       {/* Legend */}
       <div

@@ -281,7 +281,10 @@
     "hip_angles_l": "Бедро (левая)",
     "trunk_lean": "Наклон корпуса",
     "com_height": "Высота ЦМТ",
-    "loading3D": "Загрузка 3D..."
+    "loading3D": "Загрузка 3D...",
+    "viewFront": "Спереди",
+    "viewSide": "Сбоку",
+    "viewTop": "Сверху"
   },
   "choreography": {
     "title": "Планировщик программ",
