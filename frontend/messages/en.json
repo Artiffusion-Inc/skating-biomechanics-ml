@@ -285,6 +285,25 @@
     "wireframe": "Wireframe",
     "solid": "Solid"
   },
+  "joints": {
+    "pelvis": "Pelvis",
+    "rightHip": "Right Hip",
+    "rightKnee": "Right Knee",
+    "rightAnkle": "Right Ankle",
+    "leftHip": "Left Hip",
+    "leftKnee": "Left Knee",
+    "leftAnkle": "Left Ankle",
+    "spine": "Spine",
+    "thorax": "Thorax",
+    "neck": "Neck",
+    "head": "Head",
+    "leftShoulder": "Left Shoulder",
+    "leftElbow": "Left Elbow",
+    "leftWrist": "Left Wrist",
+    "rightShoulder": "Right Shoulder",
+    "rightElbow": "Right Elbow",
+    "rightWrist": "Right Wrist"
+  },
   "choreography": {
     "title": "Program Planner",
     "newProgram": "New Program",

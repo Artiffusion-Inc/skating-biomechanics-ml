@@ -5,6 +5,7 @@ export interface AnalysisState {
   isPlaying: boolean
   playbackSpeed: number
   selectedJoint: number | null
+  hoveredJoint: number | null
   cameraPreset: "front" | "side" | "top"
   renderMode: "wireframe" | "solid"
 
@@ -13,6 +14,7 @@ export interface AnalysisState {
   setIsPlaying: (playing: boolean) => void
   setPlaybackSpeed: (speed: number) => void
   setSelectedJoint: (joint: number | null) => void
+  setHoveredJoint: (joint: number | null) => void
   setCameraPreset: (preset: "front" | "side" | "top") => void
   setRenderMode: (mode: "wireframe" | "solid") => void
   reset: () => void
@@ -23,6 +25,7 @@ export const useAnalysisStore = create<AnalysisState>(set => ({
   isPlaying: false,
   playbackSpeed: 1.0,
   selectedJoint: null,
+  hoveredJoint: null,
   cameraPreset: "front",
   renderMode: "wireframe",
 
@@ -30,6 +33,7 @@ export const useAnalysisStore = create<AnalysisState>(set => ({
   setIsPlaying: playing => set({ isPlaying: playing }),
   setPlaybackSpeed: speed => set({ playbackSpeed: speed }),
   setSelectedJoint: joint => set({ selectedJoint: joint }),
+  setHoveredJoint: joint => set({ hoveredJoint: joint }),
   setCameraPreset: preset => set({ cameraPreset: preset }),
   setRenderMode: mode => set({ renderMode: mode }),
 
@@ -39,6 +43,7 @@ export const useAnalysisStore = create<AnalysisState>(set => ({
       isPlaying: false,
       playbackSpeed: 1.0,
       selectedJoint: null,
+      hoveredJoint: null,
       cameraPreset: "front",
       renderMode: "wireframe",
     }),

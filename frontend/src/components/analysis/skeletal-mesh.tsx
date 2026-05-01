@@ -6,6 +6,8 @@ import { Line } from "@react-three/drei"
 import { useMemo } from "react"
 import * as THREE from "three"
 import type { FrameMetrics, PoseData } from "@/types"
+import { useAnalysisStore } from "@/stores/analysis"
+import { JointLabel } from "./joint-label"
 
 interface BoneProps {
   start: [number, number, number]
@@ -23,15 +25,25 @@ function Bone({ start, end }: BoneProps) {
 interface JointProps {
   position: [number, number, number]
   color: number
+  onPointerOver?: () => void
+  onPointerOut?: () => void
 }
 
-function Joint({ position, color }: JointProps) {
+function Joint({ position, color, onPointerOver, onPointerOut }: JointProps) {
   // Use a small point for joints instead of sphere
   const points = useMemo(() => [new THREE.Vector3(...position)], [position])
-  return <Line points={points} color={`#${color.toString(16).padStart(6, "0")}`} lineWidth={8} />
+  return (
+    <Line
+      points={points}
+      color={`#${color.toString(16).padStart(6, "0")}`}
+      lineWidth={8}
+      onPointerOver={onPointerOver}
+      onPointerOut={onPointerOut}
+    />
+  )
 }
 
-function SolidJoint({ position, color }: JointProps) {
+function SolidJoint({ position, color, onPointerOver, onPointerOut }: JointProps) {
   const mesh = useMemo(() => {
     const geometry = new THREE.SphereGeometry(0.015, 8, 8)
     const material = new THREE.MeshStandardMaterial({
@@ -42,7 +54,7 @@ function SolidJoint({ position, color }: JointProps) {
     return m
   }, [position, color])
 
-  return <primitive object={mesh} />
+  return <primitive object={mesh} onPointerOver={onPointerOver} onPointerOut={onPointerOut} />
 }
 
 interface SkeletalMeshProps {
@@ -115,6 +127,8 @@ export function SkeletalMesh({
   currentFrame,
   renderMode,
 }: SkeletalMeshProps) {
+  const { hoveredJoint, setHoveredJoint } = useAnalysisStore()
+
   const { joints, bones } = useMemo(() => {
     // Find the frame index in sampled data
     const frameIndex = poseData.frames.indexOf(currentFrame)
@@ -171,6 +185,8 @@ export function SkeletalMesh({
     return { joints: jointPositions, bones: bonePositions }
   }, [poseData, frameMetrics, currentFrame])
 
+  const hoveredJointData = hoveredJoint !== null ? joints.find(j => j.index === hoveredJoint) : null
+
   return (
     <>
       {/* Bones */}
@@ -189,14 +205,25 @@ export function SkeletalMesh({
             key={`joint-${joint.index}`}
             position={joint.position as [number, number, number]}
             color={joint.color}
+            onPointerOver={() => setHoveredJoint(joint.index)}
+            onPointerOut={() => setHoveredJoint(null)}
           />
         ) : (
           <Joint
             key={`joint-${joint.index}`}
             position={joint.position as [number, number, number]}
             color={joint.color}
+            onPointerOver={() => setHoveredJoint(joint.index)}
+            onPointerOut={() => setHoveredJoint(null)}
           />
         ),
+      )}
+
+      {hoveredJointData && (
+        <JointLabel
+          jointIndex={hoveredJointData.index}
+          position={new THREE.Vector3(...hoveredJointData.position)}
+        />
       )}
     </>
   )

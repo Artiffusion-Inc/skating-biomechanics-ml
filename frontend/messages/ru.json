@@ -288,6 +288,25 @@
     "wireframe": "Каркас",
     "solid": "Сплошной"
   },
+  "joints": {
+    "pelvis": "Таз",
+    "rightHip": "Правое бедро",
+    "rightKnee": "Правое колено",
+    "rightAnkle": "Правая лодыжка",
+    "leftHip": "Левое бедро",
+    "leftKnee": "Левое колено",
+    "leftAnkle": "Левая лодыжка",
+    "spine": "Позвоночник",
+    "thorax": "Грудная клетка",
+    "neck": "Шея",
+    "head": "Голова",
+    "leftShoulder": "Левое плечо",
+    "leftElbow": "Левый локоть",
+    "leftWrist": "Левая кисть",
+    "rightShoulder": "Правое плечо",
+    "rightElbow": "Правый локоть",
+    "rightWrist": "Правая кисть"
+  },
   "choreography": {
     "title": "Планировщик программ",
     "newProgram": "Новая программа",
