@@ -6,6 +6,7 @@ from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Query, status
+from fastapi_cache.decorator import cache
 from sqlalchemy import select
 
 from app.auth.deps import CurrentUser, DbDep
@@ -49,6 +50,7 @@ async def get_registry():
 
 
 @router.get("/trend", response_model=TrendResponse)
+@cache(expire=300)
 async def get_trend(
     user: CurrentUser,
     db: DbDep,

@@ -33,5 +33,8 @@ class User(TimestampMixin, Base):
     timezone: Mapped[str] = mapped_column(String(50), default="Europe/Moscow")
     theme: Mapped[str] = mapped_column(String(10), default="system")
 
+    # Onboarding
+    onboarding_role: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
     # Metadata
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)

@@ -59,6 +59,7 @@ class UserResponse(BaseModel):
     language: str
     timezone: str
     theme: str
+    onboarding_role: str | None
     is_active: bool
     created_at: str
     updated_at: str
@@ -84,6 +85,10 @@ class UpdateSettingsRequest(BaseModel):
     language: str | None = Field(default=None, max_length=10)
     timezone: str | None = Field(default=None, max_length=50)
     theme: str | None = Field(default=None, pattern=r"^(light|dark|system)$")
+
+
+class UpdateOnboardingRoleRequest(BaseModel):
+    onboarding_role: str = Field(pattern=r"^(skater|coach|choreographer)$")
 
 
 # ---------------------------------------------------------------------------

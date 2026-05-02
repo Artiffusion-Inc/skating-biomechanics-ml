@@ -85,33 +85,28 @@ export function DemoSection() {
 
   return (
     <section className="relative mx-auto max-w-[1400px] px-6 py-32">
-      <div className="mb-20 text-center">
-        <p className="mb-4 text-xs font-medium uppercase tracking-[0.25em] text-muted-foreground">
+      <div className="mb-20">
+        <p className="mb-4 text-xs font-medium uppercase tracking-[0.3em] text-muted-foreground">
           {t("demoEyebrow")}
         </p>
-        <h2 className="text-[clamp(1.75rem,4vw,3rem)] font-medium leading-[1.1] tracking-[-0.02em]">
+        <h2 className="max-w-2xl text-[clamp(1.75rem,4vw,3rem)] font-medium leading-[1.1] tracking-[-0.02em]">
           {t("demoHeadline")}
         </h2>
       </div>
 
       <div
-        className="relative mx-auto aspect-video max-w-4xl overflow-hidden rounded-2xl border border-border shadow-2xl"
-        style={{ backgroundColor: "#000" }}
+        className="relative mx-auto aspect-video max-w-4xl overflow-hidden rounded-2xl border border-border/60 shadow-2xl"
+        style={{
+          background:
+            "linear-gradient(to bottom right, oklch(0.18 0.03 240), oklch(0.14 0.02 240), oklch(0.18 0.03 240))",
+        }}
       >
+        {/* Ice glow from bottom */}
         <div
           className="absolute inset-0"
           style={{
             background:
-              "linear-gradient(to bottom right, oklch(0.24 0.03 240), oklch(0.22 0.02 240), oklch(0.24 0.03 240))",
-          }}
-        />
-
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              "radial-gradient(ellipse at 50% 100%, rgba(200,220,255,0.3) 0%, transparent 70%)",
-            opacity: 0.2,
+              "radial-gradient(ellipse at 50% 100%, oklch(0.72 0.12 240 / 0.35) 0%, transparent 70%)",
           }}
         />
 
@@ -119,48 +114,49 @@ export function DemoSection() {
 
         <div
           className="absolute top-4 left-4 rounded-lg px-3 py-1.5 text-xs font-mono backdrop-blur-sm"
-          style={{ backgroundColor: "rgba(0,0,0,0.6)", color: "rgba(255,255,255,0.9)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "rgba(255,255,255,0.9)" }}
         >
           RTMO • 17kp • 30fps
         </div>
         <div
           className="absolute right-4 bottom-4 rounded-lg px-3 py-1.5 text-xs font-mono backdrop-blur-sm"
-          style={{ backgroundColor: "rgba(0,0,0,0.6)", color: "rgba(255,255,255,0.9)" }}
+          style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "rgba(255,255,255,0.9)" }}
         >
           H3.6M Format
         </div>
 
+        {/* Corner brackets */}
         <div
           className="absolute top-3 left-3 h-6 w-6"
           style={{
-            borderTop: "2px solid rgba(255,255,255,0.4)",
-            borderLeft: "2px solid rgba(255,255,255,0.4)",
+            borderTop: "2px solid rgba(255,255,255,0.3)",
+            borderLeft: "2px solid rgba(255,255,255,0.3)",
           }}
         />
         <div
           className="absolute top-3 right-3 h-6 w-6"
           style={{
-            borderTop: "2px solid rgba(255,255,255,0.4)",
-            borderRight: "2px solid rgba(255,255,255,0.4)",
+            borderTop: "2px solid rgba(255,255,255,0.3)",
+            borderRight: "2px solid rgba(255,255,255,0.3)",
           }}
         />
         <div
           className="absolute right-3 bottom-3 h-6 w-6"
           style={{
-            borderRight: "2px solid rgba(255,255,255,0.4)",
-            borderBottom: "2px solid rgba(255,255,255,0.4)",
+            borderRight: "2px solid rgba(255,255,255,0.3)",
+            borderBottom: "2px solid rgba(255,255,255,0.3)",
           }}
         />
         <div
           className="absolute bottom-3 left-3 h-6 w-6"
           style={{
-            borderBottom: "2px solid rgba(255,255,255,0.4)",
-            borderLeft: "2px solid rgba(255,255,255,0.4)",
+            borderBottom: "2px solid rgba(255,255,255,0.3)",
+            borderLeft: "2px solid rgba(255,255,255,0.3)",
           }}
         />
       </div>
 
-      <p className="mx-auto mt-8 max-w-xl text-center text-sm text-muted-foreground">
+      <p className="mx-auto mt-8 max-w-xl text-center text-sm leading-relaxed text-muted-foreground">
         {t("demoCaption")}
       </p>
     </section>

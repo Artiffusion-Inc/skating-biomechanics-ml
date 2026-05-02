@@ -37,6 +37,7 @@ export const UserResponseSchema = z.object({
   language: z.string(),
   timezone: z.string(),
   theme: z.string(),
+  onboarding_role: z.string().nullable(),
   is_active: z.boolean(),
   created_at: z.string(),
 })
@@ -131,5 +132,13 @@ export async function updateSettings(data: UpdateSettingsRequest): Promise<UserR
     method: "PATCH",
     headers: JSON_POST,
     body: JSON.stringify(data),
+  })
+}
+
+export async function updateOnboardingRole(role: "skater" | "coach" | "choreographer"): Promise<UserResponse> {
+  return apiFetch("/users/me/onboarding", UserResponseSchema, {
+    method: "PATCH",
+    headers: JSON_POST,
+    body: JSON.stringify({ onboarding_role: role }),
   })
 }

@@ -18,9 +18,12 @@ if TYPE_CHECKING:
 def app():
     from app.routes.sessions import router
     from fastapi import FastAPI
+    from fastapi_cache import FastAPICache
+    from fastapi_cache.backends.inmemory import InMemoryBackend
 
     app = FastAPI()
     app.include_router(router, prefix="/api/v1/sessions")
+    FastAPICache.init(InMemoryBackend(), prefix="test-cache")
     return app
 
 

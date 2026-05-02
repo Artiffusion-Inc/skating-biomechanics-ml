@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Query, status
+from fastapi_cache.decorator import cache
 
 from app.auth.deps import CurrentUser, DbDep
 from app.crud.connection import is_connected_as
@@ -70,6 +71,7 @@ async def create_session(body: CreateSessionRequest, user: CurrentUser, db: DbDe
 
 
 @router.get("", response_model=SessionListResponse)
+@cache(expire=60)
 async def list_sessions(
     user: CurrentUser,
     db: DbDep,

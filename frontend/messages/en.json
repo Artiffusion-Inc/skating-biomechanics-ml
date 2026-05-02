@@ -229,6 +229,56 @@
     "retry": "Retry",
     "retrying": "Retrying..."
   },
+  "onboarding": {
+    "skip": "Skip",
+    "back": "Back",
+    "next": "Next",
+    "start": "Start",
+    "uploadPreview": "Upload jump video",
+    "metricsAirtime": "Airtime",
+    "metricsHeight": "Height",
+    "metricsRotation": "Rotation",
+    "progressLabel": "30-day progress",
+    "newRecord": "New PR: Waltz Jump — 28 cm",
+    "inviteStudent": "Invite Student",
+    "inviteHint": "Send a link or find by name",
+    "sessionsThisWeek": "3 sessions this week",
+    "metricHeight": "height",
+    "metricAirtime": "air",
+    "feedbackComment": "Arms higher — great jump!",
+    "feedbackToday": "Commented today",
+    "musicAnalyzed": "Analysis complete",
+    "timelineLabel": "Program timeline",
+    "addElement": "Add element",
+    "rinkLabel": "Rink diagram",
+    "rinkEntry": "Entry",
+    "rinkExit": "Exit",
+    "slides": {
+      "skater": {
+        "0": { "title": "Upload training video", "subtitle": "Record or upload any jump or element." },
+        "1": { "title": "Instant biomechanics", "subtitle": "Pose, metrics and technique in seconds." },
+        "2": { "title": "Track progress", "subtitle": "Watch your growth and set personal records." }
+      },
+      "coach": {
+        "0": { "title": "Invite students", "subtitle": "Send a link or find by name." },
+        "1": { "title": "Track progress", "subtitle": "Jump height, rotation, landing quality." },
+        "2": { "title": "Give feedback", "subtitle": "Comment on video, even from a distance." }
+      },
+      "choreographer": {
+        "0": { "title": "Upload music", "subtitle": "Automatic BPM and structure analysis." },
+        "1": { "title": "Plan the program", "subtitle": "Place elements on the timeline." },
+        "2": { "title": "Visualize layout", "subtitle": "2D rink diagram with trajectories." }
+      }
+    }
+  },
+  "emptyStates": {
+    "progressTitle": "No progress data yet",
+    "progressDesc": "Upload training videos to track metric dynamics and see trends.",
+    "progressAction": "Upload video",
+    "connectionsAction": "Invite",
+    "connectionsTitle": "No connections",
+    "connectionsDesc": "Invite a coach or student to start collaborating and tracking progress."
+  },
   "students": {
     "title": "Students",
     "noStudents": "No students",

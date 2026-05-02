@@ -84,6 +84,22 @@ export function SettingsForm() {
       <Button type="submit" disabled={saving} className="w-full">
         {saving ? tc("saving") : t("save")}
       </Button>
+
+      <div className="border-t border-border pt-4">
+        <h2 className="mb-3 text-sm font-medium">{t("onboardingTitle")}</h2>
+        <p className="mb-3 text-xs text-muted-foreground">{t("onboardingHint")}</p>
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={() => {
+            localStorage.removeItem("onboarding_completed")
+            window.location.href = "/onboarding"
+          }}
+        >
+          {t("restartOnboarding")}
+        </Button>
+      </div>
     </form>
   )
 }

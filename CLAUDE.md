@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-> **PROJECT ROADMAP:** @ROADMAP.md — SINGLE SOURCE OF TRUTH for implementation status
+> **PROJECT ROADMAP:** ROADMAP.md — SINGLE SOURCE OF TRUTH for implementation status
 > **MODULE DOCS:** @docs/CLAUDE.md — research, specs, plans
 
 ---
@@ -93,6 +93,7 @@ Choreography Planner:
 **Key architectural constraint:** Backend (`backend/`) no import ML pipeline internals (pose estimation, analysis, visualization). arq worker may import ML types (`H36Key`, `VastResult`) and dispatch to ML, never call pipeline internals direct. Heavy ML → GPU (local or Vast.ai Serverless).
 
 **Key decisions:**
+
 - **RTMO via rtmlib**: primary pose estimation — COCO 17kp, ONNX Runtime (CPU+GPU)
 - **COCO 17kp → H3.6M 17kp**: public `coco_to_h36m()` conversion (HALPE26 deprecated)
 - **CorrectiveLens**: 3D lift corrective layer 2D skeleton (Kinovea-style angles)
@@ -102,16 +103,16 @@ Choreography Planner:
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| **ML Pipeline** | Python, rtmlib, onnxruntime-gpu, scipy, numba |
-| **Backend API** | FastAPI, SQLAlchemy, Alembic, arq + Valkey |
-| **Frontend** | Next.js 16, React, Tailwind CSS, shadcn/ui, Recharts, three.js |
-| **Storage** | Cloudflare R2 (S3-compatible), Postgres |
-| **Remote GPU** | Vast.ai Serverless |
-| **Testing** | pytest (backend, 545+ tests, 96% cov), tsc + next lint + vitest (frontend) |
-| **Task Runner** | go-task (Taskfile.yaml) |
-| **Package Manager** | uv (Python), bun (JS) |
+| Component           | Technology                                                                 |
+| ------------------- | -------------------------------------------------------------------------- |
+| **ML Pipeline**     | Python, rtmlib, onnxruntime-gpu, scipy, numba                              |
+| **Backend API**     | FastAPI, SQLAlchemy, Alembic, arq + Valkey                                 |
+| **Frontend**        | Next.js 16, React, Tailwind CSS, shadcn/ui, Recharts, three.js             |
+| **Storage**         | Cloudflare R2 (S3-compatible), Postgres                                    |
+| **Remote GPU**      | Vast.ai Serverless                                                         |
+| **Testing**         | pytest (backend, 545+ tests, 96% cov), tsc + next lint + vitest (frontend) |
+| **Task Runner**     | go-task (Taskfile.yaml)                                                    |
+| **Package Manager** | uv (Python), bun (JS)                                                      |
 
 ## Git & GitHub Workflow
 
@@ -129,10 +130,10 @@ Choreography Planner:
 
 ### Pull Requests
 
-| Field | Value |
-|-------|-------|
-| Base branch | `master` |
-| Title | Same format as commit |
+| Field       | Value                                              |
+| ----------- | -------------------------------------------------- |
+| Base branch | `master`                                           |
+| Title       | Same format as commit                              |
 | Description | Include "Что сделано" and "Как проверить" sections |
 
 ## GPU Requirements
@@ -161,6 +162,7 @@ Tracking degrades (skeleton jumps wrong person) → data-driven analysis. **Do N
 ### Step 1: Isolate the layer
 
 Tracking pipeline 3 layers, each can cause track switches:
+
 1. **Sports2DTracker** — per-frame centroid association (Kalman-predicted distance matrix)
 2. **Anti-steal logic** — `ml/src/pose_estimation/rtmlib_extractor.py`, guards centroid jumps
 3. **Tracklet merger** — post-hoc NaN gap fill with biometric re-association
@@ -168,6 +170,7 @@ Tracking pipeline 3 layers, each can cause track switches:
 ### Step 2: Analyze centroid trajectories
 
 CSV check:
+
 - **Sports2D misassignment**: track ID wrong detection index, no anti-steal trigger
 - **Anti-steal false positive**: `target_track_id` switched though Sports2D assigned correct
 - **Tracklet merger error**: wrong track merged into gap
@@ -175,6 +178,7 @@ CSV check:
 ### Step 3: Fix root cause
 
 Lessons:
+
 - **Anti-steal use AND (not OR)** position + biometric signals.
 - **Kalman dt=1.0 (frame-based), not dt=1/fps**.
 - **Figure skating movements NOT anomalies** — leg swings, rotations normal.
@@ -184,8 +188,3 @@ Lessons:
 - Centroid jump: `> 0.15` (normalized coords)
 - Skeletal anomaly: `> 0.25` (bone ratio change)
 - **Logic: AND** — both exceed threshold same time
-
-## References
-
-- @ROADMAP.md — project status (SINGLE SOURCE OF TRUTH)
-- @docs/CLAUDE.md — docs index (research, specs, plans)

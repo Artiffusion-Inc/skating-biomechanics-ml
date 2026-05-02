@@ -24,6 +24,8 @@ dependencies = [
     "librosa>=0.10.0",
     "aiobotocore>=3.4.0",
     "pychromaprint>=0.8",
+    "slowapi>=0.1.9",
+    "fastapi-cache2>=0.2.2",
 ]
 
 [build-system]

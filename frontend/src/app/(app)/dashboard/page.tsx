@@ -35,8 +35,8 @@ export default function DashboardPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-3 sm:max-w-3xl">
       <h1 className="nike-h3">{ts("title")}</h1>
-      {students.map(conn => (
-        <StudentCard key={conn.id} conn={conn} />
+      {students.map((conn, i) => (
+        <StudentCard key={conn.id ?? `conn-${i}`} conn={conn} />
       ))}
     </div>
   )

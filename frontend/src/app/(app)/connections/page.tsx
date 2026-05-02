@@ -2,7 +2,9 @@
 
 import { useState } from "react"
 import { toast } from "sonner"
+import { Users } from "lucide-react"
 import { useTranslations } from "@/i18n"
+import { EmptyState } from "@/components/onboarding"
 import {
   useAcceptConnection,
   useConnections,
@@ -19,6 +21,7 @@ export default function ConnectionsPage() {
   const endConn = useEndConnection()
   const t = useTranslations("toast")
   const tc = useTranslations("connections")
+  const tEmpty = useTranslations("emptyStates")
 
   const [email, setEmail] = useState("")
 
@@ -34,6 +37,19 @@ export default function ConnectionsPage() {
   }
 
   const activeConns = (conns?.connections ?? []).filter(r => r.status === "active")
+  const hasPending = pending && pending.connections.length > 0
+  const hasActive = activeConns.length > 0
+
+  if (!hasPending && !hasActive) {
+    return (
+      <EmptyState
+        icon={<Users className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
+        title={tEmpty("connectionsTitle")}
+        description={tEmpty("connectionsDesc")}
+        primaryAction={{ label: tEmpty("connectionsAction"), href: "#" }}
+      />
+    )
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-6 sm:max-w-3xl">
@@ -59,12 +75,12 @@ export default function ConnectionsPage() {
         </div>
       </div>
 
-      {pending && pending.connections.length > 0 && (
+      {hasPending && (
         <div className="space-y-2">
           <p className="text-sm font-medium">{tc("incomingInvites")}</p>
-          {pending.connections.map(r => (
+          {pending.connections.map((r, i) => (
             <div
-              key={r.id}
+              key={r.id ?? `pending-${i}`}
               className="flex items-center justify-between rounded-xl border border-border p-3"
             >
               <span className="text-sm truncate mr-2">{r.from_user_name ?? r.from_user_id}</span>
@@ -80,12 +96,12 @@ export default function ConnectionsPage() {
         </div>
       )}
 
-      {activeConns.length > 0 && (
+      {hasActive && (
         <div className="space-y-2">
           <p className="text-sm font-medium">{tc("activeConnections")}</p>
-          {activeConns.map(r => (
+          {activeConns.map((r, i) => (
             <div
-              key={r.id}
+              key={r.id ?? `conn-${i}`}
               className="flex items-center justify-between rounded-xl border border-border p-3"
             >
               <span className="text-sm truncate mr-2">{r.to_user_name ?? r.to_user_id}</span>

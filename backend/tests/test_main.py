@@ -25,6 +25,7 @@ def client():
                         settings.valkey.port = 6379
                         settings.valkey.db = 0
                         settings.valkey.password.get_secret_value.return_value = ""
+                        settings.valkey.build_url.return_value = "redis://localhost:6379/0"
                         mock_get.return_value = settings
 
                         from app.main import app

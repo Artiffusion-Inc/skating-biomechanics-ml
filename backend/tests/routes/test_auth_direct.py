@@ -8,6 +8,7 @@ import pytest
 from app.routes.auth import _issue_token_pair, login, logout, refresh, register
 from app.schemas import LoginRequest, RefreshRequest, RegisterRequest
 from fastapi import HTTPException
+from starlette.requests import Request
 
 # ---------------------------------------------------------------------------
 # register
@@ -27,7 +28,13 @@ async def test_register_success():
         patch("app.routes.auth._issue_token_pair", new_callable=AsyncMock) as mock_issue,
     ):
         mock_issue.return_value = MagicMock(access_token="at", refresh_token="rt")
-        result = await register(body, mock_db)
+        result = await register(
+            Request(
+                {"type": "http", "method": "POST", "path": "/api/v1/auth/login", "headers": []}
+            ),
+            body,
+            mock_db,
+        )
 
     assert result.access_token == "at"
     assert result.refresh_token == "rt"
@@ -42,7 +49,13 @@ async def test_register_email_taken():
         patch("app.routes.auth.get_by_email", new_callable=AsyncMock, return_value=MagicMock()),
         pytest.raises(HTTPException, match="Email already registered"),
     ):
-        await register(body, mock_db)
+        await register(
+            Request(
+                {"type": "http", "method": "POST", "path": "/api/v1/auth/login", "headers": []}
+            ),
+            body,
+            mock_db,
+        )
 
 
 @pytest.mark.anyio
@@ -58,7 +71,13 @@ async def test_register_without_display_name():
         patch("app.routes.auth._issue_token_pair", new_callable=AsyncMock) as mock_issue,
     ):
         mock_issue.return_value = MagicMock(access_token="at", refresh_token="rt")
-        result = await register(body, mock_db)
+        result = await register(
+            Request(
+                {"type": "http", "method": "POST", "path": "/api/v1/auth/login", "headers": []}
+            ),
+            body,
+            mock_db,
+        )
 
     assert result.access_token == "at"
 
@@ -82,7 +101,13 @@ async def test_login_success():
         patch("app.routes.auth._issue_token_pair", new_callable=AsyncMock) as mock_issue,
     ):
         mock_issue.return_value = MagicMock(access_token="at", refresh_token="rt")
-        result = await login(body, mock_db)
+        result = await login(
+            Request(
+                {"type": "http", "method": "POST", "path": "/api/v1/auth/login", "headers": []}
+            ),
+            body,
+            mock_db,
+        )
 
     assert result.access_token == "at"
 
@@ -97,7 +122,13 @@ async def test_login_user_not_found():
         patch("app.routes.auth.verify_password", return_value=False),
         pytest.raises(HTTPException, match="Invalid email or password"),
     ):
-        await login(body, mock_db)
+        await login(
+            Request(
+                {"type": "http", "method": "POST", "path": "/api/v1/auth/login", "headers": []}
+            ),
+            body,
+            mock_db,
+        )
 
 
 @pytest.mark.anyio
@@ -112,7 +143,13 @@ async def test_login_wrong_password():
         patch("app.routes.auth.verify_password", return_value=False),
         pytest.raises(HTTPException, match="Invalid email or password"),
     ):
-        await login(body, mock_db)
+        await login(
+            Request(
+                {"type": "http", "method": "POST", "path": "/api/v1/auth/login", "headers": []}
+            ),
+            body,
+            mock_db,
+        )
 
 
 # ---------------------------------------------------------------------------

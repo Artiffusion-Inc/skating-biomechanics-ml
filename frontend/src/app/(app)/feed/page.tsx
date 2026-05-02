@@ -7,6 +7,8 @@ import { SkeletonCard } from "@/components/skeleton-card"
 import { useTranslations } from "@/i18n"
 import { useSessions, useBulkDeleteSessions } from "@/lib/api/sessions"
 import { ELEMENT_TYPE_KEYS } from "@/lib/constants"
+import { Upload, UserPlus } from "lucide-react"
+import { EmptyState } from "@/components/onboarding"
 
 export default function FeedPage() {
   const { data, isLoading } = useSessions()
@@ -66,16 +68,13 @@ export default function FeedPage() {
 
   if (!data?.sessions.length) {
     return (
-      <div className="flex flex-col items-center gap-4 py-20">
-        <p className="text-muted-foreground">{tf("noSessions")}</p>
-        <p className="text-sm text-muted-foreground">{tf("noSessionsHint")}</p>
-        <Link
-          href="/upload"
-          className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          {tf("recordVideo")}
-        </Link>
-      </div>
+      <EmptyState
+        icon={<Upload className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
+        title="Пока нет сессий"
+        description="Загрузите первое видео, чтобы получить биомеханический анализ и начать отслеживать прогресс."
+        primaryAction={{ label: "Загрузить видео", href: "/upload" }}
+        secondaryAction={{ label: "Связаться с тренером", href: "/connections" }}
+      />
     )
   }
 

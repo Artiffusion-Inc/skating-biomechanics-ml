@@ -1,9 +1,11 @@
 "use client"
 
 import { useState } from "react"
+import { BarChart3, Upload } from "lucide-react"
 import { PeriodSelector } from "@/components/progress/period-selector"
 import { SkeletonChart } from "@/components/skeleton-chart"
 import { TrendChart } from "@/components/progress/trend-chart"
+import { EmptyState } from "@/components/onboarding"
 import { useTranslations } from "@/i18n"
 import { useMetricRegistry, useTrend } from "@/lib/api/metrics"
 import { ELEMENT_TYPE_KEYS } from "@/lib/constants"
@@ -13,13 +15,33 @@ export default function ProgressPage() {
   const [element, setElement] = useState("waltz_jump")
   const [metric, setMetric] = useState("max_height")
   const [period, setPeriod] = useState("30d")
-  const { data: trend } = useTrend(undefined, element, metric, period)
+  const { data: trend, isLoading } = useTrend(undefined, element, metric, period)
   const te = useTranslations("elements")
+  const tEmpty = useTranslations("emptyStates")
   const ELEMENTS = ELEMENT_TYPE_KEYS.map(id => ({ id, label: te(id) }))
 
   const availableMetrics = registry
     ? Object.entries(registry).filter(([, v]) => v.element_types.includes(element))
     : []
+
+  if (isLoading) {
+    return (
+      <div className="mx-auto max-w-2xl space-y-4 sm:max-w-3xl">
+        <SkeletonChart />
+      </div>
+    )
+  }
+
+  if (!trend || trend.data_points.length === 0) {
+    return (
+      <EmptyState
+        icon={<BarChart3 className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
+        title={tEmpty("progressTitle")}
+        description={tEmpty("progressDesc")}
+        primaryAction={{ label: tEmpty("progressAction"), href: "/upload" }}
+      />
+    )
+  }
 
   return (
     <div className="mx-auto max-w-2xl space-y-4 sm:max-w-3xl">
@@ -51,7 +73,7 @@ export default function ProgressPage() {
         <PeriodSelector value={period} onChange={setPeriod} />
       </div>
 
-      {trend ? <TrendChart data={trend} /> : <SkeletonChart />}
+      <TrendChart data={trend} />
     </div>
   )
 }

@@ -3,7 +3,7 @@
 import uuid
 from datetime import UTC, datetime, timedelta
 
-from fastapi import APIRouter, status
+from fastapi import APIRouter, Request, status
 
 from app.auth.deps import DbDep
 from app.auth.security import (
@@ -18,6 +18,7 @@ from app.crud.refresh_token import create as create_refresh_token_crud
 from app.crud.refresh_token import get_active_by_hash, revoke
 from app.crud.user import create as create_user
 from app.crud.user import get_by_email
+from app.rate_limit import limiter
 from app.routes import raise_api_error
 from app.schemas import (
     LoginRequest,
@@ -46,7 +47,8 @@ async def _issue_token_pair(db: DbDep, user_id: str, family_id: str | None = Non
 
 
 @router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-async def register(body: RegisterRequest, db: DbDep):
+@limiter.limit("3/minute")
+async def register(request: Request, body: RegisterRequest, db: DbDep):
     """Register a new user."""
     existing = await get_by_email(db, body.email)
     if existing:
@@ -67,7 +69,8 @@ async def register(body: RegisterRequest, db: DbDep):
 
 
 @router.post("/login", response_model=TokenResponse)
-async def login(body: LoginRequest, db: DbDep):
+@limiter.limit("5/minute")
+async def login(request: Request, body: LoginRequest, db: DbDep):
     """Authenticate and return tokens."""
     user = await get_by_email(db, body.email)
     if not user or not verify_password(body.password, user.hashed_password):

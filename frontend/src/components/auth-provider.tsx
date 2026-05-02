@@ -36,6 +36,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         language: "ru",
         timezone: "Europe/Moscow",
         theme: "system",
+        onboarding_role: null,
         is_active: true,
         created_at: new Date().toISOString(),
       })

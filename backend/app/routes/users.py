@@ -5,6 +5,7 @@ from fastapi import APIRouter
 from app.auth.deps import CurrentUser, DbDep
 from app.crud.user import update
 from app.schemas import (
+    UpdateOnboardingRoleRequest,
     UpdateProfileRequest,
     UpdateSettingsRequest,
     UserResponse,
@@ -43,4 +44,11 @@ async def update_settings(body: UpdateSettingsRequest, user: CurrentUser, db: Db
         timezone=body.timezone,
         theme=body.theme,
     )
+    return updated
+
+
+@router.patch("/me/onboarding", response_model=UserResponse)
+async def update_onboarding_role(body: UpdateOnboardingRoleRequest, user: CurrentUser, db: DbDep):
+    """Update user's onboarding role."""
+    updated = await update(db, user, onboarding_role=body.onboarding_role)
     return updated

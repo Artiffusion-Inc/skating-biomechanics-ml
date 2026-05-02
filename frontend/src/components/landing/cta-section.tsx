@@ -8,7 +8,20 @@ export function CTASection() {
 
   return (
     <section className="relative mx-auto max-w-[1400px] px-6 py-32">
-      <div className="relative overflow-hidden rounded-3xl bg-foreground px-8 py-20 text-center text-background">
+      <div
+        className="relative overflow-hidden rounded-3xl px-8 py-24 text-center"
+        style={{
+          background:
+            "linear-gradient(135deg, oklch(0.16 0.04 240) 0%, oklch(0.22 0.06 240) 50%, oklch(0.16 0.04 240) 100%)",
+        }}
+      >
+        {/* Ice glow orb behind text */}
+        <div
+          className="pointer-events-none absolute top-1/2 left-1/2 h-[60%] w-[60%] -translate-x-1/2 -translate-y-1/2 rounded-full opacity-30 blur-3xl"
+          style={{ background: "var(--ice-glow)" }}
+        />
+
+        {/* Noise texture */}
         <div
           className="pointer-events-none absolute inset-0 opacity-[0.03]"
           style={{
@@ -18,20 +31,20 @@ export function CTASection() {
         />
 
         <div className="relative z-10">
-          <p className="mb-4 text-xs font-medium uppercase tracking-[0.25em] text-background/60">
+          <p className="mb-4 text-xs font-medium uppercase tracking-[0.3em] text-white/50">
             {t("ctaEyebrow")}
           </p>
-          <h2 className="mx-auto max-w-2xl text-[clamp(1.75rem,4vw,3rem)] font-medium leading-[1.1] tracking-[-0.02em]">
+          <h2 className="mx-auto max-w-2xl text-[clamp(1.75rem,4vw,3rem)] font-medium leading-[1.1] tracking-[-0.02em] text-white">
             {t("ctaHeadline")}
           </h2>
-          <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-background/70">
+          <p className="mx-auto mt-4 max-w-lg text-sm leading-relaxed text-white/60">
             {t("ctaSubtitle")}
           </p>
-          <div className="mt-8 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
+          <div className="mt-10 flex flex-col items-center gap-4 sm:flex-row sm:justify-center">
             <Button
               size="lg"
-              variant="secondary"
               className="h-14 rounded-full px-10 text-base font-medium"
+              style={{ background: "var(--ice-deep)", color: "white" }}
               asChild
             >
               <a href="/register">{t("ctaAction")}</a>
@@ -39,7 +52,7 @@ export function CTASection() {
             <Button
               variant="outline"
               size="lg"
-              className="h-14 rounded-full border-background/30 px-8 text-base font-medium text-background hover:bg-background/10"
+              className="h-14 rounded-full border-white/25 px-8 text-base font-medium text-white hover:bg-white/10 hover:text-white"
               asChild
             >
               <a href="/login">{t("ctaLogin")}</a>
