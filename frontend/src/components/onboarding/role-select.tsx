@@ -3,6 +3,7 @@
 import { useState } from "react"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { useTranslations } from "@/i18n"
 import type { UserRole } from "./onboarding-flow"
 
 interface RoleSelectProps {
@@ -10,23 +11,24 @@ interface RoleSelectProps {
   onSkip: () => void
 }
 
-const ROLES: { id: UserRole; label: string; description: string }[] = [
-  { id: "skater", label: "Фигурист", description: "Загружайте видео, получайте аналитику и отслеживайте прогресс" },
-  { id: "coach", label: "Тренер", description: "Приглашайте учеников, следите за прогрессом и давайте обратную связь" },
-  { id: "choreographer", label: "Хореограф", description: "Создавайте программы, планируйте элементы и визуализируйте раскладку" },
+const ROLE_KEYS: { id: UserRole; labelKey: string; descKey: string }[] = [
+  { id: "skater", labelKey: "roles.skater.label", descKey: "roles.skater.description" },
+  { id: "coach", labelKey: "roles.coach.label", descKey: "roles.coach.description" },
+  { id: "choreographer", labelKey: "roles.choreographer.label", descKey: "roles.choreographer.description" },
 ]
 
-const SOURCES = [
-  "От друга",
-  "В соцсетях",
-  "На соревнованиях",
-  "От тренера",
-  "Другое",
+const SOURCE_KEYS = [
+  "sources.friend",
+  "sources.social",
+  "sources.competition",
+  "sources.coach",
+  "sources.other",
 ]
 
 export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
   const [selectedRole, setSelectedRole] = useState<UserRole | null>(null)
   const [source, setSource] = useState("")
+  const t = useTranslations("onboarding")
 
   const handleContinue = () => {
     if (selectedRole) {
@@ -42,21 +44,21 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
             onClick={onSkip}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
-            Пропустить
+            {t("skip")}
           </button>
         </div>
 
         <div className="mb-10 text-center">
           <h1 className="mb-3 text-2xl font-medium tracking-tight text-foreground">
-            Кто вы?
+            {t("roleSelectTitle")}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Выберите роль, которая описывает вас сейчас. Можно изменить позже.
+            {t("roleSelectSubtitle")}
           </p>
         </div>
 
         <div className="space-y-3">
-          {ROLES.map((role) => (
+          {ROLE_KEYS.map((role) => (
             <button
               key={role.id}
               onClick={() => setSelectedRole(role.id)}
@@ -69,8 +71,8 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
             >
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-base font-medium text-foreground">{role.label}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{role.description}</p>
+                  <p className="text-base font-medium text-foreground">{t(role.labelKey)}</p>
+                  <p className="mt-1 text-sm text-muted-foreground">{t(role.descKey)}</p>
                 </div>
                 <div
                   className={cn(
@@ -93,18 +95,18 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
 
         <div className="mt-8">
           <label className="mb-2 block text-sm font-medium text-foreground">
-            Как вы узнали о нас?
-            <span className="ml-1 text-muted-foreground font-normal">(опционально)</span>
+            {t("howDidYouHear")}
+            <span className="ml-1 text-muted-foreground font-normal">({t("optional")})</span>
           </label>
           <select
             value={source}
             onChange={(e) => setSource(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-foreground"
           >
-            <option value="">Выберите вариант</option>
-            {SOURCES.map((s) => (
-              <option key={s} value={s}>
-                {s}
+            <option value="">{t("sourceSelectPlaceholder")}</option>
+            {SOURCE_KEYS.map((key) => (
+              <option key={key} value={t(key)}>
+                {t(key)}
               </option>
             ))}
           </select>
@@ -117,7 +119,7 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
             disabled={!selectedRole}
             onClick={handleContinue}
           >
-            Продолжить
+            {t("continue")}
           </Button>
         </div>
       </div>

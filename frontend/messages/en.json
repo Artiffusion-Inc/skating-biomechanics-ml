@@ -253,6 +253,24 @@
     "rinkLabel": "Rink diagram",
     "rinkEntry": "Entry",
     "rinkExit": "Exit",
+    "roleSelectTitle": "Who are you?",
+    "roleSelectSubtitle": "Choose a role to personalize your experience.",
+    "roles": {
+      "skater": { "label": "Skater", "description": "Upload videos and get biomechanical analysis." },
+      "coach": { "label": "Coach", "description": "Track student progress and give feedback." },
+      "choreographer": { "label": "Choreographer", "description": "Plan programs and visualize layouts." }
+    },
+    "howDidYouHear": "How did you hear about us?",
+    "optional": "optional",
+    "sourceSelectPlaceholder": "Select source",
+    "sources": {
+      "friend": "Friend",
+      "social": "Social media",
+      "competition": "Competition",
+      "coach": "Coach",
+      "other": "Other"
+    },
+    "continue": "Continue",
     "slides": {
       "skater": {
         "0": { "title": "Upload training video", "subtitle": "Record or upload any jump or element." },

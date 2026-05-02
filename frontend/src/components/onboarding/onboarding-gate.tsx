@@ -1,15 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { usePathname, useRouter } from "next/navigation"
 import { fetchMe } from "@/lib/auth"
+import { useMountEffect } from "@/lib/useMountEffect"
 
 export function OnboardingGate({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const pathname = usePathname()
   const [checked, setChecked] = useState(false)
 
-  useEffect(() => {
+  useMountEffect(() => {
     // Skip check on onboarding page itself
     if (pathname === "/onboarding") {
       setChecked(true)
@@ -46,7 +47,7 @@ export function OnboardingGate({ children }: { children: React.ReactNode }) {
     }
 
     check()
-  }, [pathname, router])
+  })
 
   if (!checked) {
     return (
