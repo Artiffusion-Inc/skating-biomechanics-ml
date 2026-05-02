@@ -4,14 +4,18 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
+import redis.asyncio as aioredis
 import structlog
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi_cache import FastAPICache
+from fastapi_cache.backends.redis import RedisBackend
 
 from app.config import get_settings
 from app.logging_config import configure_logging
+from app.rate_limit import limiter
 from app.routes import (
     auth,
     choreography,
@@ -36,6 +40,10 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     await init_valkey_pool()
 
+    # Initialize response cache backend
+    redis = aioredis.from_url(settings.valkey.build_url())
+    FastAPICache.init(RedisBackend(redis), prefix="fastapi-cache")
+
     # arq pool singleton for job enqueue
     app.state.arq_pool = await create_pool(
         RedisSettings(
@@ -50,7 +58,17 @@ async def lifespan(app: FastAPI):
     await close_valkey_pool()
 
 
-app = FastAPI(title="AI Тренер — Фигурное катание", lifespan=lifespan)
+app = FastAPI(
+    title="AI Тренер — Фигурное катание",
+    description="FastAPI backend for figure skating biomechanics analysis. Auth, sessions, metrics, uploads, detection, processing, and choreography planning.",
+    version="1.0.0",
+    lifespan=lifespan,
+    docs_url="/api/v1/docs",
+    redoc_url="/api/v1/redoc",
+    openapi_url="/api/v1/openapi.json",
+)
+
+app.state.limiter = limiter
 
 app.add_middleware(
     CORSMiddleware,

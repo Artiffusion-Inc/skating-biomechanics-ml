@@ -908,6 +908,48 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
     - MCFS proper training with GCN
     - **Files:** `experiments/`
 
+### Phase N: Frontend Polish & Backend Infrastructure (2026-05-02) ✅ DONE
+
+59. **Joint Angle Arcs** ✅ DONE
+    - Hip angle arc (shoulder→hip→knee) on 2D skeleton overlay
+    - Trunk lean arc (hip→spine→neck)
+    - Knee angle arcs for both knees (already present)
+    - **Files:** `frontend/src/components/analysis/skeleton-canvas.tsx`
+
+60. **3D Skeleton Viewer Polish** ✅ DONE
+    - Camera presets (front / side / top) with animated transitions
+    - Render mode toggle (wireframe / solid)
+    - Joint hover labels using drei `<Html>`
+    - Playback controls (play/pause, frame skip, speed selector)
+    - **Files:** `frontend/src/components/analysis/threejs-skeleton-viewer.tsx`, `skeletal-mesh.tsx`, `joint-label.tsx`
+
+61. **Side-by-Side Session Comparison** ✅ DONE
+    - New `/compare` page with two `<select>` dropdowns
+    - Two `VideoWithSkeleton` instances with phase overlays
+    - `useSessions()` + `useSession()` for data fetching
+    - **Files:** `frontend/src/components/session/session-comparison.tsx`, `frontend/src/app/(app)/compare/page.tsx`
+
+62. **Session Actions** ✅ DONE
+    - Share button: copy session URL to clipboard
+    - Delete button: confirm dialog + `useDeleteSession` mutation + redirect to `/feed`
+    - **Files:** `frontend/src/components/session/session-actions.tsx`
+
+63. **Rate Limiting** ✅ DONE
+    - slowapi `Limiter` with `get_remote_address` key function
+    - 3/minute on `POST /auth/register`, 5/minute on `POST /auth/login`
+    - **Files:** `backend/app/rate_limit.py`, `backend/app/routes/auth.py`
+
+64. **Response Caching** ✅ DONE
+    - fastapi-cache2 with Redis backend (`RedisBackend`)
+    - `GET /sessions` cached 60s, `GET /metrics/trend` cached 300s
+    - Cache init in lifespan, `InMemoryBackend` for tests
+    - **Files:** `backend/app/main.py`, `backend/app/routes/sessions.py`, `backend/app/routes/metrics.py`
+
+65. **Backend Documentation** ✅ DONE
+    - `backend/README.md` with quick start, architecture, API docs, env vars, testing
+    - FastAPI OpenAPI metadata: title, description, version, docs/redoc URLs
+    - **Files:** `backend/README.md`, `backend/app/main.py`
+
 ---
 
 ## Kinovea-like Comparison Tool (2026-03-31) ✅ DONE
@@ -1057,6 +1099,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 | 0.8 | 2026-04-13 | Pose upgrade | RTMO migration, YOLO26 distillation, pseudo-labeling |
 | 0.9 | 2026-04-18 | SaaS + Choreo | Strava dashboard, coach-student relationships, choreography planner |
 | 1.0 | 2026-04-29 | Production | API design fixes, test coverage 96%, CI/CD deploy pipeline |
+| 1.1 | 2026-05-02 | Production | Frontend polish (3D viewer, comparison), backend infra (rate limits, cache), docs |
 
 ---
 
