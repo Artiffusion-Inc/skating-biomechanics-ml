@@ -17,7 +17,7 @@ from src.device import DeviceConfig
 
 logger = logging.getLogger(__name__)
 
-MANIFEST_PATH = Path("data/models/models.manifest.json")
+MANIFEST_PATH = Path(__file__).resolve().parents[2] / "data/models/models.manifest.json"
 
 
 def _load_manifest() -> dict:
@@ -45,10 +45,10 @@ def _verify_integrity(model_id: str, path: str) -> bool:
     h = hashlib.sha256()
     try:
         with Path(path).open("rb") as f:
-            for chunk in iter(lambda: f.read(65536), b""):
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
                 h.update(chunk)
     except FileNotFoundError:
-        return True  # File doesn't exist; let ONNX session fail naturally
+        return False  # File doesn't exist; let ONNX session fail naturally
     actual = h.hexdigest()
 
     if actual != expected:
@@ -182,7 +182,6 @@ class ModelRegistry:
         if entry is None or entry.session is None:
             return
         logger.info("Releasing model '%s' (freeing %dMB)", model_id, entry.vram_mb)
-        entry.session.release()
         entry.session = None
 
     def list_models(self) -> list[str]:

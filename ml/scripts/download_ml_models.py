@@ -22,7 +22,6 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 MODELS_DIR = Path("data/models")
-MODELS_DIR.mkdir(parents=True, exist_ok=True)
 
 MANIFEST_PATH = MODELS_DIR / "models.manifest.json"
 
@@ -87,7 +86,7 @@ def compute_sha256(path: Path) -> str:
     """Compute SHA256 hash of file."""
     h = hashlib.sha256()
     with open(path, "rb") as f:
-        for chunk in iter(lambda: f.read(8192), b""):
+        for chunk in iter(lambda: f.read(1024 * 1024), b""):
             h.update(chunk)
     return h.hexdigest()
 
@@ -96,8 +95,11 @@ def load_manifest() -> dict:
     """Load model manifest or return empty dict."""
     if not MANIFEST_PATH.exists():
         return {"version": "1", "models": {}}
-    with open(MANIFEST_PATH) as f:
-        return json.load(f)
+    try:
+        with open(MANIFEST_PATH) as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        return {"version": "1", "models": {}}
 
 
 def verify_checksum(model_id: str, path: Path, manifest: dict) -> bool:
@@ -224,6 +226,8 @@ def main() -> None:
     parser.add_argument(
         "--generate-manifest", action="store_true", help="Generate manifest from existing models"
     )
+    MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
     args = parser.parse_args()
 
     if args.list:

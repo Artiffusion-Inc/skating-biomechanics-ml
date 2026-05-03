@@ -86,7 +86,6 @@ class TestModelRegistry:
             reg.get("depth_anything")
             reg.release("depth_anything")
             assert reg.vram_used_mb == 0
-            mock_session.release.assert_called_once()
 
     def test_release_unregistered_noop(self):
         """release() is a no-op for unregistered/already released model."""
