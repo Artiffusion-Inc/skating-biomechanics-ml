@@ -1,4 +1,20 @@
-{$DOMAIN:-localhost} {
+{$DOMAIN} {
+	tls {
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
+		propagation_timeout -1
+	}
+
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains; preload"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		X-XSS-Protection "1; mode=block"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self'; font-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self';"
+		-permissions-policy "accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+	}
+
 	# Backend API
 	handle /api/* {
 		reverse_proxy backend:8000 {
@@ -8,7 +24,12 @@
 		}
 	}
 
-	# Frontend (Next.js)
+	# Prometheus (internal only — block external)
+	handle /prometheus/* {
+		respond "Forbidden" 403
+	}
+
+	# Frontend (Next.js standalone)
 	handle {
 		reverse_proxy frontend:3000 {
 			health_uri /

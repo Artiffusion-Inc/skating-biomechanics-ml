@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "deployment-patterns": {
+      "source": "affaan-m/everything-claude-code",
+      "sourceType": "github",
+      "skillPath": "skills/deployment-patterns/SKILL.md",
+      "computedHash": "99f83de44e287fa486828d87e0f2083e1aee7ea47b8df5768ee9786c6cda57c4"
+    },
     "impeccable": {
       "source": "pbakaus/impeccable",
       "sourceType": "github",
