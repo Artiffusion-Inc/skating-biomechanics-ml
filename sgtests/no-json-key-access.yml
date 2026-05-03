@@ -1,0 +1,8 @@
+id: no-json-key-access
+valid:
+  - "data = response.json().get('detail')"
+  - "data = response.json().get('detail', {})"
+  - "data = await resp.json()"
+invalid:
+  - 'data = response.json()["detail"]'
+  - 'msg = resp.json()["detail"]["message"]'

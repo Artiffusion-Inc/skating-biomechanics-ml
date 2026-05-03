@@ -1,0 +1,14 @@
+id: no-json-key-access
+snapshots:
+  data = response.json()["detail"]:
+    labels:
+    - source: response.json()["detail"]
+      style: primary
+      start: 7
+      end: 32
+  msg = resp.json()["detail"]["message"]:
+    labels:
+    - source: resp.json()["detail"]
+      style: primary
+      start: 6
+      end: 27

@@ -1,0 +1,19 @@
+id: no-json-key-access
+language: python
+message: |
+  Don't use response.json()["key"] — it can throw KeyError. Use .get("key") instead.
+
+  Instead of:  data = response.json()["detail"]
+  Use:         data = response.json().get("detail")
+
+  Or use pydantic validation for structured responses.
+severity: warning
+note: |
+  Allowed in tests and legacy scripts.
+rule:
+  pattern: $RESP.json()["$KEY"]
+ignores:
+  - "**/test_*.py"
+  - "**/tests/**"
+  - "**/conftest.py"
+  - "scripts/**"
