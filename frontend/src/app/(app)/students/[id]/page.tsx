@@ -8,6 +8,8 @@ import { PeriodSelector } from "@/components/progress/period-selector"
 import { TrendChart } from "@/components/progress/trend-chart"
 import { useTranslations } from "@/i18n"
 import { useDiagnostics, useTrend } from "@/lib/api/metrics"
+import { EmptyState } from "@/components/onboarding"
+import { BarChart3, Activity } from "lucide-react"
 
 const ELEMENT_IDS = [
   "three_turn",
@@ -29,6 +31,7 @@ export default function StudentProfilePage() {
   const te = useTranslations("elements")
   const tc = useTranslations("common")
   const ts = useTranslations("students")
+  const tEmpty = useTranslations("emptyStates")
 
   const { data: trend } = useTrend(id, element, metric, period)
   const { data: diag } = useDiagnostics(id)
@@ -83,11 +86,29 @@ export default function StudentProfilePage() {
             <option value="rotation_speed">{ts("metrics.rotation_speed")}</option>
           </select>
           <PeriodSelector value={period} onChange={setPeriod} />
-          {trend && <TrendChart data={trend} />}
+          {trend && trend.data_points.length > 0 ? (
+            <TrendChart data={trend} />
+          ) : (
+            <EmptyState
+              icon={<BarChart3 className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
+              title={tEmpty("noTrendTitle")}
+              description={tEmpty("noTrendDesc")}
+            />
+          )}
         </div>
       )}
 
-      {tab === "diagnostics" && diag && <DiagnosticsList findings={diag.findings} />}
+      {tab === "diagnostics" && (
+        diag && diag.findings.length > 0 ? (
+          <DiagnosticsList findings={diag.findings} />
+        ) : (
+          <EmptyState
+            icon={<Activity className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
+            title={tEmpty("noDiagnosticsTitle")}
+            description={tEmpty("noDiagnosticsDesc")}
+          />
+        )
+      )}
     </div>
   )
 }

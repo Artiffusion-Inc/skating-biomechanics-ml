@@ -295,7 +295,15 @@
     "progressAction": "Upload video",
     "connectionsAction": "Invite",
     "connectionsTitle": "No connections",
-    "connectionsDesc": "Invite a coach or student to start collaborating and tracking progress."
+    "connectionsDesc": "Invite a coach or student to start collaborating and tracking progress.",
+    "feedTitle": "No sessions yet",
+    "feedDesc": "Upload your first video to get biomechanical analysis and start tracking progress.",
+    "feedAction": "Upload video",
+    "feedSecondaryAction": "Connect with coach",
+    "noTrendTitle": "No progress data",
+    "noTrendDesc": "This student has no uploaded sessions for the selected element yet.",
+    "noDiagnosticsTitle": "No diagnostics",
+    "noDiagnosticsDesc": "Diagnostics will appear after uploading and analyzing videos."
   },
   "students": {
     "title": "Students",

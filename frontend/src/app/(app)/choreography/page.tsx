@@ -4,6 +4,7 @@ import { Music, Plus } from "lucide-react"
 import Link from "next/link"
 import { useTranslations } from "@/i18n"
 import { usePrograms } from "@/lib/api/choreography"
+import { EmptyState } from "@/components/onboarding"
 
 export default function ChoreographyPage() {
   const t = useTranslations("choreography")
@@ -31,10 +32,12 @@ export default function ChoreographyPage() {
             {t("newProgram")}
           </Link>
         </div>
-        <div className="flex flex-col items-center gap-4 py-20">
-          <Music className="h-10 w-10 text-muted-foreground" />
-          <p className="text-muted-foreground">{t("noPrograms")}</p>
-        </div>
+        <EmptyState
+          icon={<Music className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
+          title={t("noPrograms")}
+          description={t("newProgram")}
+          primaryAction={{ label: t("newProgram"), href: "/choreography/new" }}
+        />
       </div>
     )
   }

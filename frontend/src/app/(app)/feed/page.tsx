@@ -15,6 +15,7 @@ export default function FeedPage() {
   const tf = useTranslations("feed")
   const tc = useTranslations("common")
   const te = useTranslations("elements")
+  const tEmpty = useTranslations("emptyStates")
 
   const [selectionMode, setSelectionMode] = useState(false)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
@@ -70,10 +71,10 @@ export default function FeedPage() {
     return (
       <EmptyState
         icon={<Upload className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
-        title="Пока нет сессий"
-        description="Загрузите первое видео, чтобы получить биомеханический анализ и начать отслеживать прогресс."
-        primaryAction={{ label: "Загрузить видео", href: "/upload" }}
-        secondaryAction={{ label: "Связаться с тренером", href: "/connections" }}
+        title={tEmpty("feedTitle")}
+        description={tEmpty("feedDesc")}
+        primaryAction={{ label: tEmpty("feedAction"), href: "/upload" }}
+        secondaryAction={{ label: tEmpty("feedSecondaryAction"), href: "/connections" }}
       />
     )
   }

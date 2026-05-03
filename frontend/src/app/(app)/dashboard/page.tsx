@@ -4,6 +4,8 @@ import Link from "next/link"
 import { StudentCard } from "@/components/coach/student-card"
 import { useTranslations } from "@/i18n"
 import { useConnections } from "@/lib/api/connections"
+import { EmptyState } from "@/components/onboarding"
+import { Users } from "lucide-react"
 
 export default function DashboardPage() {
   const { data, isLoading } = useConnections()
@@ -19,16 +21,12 @@ export default function DashboardPage() {
 
   if (!students.length) {
     return (
-      <div className="flex flex-col items-center gap-4 py-20">
-        <p className="text-muted-foreground">{ts("noStudents")}</p>
-        <p className="text-sm text-muted-foreground">{ts("noStudentsHint")}</p>
-        <Link
-          href="/connections"
-          className="rounded-xl bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-        >
-          {ts("inviteStudent")}
-        </Link>
-      </div>
+      <EmptyState
+        icon={<Users className="h-7 w-7" style={{ color: "var(--ice-deep)" }} />}
+        title={ts("noStudents")}
+        description={ts("noStudentsHint")}
+        primaryAction={{ label: ts("inviteStudent"), href: "/connections" }}
+      />
     )
   }
 
