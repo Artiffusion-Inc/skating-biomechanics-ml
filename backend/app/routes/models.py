@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import ClassVar
 
-from fastapi import APIRouter
+from litestar import Controller, get
 from pydantic import BaseModel
-
-router = APIRouter()
 
 _MODELS_DIR = Path(__file__).resolve().parent.parent.parent.parent / "data" / "models"
 
@@ -27,12 +26,16 @@ class ModelStatus(BaseModel):
     size_mb: float | None = None
 
 
-@router.get("", response_model=list[ModelStatus])
-async def list_models() -> list[ModelStatus]:
-    results = []
-    for model_id, filename in _MODEL_FILES.items():
-        path = _MODELS_DIR / filename
-        available = path.exists()
-        size_mb = round(path.stat().st_size / (1024 * 1024), 1) if available else None
-        results.append(ModelStatus(id=model_id, available=available, size_mb=size_mb))
-    return results
+class ModelsController(Controller):
+    path = ""
+    tags: ClassVar[list[str]] = ["models"]
+
+    @get("")
+    async def list_models(self) -> list[ModelStatus]:
+        results = []
+        for model_id, filename in _MODEL_FILES.items():
+            path = _MODELS_DIR / filename
+            available = path.exists()
+            size_mb = round(path.stat().st_size / (1024 * 1024), 1) if available else None
+            results.append(ModelStatus(id=model_id, available=available, size_mb=size_mb))
+        return results
