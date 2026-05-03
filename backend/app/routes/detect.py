@@ -4,10 +4,12 @@ from __future__ import annotations
 
 import uuid
 from pathlib import Path
+from typing import ClassVar
 
-from fastapi import APIRouter, Request, UploadFile
+from litestar import Controller, Request, get, post
+from litestar.datastructures import UploadFile  # noqa: TC002
+from litestar.exceptions import ClientException
 
-from app.routes import raise_api_error
 from app.schemas import (
     DetectQueueResponse,
     DetectResultResponse,
@@ -21,94 +23,87 @@ from app.task_manager import (
     get_valkey,
 )
 
-router = APIRouter()
 
+class DetectController(Controller):
+    path = ""
+    tags: ClassVar[list[str]] = ["detect"]
 
-@router.post("", response_model=DetectQueueResponse)
-async def enqueue_detect(
-    request: Request,
-    video: UploadFile,
-    tracking: str = "auto",
-) -> DetectQueueResponse:
-    """Upload video, enqueue detection job, return task_id immediately."""
-    suffix = Path(video.filename or "video.mp4").suffix
-    video_key = f"input/{uuid.uuid4().hex}{suffix}"
+    @post("")
+    async def enqueue_detect(
+        self,
+        request: Request,
+        data: UploadFile,
+        tracking: str = "auto",
+    ) -> DetectQueueResponse:
+        """Upload video, enqueue detection job, return task_id immediately."""
+        suffix = Path(data.filename or "video.mp4").suffix
+        video_key = f"input/{uuid.uuid4().hex}{suffix}"
 
-    content = await video.read()
-    await upload_bytes_async(content, video_key)
+        content = await data.read()
+        await upload_bytes_async(content, video_key)
 
-    task_id = f"det_{uuid.uuid4().hex[:12]}"
+        task_id = f"det_{uuid.uuid4().hex[:12]}"
 
-    valkey = get_valkey()
-    await create_task_state(task_id, video_key=video_key, valkey=valkey)
+        valkey = get_valkey()
+        await create_task_state(task_id, video_key=video_key, valkey=valkey)
 
-    await request.app.state.arq_pool.enqueue_job(
-        "detect_video_task",
-        task_id=task_id,
-        video_key=video_key,
-        tracking=tracking,
-        _queue_name="skating:queue:fast",
-    )
-
-    return DetectQueueResponse(task_id=task_id, video_key=video_key)
-
-
-@router.get("/{task_id}/status", response_model=TaskStatusResponse)
-async def get_detect_status(task_id: str):
-    """Poll detection task status."""
-    valkey = get_valkey()
-    state = await get_task_state(task_id, valkey=valkey)
-
-    if state is None:
-        raise_api_error(
-            status_code=404,
-            error="NotFound",
-            message="Task not found",
-            details={"task_id": task_id},
+        await request.app.state.arq_pool.enqueue_job(
+            "detect_video_task",
+            task_id=task_id,
+            video_key=video_key,
+            tracking=tracking,
+            _queue_name="skating:queue:fast",
         )
 
-    result = None
-    if state.get("result"):
-        result = DetectResultResponse(**state["result"])
+        return DetectQueueResponse(task_id=task_id, video_key=video_key)
 
-    return TaskStatusResponse(
-        task_id=task_id,
-        status=state["status"],
-        progress=state["progress"],
-        message=state.get("message", ""),
-        result=result,  # type: ignore[reportArgumentType]
-        error=state.get("error"),
-    )
+    @get("/{task_id:str}/status")
+    async def get_detect_status(self, task_id: str) -> TaskStatusResponse:
+        """Poll detection task status."""
+        valkey = get_valkey()
+        state = await get_task_state(task_id, valkey=valkey)
 
+        if state is None:
+            raise ClientException(
+                status_code=404,
+                detail="Task not found",
+            )
 
-@router.get("/{task_id}/result", response_model=DetectResultResponse)
-async def get_detect_result(task_id: str):
-    """Get detection result (persons, preview)."""
-    valkey = get_valkey()
-    state = await get_task_state(task_id, valkey=valkey)
+        result = None
+        if state.get("result"):
+            result = DetectResultResponse(**state["result"])
 
-    if state is None:
-        raise_api_error(
-            status_code=404,
-            error="NotFound",
-            message="Task not found",
-            details={"task_id": task_id},
+        return TaskStatusResponse(
+            task_id=task_id,
+            status=state["status"],
+            progress=state["progress"],
+            message=state.get("message", ""),
+            result=result,  # type: ignore[reportArgumentType]
+            error=state.get("error"),
         )
 
-    if state.get("status") != TaskStatus.COMPLETED:
-        raise_api_error(
-            status_code=400,
-            error="BadRequest",
-            message="Task not completed yet",
-            details={"task_id": task_id},
-        )
+    @get("/{task_id:str}/result")
+    async def get_detect_result(self, task_id: str) -> DetectResultResponse:
+        """Get detection result (persons, preview)."""
+        valkey = get_valkey()
+        state = await get_task_state(task_id, valkey=valkey)
 
-    if not state.get("result"):
-        raise_api_error(
-            status_code=500,
-            error="InternalServerError",
-            message="No result stored",
-            details={"task_id": task_id},
-        )
+        if state is None:
+            raise ClientException(
+                status_code=404,
+                detail="Task not found",
+            )
 
-    return DetectResultResponse(**state["result"])
+        if state.get("status") != TaskStatus.COMPLETED:
+            raise ClientException(
+                status_code=400,
+                detail="Task not completed yet",
+            )
+
+        if not state.get("result"):
+            raise ClientException(
+                status_code=500,
+                detail="No result stored",
+            )
+
+        return DetectResultResponse(**state["result"])
