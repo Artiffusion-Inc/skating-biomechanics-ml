@@ -12,6 +12,7 @@ export function SettingsForm() {
   const t = useTranslations("settings")
   const tc = useTranslations("common")
   const { user } = useAuth()
+  const router = useRouter()
 
   const [language, setLanguage] = useState(user?.language ?? "ru")
   const [timezone, setTimezone] = useState(user?.timezone ?? "Europe/Moscow")
