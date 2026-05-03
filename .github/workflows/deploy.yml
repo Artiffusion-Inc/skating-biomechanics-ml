@@ -162,6 +162,7 @@ jobs:
             R2_BUCKET=${{ secrets.CF_R2_BUCKET }}
             JWT_SECRET=${{ secrets.JWT_SECRET }}
             VASTAI_API_KEY=${{ secrets.VASTAI_API_KEY }}
+            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
             LOG_LEVEL=info
             NEXT_PUBLIC_API_URL=/api
             DOMAIN=bbank.pro
