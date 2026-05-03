@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from litestar.exceptions import HTTPException
+from typing import TYPE_CHECKING
+
 from litestar.response import Response
 
 from app.schemas import ErrorResponse
+
+if TYPE_CHECKING:
+    from litestar.exceptions import HTTPException
 
 
 def http_exception_handler(request, exc: HTTPException) -> Response:

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
 from typing import ClassVar
 
@@ -25,7 +26,7 @@ from app.task_manager import (
 
 class DetectController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["detect"]
+    tags: ClassVar[Sequence[str]] = ["detect"]
 
     @post("", status_code=200)
     async def enqueue_detect(

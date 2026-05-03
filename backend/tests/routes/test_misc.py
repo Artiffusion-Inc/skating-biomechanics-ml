@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from litestar.testing import AsyncTestClient
+
+if TYPE_CHECKING:
+    from litestar.testing import AsyncTestClient
 
 
 @pytest.mark.asyncio

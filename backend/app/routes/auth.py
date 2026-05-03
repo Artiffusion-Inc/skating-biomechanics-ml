@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence  # noqa: TC003
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
@@ -36,7 +37,7 @@ settings = get_settings()
 
 class AuthController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["auth"]
+    tags: ClassVar[Sequence[str]] = ["auth"]
 
     async def _issue_token_pair(
         self, db: DbDep, user_id: str, family_id: str | None = None

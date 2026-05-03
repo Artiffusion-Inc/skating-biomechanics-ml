@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003
 from typing import ClassVar
 
 from litestar import Controller, delete, get, patch, post
@@ -65,7 +66,7 @@ async def _session_to_response(session) -> SessionResponse:
 
 class SessionsController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["sessions"]
+    tags: ClassVar[Sequence[str]] = ["sessions"]
 
     @post("", status_code=HTTP_201_CREATED)
     async def create_session(
@@ -190,9 +191,10 @@ class SessionsController(Controller):
     @delete("/bulk", status_code=HTTP_204_NO_CONTENT)
     async def delete_sessions_bulk(
         self,
+        *,
         ids: str = Parameter(required=True),
-        user: CurrentUser = None,
-        db: DbDep = None,
+        user: CurrentUser,
+        db: DbDep,
     ) -> None:
         session_ids = [sid.strip() for sid in ids.split(",") if sid.strip()]
         for sid in session_ids:
