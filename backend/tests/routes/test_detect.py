@@ -6,28 +6,6 @@ from io import BytesIO
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-
-@pytest.fixture
-def app():
-    """Create test FastAPI app with detect routes and mock arq_pool on state."""
-    from app.routes.detect import router
-    from fastapi import FastAPI
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1/detect")
-    app.state.arq_pool = AsyncMock()
-    return app
-
-
-@pytest.fixture
-async def client(app):
-    """Create test HTTP client."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
 
 # ---------------------------------------------------------------------------
 # POST /detect
@@ -35,7 +13,7 @@ async def client(app):
 
 
 @pytest.mark.asyncio
-async def test_enqueue_detect(client: AsyncClient, app):
+async def test_enqueue_detect(client, app, auth_headers):
     """POST /detect uploads video, creates task state, enqueues job."""
     video_content = b"fake-video-bytes"
 
@@ -48,6 +26,7 @@ async def test_enqueue_detect(client: AsyncClient, app):
             "/api/v1/detect",
             files={"video": ("test.mp4", BytesIO(video_content), "video/mp4")},
             data={"tracking": "auto"},
+            headers=auth_headers,
         )
 
     assert response.status_code == 200
@@ -67,7 +46,7 @@ async def test_enqueue_detect(client: AsyncClient, app):
 
 
 @pytest.mark.asyncio
-async def test_enqueue_detect_custom_tracking(client: AsyncClient, app):
+async def test_enqueue_detect_custom_tracking(client, app, auth_headers):
     """POST /detect passes the tracking query parameter to the job."""
     video_content = b"fake-video-bytes"
 
@@ -79,6 +58,7 @@ async def test_enqueue_detect_custom_tracking(client: AsyncClient, app):
         response = await client.post(
             "/api/v1/detect?tracking=manual",
             files={"video": ("test.webm", BytesIO(video_content), "video/webm")},
+            headers=auth_headers,
         )
 
     assert response.status_code == 200
@@ -93,7 +73,7 @@ async def test_enqueue_detect_custom_tracking(client: AsyncClient, app):
 
 
 @pytest.mark.asyncio
-async def test_detect_status(client: AsyncClient):
+async def test_detect_status(client, auth_headers):
     """GET /detect/{task_id}/status returns task state without result."""
     fake_state = {
         "task_id": "det_abc123",
@@ -108,7 +88,7 @@ async def test_detect_status(client: AsyncClient):
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/detect/det_abc123/status")
+        response = await client.get("/api/v1/detect/det_abc123/status", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -121,22 +101,21 @@ async def test_detect_status(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_detect_status_not_found(client: AsyncClient):
+async def test_detect_status_not_found(client, auth_headers):
     """GET /detect/{task_id}/status returns 404 when task not found."""
     with (
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=None),
     ):
-        response = await client.get("/api/v1/detect/det_nonexist/status")
+        response = await client.get("/api/v1/detect/det_nonexist/status", headers=auth_headers)
 
     assert response.status_code == 404
-    data = response.json()["detail"]
-    assert data["error"] == "NotFound"
+    data = response.json()
     assert data["message"] == "Task not found"
 
 
 @pytest.mark.asyncio
-async def test_detect_status_with_error(client: AsyncClient):
+async def test_detect_status_with_error(client, auth_headers):
     """GET /detect/{task_id}/status returns error field when present."""
     fake_state = {
         "task_id": "det_fail",
@@ -151,7 +130,7 @@ async def test_detect_status_with_error(client: AsyncClient):
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/detect/det_fail/status")
+        response = await client.get("/api/v1/detect/det_fail/status", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -159,7 +138,7 @@ async def test_detect_status_with_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_detect_status_with_result_type_mismatch(client: AsyncClient):
+async def test_detect_status_with_result_type_mismatch(client, auth_headers):
     """GET /detect/{task_id}/status raises ValidationError when result is DetectResultResponse.
 
     TaskStatusResponse.result is typed as ProcessResponse | None, so embedding
@@ -167,7 +146,6 @@ async def test_detect_status_with_result_type_mismatch(client: AsyncClient):
     This is a known type mismatch in the detect route (see # type: ignore on line 73).
     In production, ServerErrorMiddleware converts this to 500.
     """
-    from pydantic import ValidationError
 
     fake_result = {
         "persons": [
@@ -195,9 +173,10 @@ async def test_detect_status_with_result_type_mismatch(client: AsyncClient):
     with (
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=fake_state),
-        pytest.raises(ValidationError, match="ProcessResponse"),
     ):
-        await client.get("/api/v1/detect/det_abc123/status")
+        response = await client.get("/api/v1/detect/det_abc123/status", headers=auth_headers)
+
+    assert response.status_code == 500
 
 
 # ---------------------------------------------------------------------------
@@ -206,7 +185,7 @@ async def test_detect_status_with_result_type_mismatch(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_detect_result(client: AsyncClient):
+async def test_detect_result(client, auth_headers):
     """GET /detect/{task_id}/result returns DetectResultResponse for completed task."""
     fake_result = {
         "persons": [
@@ -235,7 +214,7 @@ async def test_detect_result(client: AsyncClient):
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/detect/det_done/result")
+        response = await client.get("/api/v1/detect/det_done/result", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -246,7 +225,7 @@ async def test_detect_result(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_detect_result_with_auto_click(client: AsyncClient):
+async def test_detect_result_with_auto_click(client, auth_headers):
     """GET /detect/{task_id}/result returns auto_click when present."""
     fake_result = {
         "persons": [],
@@ -268,7 +247,7 @@ async def test_detect_result_with_auto_click(client: AsyncClient):
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/detect/det_auto/result")
+        response = await client.get("/api/v1/detect/det_auto/result", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -276,22 +255,21 @@ async def test_detect_result_with_auto_click(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_detect_result_not_found(client: AsyncClient):
+async def test_detect_result_not_found(client, auth_headers):
     """GET /detect/{task_id}/result returns 404 when task not found."""
     with (
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=None),
     ):
-        response = await client.get("/api/v1/detect/det_ghost/result")
+        response = await client.get("/api/v1/detect/det_ghost/result", headers=auth_headers)
 
     assert response.status_code == 404
-    data = response.json()["detail"]
-    assert data["error"] == "NotFound"
+    data = response.json()
     assert data["message"] == "Task not found"
 
 
 @pytest.mark.asyncio
-async def test_detect_result_not_completed(client: AsyncClient):
+async def test_detect_result_not_completed(client, auth_headers):
     """GET /detect/{task_id}/result returns 400 when task not completed."""
     fake_state = {
         "task_id": "det_running",
@@ -306,16 +284,15 @@ async def test_detect_result_not_completed(client: AsyncClient):
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/detect/det_running/result")
+        response = await client.get("/api/v1/detect/det_running/result", headers=auth_headers)
 
     assert response.status_code == 400
-    data = response.json()["detail"]
-    assert data["error"] == "BadRequest"
+    data = response.json()
     assert data["message"] == "Task not completed yet"
 
 
 @pytest.mark.asyncio
-async def test_detect_result_no_result(client: AsyncClient):
+async def test_detect_result_no_result(client, auth_headers):
     """GET /detect/{task_id}/result returns 500 when task completed but no result stored."""
     fake_state = {
         "task_id": "det_empty",
@@ -330,9 +307,8 @@ async def test_detect_result_no_result(client: AsyncClient):
         patch("app.routes.detect.get_valkey", return_value=MagicMock()),
         patch("app.routes.detect.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/detect/det_empty/result")
+        response = await client.get("/api/v1/detect/det_empty/result", headers=auth_headers)
 
     assert response.status_code == 500
-    data = response.json()["detail"]
-    assert data["error"] == "InternalServerError"
+    data = response.json()
     assert data["message"] == "No result stored"

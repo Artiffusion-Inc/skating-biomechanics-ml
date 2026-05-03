@@ -1,36 +1,29 @@
-"""Route utilities — shared helpers for all API route modules."""
+"""Route module exports — each submodule provides a Litestar Router."""
 
 from __future__ import annotations
 
-from typing import NoReturn
+from litestar import Router
 
-from fastapi import HTTPException, Request, status
+from app.routes.auth import AuthController
+from app.routes.choreography import ChoreographyController
+from app.routes.connections import ConnectionsController
+from app.routes.detect import DetectController
+from app.routes.metrics import MetricsController
+from app.routes.misc import MiscController
+from app.routes.models import ModelsController
+from app.routes.process import ProcessController
+from app.routes.sessions import SessionsController
+from app.routes.uploads import UploadsController
+from app.routes.users import UsersController
 
-from app.schemas import ErrorResponse
-
-
-def raise_api_error(
-    status_code: int,
-    error: str,
-    message: str,
-    details: dict | list | None = None,
-    request: Request | None = None,
-) -> NoReturn:
-    """Raise an HTTPException with a structured ErrorResponse body.
-
-    Usage:
-        raise_api_error(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error="NotFound",
-            message="User not found",
-            details={"id": user_id},
-            request=request,
-        )
-    """
-    body = ErrorResponse(
-        error=error,
-        message=message,
-        details=details,
-        path=str(request.url.path) if request else "",
-    )
-    raise HTTPException(status_code=status_code, detail=body.model_dump())
+auth = Router(path="/auth", route_handlers=[AuthController])
+choreography = Router(path="/choreography", route_handlers=[ChoreographyController])
+connections = Router(path="/connections", route_handlers=[ConnectionsController])
+detect = Router(path="/detect", route_handlers=[DetectController])
+metrics = Router(path="/metrics", route_handlers=[MetricsController])
+misc = Router(path="", route_handlers=[MiscController])
+models = Router(path="/models", route_handlers=[ModelsController])
+process = Router(path="/process", route_handlers=[ProcessController])
+sessions = Router(path="/sessions", route_handlers=[SessionsController])
+uploads = Router(path="/uploads", route_handlers=[UploadsController])
+users = Router(path="/users", route_handlers=[UsersController])

@@ -11,6 +11,18 @@ import pytest
 SSE_STREAM_TIMEOUT = 60  # seconds
 
 
+def _parse_sse(event_bytes: bytes) -> dict:
+    """Parse a single SSE chunk from Litestar's iterator into a dict.
+
+    Litestar returns raw SSE wire format: b'data: {"key": "value"}\n\n'
+    """
+    text = event_bytes.decode()
+    for line in text.strip().split("\n"):
+        if line.startswith("data: "):
+            return json.loads(line[6:])
+    return {}
+
+
 @pytest.fixture
 def mock_settings():
     settings = MagicMock()
@@ -23,10 +35,10 @@ def mock_settings():
 
 @pytest.mark.asyncio
 async def test_sse_stream_exists():
-    """stream_process_status should be a callable on the process router."""
-    from app.routes.process import stream_process_status
+    """stream_process_status should be a callable on the process controller."""
+    from app.routes.process import ProcessController
 
-    assert callable(stream_process_status)
+    assert callable(ProcessController.stream_process_status)
 
 
 @pytest.mark.asyncio
@@ -55,21 +67,22 @@ async def test_sse_stream_times_out_after_no_messages(mock_settings):
 
         mock_state.return_value = {"status": "running", "progress": 0.5}
 
-        from app.routes.process import stream_process_status
+        from app.routes.process import ProcessController
 
-        # stream_process_status is async, returns EventSourceResponse
-        response = await stream_process_status("proc_test123")
+        # stream_process_status is async, returns ServerSentEvent
+        response = await ProcessController.stream_process_status.fn(
+            MagicMock(), task_id="proc_test123"
+        )
 
-        # EventSourceResponse.body_iterator is the content generator
+        # ServerSentEvent.iterator yields raw SSE wire-format bytes
         events = []
-        async for event in response.body_iterator:
+        async for event in response.iterator:
             events.append(event)
 
         # Should have at least the timeout event with _timeout flag
         assert len(events) >= 1
-        timeout_event = events[-1]
-        data = json.loads(timeout_event["data"])
-        assert data.get("_timeout") is True
+        timeout_data = _parse_sse(events[-1])
+        assert timeout_data.get("_timeout") is True
 
 
 @pytest.mark.asyncio
@@ -97,19 +110,21 @@ async def test_sse_stream_yields_progress_events(mock_settings):
 
         mock_state.return_value = {"status": "running", "progress": 0.0}
 
-        from app.routes.process import stream_process_status
+        from app.routes.process import ProcessController
 
-        response = await stream_process_status("proc_test456")
+        response = await ProcessController.stream_process_status.fn(
+            MagicMock(), task_id="proc_test456"
+        )
 
         events = []
-        async for event in response.body_iterator:
+        async for event in response.iterator:
             events.append(event)
 
         # Should have initial state + progress + completed events
         assert len(events) >= 3
         # Initial state event
-        initial_data = json.loads(events[0]["data"])
+        initial_data = _parse_sse(events[0])
         assert initial_data["status"] == "running"
         # Last event should be completed
-        last_data = json.loads(events[-1]["data"])
+        last_data = _parse_sse(events[-1])
         assert last_data["status"] == "completed"

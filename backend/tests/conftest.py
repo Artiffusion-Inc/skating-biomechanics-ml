@@ -1,5 +1,7 @@
 """Shared test fixtures for backend tests."""
 
+from __future__ import annotations
+
 import os
 import sys
 from collections.abc import AsyncGenerator
@@ -8,13 +10,22 @@ from pathlib import Path
 # Force SKIP_AUTH=false for all tests so auth logic is exercised.
 # Must happen before any import of app.config (which caches settings via @lru_cache).
 os.environ["APP_SKIP_AUTH"] = "false"
+os.environ["JWT_SECRET_KEY"] = "test-secret"
 
 # Add backend to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
+from unittest.mock import AsyncMock, MagicMock, patch
+
+import pytest
 import pytest_asyncio
+from app.auth.security import create_access_token, hash_password
 from app.config import get_settings
+from app.di import DbSessionProxy, db_proxy, db_session_proxy
 from app.models import Base
+from app.models.user import User
+from litestar.di import Provide
+from litestar.testing import AsyncTestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
 # Clear cached settings so APP_SKIP_AUTH=false takes effect
@@ -40,3 +51,93 @@ async def db_session(db_engine) -> AsyncGenerator[AsyncSession, None]:
     async with session_factory() as session:
         yield session
         await session.rollback()
+
+
+@pytest_asyncio.fixture
+async def authed_user(db_session: AsyncSession) -> User:
+    user = User(
+        email="user@example.com",
+        hashed_password=hash_password("pass"),
+        display_name="Test User",
+        bio="Skater",
+        height_cm=175,
+        weight_kg=70.0,
+    )
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+    return user
+
+
+@pytest.fixture
+def auth_headers(authed_user: User):
+    with patch("app.auth.security.get_settings") as mock_get:
+        mock_get.return_value = MagicMock(
+            jwt=MagicMock(
+                secret_key=MagicMock(get_secret_value=lambda: "test-secret"),
+                access_token_expire_minutes=15,
+            )
+        )
+        token = create_access_token(user_id=authed_user.id)
+    return {"Authorization": f"Bearer {token}"}
+
+
+# ---------------------------------------------------------------------------
+# Litestar shared fixtures
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def app():
+    """Build a Litestar app with external dependencies mocked."""
+    with patch("app.main.configure_logging"):
+        with patch("app.lifespan.init_valkey_pool", new_callable=AsyncMock):
+            with patch("app.lifespan.close_valkey_pool", new_callable=AsyncMock):
+                with patch("app.lifespan.create_pool", new_callable=AsyncMock) as mock_create_pool:
+                    mock_pool = AsyncMock()
+                    mock_create_pool.return_value = mock_pool
+
+                    with patch("app.main.get_settings") as mock_get:
+                        settings = MagicMock()
+                        settings.cors.origins = ["http://localhost:3000"]
+                        settings.jwt.secret_key.get_secret_value.return_value = "test-secret"
+                        settings.valkey.host = "localhost"
+                        settings.valkey.port = 6379
+                        settings.valkey.db = 0
+                        settings.valkey.password.get_secret_value.return_value = ""
+                        settings.valkey.build_url.return_value = "redis://localhost:6379/0"
+                        settings.app.log_level = "INFO"
+                        settings.app.skip_auth = True
+                        mock_get.return_value = settings
+
+                        class DummyRateLimitMiddleware:
+                            def __init__(self, app):
+                                self.app = app
+
+                            async def __call__(self, scope, receive, send):
+                                await self.app(scope, receive, send)
+
+                        with patch("app.main.RateLimitConfig") as mock_rl_cls:
+                            mock_rl_cls.return_value = MagicMock(
+                                middleware=DummyRateLimitMiddleware
+                            )
+
+                            with patch("app.main.ResponseCacheConfig") as mock_rc:
+                                mock_rc.return_value = None
+
+                                from app.main import create_app
+
+                                litestar_app = create_app()
+                                litestar_app.state.arq_pool = AsyncMock()
+                                yield litestar_app
+
+
+@pytest.fixture
+async def client(app, db_session):
+    """Provide an AsyncTestClient with the db dependency overridden to use the test session."""
+    DbSessionProxy._session = db_session
+    app.state.test_db_session = db_session
+    async with AsyncTestClient(app) as c:
+        yield c
+    DbSessionProxy._session = None
+    app.state.test_db_session = None

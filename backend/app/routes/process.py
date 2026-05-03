@@ -6,11 +6,13 @@ import asyncio
 import json
 import logging
 import uuid
+from typing import ClassVar
 
-from fastapi import APIRouter, Request, status
-from sse_starlette.sse import EventSourceResponse
+from litestar import Controller, Request, get, post
+from litestar.exceptions import ClientException
+from litestar.response import ServerSentEvent
+from litestar.status_codes import HTTP_404_NOT_FOUND
 
-from app.routes import raise_api_error
 from app.schemas import (
     MLModelFlags,
     ProcessRequest,
@@ -28,117 +30,119 @@ from app.task_manager import (
 )
 
 logger = logging.getLogger(__name__)
-router = APIRouter()
 
 SSE_STREAM_TIMEOUT = 60  # seconds
 
 
-@router.post("/queue", response_model=QueueProcessResponse)
-async def enqueue_process(request: Request, req: ProcessRequest):
-    """Enqueue video processing job and return task_id immediately."""
-    task_id = f"proc_{uuid.uuid4().hex[:12]}"
+class ProcessController(Controller):
+    path = ""
+    tags: ClassVar[list[str]] = ["process"]
 
-    valkey = get_valkey()
-    await create_task_state(task_id, video_key=req.video_key, valkey=valkey)
+    @post("/queue", status_code=200)
+    async def enqueue_process(
+        self,
+        request: Request,
+        data: ProcessRequest,
+    ) -> QueueProcessResponse:
+        """Enqueue video processing job and return task_id immediately."""
+        task_id = f"proc_{uuid.uuid4().hex[:12]}"
 
-    ml_flags = MLModelFlags(
-        depth=req.depth,
-        optical_flow=req.optical_flow,
-        segment=req.segment,
-        foot_track=req.foot_track,
-        matting=req.matting,
-        inpainting=req.inpainting,
-    )
+        valkey = get_valkey()
+        await create_task_state(task_id, video_key=data.video_key, valkey=valkey)
 
-    await request.app.state.arq_pool.enqueue_job(
-        "process_video_task",
-        task_id=task_id,
-        video_key=req.video_key,
-        person_click={"x": req.person_click.x, "y": req.person_click.y},
-        frame_skip=req.frame_skip,
-        layer=req.layer,
-        tracking=req.tracking,
-        export=req.export,
-        ml_flags=ml_flags,
-        session_id=req.session_id,
-        _queue_name="skating:queue:heavy",
-    )
-
-    return QueueProcessResponse(task_id=task_id)
-
-
-@router.get("/{task_id}/status", response_model=TaskStatusResponse)
-async def get_process_status(task_id: str):
-    """Poll task status."""
-    valkey = get_valkey()
-    state = await get_task_state(task_id, valkey=valkey)
-
-    if state is None:
-        raise_api_error(
-            status_code=status.HTTP_404_NOT_FOUND,
-            error="NotFound",
-            message="Task not found",
-            details={"task_id": task_id},
+        ml_flags = MLModelFlags(
+            depth=data.depth,
+            optical_flow=data.optical_flow,
+            segment=data.segment,
+            foot_track=data.foot_track,
+            matting=data.matting,
+            inpainting=data.inpainting,
         )
 
-    result = None
-    if state.get("result"):
-        result = ProcessResponse(**state["result"])
+        await request.app.state.arq_pool.enqueue_job(
+            "process_video_task",
+            task_id=task_id,
+            video_key=data.video_key,
+            person_click={"x": data.person_click.x, "y": data.person_click.y},
+            frame_skip=data.frame_skip,
+            layer=data.layer,
+            tracking=data.tracking,
+            export=data.export,
+            ml_flags=ml_flags,
+            session_id=data.session_id,
+            _queue_name="skating:queue:heavy",
+        )
 
-    return TaskStatusResponse(
-        task_id=task_id,
-        status=state["status"],
-        progress=state["progress"],
-        message=state.get("message", ""),
-        result=result,
-        error=state.get("error"),
-    )
+        return QueueProcessResponse(task_id=task_id)
 
+    @get("/{task_id:str}/status")
+    async def get_process_status(self, task_id: str) -> TaskStatusResponse:
+        """Poll task status."""
+        valkey = get_valkey()
+        state = await get_task_state(task_id, valkey=valkey)
 
-@router.post("/{task_id}/cancel")
-async def cancel_queued_process(task_id: str):
-    """Cancel a queued or running task via Valkey signal."""
-    await set_cancel_signal(task_id)
-    return {"status": "cancel_requested", "task_id": task_id}
+        if state is None:
+            raise ClientException(
+                status_code=HTTP_404_NOT_FOUND,
+                detail="Task not found",
+            )
 
+        result = None
+        if state.get("result"):
+            result = ProcessResponse(**state["result"])
 
-@router.get("/{task_id}/stream")
-async def stream_process_status(task_id: str):
-    """SSE endpoint for real-time task progress streaming."""
+        return TaskStatusResponse(
+            task_id=task_id,
+            status=state["status"],
+            progress=state["progress"],
+            message=state.get("message", ""),
+            result=result,  # type: ignore[reportArgumentType]
+            error=state.get("error"),
+        )
 
-    async def event_generator():
-        valkey = await get_valkey_client()
-        pubsub = valkey.pubsub()
-        channel = f"{TASK_EVENTS_PREFIX}{task_id}"
-        await pubsub.subscribe(channel)
-        try:
-            # Send initial state
-            state = await get_task_state(task_id, valkey=valkey)
-            if state:
-                yield {"data": json.dumps(state)}
-            else:
-                yield {"data": json.dumps({"status": "unknown"})}
+    @post("/{task_id:str}/cancel", status_code=200)
+    async def cancel_queued_process(self, task_id: str) -> dict:
+        """Cancel a queued or running task via Valkey signal."""
+        await set_cancel_signal(task_id)
+        return {"status": "cancel_requested", "task_id": task_id}
 
-            async with asyncio.timeout(SSE_STREAM_TIMEOUT):
-                async for message in pubsub.listen():
-                    if message["type"] == "message":
-                        yield {"data": message["data"].decode()}
-                        try:
-                            data = json.loads(message["data"])
-                            if data.get("status") in ("completed", "failed", "cancelled"):
-                                break
-                        except (json.JSONDecodeError, TypeError):
-                            pass
-        except TimeoutError:
-            # No messages for 60s — poll final state and yield timeout event
-            logger.warning("SSE stream timeout for task %s", task_id)
-            state = await get_task_state(task_id, valkey=valkey)
-            payload = state or {"status": "unknown"}
-            payload["_timeout"] = True
-            yield {"data": json.dumps(payload)}
-        finally:
-            await pubsub.unsubscribe(channel)
-            await pubsub.aclose()
-            await valkey.close()
+    @get("/{task_id:str}/stream")
+    async def stream_process_status(self, task_id: str) -> ServerSentEvent:
+        """SSE endpoint for real-time task progress streaming."""
 
-    return EventSourceResponse(event_generator())
+        async def event_generator():
+            valkey = await get_valkey_client()
+            pubsub = valkey.pubsub()
+            channel = f"{TASK_EVENTS_PREFIX}{task_id}"
+            await pubsub.subscribe(channel)
+            try:
+                # Send initial state
+                state = await get_task_state(task_id, valkey=valkey)
+                if state:
+                    yield {"data": json.dumps(state)}
+                else:
+                    yield {"data": json.dumps({"status": "unknown"})}
+
+                async with asyncio.timeout(SSE_STREAM_TIMEOUT):
+                    async for message in pubsub.listen():
+                        if message["type"] == "message":
+                            yield {"data": message["data"].decode()}
+                            try:
+                                data = json.loads(message["data"])
+                                if data.get("status") in ("completed", "failed", "cancelled"):
+                                    break
+                            except (json.JSONDecodeError, TypeError):
+                                pass
+            except TimeoutError:
+                # No messages for 60s — poll final state and yield timeout event
+                logger.warning("SSE stream timeout for task %s", task_id)
+                state = await get_task_state(task_id, valkey=valkey)
+                payload = state or {"status": "unknown"}
+                payload["_timeout"] = True
+                yield {"data": json.dumps(payload)}
+            finally:
+                await pubsub.unsubscribe(channel)
+                await pubsub.aclose()
+                await valkey.close()
+
+        return ServerSentEvent(event_generator())

@@ -11,40 +11,9 @@ from app.auth.security import create_access_token, hash_password
 from app.models.connection import Connection, ConnectionStatus, ConnectionType
 from app.models.session import Session, SessionMetric
 from app.models.user import User
-from httpx import ASGITransport, AsyncClient
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
-
-
-@pytest.fixture
-def app():
-    from app.routes.metrics import router
-    from fastapi import FastAPI
-    from fastapi_cache import FastAPICache
-    from fastapi_cache.backends.inmemory import InMemoryBackend
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1/metrics")
-    FastAPICache.init(InMemoryBackend(), prefix="test-cache")
-    return app
-
-
-@pytest.fixture
-async def client(app, db_session: AsyncSession):
-    from app.database import get_db
-
-    app.dependency_overrides[get_db] = lambda: db_session
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
-    app.dependency_overrides.clear()
 
 
 @pytest.fixture
@@ -125,7 +94,7 @@ async def _insert_metric(
 
 
 @pytest.mark.asyncio
-async def test_registry_returns_metric_definitions(client: AsyncClient):
+async def test_registry_returns_metric_definitions(client):
     """GET /metrics/registry returns all registered metrics with correct structure."""
     response = await client.get("/api/v1/metrics/registry")
     assert response.status_code == 200
@@ -152,7 +121,7 @@ async def test_registry_returns_metric_definitions(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_trend_empty(client: AsyncClient, auth_headers_a, user_a):
+async def test_trend_empty(client, auth_headers_a, user_a):
     """GET /metrics/trend with no data returns empty data_points and trend='stable'."""
     response = await client.get(
         "/api/v1/metrics/trend",
@@ -171,9 +140,7 @@ async def test_trend_empty(client: AsyncClient, auth_headers_a, user_a):
 
 
 @pytest.mark.asyncio
-async def test_trend_with_data(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
-):
+async def test_trend_with_data(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/trend with session + metric returns data points."""
     session = await _insert_session(db_session, user_a.id, "waltz_jump")
     await _insert_metric(db_session, session.id, "airtime", 0.45, is_pr=True)
@@ -195,7 +162,7 @@ async def test_trend_with_data(
 
 
 @pytest.mark.asyncio
-async def test_trend_unknown_metric(client: AsyncClient, auth_headers_a):
+async def test_trend_unknown_metric(client, auth_headers_a):
     """GET /metrics/trend with invalid metric_name returns 400."""
     response = await client.get(
         "/api/v1/metrics/trend",
@@ -203,13 +170,12 @@ async def test_trend_unknown_metric(client: AsyncClient, auth_headers_a):
         headers=auth_headers_a,
     )
     assert response.status_code == 400
-    data = response.json()["detail"]
-    assert data["error"] == "BadRequest"
+    data = response.json()
     assert "Unknown metric" in data["message"]
 
 
 @pytest.mark.asyncio
-async def test_trend_coach_access_denied(client: AsyncClient, auth_headers_a, user_b):
+async def test_trend_coach_access_denied(client, auth_headers_a, user_b):
     """GET /metrics/trend with user_id param but no coaching connection returns 403."""
     response = await client.get(
         "/api/v1/metrics/trend",
@@ -221,14 +187,13 @@ async def test_trend_coach_access_denied(client: AsyncClient, auth_headers_a, us
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    data = response.json()["detail"]
-    assert data["error"] == "Forbidden"
+    data = response.json()
     assert "Not a coach" in data["message"]
 
 
 @pytest.mark.asyncio
 async def test_trend_coach_access_allowed(
-    client: AsyncClient, auth_headers_a, user_a, user_b, db_session: AsyncSession
+    client, auth_headers_a, user_a, user_b, db_session: AsyncSession
 ):
     """GET /metrics/trend with active coaching connection returns 200."""
     # Create active coaching connection: user_a is coach for user_b
@@ -255,9 +220,7 @@ async def test_trend_coach_access_allowed(
 
 
 @pytest.mark.asyncio
-async def test_trend_period_filter(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
-):
+async def test_trend_period_filter(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/trend with period=7d filters out old sessions."""
     now = datetime.now(UTC)
 
@@ -299,7 +262,7 @@ async def test_trend_period_filter(
 
 @pytest.mark.asyncio
 async def test_trend_improving_with_3_points(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/trend with 3 strictly increasing values returns trend='improving'."""
     now = datetime.now(UTC)
@@ -328,7 +291,7 @@ async def test_trend_improving_with_3_points(
 
 @pytest.mark.asyncio
 async def test_trend_declining_with_3_points(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/trend with 3 strictly decreasing values returns trend='declining'."""
     now = datetime.now(UTC)
@@ -361,7 +324,7 @@ async def test_trend_declining_with_3_points(
 
 
 @pytest.mark.asyncio
-async def test_prs_empty(client: AsyncClient, auth_headers_a):
+async def test_prs_empty(client, auth_headers_a):
     """GET /metrics/prs with no data returns empty list."""
     response = await client.get("/api/v1/metrics/prs", headers=auth_headers_a)
     assert response.status_code == 200
@@ -370,7 +333,7 @@ async def test_prs_empty(client: AsyncClient, auth_headers_a):
 
 
 @pytest.mark.asyncio
-async def test_prs_with_data(client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession):
+async def test_prs_with_data(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/prs returns metrics flagged as PRs."""
     session = await _insert_session(db_session, user_a.id, "waltz_jump")
     await _insert_metric(db_session, session.id, "airtime", 0.55, is_pr=True)
@@ -392,9 +355,7 @@ async def test_prs_with_data(client: AsyncClient, auth_headers_a, user_a, db_ses
 
 
 @pytest.mark.asyncio
-async def test_prs_deduplication(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
-):
+async def test_prs_deduplication(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/prs deduplicates by (element_type, metric_name), keeping latest."""
     now = datetime.now(UTC)
 
@@ -435,9 +396,7 @@ async def test_prs_deduplication(
 
 
 @pytest.mark.asyncio
-async def test_prs_filter_by_element_type(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
-):
+async def test_prs_filter_by_element_type(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/prs?element_type=... filters by element type."""
     # WJ session with PR
     session_wj = await _insert_session(db_session, user_a.id, "waltz_jump")
@@ -459,7 +418,7 @@ async def test_prs_filter_by_element_type(
 
 
 @pytest.mark.asyncio
-async def test_prs_coach_access_denied(client: AsyncClient, auth_headers_a, user_b):
+async def test_prs_coach_access_denied(client, auth_headers_a, user_b):
     """GET /metrics/prs with user_id param but no coaching connection returns 403."""
     response = await client.get(
         "/api/v1/metrics/prs",
@@ -467,14 +426,13 @@ async def test_prs_coach_access_denied(client: AsyncClient, auth_headers_a, user
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    data = response.json()["detail"]
-    assert data["error"] == "Forbidden"
+    data = response.json()
     assert "Not a coach" in data["message"]
 
 
 @pytest.mark.asyncio
 async def test_prs_coach_access_allowed(
-    client: AsyncClient, auth_headers_a, user_a, user_b, db_session: AsyncSession
+    client, auth_headers_a, user_a, user_b, db_session: AsyncSession
 ):
     """GET /metrics/prs with active coaching connection returns 200."""
     conn = Connection(
@@ -501,7 +459,7 @@ async def test_prs_coach_access_allowed(
 
 
 @pytest.mark.asyncio
-async def test_diagnostics_empty(client: AsyncClient, auth_headers_a):
+async def test_diagnostics_empty(client, auth_headers_a):
     """GET /metrics/diagnostics with no sessions returns empty findings."""
     response = await client.get("/api/v1/metrics/diagnostics", headers=auth_headers_a)
     assert response.status_code == 200
@@ -511,9 +469,7 @@ async def test_diagnostics_empty(client: AsyncClient, auth_headers_a):
 
 
 @pytest.mark.asyncio
-async def test_diagnostics_with_new_pr(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
-):
+async def test_diagnostics_with_new_pr(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/diagnostics surfaces new PR finding."""
     session = await _insert_session(db_session, user_a.id, "waltz_jump")
     await _insert_metric(db_session, session.id, "airtime", 0.55, is_pr=True, prev_best=0.45)
@@ -532,7 +488,7 @@ async def test_diagnostics_with_new_pr(
 
 @pytest.mark.asyncio
 async def test_diagnostics_consistently_below_range(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics surfaces warning when >60% of values below range."""
     now = datetime.now(UTC)
@@ -563,7 +519,7 @@ async def test_diagnostics_consistently_below_range(
 
 
 @pytest.mark.asyncio
-async def test_diagnostics_coach_access_denied(client: AsyncClient, auth_headers_a, user_b):
+async def test_diagnostics_coach_access_denied(client, auth_headers_a, user_b):
     """GET /metrics/diagnostics with user_id param but no coaching connection returns 403."""
     response = await client.get(
         "/api/v1/metrics/diagnostics",
@@ -571,14 +527,13 @@ async def test_diagnostics_coach_access_denied(client: AsyncClient, auth_headers
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    data = response.json()["detail"]
-    assert data["error"] == "Forbidden"
+    data = response.json()
     assert "Not a coach" in data["message"]
 
 
 @pytest.mark.asyncio
 async def test_diagnostics_coach_access_allowed(
-    client: AsyncClient, auth_headers_a, user_a, user_b, db_session: AsyncSession
+    client, auth_headers_a, user_a, user_b, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics with active coaching connection returns 200."""
     conn = Connection(
@@ -601,7 +556,7 @@ async def test_diagnostics_coach_access_allowed(
 
 @pytest.mark.asyncio
 async def test_diagnostics_ignores_uploading_sessions(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics ignores sessions with status != 'done'."""
     session = Session(
@@ -622,7 +577,7 @@ async def test_diagnostics_ignores_uploading_sessions(
 
 @pytest.mark.asyncio
 async def test_diagnostics_sorts_warnings_first(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics sorts findings with warnings before info."""
     now = datetime.now(UTC)
@@ -662,7 +617,7 @@ async def test_diagnostics_sorts_warnings_first(
 
 @pytest.mark.asyncio
 async def test_diagnostics_declining_trend(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics surfaces declining trend finding."""
     now = datetime.now(UTC)
@@ -694,9 +649,7 @@ async def test_diagnostics_declining_trend(
 
 
 @pytest.mark.asyncio
-async def test_diagnostics_stagnation(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
-):
+async def test_diagnostics_stagnation(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/diagnostics surfaces stagnation finding when values are flat."""
     now = datetime.now(UTC)
     # Very consistent values (low variance) should trigger stagnation
@@ -727,7 +680,7 @@ async def test_diagnostics_stagnation(
 
 @pytest.mark.asyncio
 async def test_diagnostics_high_variability(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics surfaces high variability finding."""
     now = datetime.now(UTC)
@@ -760,7 +713,7 @@ async def test_diagnostics_high_variability(
 
 @pytest.mark.asyncio
 async def test_diagnostics_ignores_unknown_metrics(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
+    client, auth_headers_a, user_a, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics skips metrics not in the registry."""
     session = await _insert_session(db_session, user_a.id, "waltz_jump")
@@ -782,9 +735,7 @@ async def test_diagnostics_ignores_unknown_metrics(
 
 
 @pytest.mark.asyncio
-async def test_trend_period_all(
-    client: AsyncClient, auth_headers_a, user_a, db_session: AsyncSession
-):
+async def test_trend_period_all(client, auth_headers_a, user_a, db_session: AsyncSession):
     """GET /metrics/trend with period=all includes all sessions regardless of date."""
     now = datetime.now(UTC)
 
@@ -813,7 +764,7 @@ async def test_trend_period_all(
 
 @pytest.mark.asyncio
 async def test_prs_coach_access_allowed_with_data(
-    client: AsyncClient, auth_headers_a, user_a, user_b, db_session: AsyncSession
+    client, auth_headers_a, user_a, user_b, db_session: AsyncSession
 ):
     """GET /metrics/prs with coaching connection returns student's PRs."""
     from app.models.connection import Connection, ConnectionStatus, ConnectionType
@@ -845,7 +796,7 @@ async def test_prs_coach_access_allowed_with_data(
 
 @pytest.mark.asyncio
 async def test_diagnostics_coach_access_allowed_with_data(
-    client: AsyncClient, auth_headers_a, user_a, user_b, db_session: AsyncSession
+    client, auth_headers_a, user_a, user_b, db_session: AsyncSession
 ):
     """GET /metrics/diagnostics with coaching connection returns student's diagnostics."""
     from app.models.connection import Connection, ConnectionStatus, ConnectionType

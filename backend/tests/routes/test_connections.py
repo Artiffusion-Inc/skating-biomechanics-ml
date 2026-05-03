@@ -5,38 +5,15 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import pytest
+import pytest_asyncio
 from app.auth.security import create_access_token, hash_password
 from app.models.user import User
-from httpx import ASGITransport, AsyncClient
 
 if TYPE_CHECKING:
     from sqlalchemy.ext.asyncio import AsyncSession
 
 
-@pytest.fixture
-def app():
-    from app.routes.connections import router
-    from fastapi import FastAPI
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1/connections")
-    return app
-
-
-@pytest.fixture
-async def client(app, db_session: AsyncSession):
-    from app.database import get_db
-
-    app.dependency_overrides[get_db] = lambda: db_session
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
+@pytest_asyncio.fixture
 async def user_a(db_session: AsyncSession) -> User:
     user = User(email="a@example.com", hashed_password=hash_password("pass"))
     db_session.add(user)
@@ -45,7 +22,7 @@ async def user_a(db_session: AsyncSession) -> User:
     return user
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def user_b(db_session: AsyncSession) -> User:
     user = User(email="b@example.com", hashed_password=hash_password("pass"))
     db_session.add(user)
@@ -72,9 +49,7 @@ def auth_headers_b(user_b):
 
 
 @pytest.mark.asyncio
-async def test_invite_creates_connection(
-    client: AsyncClient, user_a: User, user_b: User, auth_headers_a
-):
+async def test_invite_creates_connection(client, user_a: User, user_b: User, auth_headers_a):
     """Inviting an existing user creates a connection with INVITED status."""
     response = await client.post(
         "/api/v1/connections/invite",
@@ -92,7 +67,7 @@ async def test_invite_creates_connection(
 
 
 @pytest.mark.asyncio
-async def test_invite_user_not_found(client: AsyncClient, auth_headers_a):
+async def test_invite_user_not_found(client, auth_headers_a):
     """Inviting a nonexistent email returns 404."""
     response = await client.post(
         "/api/v1/connections/invite",
@@ -100,13 +75,12 @@ async def test_invite_user_not_found(client: AsyncClient, auth_headers_a):
         headers=auth_headers_a,
     )
     assert response.status_code == 404
-    data = response.json()["detail"]
-    assert data["error"] == "NotFound"
+    data = response.json()
     assert data["message"] == "User not found"
 
 
 @pytest.mark.asyncio
-async def test_invite_duplicate(client: AsyncClient, user_a: User, user_b: User, auth_headers_a):
+async def test_invite_duplicate(client, user_a: User, user_b: User, auth_headers_a):
     """Inviting the same user twice returns 409."""
     payload = {"to_user_email": "b@example.com", "connection_type": "coaching"}
     first = await client.post("/api/v1/connections/invite", json=payload, headers=auth_headers_a)
@@ -114,8 +88,7 @@ async def test_invite_duplicate(client: AsyncClient, user_a: User, user_b: User,
 
     second = await client.post("/api/v1/connections/invite", json=payload, headers=auth_headers_a)
     assert second.status_code == 409
-    data = second.json()["detail"]
-    assert data["error"] == "Conflict"
+    data = second.json()
     assert data["message"] == "Connection already exists"
 
 
@@ -124,7 +97,7 @@ async def test_invite_duplicate(client: AsyncClient, user_a: User, user_b: User,
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def invited_connection(client, user_a, user_b, auth_headers_a):
     """Create an INVITED connection from user_a to user_b and return its ID."""
     resp = await client.post(
@@ -136,7 +109,7 @@ async def invited_connection(client, user_a, user_b, auth_headers_a):
 
 
 @pytest.mark.asyncio
-async def test_accept_invite(client: AsyncClient, invited_connection: str, auth_headers_b):
+async def test_accept_invite(client, invited_connection: str, auth_headers_b):
     """Invitee accepts the connection, status becomes ACTIVE."""
     response = await client.post(
         f"/api/v1/connections/{invited_connection}/accept",
@@ -148,37 +121,31 @@ async def test_accept_invite(client: AsyncClient, invited_connection: str, auth_
 
 
 @pytest.mark.asyncio
-async def test_accept_invite_not_found(client: AsyncClient, auth_headers_b):
+async def test_accept_invite_not_found(client, auth_headers_b):
     """Accepting a nonexistent connection returns 404."""
     response = await client.post(
         "/api/v1/connections/nonexistent-id/accept",
         headers=auth_headers_b,
     )
     assert response.status_code == 404
-    data = response.json()["detail"]
-    assert data["error"] == "NotFound"
+    data = response.json()
     assert data["message"] == "Connection not found"
 
 
 @pytest.mark.asyncio
-async def test_accept_invite_wrong_user(
-    client: AsyncClient, invited_connection: str, auth_headers_a
-):
+async def test_accept_invite_wrong_user(client, invited_connection: str, auth_headers_a):
     """Non-invitee (the sender) accepting returns 403."""
     response = await client.post(
         f"/api/v1/connections/{invited_connection}/accept",
         headers=auth_headers_a,
     )
     assert response.status_code == 403
-    data = response.json()["detail"]
-    assert data["error"] == "Forbidden"
+    data = response.json()
     assert data["message"] == "Not authorized"
 
 
 @pytest.mark.asyncio
-async def test_accept_invite_already_active(
-    client: AsyncClient, invited_connection: str, auth_headers_b
-):
+async def test_accept_invite_already_active(client, invited_connection: str, auth_headers_b):
     """Accepting a connection that is already ACTIVE returns 400."""
     # First accept succeeds
     await client.post(
@@ -191,8 +158,7 @@ async def test_accept_invite_already_active(
         headers=auth_headers_b,
     )
     assert response.status_code == 400
-    data = response.json()["detail"]
-    assert data["error"] == "BadRequest"
+    data = response.json()
     assert data["message"] == "Not an active invite"
 
 
@@ -201,7 +167,7 @@ async def test_accept_invite_already_active(
 # ---------------------------------------------------------------------------
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def active_connection(client, user_a, user_b, auth_headers_a, auth_headers_b):
     """Create an ACTIVE connection from user_a to user_b and return its ID."""
     invite_resp = await client.post(
@@ -218,9 +184,7 @@ async def active_connection(client, user_a, user_b, auth_headers_a, auth_headers
 
 
 @pytest.mark.asyncio
-async def test_end_connection_by_sender(
-    client: AsyncClient, active_connection: str, auth_headers_a
-):
+async def test_end_connection_by_sender(client, active_connection: str, auth_headers_a):
     """The connection initiator can end the connection."""
     response = await client.post(
         f"/api/v1/connections/{active_connection}/end",
@@ -233,9 +197,7 @@ async def test_end_connection_by_sender(
 
 
 @pytest.mark.asyncio
-async def test_end_connection_by_receiver(
-    client: AsyncClient, active_connection: str, auth_headers_b
-):
+async def test_end_connection_by_receiver(client, active_connection: str, auth_headers_b):
     """The connection receiver can also end the connection."""
     response = await client.post(
         f"/api/v1/connections/{active_connection}/end",
@@ -246,22 +208,19 @@ async def test_end_connection_by_receiver(
 
 
 @pytest.mark.asyncio
-async def test_end_connection_not_found(client: AsyncClient, auth_headers_a):
+async def test_end_connection_not_found(client, auth_headers_a):
     """Ending a nonexistent connection returns 404."""
     response = await client.post(
         "/api/v1/connections/nonexistent-id/end",
         headers=auth_headers_a,
     )
     assert response.status_code == 404
-    data = response.json()["detail"]
-    assert data["error"] == "NotFound"
+    data = response.json()
     assert data["message"] == "Connection not found"
 
 
 @pytest.mark.asyncio
-async def test_end_connection_not_party(
-    client: AsyncClient, active_connection: str, db_session: AsyncSession
-):
+async def test_end_connection_not_party(client, active_connection: str, db_session: AsyncSession):
     """A third user who is not part of the connection gets 403."""
     third = User(email="third@example.com", hashed_password=hash_password("pass"))
     db_session.add(third)
@@ -275,15 +234,12 @@ async def test_end_connection_not_party(
         headers=headers,
     )
     assert response.status_code == 403
-    data = response.json()["detail"]
-    assert data["error"] == "Forbidden"
+    data = response.json()
     assert data["message"] == "Not authorized"
 
 
 @pytest.mark.asyncio
-async def test_end_connection_already_ended(
-    client: AsyncClient, active_connection: str, auth_headers_a
-):
+async def test_end_connection_already_ended(client, active_connection: str, auth_headers_a):
     """Ending an already-ended connection returns 400."""
     await client.post(
         f"/api/v1/connections/{active_connection}/end",
@@ -294,8 +250,7 @@ async def test_end_connection_already_ended(
         headers=auth_headers_a,
     )
     assert response.status_code == 400
-    data = response.json()["detail"]
-    assert data["error"] == "BadRequest"
+    data = response.json()
     assert data["message"] == "Already ended"
 
 
@@ -305,7 +260,7 @@ async def test_end_connection_already_ended(
 
 
 @pytest.mark.asyncio
-async def test_list_connections(client: AsyncClient, active_connection: str, auth_headers_a):
+async def test_list_connections(client, active_connection: str, auth_headers_a):
     """User can list their connections."""
     response = await client.get(
         "/api/v1/connections",
@@ -325,7 +280,7 @@ async def test_list_connections(client: AsyncClient, active_connection: str, aut
 
 
 @pytest.mark.asyncio
-async def test_list_pending(client: AsyncClient, invited_connection: str, auth_headers_b):
+async def test_list_pending(client, invited_connection: str, auth_headers_b):
     """User can list pending invites they received."""
     response = await client.get(
         "/api/v1/connections/pending",
@@ -340,9 +295,7 @@ async def test_list_pending(client: AsyncClient, invited_connection: str, auth_h
 
 
 @pytest.mark.asyncio
-async def test_list_pending_empty_for_sender(
-    client: AsyncClient, invited_connection: str, auth_headers_a
-):
+async def test_list_pending_empty_for_sender(client, invited_connection: str, auth_headers_a):
     """The sender has no pending invites (they are the inviter, not invitee)."""
     response = await client.get(
         "/api/v1/connections/pending",

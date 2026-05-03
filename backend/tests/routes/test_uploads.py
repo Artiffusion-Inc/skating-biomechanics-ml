@@ -6,54 +6,14 @@ import sys
 from unittest.mock import MagicMock, patch
 
 import pytest  # noqa: E402 — must follow sys.modules mock
-from httpx import ASGITransport, AsyncClient  # noqa: E402
 
 # Mock aiobotocore before importing routes that depend on it
 _mock_aiobotocore = MagicMock()
+_mock_aiobotocore_session = MagicMock()
 sys.modules["aiobotocore"] = _mock_aiobotocore
-sys.modules["aiobotocore.session"] = MagicMock()
+sys.modules["aiobotocore.session"] = _mock_aiobotocore_session
 
-from app.auth.security import create_access_token, hash_password  # noqa: E402
-from app.models.user import User  # noqa: E402
 from app.routes.uploads import CHUNK_SIZE  # noqa: E402
-
-
-@pytest.fixture
-def app():
-    from app.routes.uploads import router
-    from fastapi import FastAPI
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1/uploads")
-    return app
-
-
-@pytest.fixture
-async def client(app, db_session):
-    from app.database import get_db
-
-    app.dependency_overrides[get_db] = lambda: db_session
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture
-async def authed_user(db_session):
-    user = User(email="user@example.com", hashed_password=hash_password("pass"))
-    db_session.add(user)
-    await db_session.flush()
-    await db_session.refresh(user)
-    return user
-
-
-@pytest.fixture
-def auth_headers(authed_user):
-    token = create_access_token(user_id=authed_user.id)
-    return {"Authorization": f"Bearer {token}"}
 
 
 def _mock_r2():
@@ -71,7 +31,7 @@ def _mock_settings():
 
 
 @pytest.mark.asyncio
-async def test_init_upload(client: AsyncClient, auth_headers):
+async def test_init_upload(client, auth_headers):
     """POST /uploads/init returns upload_id, key, chunk_size, part_count, parts."""
     with (
         patch("app.routes.uploads._client") as mock_s3_client,
@@ -86,7 +46,7 @@ async def test_init_upload(client: AsyncClient, auth_headers):
             headers=auth_headers,
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["upload_id"] == "up_123"
     assert data["key"].startswith("uploads/")
@@ -98,7 +58,7 @@ async def test_init_upload(client: AsyncClient, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_init_upload_part_count(client: AsyncClient, auth_headers):
+async def test_init_upload_part_count(client, auth_headers):
     """15MB file / 5MB chunk = 3 parts."""
     with (
         patch("app.routes.uploads._client") as mock_s3_client,
@@ -114,14 +74,14 @@ async def test_init_upload_part_count(client: AsyncClient, auth_headers):
             headers=auth_headers,
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["part_count"] == 3
     assert len(data["parts"]) == 3
 
 
 @pytest.mark.asyncio
-async def test_init_upload_single_part(client: AsyncClient, auth_headers):
+async def test_init_upload_single_part(client, auth_headers):
     """3MB file = 1 part."""
     with (
         patch("app.routes.uploads._client") as mock_s3_client,
@@ -137,14 +97,14 @@ async def test_init_upload_single_part(client: AsyncClient, auth_headers):
             headers=auth_headers,
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["part_count"] == 1
     assert len(data["parts"]) == 1
 
 
 @pytest.mark.asyncio
-async def test_complete_upload(client: AsyncClient, auth_headers):
+async def test_complete_upload(client, auth_headers):
     """POST /uploads/complete calls complete_multipart_upload with sorted parts."""
     with (
         patch("app.routes.uploads._client") as mock_s3_client,
@@ -167,7 +127,7 @@ async def test_complete_upload(client: AsyncClient, auth_headers):
             headers=auth_headers,
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
     data = response.json()
     assert data["status"] == "completed"
     assert data["key"] == "uploads/user-id/uuid/video.mp4"
@@ -182,7 +142,7 @@ async def test_complete_upload(client: AsyncClient, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_complete_upload_empty_parts(client: AsyncClient, auth_headers):
+async def test_complete_upload_empty_parts(client, auth_headers):
     """POST /uploads/complete with no parts returns 400."""
     with (
         patch("app.routes.uploads._client") as mock_s3_client,
@@ -202,13 +162,12 @@ async def test_complete_upload_empty_parts(client: AsyncClient, auth_headers):
         )
 
     assert response.status_code == 400
-    data = response.json()["detail"]
-    assert data["error"] == "BadRequest"
+    data = response.json()
     assert "No parts provided" in data["message"]
 
 
 @pytest.mark.asyncio
-async def test_complete_upload_parts_sorted(client: AsyncClient, auth_headers):
+async def test_complete_upload_parts_sorted(client, auth_headers):
     """Parts are sorted by part_number regardless of input order."""
     with (
         patch("app.routes.uploads._client") as mock_s3_client,
@@ -232,7 +191,7 @@ async def test_complete_upload_parts_sorted(client: AsyncClient, auth_headers):
             headers=auth_headers,
         )
 
-    assert response.status_code == 200
+    assert response.status_code == 201
 
     call_kwargs = r2.complete_multipart_upload.call_args
     parts = call_kwargs.kwargs["MultipartUpload"]["Parts"]
@@ -244,7 +203,7 @@ async def test_complete_upload_parts_sorted(client: AsyncClient, auth_headers):
 
 
 @pytest.mark.asyncio
-async def test_init_upload_auth_required(client: AsyncClient):
+async def test_init_upload_auth_required(client):
     """POST /uploads/init without auth returns 401."""
     with (
         patch("app.routes.uploads._client") as mock_s3_client,

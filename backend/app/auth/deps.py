@@ -1,74 +1,65 @@
-"""FastAPI dependencies for authentication."""
+"""Authentication dependencies for Litestar."""
 
 from __future__ import annotations
 
-import logging
-from typing import Annotated
+from typing import TYPE_CHECKING, Annotated
 
-import jwt as pyjwt
-from fastapi import Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordBearer
+from litestar.exceptions import NotAuthorizedException
+from litestar.params import Dependency
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
-from app.database import get_db
 from app.models.user import User
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login", auto_error=False)
-
-settings = get_settings()
-_log = logging.getLogger(__name__)
+if TYPE_CHECKING:
+    from litestar import Request
 
 
-async def _get_dev_user(db: AsyncSession) -> User:
-    """Return the first active user from DB for dev mode (SKIP_AUTH)."""
-    result = await db.execute(
-        select(User).where(User.is_active.is_(True)).order_by(User.created_at).limit(1)
-    )
-    user = result.scalar_one_or_none()
-    if user is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="No active users in database. Create one first.",
-        )
-    return user
+async def retrieve_user_handler(token, connection) -> User | None:
+    """Litestar JWTAuth callback: decode token and fetch user from DB."""
+    user_id = getattr(token, "sub", None)
+    if user_id is None and callable(getattr(token, "get", None)):
+        user_id = token.get("sub")
+    if not user_id:
+        return None
+
+    # Tests inject session via app.state; prod creates a fresh one.
+    db = getattr(connection.app.state, "test_db_session", None)
+    if db is None:
+        from app.database import async_session_factory
+
+        async with async_session_factory() as db:
+            result = await db.execute(
+                select(User).where(User.id == user_id, User.is_active.is_(True))
+            )
+            return result.scalar_one_or_none()
+    result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)))
+    return result.scalar_one_or_none()
 
 
-async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> User:
-    """Validate JWT and return the current user.
+async def get_current_user(request: Request, db_session: AsyncSession) -> User:
+    """Return the currently authenticated user.
 
-    When APP_SKIP_AUTH=true, returns the first active user from DB.
+    Used as a dependency provider for routes that need the user object.
+    When APP_SKIP_AUTH=true, returns the first active user.
     """
-    if settings.app.skip_auth:
-        return await _get_dev_user(db)
-
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = pyjwt.decode(
-            token, settings.jwt.secret_key.get_secret_value(), algorithms=["HS256"]
+    if get_settings().app.skip_auth:
+        result = await db_session.execute(
+            select(User).where(User.is_active.is_(True)).order_by(User.created_at).limit(1)
         )
-        user_id: str | None = payload.get("sub")
-        if user_id is None:
-            raise credentials_exception
-    except (pyjwt.InvalidTokenError, ValueError):
-        raise credentials_exception from None
+        user = result.scalar_one_or_none()
+        if user is None:
+            raise NotAuthorizedException("No active users in database. Create one first.")
+        return user
 
-    from app.crud.user import get_by_id
-
-    user = await get_by_id(db, user_id)
-    if user is None or not user.is_active:
-        raise credentials_exception
+    # Normal JWT flow: request.user is set by JWTAuth middleware
+    user = request.user
+    if user is None or not getattr(user, "is_active", False):
+        raise NotAuthorizedException("Could not validate credentials")
     return user
 
 
-# Type aliases for clean injection
-DbDep = Annotated[AsyncSession, Depends(get_db)]
-CurrentUser = Annotated[User, Depends(get_current_user)]
+# Type alias for clean injection in route signatures
+CurrentUser = Annotated[User, Dependency()]
+DbDep = Annotated[AsyncSession, Dependency()]

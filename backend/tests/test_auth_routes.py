@@ -3,36 +3,10 @@
 import pytest
 from app.auth.security import hash_password
 from app.models.user import User
-from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
-@pytest.fixture
-def app():
-    """Create test FastAPI app with auth routes."""
-    from app.routes.auth import router
-    from fastapi import FastAPI
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1/auth")
-    return app
-
-
-@pytest.fixture
-async def client(app, db_session: AsyncSession):
-    """Create test HTTP client with DB override."""
-    from app.database import get_db
-
-    app.dependency_overrides[get_db] = lambda: db_session
-
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
-    app.dependency_overrides.clear()
-
-
-async def test_register(client: AsyncClient, db_session: AsyncSession):
+async def test_register(client, db_session: AsyncSession):
     """Test successful registration."""
     response = await client.post(
         "/api/v1/auth/register",
@@ -53,7 +27,7 @@ async def test_register(client: AsyncClient, db_session: AsyncSession):
     assert user.hashed_password != "securepass123"
 
 
-async def test_register_duplicate_email(client: AsyncClient, db_session: AsyncSession):
+async def test_register_duplicate_email(client, db_session: AsyncSession):
     """Test registration with duplicate email returns 409."""
     user = User(email="exists@example.com", hashed_password="hash")
     db_session.add(user)
@@ -66,16 +40,16 @@ async def test_register_duplicate_email(client: AsyncClient, db_session: AsyncSe
     assert response.status_code == 409
 
 
-async def test_register_short_password(client: AsyncClient):
-    """Test registration with short password returns 422."""
+async def test_register_short_password(client):
+    """Test registration with short password returns 400 (Litestar validation)."""
     response = await client.post(
         "/api/v1/auth/register",
         json={"email": "new@example.com", "password": "short"},
     )
-    assert response.status_code == 422
+    assert response.status_code == 400
 
 
-async def test_login(client: AsyncClient, db_session: AsyncSession):
+async def test_login(client, db_session: AsyncSession):
     """Test successful login."""
     user = User(email="login@example.com", hashed_password=hash_password("pass123"))
     db_session.add(user)
@@ -91,7 +65,7 @@ async def test_login(client: AsyncClient, db_session: AsyncSession):
     assert "refresh_token" in data
 
 
-async def test_login_wrong_password(client: AsyncClient, db_session: AsyncSession):
+async def test_login_wrong_password(client, db_session: AsyncSession):
     """Test login with wrong password returns 401."""
     user = User(email="login@example.com", hashed_password=hash_password("correct"))
     db_session.add(user)
@@ -104,7 +78,7 @@ async def test_login_wrong_password(client: AsyncClient, db_session: AsyncSessio
     assert response.status_code == 401
 
 
-async def test_login_nonexistent_email(client: AsyncClient):
+async def test_login_nonexistent_email(client):
     """Test login with nonexistent email returns 401."""
     response = await client.post(
         "/api/v1/auth/login",
@@ -113,7 +87,7 @@ async def test_login_nonexistent_email(client: AsyncClient):
     assert response.status_code == 401
 
 
-async def test_refresh_tokens(client: AsyncClient, db_session: AsyncSession):
+async def test_refresh_tokens(client, db_session: AsyncSession):
     """Test refresh token rotation."""
     user = User(email="refresh@example.com", hashed_password=hash_password("pass"))
     db_session.add(user)
@@ -146,17 +120,17 @@ async def test_refresh_tokens(client: AsyncClient, db_session: AsyncSession):
     assert second_refresh.status_code == 401
 
 
-async def test_refresh_with_completely_unknown_token(client: AsyncClient):
+async def test_refresh_with_completely_unknown_token(client):
     """Test refresh with a token that was never issued returns 401."""
     response = await client.post(
         "/api/v1/auth/refresh",
         json={"refresh_token": "a" * 64},
     )
     assert response.status_code == 401
-    assert "Invalid or expired" in response.json()["detail"]["message"]
+    assert "Invalid or expired" in response.json()["message"]
 
 
-async def test_logout_with_valid_token(client: AsyncClient, db_session: AsyncSession):
+async def test_logout_with_valid_token(client, db_session: AsyncSession):
     """Test logout revokes the refresh token."""
     user = User(email="logout@example.com", hashed_password=hash_password("pass"))
     db_session.add(user)
@@ -186,7 +160,7 @@ async def test_logout_with_valid_token(client: AsyncClient, db_session: AsyncSes
     assert refresh_resp.status_code == 401
 
 
-async def test_logout_with_nonexistent_token(client: AsyncClient):
+async def test_logout_with_nonexistent_token(client):
     """Test logout with a token that was never issued returns 204 (idempotent)."""
     response = await client.post(
         "/api/v1/auth/logout",

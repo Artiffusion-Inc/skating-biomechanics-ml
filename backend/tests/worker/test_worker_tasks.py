@@ -14,6 +14,18 @@ _mock_aiobotocore_session = MagicMock()
 sys.modules["aiobotocore"] = _mock_aiobotocore
 sys.modules["aiobotocore.session"] = _mock_aiobotocore_session
 
+# Mock cv2 so detect_video_task tests don't require opencv-python
+sys.modules["cv2"] = MagicMock()
+
+# Pre-register ML submodules as MagicMocks so patch() can resolve them
+# without pulling in heavy/optional deps like av, opencv, tqdm, rtmlib, etc.
+sys.modules["src.web_helpers"] = MagicMock()
+sys.modules["src.utils.video"] = MagicMock()
+sys.modules["tqdm"] = MagicMock()
+sys.modules["rtmlib"] = MagicMock()
+sys.modules["src.pose_estimation"] = MagicMock()
+sys.modules["src.pose_estimation.pose_extractor"] = MagicMock()
+
 
 # ---------------------------------------------------------------------------
 # Shared helpers

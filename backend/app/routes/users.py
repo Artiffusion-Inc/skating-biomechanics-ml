@@ -1,6 +1,9 @@
 """User API routes: profile and settings."""
 
-from fastapi import APIRouter
+from typing import ClassVar
+
+from litestar import Controller, get, patch
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: F401
 
 from app.auth.deps import CurrentUser, DbDep
 from app.crud.user import update
@@ -11,44 +14,58 @@ from app.schemas import (
     UserResponse,
 )
 
-router = APIRouter(tags=["users"])
 
+class UsersController(Controller):
+    path = "/me"
+    tags: ClassVar[list[str]] = ["users"]
 
-@router.get("/me", response_model=UserResponse)
-async def get_me(user: CurrentUser):
-    """Get current user profile."""
-    return user
+    @get("")
+    async def get_me(self, user: CurrentUser) -> UserResponse:
+        """Get current user profile."""
+        return UserResponse.model_validate(user)
 
+    @patch("")
+    async def update_profile(
+        self,
+        data: UpdateProfileRequest,
+        user: CurrentUser,
+        db: DbDep,
+    ) -> UserResponse:
+        """Update current user profile."""
+        updated = await update(
+            db,
+            user,
+            display_name=data.display_name,
+            bio=data.bio,
+            height_cm=data.height_cm,
+            weight_kg=data.weight_kg,
+        )
+        return UserResponse.model_validate(updated)
 
-@router.patch("/me", response_model=UserResponse)
-async def update_profile(body: UpdateProfileRequest, user: CurrentUser, db: DbDep):
-    """Update current user profile."""
-    updated = await update(
-        db,
-        user,
-        display_name=body.display_name,
-        bio=body.bio,
-        height_cm=body.height_cm,
-        weight_kg=body.weight_kg,
-    )
-    return updated
+    @patch("/settings")
+    async def update_settings(
+        self,
+        data: UpdateSettingsRequest,
+        user: CurrentUser,
+        db: DbDep,
+    ) -> UserResponse:
+        """Update current user preferences."""
+        updated = await update(
+            db,
+            user,
+            language=data.language,
+            timezone=data.timezone,
+            theme=data.theme,
+        )
+        return UserResponse.model_validate(updated)
 
-
-@router.patch("/me/settings", response_model=UserResponse)
-async def update_settings(body: UpdateSettingsRequest, user: CurrentUser, db: DbDep):
-    """Update current user preferences."""
-    updated = await update(
-        db,
-        user,
-        language=body.language,
-        timezone=body.timezone,
-        theme=body.theme,
-    )
-    return updated
-
-
-@router.patch("/me/onboarding", response_model=UserResponse)
-async def update_onboarding_role(body: UpdateOnboardingRoleRequest, user: CurrentUser, db: DbDep):
-    """Update user's onboarding role."""
-    updated = await update(db, user, onboarding_role=body.onboarding_role)
-    return updated
+    @patch("/onboarding")
+    async def update_onboarding_role(
+        self,
+        data: UpdateOnboardingRoleRequest,
+        user: CurrentUser,
+        db: DbDep,
+    ) -> UserResponse:
+        """Update user's onboarding role."""
+        updated = await update(db, user, onboarding_role=data.onboarding_role)
+        return UserResponse.model_validate(updated)
