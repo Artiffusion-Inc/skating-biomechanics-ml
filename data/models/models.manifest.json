@@ -1,0 +1,56 @@
+{
+  "version": "1",
+  "generated_at": "2026-05-03T07:27:49.955574+00:00",
+  "models": {
+    "depth_anything": {
+      "version": "1.0.0",
+      "sha256": null,
+      "local_filename": "depth_anything_v2_small.onnx",
+      "size_bytes": null,
+      "source": "hf",
+      "repo_id": "onnx-community/depth-anything-v2-small",
+      "filename": "onnx/model.onnx"
+    },
+    "optical_flow": {
+      "version": "1.0.0",
+      "sha256": null,
+      "local_filename": "neuflowv2_mixed.onnx",
+      "size_bytes": null,
+      "source": "url",
+      "url": "https://github.com/ibaiGorordo/ONNX-NeuFlowV2-Optical-Flow/releases/download/0.1.0/neuflow_mixed.onnx"
+    },
+    "sam2_tiny": {
+      "version": "1.0.0",
+      "sha256": null,
+      "local_filename": "sam2/vision_encoder.onnx",
+      "size_bytes": null,
+      "source": "hf_multi",
+      "repo_id": "onnx-community/sam2.1-hiera-tiny-ONNX"
+    },
+    "foot_tracker": {
+      "version": "1.0.0",
+      "sha256": null,
+      "local_filename": "foot_tracker.onnx",
+      "size_bytes": null,
+      "source": "manual"
+    },
+    "video_matting": {
+      "version": "1.0.0",
+      "sha256": null,
+      "local_filename": "rvm_mobilenetv3.onnx",
+      "size_bytes": null,
+      "source": "hf",
+      "repo_id": "LPDoctor/video_matting",
+      "filename": "rvm_mobilenetv3_fp32.onnx"
+    },
+    "lama": {
+      "version": "1.0.0",
+      "sha256": null,
+      "local_filename": "lama_fp32.onnx",
+      "size_bytes": null,
+      "source": "hf",
+      "repo_id": "Carve/LaMa-ONNX",
+      "filename": "lama_fp32.onnx"
+    }
+  }
+}

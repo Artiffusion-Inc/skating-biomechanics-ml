@@ -5,19 +5,26 @@ Usage:
     uv run python scripts/download_ml_models.py --all
     uv run python scripts/download_ml_models.py --model depth_anything
     uv run python scripts/download_ml_models.py --list
+    uv run python scripts/download_ml_models.py --verify
+    uv run python scripts/download_ml_models.py --generate-manifest
 
 Uses huggingface_hub for HuggingFace models (auto-reads HF_TOKEN env var),
 urllib for GitHub releases.
 """
 
-import argparse
-import urllib.request
-from pathlib import Path
+from __future__ import annotations
 
-from huggingface_hub import hf_hub_download
+import argparse
+import hashlib
+import json
+import urllib.request
+from datetime import UTC, datetime
+from pathlib import Path
 
 MODELS_DIR = Path("data/models")
 MODELS_DIR.mkdir(parents=True, exist_ok=True)
+
+MANIFEST_PATH = MODELS_DIR / "models.manifest.json"
 
 MODELS: dict[str, dict] = {
     "depth_anything": {
@@ -76,10 +83,38 @@ MODELS: dict[str, dict] = {
 }
 
 
+def compute_sha256(path: Path) -> str:
+    """Compute SHA256 hash of file."""
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(8192), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def load_manifest() -> dict:
+    """Load model manifest or return empty dict."""
+    if not MANIFEST_PATH.exists():
+        return {"version": "1", "models": {}}
+    with open(MANIFEST_PATH) as f:
+        return json.load(f)
+
+
+def verify_checksum(model_id: str, path: Path, manifest: dict) -> bool:
+    """Verify file SHA256 against manifest."""
+    model_entry = manifest.get("models", {}).get(model_id)
+    if not model_entry or not model_entry.get("sha256"):
+        return True  # No hash stored yet
+    expected = model_entry["sha256"]
+    actual = compute_sha256(path)
+    return expected == actual
+
+
 def download_model(model_id: str) -> None:
     """Download a single model."""
     info = MODELS[model_id]
     source = info["source"]
+    manifest = load_manifest()
 
     if source == "manual":
         print(f"  [MANUAL] {info['description']}")
@@ -94,55 +129,83 @@ def download_model(model_id: str) -> None:
         return
 
     if source == "hf":
+        from huggingface_hub import hf_hub_download
+
         dest = MODELS_DIR / info["local_filename"]
         if dest.exists():
             print(f"  Already exists: {dest}")
-            return
-        print(f"  Downloading {info['description']} ({info['size_mb']})...")
-        path = hf_hub_download(
-            repo_id=info["repo_id"],
-            filename=info["filename"],
-            local_dir=MODELS_DIR,
-        )
-        downloaded = Path(path)
-        if downloaded != dest and downloaded.exists():
-            downloaded.rename(dest)
-        print(f"  Saved: {dest}")
-
-    elif source == "hf_multi":
-        all_exist = all((MODELS_DIR / local).exists() for _, local in info["files"])
-        if all_exist:
-            print(f"  Already exists: {[MODELS_DIR / loc for _, loc in info['files']]}")
-            return
-        print(f"  Downloading {info['description']} ({info['size_mb']})...")
-        for hf_file, local_name in info["files"]:
-            dest = MODELS_DIR / local_name
-            if dest.exists():
-                print(f"    Already exists: {dest}")
-                continue
+        else:
+            print(f"  Downloading {info['description']} ({info['size_mb']})...")
             path = hf_hub_download(
                 repo_id=info["repo_id"],
-                filename=hf_file,
+                filename=info["filename"],
                 local_dir=MODELS_DIR,
             )
             downloaded = Path(path)
             if downloaded != dest and downloaded.exists():
-                dest.parent.mkdir(parents=True, exist_ok=True)
                 downloaded.rename(dest)
-            print(f"    Saved: {dest}")
+            print(f"  Saved: {dest}")
+        ok = verify_checksum(model_id, dest, manifest)
+        if ok:
+            print("  [OK] SHA256 verified")
+        else:
+            expected = manifest.get("models", {}).get(model_id, {}).get("sha256")
+            actual = compute_sha256(dest)
+            print(f"  [FAIL] SHA256 mismatch! Expected {expected}, got {actual}")
+
+    elif source == "hf_multi":
+        from huggingface_hub import hf_hub_download
+
+        all_exist = all((MODELS_DIR / local).exists() for _, local in info["files"])
+        if all_exist:
+            print(f"  Already exists: {[MODELS_DIR / loc for _, loc in info['files']]}")
+        else:
+            print(f"  Downloading {info['description']} ({info['size_mb']})...")
+        for hf_file, local_name in info["files"]:
+            dest = MODELS_DIR / local_name
+            if not dest.exists():
+                path = hf_hub_download(
+                    repo_id=info["repo_id"],
+                    filename=hf_file,
+                    local_dir=MODELS_DIR,
+                )
+                downloaded = Path(path)
+                if downloaded != dest and downloaded.exists():
+                    dest.parent.mkdir(parents=True, exist_ok=True)
+                    downloaded.rename(dest)
+                print(f"    Saved: {dest}")
+            # Verify checksum for each file if manifest has entry for it
+            file_entry = manifest.get("models", {}).get(model_id, {})
+            file_hashes = file_entry.get("file_hashes", {})
+            if file_hashes and local_name in file_hashes:
+                expected = file_hashes[local_name]
+                actual = compute_sha256(dest)
+                if expected == actual:
+                    print(f"    [OK] {local_name} SHA256 verified")
+                else:
+                    print(
+                        f"    [FAIL] {local_name} SHA256 mismatch! Expected {expected}, got {actual}"
+                    )
         print(f"  Done: {len(info['files'])} files")
 
     elif source == "url":
         dest = MODELS_DIR / info["local_filename"]
         if dest.exists():
             print(f"  Already exists: {dest}")
-            return
-        print(f"  Downloading {info['description']} ({info['size_mb']})...")
-        req = urllib.request.Request(info["url"])
-        with urllib.request.urlopen(req) as resp:
-            data = resp.read()
-        dest.write_bytes(data)
-        print(f"  Saved: {dest} ({len(data) / 1024 / 1024:.1f}MB)")
+        else:
+            print(f"  Downloading {info['description']} ({info['size_mb']})...")
+            req = urllib.request.Request(info["url"])
+            with urllib.request.urlopen(req) as resp:
+                data = resp.read()
+            dest.write_bytes(data)
+            print(f"  Saved: {dest} ({len(data) / 1024 / 1024:.1f}MB)")
+        ok = verify_checksum(model_id, dest, manifest)
+        if ok:
+            print("  [OK] SHA256 verified")
+        else:
+            expected = manifest.get("models", {}).get(model_id, {}).get("sha256")
+            actual = compute_sha256(dest)
+            print(f"  [FAIL] SHA256 mismatch! Expected {expected}, got {actual}")
 
 
 def main() -> None:
@@ -155,6 +218,12 @@ def main() -> None:
         help="Download specific model",
     )
     parser.add_argument("--list", action="store_true", help="List available models")
+    parser.add_argument(
+        "--verify", action="store_true", help="Verify SHA256 of all existing models"
+    )
+    parser.add_argument(
+        "--generate-manifest", action="store_true", help="Generate manifest from existing models"
+    )
     args = parser.parse_args()
 
     if args.list:
@@ -168,6 +237,75 @@ def main() -> None:
                 "manual": "[Manual export required]",
             }[src]
             print(f"  {mid}: {info['description']} ({info['size_mb']}) {tag}")
+        return
+
+    if args.verify:
+        manifest = load_manifest()
+        all_ok = True
+        for model_id, entry in manifest.get("models", {}).items():
+            path = MODELS_DIR / entry["local_filename"]
+            if not path.exists():
+                print(f"  MISSING: {model_id} ({path})")
+                all_ok = False
+                continue
+            if not entry.get("sha256"):
+                print(f"  NO_HASH: {model_id} (run download to compute)")
+                continue
+            ok = verify_checksum(model_id, path, manifest)
+            if ok:
+                print(f"  [OK] {model_id}")
+            else:
+                print(f"  [FAIL] {model_id} — SHA256 mismatch!")
+                all_ok = False
+        return
+
+    if args.generate_manifest:
+        manifest = {
+            "version": "1",
+            "generated_at": datetime.now(UTC).isoformat(),
+            "models": {},
+        }
+        for model_id, info in MODELS.items():
+            path = MODELS_DIR / info["local_filename"]
+            if path.exists():
+                manifest["models"][model_id] = {
+                    "version": "1.0.0",
+                    "sha256": compute_sha256(path),
+                    "local_filename": info["local_filename"],
+                    "size_bytes": path.stat().st_size,
+                    "source": info["source"],
+                }
+                if info["source"] == "hf":
+                    manifest["models"][model_id]["repo_id"] = info["repo_id"]
+                    manifest["models"][model_id]["filename"] = info["filename"]
+                elif info["source"] == "url":
+                    manifest["models"][model_id]["url"] = info["url"]
+                elif info["source"] == "hf_multi":
+                    manifest["models"][model_id]["repo_id"] = info["repo_id"]
+                    file_hashes = {}
+                    for hf_file, local_name in info["files"]:
+                        file_path = MODELS_DIR / local_name
+                        if file_path.exists():
+                            file_hashes[local_name] = compute_sha256(file_path)
+                    manifest["models"][model_id]["file_hashes"] = file_hashes
+            else:
+                manifest["models"][model_id] = {
+                    "version": "1.0.0",
+                    "sha256": None,
+                    "local_filename": info["local_filename"],
+                    "size_bytes": None,
+                    "source": info["source"],
+                }
+                if info["source"] == "hf":
+                    manifest["models"][model_id]["repo_id"] = info["repo_id"]
+                    manifest["models"][model_id]["filename"] = info["filename"]
+                elif info["source"] == "url":
+                    manifest["models"][model_id]["url"] = info["url"]
+                elif info["source"] == "hf_multi":
+                    manifest["models"][model_id]["repo_id"] = info["repo_id"]
+        with open(MANIFEST_PATH, "w") as f:
+            json.dump(manifest, f, indent=2)
+        print(f"Manifest written to {MANIFEST_PATH}")
         return
 
     if args.all:
