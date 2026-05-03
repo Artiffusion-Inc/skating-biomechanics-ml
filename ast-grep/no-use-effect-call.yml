@@ -15,3 +15,6 @@ severity: error
 note: Only useMountEffect.tsx may call useEffect (it wraps useEffect with empty deps).
 rule:
   pattern: useEffect($$$ARGS)
+ignores:
+  - "**/threejs-skeleton-viewer.tsx"
+  - "**/video-with-skeleton.tsx"

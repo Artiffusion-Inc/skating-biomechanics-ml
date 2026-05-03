@@ -256,9 +256,15 @@
     "roleSelectTitle": "Who are you?",
     "roleSelectSubtitle": "Choose a role to personalize your experience.",
     "roles": {
-      "skater": { "label": "Skater", "description": "Upload videos and get biomechanical analysis." },
+      "skater": {
+        "label": "Skater",
+        "description": "Upload videos and get biomechanical analysis."
+      },
       "coach": { "label": "Coach", "description": "Track student progress and give feedback." },
-      "choreographer": { "label": "Choreographer", "description": "Plan programs and visualize layouts." }
+      "choreographer": {
+        "label": "Choreographer",
+        "description": "Plan programs and visualize layouts."
+      }
     },
     "howDidYouHear": "How did you hear about us?",
     "optional": "optional",
@@ -273,9 +279,18 @@
     "continue": "Continue",
     "slides": {
       "skater": {
-        "0": { "title": "Upload training video", "subtitle": "Record or upload any jump or element." },
-        "1": { "title": "Instant biomechanics", "subtitle": "Pose, metrics and technique in seconds." },
-        "2": { "title": "Track progress", "subtitle": "Watch your growth and set personal records." }
+        "0": {
+          "title": "Upload training video",
+          "subtitle": "Record or upload any jump or element."
+        },
+        "1": {
+          "title": "Instant biomechanics",
+          "subtitle": "Pose, metrics and technique in seconds."
+        },
+        "2": {
+          "title": "Track progress",
+          "subtitle": "Watch your growth and set personal records."
+        }
       },
       "coach": {
         "0": { "title": "Invite students", "subtitle": "Send a link or find by name." },

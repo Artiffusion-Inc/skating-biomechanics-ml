@@ -37,7 +37,7 @@ skating-biomechanics-ml/
 │   │   ├── worker.py                 # arq worker (process_video_task, detect_video_task, music_analysis_task)
 │   │   └── schemas.py                # Pydantic request/response schemas
 │   ├── alembic/                      # Database migrations
-│   ├── tests/                        # Backend tests (545+, 96% coverage)
+│   ├── tests/                        # Backend tests
 │   └── pyproject.toml                # Backend-only dependencies
 ├── frontend/                         # Next.js 16 app
 │   ├── app/                          # App router pages
@@ -110,7 +110,7 @@ Choreography Planner:
 | **Frontend**        | Next.js 16, React, Tailwind CSS, shadcn/ui, Recharts, three.js             |
 | **Storage**         | Cloudflare R2 (S3-compatible), Postgres                                    |
 | **Remote GPU**      | Vast.ai Serverless                                                         |
-| **Testing**         | pytest (backend, 545+ tests, 96% cov), tsc + next lint + vitest (frontend) |
+| **Testing**         | pytest (backend), tsc + next lint + vitest (frontend) |
 | **Task Runner**     | go-task (Taskfile.yaml)                                                    |
 | **Package Manager** | uv (Python), bun (JS)                                                      |
 

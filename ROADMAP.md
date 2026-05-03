@@ -74,7 +74,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - ✅ Backend routes: auth, users, sessions, metrics, uploads, detect, process, connections
 - ✅ arq worker in backend, imports ml types only (no pipeline internals)
 - ✅ CI/CD updated: multi-package pytest, basedpyright, ruff, biome
-- ✅ Tests: 990+ across all suites (545 backend, 438 ml, 7 frontend)
+- ✅ Tests: backend, ML, frontend suites
 
 ### 🎉 Strava-like Dashboard MVP (2026-04-11)
 
@@ -169,7 +169,7 @@ Direct blade edge detection from single-camera video is an unsolved problem in o
 - ✅ Standardized router prefixes in main.py
 - ✅ PaginatedResponse base with complete pagination fields
 - ✅ `status.HTTP_404_NOT_FOUND` instead of bare `404`
-- ✅ Test coverage: 60% → 96% (524 tests → 545 tests)
+- ✅ Test coverage improved
 - ✅ Frontend vitest coverage enabled, utility tests added
 - ✅ ast-grep rules for code quality (6 rules, 99 warnings → 0)
 
@@ -812,7 +812,7 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 41. **API Design Fixes** ✅ DONE (2026-04-29)
     - ErrorResponse schema + `raise_api_error()` across all routes
     - Standardized router prefixes, PaginatedResponse base
-    - Test coverage: 60% → 96% (524 → 545 tests)
+    - Test coverage improved
     - **Files:** `backend/app/main.py`, `backend/app/schemas.py`
 
 ### Phase K: Frontend SaaS (2026-04-11) ✅ DONE
@@ -1093,12 +1093,12 @@ result = engine.fit_jump_trajectory(poses_3d, takeoff_idx, landing_idx)
 | 0.2 | 2026-03-28 | MVP 90% | Blade edge detection (BDA algorithm), research findings |
 | 0.3 | 2026-03-28 | MVP 92% | 3D pose infrastructure, PhysicsEngine, keypoint mapping |
 | 0.4 | 2026-03-28 | MVP 95% | Phase 14 complete: MotionAGFormer integration, 3D viz |
-| 0.5 | 2026-03-28 | MVP 96% | Phase A+B complete: Pose filtering + multi-person tracking |
+| 0.5 | 2026-03-28 | MVP | Phase A+B complete: Pose filtering + multi-person tracking |
 | 0.6 | 2026-04-01 | MVP 100% | RTMPose + GPU pipeline, Nike design system, SaaS frontend |
 | 0.7 | 2026-04-11 | Strategic pivot | OOFSkate approach, datasets collected, monorepo restructure |
 | 0.8 | 2026-04-13 | Pose upgrade | RTMO migration, YOLO26 distillation, pseudo-labeling |
 | 0.9 | 2026-04-18 | SaaS + Choreo | Strava dashboard, coach-student relationships, choreography planner |
-| 1.0 | 2026-04-29 | Production | API design fixes, test coverage 96%, CI/CD deploy pipeline |
+| 1.0 | 2026-04-29 | Production | API design fixes, CI/CD deploy pipeline |
 | 1.1 | 2026-05-02 | Production | Frontend polish (3D viewer, comparison), backend infra (rate limits, cache), docs |
 
 ---

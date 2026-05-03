@@ -1,4 +1,112 @@
+# ============================================
+# Production Compose — self-contained stack
+# PostgreSQL + Valkey + Backend + Frontend + Caddy + Prometheus
+# ============================================
+
 services:
+  # --- Database ---
+  postgres:
+    image: docker.io/library/postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-skating}
+      POSTGRES_USER: ${POSTGRES_USER:-skating}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skating}"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app
+
+  # --- Task Queue ---
+  valkey:
+    image: docker.io/valkey/valkey:8-alpine
+    restart: unless-stopped
+    volumes:
+      - valkey-data:/data
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - app
+
+  # --- Backend API ---
+  backend:
+    image: ghcr.io/${GHCR_OWNER:-xpos587}/skating-backend:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379/0}
+      R2_ENDPOINT: ${R2_ENDPOINT}
+      R2_ACCESS_KEY: ${R2_ACCESS_KEY}
+      R2_SECRET_KEY: ${R2_SECRET_KEY}
+      R2_BUCKET: ${R2_BUCKET}
+      JWT_SECRET: ${JWT_SECRET}
+      VASTAI_API_KEY: ${VASTAI_API_KEY}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health', timeout=2)"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 15s
+    depends_on:
+      postgres:
+        condition: service_healthy
+      valkey:
+        condition: service_healthy
+    networks:
+      - app
+
+  # --- Frontend ---
+  frontend:
+    image: ghcr.io/${GHCR_OWNER:-xpos587}/skating-frontend:${TAG:-latest}
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+      start_period: 10s
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - app
+
+  # --- Reverse Proxy ---
+  caddy:
+    image: ghcr.io/caddybuilds/caddy-cloudflare:latest
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      - CLOUDFLARE_API_TOKEN=${CLOUDFLARE_API_TOKEN}
+      - DOMAIN=${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      backend:
+        condition: service_healthy
+      frontend:
+        condition: service_healthy
+    networks:
+      - app
+
+  # --- Prometheus ---
   prometheus:
     image: docker.io/prom/prometheus:v3.3.0
     restart: unless-stopped
@@ -18,22 +126,16 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
-
-  # Uncomment to run GPU worker locally (requires NVIDIA runtime)
-  # gpu-worker:
-  #   image: ghcr.io/xpos587/skating-ml-gpu:latest
-  #   restart: unless-stopped
-  #   ports:
-  #     - "127.0.0.1:8000:8000"
-  #   deploy:
-  #     resources:
-  #       reservations:
-  #         devices:
-  #           - driver: nvidia
-  #             count: 1
-  #             capabilities: [gpu]
-  #   environment:
-  #     - PROJECT_ROOT=/app
+    networks:
+      - app
 
 volumes:
+  postgres-data:
+  valkey-data:
+  caddy-data:
+  caddy-config:
   prometheus-data:
+
+networks:
+  app:
+    driver: bridge

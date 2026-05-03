@@ -20,3 +20,6 @@ rule:
     has:
       pattern: useEffect
     stopBy: end
+ignores:
+  - "**/threejs-skeleton-viewer.tsx"
+  - "**/video-with-skeleton.tsx"

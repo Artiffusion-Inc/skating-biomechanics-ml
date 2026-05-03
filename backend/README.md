@@ -38,7 +38,7 @@ backend/
 │   ├── worker.py        # arq worker (video processing, detection, music)
 │   └── main.py          # FastAPI app factory
 ├── alembic/             # Database migrations
-├── tests/               # 545+ tests, 96% coverage
+├── tests/               # Backend tests
 └── pyproject.toml       # Backend dependencies
 ```
 
