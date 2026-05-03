@@ -2,8 +2,11 @@
 
 import uuid
 from datetime import UTC, datetime, timedelta
+from typing import ClassVar
 
-from fastapi import APIRouter, Request, status
+from litestar import Controller, post
+from litestar.exceptions import ClientException
+from litestar.status_codes import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
 from app.auth.deps import DbDep
 from app.auth.security import (
@@ -18,8 +21,6 @@ from app.crud.refresh_token import create as create_refresh_token_crud
 from app.crud.refresh_token import get_active_by_hash, revoke
 from app.crud.user import create as create_user
 from app.crud.user import get_by_email
-from app.rate_limit import limiter
-from app.routes import raise_api_error
 from app.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -27,80 +28,75 @@ from app.schemas import (
     TokenResponse,
 )
 
-router = APIRouter(tags=["auth"])
 settings = get_settings()
 
 
-async def _issue_token_pair(db: DbDep, user_id: str, family_id: str | None = None) -> TokenResponse:
-    """Create and persist a new access + refresh token pair."""
-    access = create_access_token(user_id=user_id)
-    refresh_str = create_refresh_token()
-    fam = family_id or str(uuid.uuid4())
-    await create_refresh_token_crud(
-        db,
-        user_id=user_id,
-        token_hash=hash_token(refresh_str),
-        family_id=fam,
-        expires_at=datetime.now(UTC) + timedelta(days=settings.jwt.refresh_token_expire_days),
-    )
-    return TokenResponse(access_token=access, refresh_token=refresh_str)
+class AuthController(Controller):
+    path = "/auth"
+    tags: ClassVar[list[str]] = ["auth"]
 
-
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
-@limiter.limit("3/minute")
-async def register(request: Request, body: RegisterRequest, db: DbDep):
-    """Register a new user."""
-    existing = await get_by_email(db, body.email)
-    if existing:
-        raise_api_error(
-            status_code=status.HTTP_409_CONFLICT,
-            error="Conflict",
-            message="Email already registered",
-            details={"email": body.email},
+    async def _issue_token_pair(
+        self, db: DbDep, user_id: str, family_id: str | None = None
+    ) -> TokenResponse:
+        """Create and persist a new access + refresh token pair."""
+        access = create_access_token(user_id=user_id)
+        refresh_str = create_refresh_token()
+        fam = family_id or str(uuid.uuid4())
+        await create_refresh_token_crud(
+            db,
+            user_id=user_id,
+            token_hash=hash_token(refresh_str),
+            family_id=fam,
+            expires_at=datetime.now(UTC) + timedelta(days=settings.jwt.refresh_token_expire_days),
         )
+        return TokenResponse(access_token=access, refresh_token=refresh_str)
 
-    user = await create_user(
-        db,
-        email=body.email,
-        hashed_password=hash_password(body.password),
-        display_name=body.display_name,
-    )
-    return await _issue_token_pair(db, user.id)
+    @post("/register", status_code=HTTP_201_CREATED)
+    async def register(self, db: DbDep, data: RegisterRequest) -> TokenResponse:
+        """Register a new user."""
+        existing = await get_by_email(db, data.email)
+        if existing:
+            raise ClientException(
+                status_code=409,
+                detail="Email already registered",
+            )
 
-
-@router.post("/login", response_model=TokenResponse)
-@limiter.limit("5/minute")
-async def login(request: Request, body: LoginRequest, db: DbDep):
-    """Authenticate and return tokens."""
-    user = await get_by_email(db, body.email)
-    if not user or not verify_password(body.password, user.hashed_password):
-        raise_api_error(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            error="Unauthorized",
-            message="Invalid email or password",
+        user = await create_user(
+            db,
+            email=data.email,
+            hashed_password=hash_password(data.password),
+            display_name=data.display_name,
         )
-    return await _issue_token_pair(db, user.id)
+        return await self._issue_token_pair(db, user.id)
 
+    @post("/login")
+    async def login(self, db: DbDep, data: LoginRequest) -> TokenResponse:
+        """Authenticate and return tokens."""
+        user = await get_by_email(db, data.email)
+        if not user or not verify_password(data.password, user.hashed_password):
+            raise ClientException(
+                status_code=401,
+                detail="Invalid email or password",
+            )
+        return await self._issue_token_pair(db, user.id)
 
-@router.post("/refresh", response_model=TokenResponse)
-async def refresh(body: RefreshRequest, db: DbDep):
-    """Rotate refresh token and issue new token pair."""
-    token_hash = hash_token(body.refresh_token)
-    existing = await get_active_by_hash(db, token_hash)
-    if not existing:
-        raise_api_error(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            error="Unauthorized",
-            message="Invalid or expired refresh token",
-        )
-    await revoke(db, existing)
-    return await _issue_token_pair(db, existing.user_id, family_id=existing.family_id)
-
-
-@router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
-async def logout(body: RefreshRequest, db: DbDep):
-    """Revoke a refresh token (client should also discard access token)."""
-    token_hash = hash_token(body.refresh_token)
-    existing = await get_active_by_hash(db, token_hash)
-    if existing:
+    @post("/refresh")
+    async def refresh(self, db: DbDep, data: RefreshRequest) -> TokenResponse:
+        """Rotate refresh token and issue new token pair."""
+        token_hash = hash_token(data.refresh_token)
+        existing = await get_active_by_hash(db, token_hash)
+        if not existing:
+            raise ClientException(
+                status_code=401,
+                detail="Invalid or expired refresh token",
+            )
         await revoke(db, existing)
+        return await self._issue_token_pair(db, existing.user_id, family_id=existing.family_id)
+
+    @post("/logout", status_code=HTTP_204_NO_CONTENT)
+    async def logout(self, db: DbDep, data: RefreshRequest) -> None:
+        """Revoke a refresh token (client should also discard access token)."""
+        token_hash = hash_token(data.refresh_token)
+        existing = await get_active_by_hash(db, token_hash)
+        if existing:
+            await revoke(db, existing)
