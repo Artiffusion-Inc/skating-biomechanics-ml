@@ -43,17 +43,17 @@ def create_app() -> Litestar:
     api_v1 = Router(
         path="/api/v1",
         route_handlers=[
-            auth.router,
-            users.router,
-            detect.router,
-            models.router,
-            process.router,
-            misc.router,
-            sessions.router,
-            metrics.router,
-            connections.router,
-            uploads.router,
-            choreography.router,
+            auth,
+            users,
+            detect,
+            models,
+            process,
+            misc,
+            sessions,
+            metrics,
+            connections,
+            uploads,
+            choreography,
         ],
     )
 
