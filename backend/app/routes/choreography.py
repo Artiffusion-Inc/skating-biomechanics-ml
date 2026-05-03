@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import tempfile
+from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
 from typing import ClassVar
 
@@ -61,7 +62,7 @@ def _program_to_response(program) -> ChoreographyProgramResponse:
 
 class ChoreographyController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["choreography"]
+    tags: ClassVar[Sequence[str]] = ["choreography"]
 
     # -----------------------------------------------------------------------
     # Music upload & analysis

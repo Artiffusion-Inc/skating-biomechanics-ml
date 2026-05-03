@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Sequence  # noqa: TC003
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
@@ -34,7 +35,7 @@ from app.services.diagnostics import (
 
 class MetricsController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["metrics"]
+    tags: ClassVar[Sequence[str]] = ["metrics"]
 
     @get("/registry")
     async def get_registry(self) -> dict:

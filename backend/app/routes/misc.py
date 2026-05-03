@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
 from typing import ClassVar
 
@@ -14,10 +15,10 @@ from app.storage import object_exists_async, stream_object_async
 
 class MiscController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["misc"]
+    tags: ClassVar[Sequence[str]] = ["misc"]
 
     # Content-type mapping by extension
-    _CONTENT_TYPES = {
+    _CONTENT_TYPES: ClassVar[dict[str, str]] = {
         ".mp4": "video/mp4",
         ".webm": "video/webm",
         ".mov": "video/quicktime",

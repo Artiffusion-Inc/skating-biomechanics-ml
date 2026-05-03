@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import uuid
+from collections.abc import Sequence  # noqa: TC003
 from typing import ClassVar
 
 from litestar import Controller, post
@@ -26,7 +27,7 @@ class CompleteUploadRequest(BaseModel):
 
 class UploadsController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["uploads"]
+    tags: ClassVar[Sequence[str]] = ["uploads"]
 
     @post("/init")
     async def init_upload(

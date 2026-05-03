@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,7 +10,9 @@ from app.auth.deps import get_current_user, retrieve_user_handler
 from app.auth.security import hash_password
 from app.models.user import User
 from litestar.exceptions import NotAuthorizedException
-from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 @pytest.mark.asyncio

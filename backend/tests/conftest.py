@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import os
 import sys
-from collections.abc import AsyncGenerator
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 # Force SKIP_AUTH=false for all tests so auth logic is exercised.
 # Must happen before any import of app.config (which caches settings via @lru_cache).
@@ -27,6 +27,9 @@ from app.models.user import User
 from litestar.di import Provide
 from litestar.testing import AsyncTestClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+
+if TYPE_CHECKING:
+    from collections.abc import AsyncGenerator
 
 # Clear cached settings so APP_SKIP_AUTH=false takes effect
 get_settings.cache_clear()

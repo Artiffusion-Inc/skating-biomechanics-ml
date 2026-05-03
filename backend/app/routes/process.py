@@ -6,6 +6,7 @@ import asyncio
 import json
 import logging
 import uuid
+from collections.abc import Sequence  # noqa: TC003
 from typing import ClassVar
 
 from litestar import Controller, Request, get, post
@@ -36,7 +37,7 @@ SSE_STREAM_TIMEOUT = 60  # seconds
 
 class ProcessController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["process"]
+    tags: ClassVar[Sequence[str]] = ["process"]
 
     @post("/queue", status_code=200)
     async def enqueue_process(

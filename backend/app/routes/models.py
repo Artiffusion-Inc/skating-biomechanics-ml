@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003
 from pathlib import Path
 from typing import ClassVar
 
@@ -28,7 +29,7 @@ class ModelStatus(BaseModel):
 
 class ModelsController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["models"]
+    tags: ClassVar[Sequence[str]] = ["models"]
 
     @get("")
     async def list_models(self) -> list[ModelStatus]:

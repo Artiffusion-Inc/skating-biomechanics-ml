@@ -1,5 +1,6 @@
 """User API routes: profile and settings."""
 
+from collections.abc import Sequence  # noqa: TC003
 from typing import ClassVar
 
 from litestar import Controller, get, patch
@@ -17,7 +18,7 @@ from app.schemas import (
 
 class UsersController(Controller):
     path = "/me"
-    tags: ClassVar[list[str]] = ["users"]
+    tags: ClassVar[Sequence[str]] = ["users"]
 
     @get("")
     async def get_me(self, user: CurrentUser) -> UserResponse:

@@ -114,6 +114,7 @@ reportExplicitAny = "warning"
 reportAny = "warning"
 reportUnusedCallResult = "warning"
 reportUnusedVariable = "warning"
+reportIncompatibleVariableOverride = "none"
 pythonVersion = "3.11"
 exclude = [
     "Sports2D/",

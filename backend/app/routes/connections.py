@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence  # noqa: TC003
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, ClassVar
 
@@ -47,7 +48,7 @@ def _conn_to_response(conn: Connection) -> ConnectionResponse:
 
 class ConnectionsController(Controller):
     path = ""
-    tags: ClassVar[list[str]] = ["connections"]
+    tags: ClassVar[Sequence[str]] = ["connections"]
 
     @post("/invite", status_code=HTTP_201_CREATED)
     async def invite(self, data: InviteRequest, user: CurrentUser, db: DbDep) -> ConnectionResponse:
