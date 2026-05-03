@@ -5,7 +5,7 @@
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Xpos587/skating-biomechanics-ml/pulls)
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Litestar](https://img.shields.io/badge/Litestar-2.x%2B-EDDA7A?logo=python&logoColor=black)](https://litestar.dev)
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?logo=nextdotjs&logoColor=white)](https://nextjs.org)
 [![CUDA](https://img.shields.io/badge/CUDA-GPU-76B900?logo=nvidia&logoColor=white)](https://developer.nvidia.com/cuda-zone)
 
@@ -53,7 +53,7 @@ Video → RTMPose (rtmlib, CUDA) → HALPE26 (26kp) → H3.6M (17kp)
 
 ```
 skating-biomechanics-ml/
-├── backend/               # FastAPI API server
+├── backend/               # Litestar API server
 │   ├── app/               # Python package (backend.app.*)
 │   ├── tests/             # Backend tests
 │   └── pyproject.toml     # Backend dependencies

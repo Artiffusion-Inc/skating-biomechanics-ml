@@ -1,11 +1,11 @@
-# backend/CLAUDE.md — FastAPI Backend
+# backend/CLAUDE.md — Litestar Backend
 
 ## Project Structure
 
 ```
 backend/
 ├── app/                              # Python package (backend.app.*)
-│   ├── routes/                       # FastAPI routers
+│   ├── routes/                       # Litestar Controllers
 │   │   ├── auth.py                  # POST register/login/refresh
 │   │   ├── users.py                 # GET/PATCH /users/me
 │   │   ├── sessions.py              # CRUD /sessions
@@ -30,13 +30,26 @@ backend/
 │   ├── logging_config.py             # structlog configuration
 │   ├── metrics_registry.py           # MetricDef definitions (12+ metrics, Russian labels, ideal ranges)
 │   ├── auth/                         # JWT auth (deps.py — CurrentUser, DbDep)
-│   └── main.py                       # FastAPI app factory
+│   ├── di.py                         # DI container (DbSessionProxy)
+│   ├── lifespan.py                   # App lifespan (Valkey, arq pool)
+│   └── main.py                       # Litestar app factory
 │
 │   **Models:** user, session, connection (flexible user-to-user with connection_type)
 ├── alembic/                          # Database migrations
 ├── tests/                            # Backend tests
 └── pyproject.toml                    # Backend-only dependencies
 ```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| **Framework** | Litestar 2.x (ASGI) |
+| **Auth** | JWT via `JWTAuth` middleware (access 15min / refresh 7d) |
+| **DI** | `Provide` + `Dependency()` annotations |
+| **ORM** | SQLAlchemy 2.0 async |
+| **Queue** | arq + Valkey (Redis-compatible) |
+| **Storage** | Cloudflare R2 (S3-compatible) |
 
 ## Architectural Constraint
 
@@ -78,8 +91,62 @@ backend/
 
 - **JWT**: access token (15min) + refresh token (7d), stored in localStorage
 - **Cookie sync**: `sb_auth=1` cookie set by frontend for server-side gating
-- **CurrentUser**: dependency injection via `backend.app.auth.deps` (reads JWT from Authorization header)
+- **CurrentUser**: `Annotated[User, Dependency()]` injected via `backend.app.auth.deps`
+- **Token**: Litestar `Token` object (`.sub` attribute), not dict
 - **Coach access**: coaches can view students' sessions/metrics via `is_connected_as(connection_type=COACHING)` check
+
+## Key Litestar Patterns
+
+### Controllers
+
+```python
+from litestar import Controller, get, post
+
+class SessionsController(Controller):
+    path = ""
+    tags: ClassVar[list[str]] = ["sessions"]
+
+    @post("", status_code=HTTP_201_CREATED)
+    async def create_session(self, ...) -> SessionResponse:
+        ...
+```
+
+### Dependency Injection
+
+```python
+from litestar.di import Provide
+from typing import Annotated
+
+CurrentUser = Annotated[User, Dependency()]
+DbDep = Annotated[AsyncSession, Dependency()]
+```
+
+### Exception Handling
+
+Litestar `ClientException` returns `{"message": "..."}` (flat dict, no `"detail"` wrapper):
+
+```python
+from litestar.exceptions import ClientException
+
+raise ClientException(status_code=404, detail="Not found")
+# Response: {"message": "Not found"}
+```
+
+### Testing
+
+Use `AsyncTestClient` and mock lifespan dependencies in conftest:
+
+```python
+from litestar.testing import AsyncTestClient
+
+@pytest.fixture
+def app():
+    with patch("app.lifespan.create_pool", new_callable=AsyncMock):
+        from app.main import create_app
+        app = create_app()
+        app.state.arq_pool = AsyncMock()
+        yield app
+```
 
 ## Metrics System
 
