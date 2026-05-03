@@ -105,8 +105,8 @@ export function HeroSection() {
                   border: "1px solid rgba(255, 255, 255, 0.3)",
                 }}
               >
-                <p className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.55)" }}>CoM</p>
-                <p className="text-2xl font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>1.24 m</p>
+                <p className="text-xs font-mono" style={{ color: "oklch(0.5 0.05 240)" }}>CoM</p>
+                <p className="text-2xl font-medium" style={{ color: "oklch(0.2 0 0)" }}>1.24 m</p>
               </div>
               <div
                 className="absolute right-[15%] bottom-[20%] rounded-2xl p-5"
@@ -117,8 +117,8 @@ export function HeroSection() {
                   border: "1px solid rgba(255, 255, 255, 0.3)",
                 }}
               >
-                <p className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.55)" }}>Rotation</p>
-                <p className="text-2xl font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>540°</p>
+                <p className="text-xs font-mono" style={{ color: "oklch(0.5 0.05 240)" }}>Rotation</p>
+                <p className="text-2xl font-medium" style={{ color: "oklch(0.2 0 0)" }}>540°</p>
               </div>
               <div
                 className="absolute top-[40%] right-[5%] rounded-2xl p-4"
@@ -129,8 +129,8 @@ export function HeroSection() {
                   border: "1px solid rgba(255, 255, 255, 0.3)",
                 }}
               >
-                <p className="text-xs font-mono" style={{ color: "rgba(255,255,255,0.55)" }}>Airtime</p>
-                <p className="text-xl font-medium" style={{ color: "rgba(255,255,255,0.92)" }}>0.72 s</p>
+                <p className="text-xs font-mono" style={{ color: "oklch(0.5 0.05 240)" }}>Airtime</p>
+                <p className="text-xl font-medium" style={{ color: "oklch(0.2 0 0)" }}>0.72 s</p>
               </div>
             </div>
           </div>
