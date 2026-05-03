@@ -193,9 +193,9 @@ async def delete_session(session_id: str, user: CurrentUser, db: DbDep):
 
 @router.delete("/bulk", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_sessions_bulk(
+    user: CurrentUser,
+    db: DbDep,
     ids: str = Query(..., description="Comma-separated session IDs"),
-    user: CurrentUser = None,
-    db: DbDep = None,
 ):
     session_ids = [sid.strip() for sid in ids.split(",") if sid.strip()]
     for sid in session_ids:

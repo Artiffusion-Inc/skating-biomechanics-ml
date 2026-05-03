@@ -6,6 +6,7 @@ import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/i18n"
 import { updateSettings } from "@/lib/auth"
+import { useRouter } from "next/navigation"
 
 export function SettingsForm() {
   const t = useTranslations("settings")
@@ -94,7 +95,7 @@ export function SettingsForm() {
           className="w-full"
           onClick={() => {
             localStorage.removeItem("onboarding_completed")
-            window.location.href = "/onboarding"
+            router.push("/onboarding")
           }}
         >
           {t("restartOnboarding")}
