@@ -10,16 +10,35 @@ import asyncio
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import aiobotocore.session
 from fastapi import FastAPI
+from prometheus_client import CONTENT_TYPE_LATEST, Counter, Gauge, Histogram, generate_latest
 from pydantic import BaseModel
+from starlette.responses import Response
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Skating ML GPU Worker")
+
+# Prometheus metrics
+INFERENCE_DURATION = Histogram(
+    "inference_duration_seconds",
+    "Time spent processing a video",
+    buckets=[0.1, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0, 120.0],
+)
+INFERENCE_REQUESTS = Counter(
+    "inference_requests_total",
+    "Total /process requests",
+    ["status"],
+)
+ACTIVE_REQUESTS = Gauge(
+    "active_requests",
+    "Number of requests currently being processed",
+)
 
 # Models are at /app/data/models/ inside the container
 os.environ.setdefault("PROJECT_ROOT", "/app")
@@ -43,6 +62,26 @@ async def warmup_gpu():
     opts.inter_op_num_threads = 2
     # Just importing ort and accessing CUDA provider triggers init
     logging.getLogger(__name__).info("GPU warmup: CUDA initialized")
+
+
+@app.get("/metrics")
+async def metrics():
+    """Prometheus metrics endpoint."""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
+
+
+@app.get("/ready")
+async def ready():
+    """Readiness probe — checks ONNX session health."""
+    try:
+        import onnxruntime as ort
+
+        providers = ort.get_available_providers()
+        if "CUDAExecutionProvider" not in providers:
+            return Response(status_code=503, content='{"status": "no_cuda"}')
+        return {"status": "ready"}
+    except Exception:
+        return Response(status_code=503, content='{"status": "unhealthy"}')
 
 
 class ProcessRequest(BaseModel):
@@ -87,69 +126,81 @@ async def process(req: ProcessRequest):
     from src.types import PersonClick
     from src.web_helpers import process_video_pipeline
 
-    async with await _s3(req) as s3:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            video_local = str(Path(tmpdir) / "input.mp4")
-            output_local = str(Path(tmpdir) / "output.mp4")
+    ACTIVE_REQUESTS.inc()
+    start = time.perf_counter()
+    try:
+        async with await _s3(req) as s3:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                video_local = str(Path(tmpdir) / "input.mp4")
+                output_local = str(Path(tmpdir) / "output.mp4")
 
-            logger.info("Downloading video from R2: %s", req.video_r2_key)
-            await s3.download_file(req.r2_bucket, req.video_r2_key, video_local)
+                logger.info("Downloading video from R2: %s", req.video_r2_key)
+                await s3.download_file(req.r2_bucket, req.video_r2_key, video_local)
 
-            click = (
-                PersonClick(x=req.person_click["x"], y=req.person_click["y"])
-                if req.person_click
-                else None
-            )
-            ml = req.ml_flags
+                click = (
+                    PersonClick(x=req.person_click["x"], y=req.person_click["y"])
+                    if req.person_click
+                    else None
+                )
+                ml = req.ml_flags
 
-            logger.info("Running pipeline (ml_flags=%s)", ml)
-            result = process_video_pipeline(
-                video_path=video_local,
-                person_click=click,
-                frame_skip=req.frame_skip,
-                layer=req.layer,
-                tracking=req.tracking,
-                blade_3d=False,
-                export=req.export,
-                output_path=output_local,
-                progress_cb=None,
-                cancel_event=None,
-                depth=ml.get("depth", False),
-                optical_flow=ml.get("optical_flow", False),
-                segment=ml.get("segment", False),
-                foot_track=ml.get("foot_track", False),
-                matting=ml.get("matting", False),
-                inpainting=ml.get("inpainting", False),
-                element_type=req.element_type,
-            )
+                logger.info("Running pipeline (ml_flags=%s)", ml)
+                result = process_video_pipeline(
+                    video_path=video_local,
+                    person_click=click,
+                    frame_skip=req.frame_skip,
+                    layer=req.layer,
+                    tracking=req.tracking,
+                    blade_3d=False,
+                    export=req.export,
+                    output_path=output_local,
+                    progress_cb=None,
+                    cancel_event=None,
+                    depth=ml.get("depth", False),
+                    optical_flow=ml.get("optical_flow", False),
+                    segment=ml.get("segment", False),
+                    foot_track=ml.get("foot_track", False),
+                    matting=ml.get("matting", False),
+                    inpainting=ml.get("inpainting", False),
+                    element_type=req.element_type,
+                )
 
-            out_key = req.video_r2_key.replace("input/", "output/")
-            logger.info("Uploading result to R2: %s", out_key)
+                out_key = req.video_r2_key.replace("input/", "output/")
+                logger.info("Uploading result to R2: %s", out_key)
 
-            # Parallel uploads with asyncio.gather
-            upload_tasks = [s3.upload_file(output_local, req.r2_bucket, out_key)]
+                # Parallel uploads with asyncio.gather
+                upload_tasks = [s3.upload_file(output_local, req.r2_bucket, out_key)]
 
-            poses_key = None
-            if result.get("poses_path") and Path(result["poses_path"]).exists():
-                poses_key = out_key.replace(".mp4", "_poses.npy")
-                upload_tasks.append(s3.upload_file(result["poses_path"], req.r2_bucket, poses_key))
+                poses_key = None
+                if result.get("poses_path") and Path(result["poses_path"]).exists():
+                    poses_key = out_key.replace(".mp4", "_poses.npy")
+                    upload_tasks.append(
+                        s3.upload_file(result["poses_path"], req.r2_bucket, poses_key)
+                    )
 
-            csv_key = None
-            if result.get("csv_path") and Path(result["csv_path"]).exists():
-                csv_key = out_key.replace(".mp4", "_biomechanics.csv")
-                upload_tasks.append(s3.upload_file(result["csv_path"], req.r2_bucket, csv_key))
+                csv_key = None
+                if result.get("csv_path") and Path(result["csv_path"]).exists():
+                    csv_key = out_key.replace(".mp4", "_biomechanics.csv")
+                    upload_tasks.append(s3.upload_file(result["csv_path"], req.r2_bucket, csv_key))
 
-            await asyncio.gather(*upload_tasks)
+                await asyncio.gather(*upload_tasks)
 
-            return ProcessResponse(
-                video_r2_key=out_key,
-                poses_r2_key=poses_key,
-                csv_r2_key=csv_key,
-                stats=result["stats"],
-                metrics=result.get("metrics"),
-                phases=result.get("phases"),
-                recommendations=result.get("recommendations"),
-            )
+                INFERENCE_REQUESTS.labels(status="success").inc()
+                return ProcessResponse(
+                    video_r2_key=out_key,
+                    poses_r2_key=poses_key,
+                    csv_r2_key=csv_key,
+                    stats=result["stats"],
+                    metrics=result.get("metrics"),
+                    phases=result.get("phases"),
+                    recommendations=result.get("recommendations"),
+                )
+    except Exception:
+        INFERENCE_REQUESTS.labels(status="error").inc()
+        raise
+    finally:
+        ACTIVE_REQUESTS.dec()
+        INFERENCE_DURATION.observe(time.perf_counter() - start)
 
 
 @app.get("/health")
