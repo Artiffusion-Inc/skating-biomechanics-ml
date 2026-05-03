@@ -17,10 +17,10 @@ export function HeroSection() {
 
   return (
     <section className="hero-section relative flex min-h-[100dvh] items-center overflow-hidden ice-gradient">
-      {/* Unicorn Studio WebGL background — replace YOUR_PROJECT_ID */}
+      {/* Unicorn Studio WebGL background */}
       <div className="absolute inset-0 z-0">
         <UnicornScene
-          projectId="YOUR_PROJECT_ID"
+          projectId="C9QchW1yKawSYmt7dskR"
           className="h-full w-full"
           lazy={false}
         />
