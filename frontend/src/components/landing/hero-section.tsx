@@ -5,6 +5,7 @@ import { useMountEffect } from "@/lib/useMountEffect"
 import { Button } from "@/components/ui/button"
 import { ChevronDown } from "lucide-react"
 import { useTranslations } from "@/i18n"
+import { UnicornScene } from "@/components/unicorn-scene"
 
 export function HeroSection() {
   const [mounted, setMounted] = useState(false)
@@ -16,12 +17,21 @@ export function HeroSection() {
 
   return (
     <section className="hero-section relative flex min-h-[100dvh] items-center overflow-hidden ice-gradient">
+      {/* Unicorn Studio WebGL background — replace YOUR_PROJECT_ID */}
+      <div className="absolute inset-0 z-0">
+        <UnicornScene
+          projectId="YOUR_PROJECT_ID"
+          className="h-full w-full"
+          lazy={false}
+        />
+      </div>
+
       {/* Diagonal ice streak */}
       <div className="diagonal-streak" />
 
       {/* Subtle noise texture overlay */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.4]"
+        className="pointer-events-none absolute inset-0 z-[1] opacity-[0.4]"
         style={{
           backgroundImage:
             "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E\")",
@@ -31,7 +41,7 @@ export function HeroSection() {
 
       {/* Grid lines — ice rink markings suggestion */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        className="pointer-events-none absolute inset-0 z-[1] opacity-[0.03]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(0,0,0,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.3) 1px, transparent 1px)",

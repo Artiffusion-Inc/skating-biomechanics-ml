@@ -50,9 +50,9 @@ export function CTASection() {
               <a href="/register">{t("ctaAction")}</a>
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               size="lg"
-              className="h-14 rounded-full border-white/25 px-8 text-base font-medium text-white hover:bg-white/10 hover:text-white"
+              className="h-14 rounded-full border border-white/30 bg-white/15 px-8 text-base font-medium text-white backdrop-blur-sm hover:bg-white/25 hover:text-white"
               asChild
             >
               <a href="/login">{t("ctaLogin")}</a>

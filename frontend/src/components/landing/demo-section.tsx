@@ -112,6 +112,29 @@ export function DemoSection() {
 
         <SkeletonPose />
 
+        {/* Floating metric badges */}
+        <div
+          className="absolute top-[12%] left-[8%] rounded-xl px-3 py-2 text-xs font-medium backdrop-blur-md"
+          style={{ background: "oklch(0.18 0.03 240 / 0.7)", border: "1px solid oklch(0.72 0.12 240 / 0.3)", color: "white" }}
+        >
+          <span className="text-[10px] uppercase tracking-wider opacity-60">CoM Height</span>
+          <div className="text-sm font-semibold">1.24 m</div>
+        </div>
+        <div
+          className="absolute right-[10%] bottom-[18%] rounded-xl px-3 py-2 text-xs font-medium backdrop-blur-md"
+          style={{ background: "oklch(0.18 0.03 240 / 0.7)", border: "1px solid oklch(0.72 0.12 240 / 0.3)", color: "white" }}
+        >
+          <span className="text-[10px] uppercase tracking-wider opacity-60">Rotation</span>
+          <div className="text-sm font-semibold">540°</div>
+        </div>
+        <div
+          className="absolute top-[45%] right-[6%] rounded-xl px-3 py-2 text-xs font-medium backdrop-blur-md"
+          style={{ background: "oklch(0.18 0.03 240 / 0.7)", border: "1px solid oklch(0.72 0.12 240 / 0.3)", color: "white" }}
+        >
+          <span className="text-[10px] uppercase tracking-wider opacity-60">Airtime</span>
+          <div className="text-sm font-semibold">0.72 s</div>
+        </div>
+
         <div
           className="absolute top-4 left-4 rounded-lg px-3 py-1.5 text-xs font-mono backdrop-blur-sm"
           style={{ backgroundColor: "rgba(0,0,0,0.5)", color: "rgba(255,255,255,0.9)" }}
