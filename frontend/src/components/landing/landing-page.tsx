@@ -6,7 +6,7 @@ import { CTASection } from "./cta-section"
 
 export function LandingPage() {
   return (
-    <div className="landing-page">
+    <div className="landing-page overflow-x-hidden">
       <HeroSection />
       <FeaturesSection />
       <MetricsSection />
