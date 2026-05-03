@@ -24,8 +24,8 @@ export function MetricsSection() {
         }}
       />
 
-      <div className="relative mx-auto max-w-[1400px] px-6 py-24">
-        <div className="grid gap-16 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="relative mx-auto max-w-[1400px] px-4 py-16 sm:px-6 md:py-24">
+        <div className="grid gap-8 sm:gap-16 sm:grid-cols-2 lg:grid-cols-4">
           {metrics.map(m => (
             <div key={m.label} className="group text-center">
               <p

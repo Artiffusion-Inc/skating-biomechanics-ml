@@ -49,12 +49,12 @@ export function HeroSection() {
         }}
       />
 
-      <div className="relative z-10 mx-auto w-full max-w-[1400px] px-6 py-20">
-        <div className="grid items-center gap-12 lg:grid-cols-2">
+      <div className="relative z-10 mx-auto w-full max-w-[1400px] px-4 py-16 sm:px-6 sm:py-20">
+        <div className="grid items-center gap-8 md:gap-12 lg:grid-cols-2">
           {/* Left: text */}
           <div className="text-left">
             <p
-              className={`hero-eyebrow mb-6 text-xs font-medium uppercase tracking-[0.3em] text-muted-foreground ${mounted ? "hero-visible" : ""}`}
+              className={`hero-eyebrow mb-4 md:mb-6 text-xs font-medium uppercase tracking-[0.3em] text-muted-foreground ${mounted ? "hero-visible" : ""}`}
             >
               {t("eyebrow")}
             </p>
@@ -68,13 +68,13 @@ export function HeroSection() {
             </h1>
 
             <p
-              className={`hero-subtitle mt-6 max-w-md text-lg leading-relaxed text-muted-foreground ${mounted ? "hero-visible" : ""}`}
+              className={`hero-subtitle mt-4 md:mt-6 max-w-md text-lg leading-relaxed text-muted-foreground ${mounted ? "hero-visible" : ""}`}
             >
               {t("subtitle")}
             </p>
 
             <div
-              className={`hero-cta mt-10 flex flex-col items-start gap-4 sm:flex-row ${mounted ? "hero-visible" : ""}`}
+              className={`hero-cta mt-8 md:mt-10 flex flex-col items-start gap-4 sm:flex-row ${mounted ? "hero-visible" : ""}`}
             >
               <Button
                 size="lg"

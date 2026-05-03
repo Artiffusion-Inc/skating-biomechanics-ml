@@ -84,8 +84,8 @@ export function DemoSection() {
   const t = useTranslations("landing")
 
   return (
-    <section className="relative mx-auto max-w-[1400px] px-6 py-32">
-      <div className="mb-20">
+    <section className="relative mx-auto max-w-[1400px] px-4 py-20 sm:px-6 md:py-32">
+      <div className="mb-12 md:mb-20">
         <p className="mb-4 text-xs font-medium uppercase tracking-[0.3em] text-muted-foreground">
           {t("demoEyebrow")}
         </p>
@@ -95,7 +95,7 @@ export function DemoSection() {
       </div>
 
       <div
-        className="relative mx-auto aspect-video max-w-4xl overflow-hidden rounded-2xl border border-border/60 shadow-2xl"
+        className="relative mx-auto aspect-video min-h-[260px] sm:min-h-[320px] max-w-4xl overflow-hidden rounded-2xl border border-border/60 shadow-2xl"
         style={{
           background:
             "linear-gradient(to bottom right, oklch(0.18 0.03 240), oklch(0.14 0.02 240), oklch(0.18 0.03 240))",

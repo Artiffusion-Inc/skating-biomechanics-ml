@@ -7,9 +7,9 @@ export function CTASection() {
   const t = useTranslations("landing")
 
   return (
-    <section className="relative mx-auto max-w-[1400px] px-6 py-32">
+    <section className="relative mx-auto max-w-[1400px] px-4 py-20 sm:px-6 md:py-32">
       <div
-        className="relative overflow-hidden rounded-3xl px-8 py-24 text-center"
+        className="relative overflow-hidden rounded-3xl px-6 py-16 md:px-8 md:py-24 text-center"
         style={{
           background:
             "linear-gradient(135deg, oklch(0.16 0.04 240) 0%, oklch(0.22 0.06 240) 50%, oklch(0.16 0.04 240) 100%)",

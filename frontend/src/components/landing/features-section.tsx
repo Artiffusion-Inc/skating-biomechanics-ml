@@ -27,11 +27,11 @@ export function FeaturesSection() {
   ]
 
   return (
-    <section id="features" className="relative mx-auto max-w-[1400px] px-6 py-32">
+    <section id="features" className="relative mx-auto max-w-[1400px] px-4 py-20 sm:px-6 md:py-32">
       {/* Diagonal streak */}
       <div className="diagonal-streak" />
 
-      <div className="mb-20">
+      <div className="mb-12 md:mb-20">
         <p className="mb-4 text-xs font-medium uppercase tracking-[0.3em] text-muted-foreground">
           {t("featuresTitle")}
         </p>
@@ -44,7 +44,7 @@ export function FeaturesSection() {
         {features.map((feature, i) => (
           <div
             key={feature.title}
-            className="group relative overflow-hidden rounded-2xl border border-border/60 bg-background p-8 transition-colors hover:border-foreground/20"
+            className="group relative overflow-hidden rounded-2xl border border-border/60 bg-background p-6 md:p-8 transition-colors hover:border-foreground/20"
           >
             {/* Step watermark */}
             <span className="step-watermark">
