@@ -15,12 +15,18 @@ Creates:
 from __future__ import annotations
 
 import asyncio
+import logging
 import random
 import sys
 from datetime import UTC, datetime, timedelta
+from typing import TYPE_CHECKING
 
 import sqlalchemy as sa
-from sqlalchemy.ext.asyncio import AsyncSession
+
+if TYPE_CHECKING:
+    from sqlalchemy.ext.asyncio import AsyncSession
+
+logger = logging.getLogger(__name__)
 
 # Make backend package importable
 sys.path.insert(0, "/home/michael/Github/skating-biomechanics-ml/backend")
@@ -201,10 +207,12 @@ async def _seed() -> None:
                 session.add(sm)
 
         await session.commit()
-        print(f"Seeded {total_sessions} sessions for {skater.display_name} ({skater.email})")
-        print(f"Coach: {coach.display_name} ({coach.email})")
-        print("Connection: ACTIVE coaching")
-        print("Done.")
+        logger.info(
+            "Seeded %d sessions for %s (%s)", total_sessions, skater.display_name, skater.email
+        )
+        logger.info("Coach: %s (%s)", coach.display_name, coach.email)
+        logger.info("Connection: ACTIVE coaching")
+        logger.info("Done.")
 
 
 if __name__ == "__main__":
