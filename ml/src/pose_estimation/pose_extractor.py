@@ -24,7 +24,25 @@ from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
-from tqdm import tqdm
+
+try:
+    from tqdm import tqdm
+except (ImportError, ValueError):
+
+    def tqdm(iterable=None, **_kwargs):
+        if iterable is not None:
+            return iterable
+        return type(
+            "_TqdmMock",
+            (),
+            {
+                "update": lambda *_a: None,
+                "close": lambda *_a: None,
+                "__enter__": lambda s: s,
+                "__exit__": lambda *_a: None,
+            },
+        )()
+
 
 if TYPE_CHECKING:
     from rtmlib import Body, PoseTracker
