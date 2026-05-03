@@ -8,11 +8,15 @@ from litestar.config.cors import CORSConfig
 from litestar.config.response_cache import ResponseCacheConfig
 from litestar.exceptions import HTTPException
 from litestar.middleware.rate_limit import RateLimitConfig
+from litestar.security.jwt import JWTAuth
 
+from app.auth.deps import retrieve_user_handler
 from app.config import get_settings
+from app.di import dependencies
 from app.exceptions import http_exception_handler
 from app.lifespan import app_lifespan
 from app.logging_config import configure_logging
+from app.models.user import User
 from app.routes import (
     auth,
     choreography,
@@ -65,6 +69,21 @@ def create_app() -> Litestar:
         exclude=["/api/v1/health", "/api/v1/docs", "/api/v1/redoc", "/api/v1/openapi.json"],
     )
 
+    jwt_auth = JWTAuth[User](
+        token_secret=settings.jwt.secret_key.get_secret_value(),
+        retrieve_user_handler=retrieve_user_handler,
+        token_algorithm="HS256",  # noqa: S106
+        exclude=[
+            "/api/v1/auth/register",
+            "/api/v1/auth/login",
+            "/api/v1/auth/refresh",
+            "/api/v1/health",
+            "/api/v1/docs",
+            "/api/v1/redoc",
+            "/api/v1/openapi.json",
+        ],
+    )
+
     return Litestar(
         route_handlers=[api_v1],
         lifespan=[app_lifespan],
@@ -74,6 +93,8 @@ def create_app() -> Litestar:
         exception_handlers={HTTPException: http_exception_handler},
         debug=settings.app.log_level == "DEBUG",
         openapi_config=None,
+        on_app_init=[jwt_auth.on_app_init],
+        dependencies=dependencies,
     )
 
 
