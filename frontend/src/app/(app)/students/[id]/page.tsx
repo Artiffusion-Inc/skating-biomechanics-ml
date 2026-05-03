@@ -98,8 +98,8 @@ export default function StudentProfilePage() {
         </div>
       )}
 
-      {tab === "diagnostics" && (
-        diag && diag.findings.length > 0 ? (
+      {tab === "diagnostics" &&
+        (diag && diag.findings.length > 0 ? (
           <DiagnosticsList findings={diag.findings} />
         ) : (
           <EmptyState
@@ -107,8 +107,7 @@ export default function StudentProfilePage() {
             title={tEmpty("noDiagnosticsTitle")}
             description={tEmpty("noDiagnosticsDesc")}
           />
-        )
-      )}
+        ))}
     </div>
   )
 }

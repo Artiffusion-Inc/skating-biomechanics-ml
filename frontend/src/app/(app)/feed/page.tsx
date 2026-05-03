@@ -32,8 +32,10 @@ export default function FeedPage() {
     }
     if (dateFilter !== "all") {
       const days = { "7d": 7, "30d": 30, "90d": 90 }[dateFilter]
-      const cutoff = Date.now() - days! * 86400000
-      sessions = sessions.filter(s => new Date(s.created_at).getTime() >= cutoff)
+      if (days) {
+        const cutoff = Date.now() - days * 86400000
+        sessions = sessions.filter(s => new Date(s.created_at).getTime() >= cutoff)
+      }
     }
     return sessions
   }, [data, elementFilter, dateFilter])
@@ -114,7 +116,9 @@ export default function FeedPage() {
         >
           <option value="">{tf("allElements")}</option>
           {ELEMENT_TYPE_KEYS.map(key => (
-            <option key={key} value={key}>{te(key)}</option>
+            <option key={key} value={key}>
+              {te(key)}
+            </option>
           ))}
         </select>
         <div className="flex gap-1">

@@ -43,18 +43,9 @@ export function OnboardingFlow({ onComplete }: OnboardingFlowProps) {
 
   return (
     <div className="fixed inset-0 z-[100] bg-background">
-      {step === "role" && (
-        <RoleSelect
-          onSelect={handleRoleSelect}
-          onSkip={handleSkip}
-        />
-      )}
+      {step === "role" && <RoleSelect onSelect={handleRoleSelect} onSkip={handleSkip} />}
       {step === "tour" && data.role && (
-        <TourSlider
-          role={data.role}
-          onComplete={handleTourComplete}
-          onSkip={handleSkip}
-        />
+        <TourSlider role={data.role} onComplete={handleTourComplete} onSkip={handleSkip} />
       )}
     </div>
   )

@@ -13,7 +13,7 @@ export function SessionDiagnostics({ elementType }: Props) {
   const { data, isLoading } = useDiagnostics()
 
   if (isLoading) return <div className="h-20 animate-pulse rounded-xl bg-muted" />
-  if (!data || !data.findings.length) return null
+  if (!data?.findings?.length) return null
 
   const filtered = data.findings.filter(f => f.element === elementType)
   if (!filtered.length) return null

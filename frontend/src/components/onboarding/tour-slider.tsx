@@ -45,13 +45,54 @@ function UploadPreview() {
           </div>
         </div>
         {/* Skeleton overlay hint */}
-        <svg className="absolute inset-0 opacity-20" viewBox="0 0 100 125">
+        <svg className="absolute inset-0 opacity-20" viewBox="0 0 100 125" aria-hidden="true">
+          <title>Figure skater skeleton</title>
           <circle cx="50" cy="30" r="4" fill="currentColor" className="text-ice-deep" />
-          <line x1="50" y1="34" x2="50" y2="60" stroke="currentColor" strokeWidth="1" className="text-ice-deep" />
-          <line x1="50" y1="45" x2="35" y2="55" stroke="currentColor" strokeWidth="1" className="text-ice-deep" />
-          <line x1="50" y1="45" x2="65" y2="55" stroke="currentColor" strokeWidth="1" className="text-ice-deep" />
-          <line x1="50" y1="60" x2="40" y2="90" stroke="currentColor" strokeWidth="1" className="text-ice-deep" />
-          <line x1="50" y1="60" x2="60" y2="90" stroke="currentColor" strokeWidth="1" className="text-ice-deep" />
+          <line
+            x1="50"
+            y1="34"
+            x2="50"
+            y2="60"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-ice-deep"
+          />
+          <line
+            x1="50"
+            y1="45"
+            x2="35"
+            y2="55"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-ice-deep"
+          />
+          <line
+            x1="50"
+            y1="45"
+            x2="65"
+            y2="55"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-ice-deep"
+          />
+          <line
+            x1="50"
+            y1="60"
+            x2="40"
+            y2="90"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-ice-deep"
+          />
+          <line
+            x1="50"
+            y1="60"
+            x2="60"
+            y2="90"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-ice-deep"
+          />
         </svg>
       </div>
       <div className="mt-2 flex items-center justify-between">
@@ -71,13 +112,18 @@ function MetricsPreview() {
   ]
   return (
     <div className="mx-auto w-full max-w-[280px] space-y-2">
-      {metrics.map((m) => (
+      {metrics.map(m => (
         <div
           key={m.label}
           className="flex items-center justify-between rounded-xl border border-border bg-card px-4 py-3 shadow-sm"
         >
           <div className="flex items-center gap-3">
-            <div className={cn("flex h-8 w-8 items-center justify-center rounded-lg", m.good ? "bg-ice-deep/10" : "bg-amber-500/10")}>
+            <div
+              className={cn(
+                "flex h-8 w-8 items-center justify-center rounded-lg",
+                m.good ? "bg-ice-deep/10" : "bg-amber-500/10",
+              )}
+            >
               <m.icon className={cn("h-4 w-4", m.good ? "text-ice-deep" : "text-amber-500")} />
             </div>
             <span className="text-sm text-muted-foreground">{m.label}</span>
@@ -134,8 +180,11 @@ function InvitePreview() {
         </div>
       </div>
       <div className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
-        <span className="flex-1 truncate text-xs text-muted-foreground">icelab.app/invite/a7x9k2</span>
+        <span className="flex-1 truncate text-xs text-muted-foreground">
+          icelab.app/invite/a7x9k2
+        </span>
         <button
+          type="button"
           onClick={handleCopy}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ice-deep text-white transition-colors hover:bg-ice-deep/90"
         >
@@ -227,7 +276,10 @@ function MusicPreview() {
           return (
             <div
               key={i}
-              className={cn("flex-1 rounded-full", i > 25 && i < 32 ? "bg-ice-deep" : "bg-ice-deep/20")}
+              className={cn(
+                "flex-1 rounded-full",
+                i > 25 && i < 32 ? "bg-ice-deep" : "bg-ice-deep/20",
+              )}
               style={{ height: `${h}%` }}
             />
           )
@@ -262,7 +314,7 @@ function TimelinePreview() {
       <div className="relative">
         <div className="absolute left-3 top-0 bottom-0 w-px bg-border" />
         <div className="space-y-2">
-          {elements.map((el) => (
+          {elements.map(el => (
             <div key={el.name} className="flex items-center gap-3 pl-1">
               <div className={cn("h-2 w-2 rounded-full shrink-0 z-10", el.color)} />
               <div className="flex-1 flex items-center justify-between rounded-lg bg-background px-3 py-2">
@@ -273,7 +325,10 @@ function TimelinePreview() {
           ))}
         </div>
       </div>
-      <button className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground hover:bg-accent transition-colors">
+      <button
+        type="button"
+        className="flex w-full items-center justify-center gap-1 rounded-lg border border-dashed border-border py-2 text-xs text-muted-foreground hover:bg-accent transition-colors"
+      >
         <ChevronRight className="h-3 w-3" />
         {t("addElement")}
       </button>
@@ -288,10 +343,42 @@ function RinkPreview() {
       <p className="text-xs font-medium text-muted-foreground">{t("rinkLabel")}</p>
       <div className="relative aspect-[2/1] rounded-lg bg-ice-surface/30 border border-border overflow-hidden">
         {/* Rink rectangle */}
-        <svg className="absolute inset-2 w-[calc(100%-16px)] h-[calc(100%-16px)]" viewBox="0 0 200 100">
-          <rect x="0" y="0" width="200" height="100" rx="30" fill="none" stroke="currentColor" strokeWidth="1" className="text-border" />
-          <line x1="100" y1="0" x2="100" y2="100" stroke="currentColor" strokeWidth="0.5" strokeDasharray="4 2" className="text-border" />
-          <circle cx="100" cy="50" r="8" fill="none" stroke="currentColor" strokeWidth="0.5" className="text-border" />
+        <svg
+          className="absolute inset-2 w-[calc(100%-16px)] h-[calc(100%-16px)]"
+          viewBox="0 0 200 100"
+          aria-hidden="true"
+        >
+          <title>Rink diagram</title>
+          <rect
+            x="0"
+            y="0"
+            width="200"
+            height="100"
+            rx="30"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1"
+            className="text-border"
+          />
+          <line
+            x1="100"
+            y1="0"
+            x2="100"
+            y2="100"
+            stroke="currentColor"
+            strokeWidth="0.5"
+            strokeDasharray="4 2"
+            className="text-border"
+          />
+          <circle
+            cx="100"
+            cy="50"
+            r="8"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="0.5"
+            className="text-border"
+          />
           {/* Trajectory */}
           <path
             d="M 30 70 Q 60 30, 100 50 T 170 40"
@@ -338,12 +425,18 @@ function getSlides(role: UserRole, t: (key: string) => string): Slide[] {
     {
       title: t(`slides.${role}.1.title`),
       subtitle: t(`slides.${role}.1.subtitle`),
-      preview: role === "skater" ? MetricsPreview : role === "coach" ? CoachDashboardPreview : TimelinePreview,
+      preview:
+        role === "skater"
+          ? MetricsPreview
+          : role === "coach"
+            ? CoachDashboardPreview
+            : TimelinePreview,
     },
     {
       title: t(`slides.${role}.2.title`),
       subtitle: t(`slides.${role}.2.subtitle`),
-      preview: role === "skater" ? ProgressPreview : role === "coach" ? FeedbackPreview : RinkPreview,
+      preview:
+        role === "skater" ? ProgressPreview : role === "coach" ? FeedbackPreview : RinkPreview,
     },
   ]
 }
@@ -371,6 +464,7 @@ export function TourSlider({ role, onComplete, onSkip }: TourSliderProps) {
         {/* Header */}
         <div className="mb-4 flex items-center justify-end sm:mb-6">
           <button
+            type="button"
             onClick={onSkip}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -385,7 +479,7 @@ export function TourSlider({ role, onComplete, onSkip }: TourSliderProps) {
               key={i}
               className={cn(
                 "h-2 rounded-full transition-all duration-300",
-                i === current ? "w-6 bg-ice-deep" : "w-2 bg-border"
+                i === current ? "w-6 bg-ice-deep" : "w-2 bg-border",
               )}
             />
           ))}
@@ -414,6 +508,7 @@ export function TourSlider({ role, onComplete, onSkip }: TourSliderProps) {
         {/* Navigation */}
         <div className="flex items-center justify-between px-2 sm:px-0">
           <button
+            type="button"
             onClick={() => setCurrent(Math.max(0, current - 1))}
             disabled={current === 0}
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors disabled:opacity-30"
@@ -421,6 +516,7 @@ export function TourSlider({ role, onComplete, onSkip }: TourSliderProps) {
             {t("back")}
           </button>
           <button
+            type="button"
             onClick={next}
             className="h-11 rounded-full bg-ice-deep px-8 text-sm font-medium text-white transition-all duration-200 hover:scale-[0.98] active:scale-[0.96]"
           >

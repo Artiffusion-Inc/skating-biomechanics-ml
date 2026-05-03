@@ -47,9 +47,7 @@ export function FeaturesSection() {
             className="group relative overflow-hidden rounded-2xl border border-border/60 bg-background p-6 md:p-8 transition-colors hover:border-foreground/20"
           >
             {/* Step watermark */}
-            <span className="step-watermark">
-              {String(i + 1).padStart(2, "0")}
-            </span>
+            <span className="step-watermark">{String(i + 1).padStart(2, "0")}</span>
 
             <div className="relative z-10">
               <div
@@ -59,9 +57,7 @@ export function FeaturesSection() {
                 <feature.icon className="h-5 w-5" style={{ color: "var(--ice-deep)" }} />
               </div>
               <h3 className="mb-3 text-lg font-medium">{feature.title}</h3>
-              <p className="text-sm leading-relaxed text-muted-foreground">
-                {feature.description}
-              </p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{feature.description}</p>
             </div>
 
             {/* Hover ice accent */}

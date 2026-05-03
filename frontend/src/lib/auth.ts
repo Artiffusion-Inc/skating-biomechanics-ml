@@ -135,7 +135,9 @@ export async function updateSettings(data: UpdateSettingsRequest): Promise<UserR
   })
 }
 
-export async function updateOnboardingRole(role: "skater" | "coach" | "choreographer"): Promise<UserResponse> {
+export async function updateOnboardingRole(
+  role: "skater" | "coach" | "choreographer",
+): Promise<UserResponse> {
   return apiFetch("/users/me/onboarding", UserResponseSchema, {
     method: "PATCH",
     headers: JSON_POST,

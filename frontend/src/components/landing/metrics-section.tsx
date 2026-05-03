@@ -34,9 +34,7 @@ export function MetricsSection() {
               >
                 {m.value}
               </p>
-              <p className="mt-3 text-sm font-medium tracking-wide uppercase">
-                {m.label}
-              </p>
+              <p className="mt-3 text-sm font-medium tracking-wide uppercase">{m.label}</p>
               <p className="mt-1 text-xs text-muted-foreground">{m.description}</p>
             </div>
           ))}

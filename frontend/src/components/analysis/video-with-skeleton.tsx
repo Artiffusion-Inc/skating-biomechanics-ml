@@ -26,7 +26,8 @@ export function VideoWithSkeleton({
 }: VideoWithSkeletonProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
-  const { currentFrame, setCurrentFrame, isPlaying, setIsPlaying, playbackSpeed } = useAnalysisStore()
+  const { currentFrame, setCurrentFrame, isPlaying, setIsPlaying, playbackSpeed } =
+    useAnalysisStore()
 
   // Sync store currentFrame → video time
   useEffect(() => {
@@ -127,6 +128,8 @@ export function VideoWithSkeleton({
       <SkeletonCanvas poseData={poseData} currentFrame={currentFrame} width={1920} height={1080} />
       {phases && <PhaseLabels phases={phases} currentFrame={totalFrames} width={1920} />}
       {poseData && (
+        // biome-ignore lint/a11y/noStaticElementInteractions: parent div handles keyboard
+        // biome-ignore lint/a11y/useKeyWithClickEvents: parent div has onKeyDown
         <div
           className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${showControls ? "opacity-100" : "opacity-0"}`}
           onClick={handleTogglePlay}

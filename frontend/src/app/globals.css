@@ -169,16 +169,17 @@ body {
 
 .dark {
   --ice-glow: oklch(0.62 0.14 240);
-  --ice-deep: oklch(0.32 0.10 240);
+  --ice-deep: oklch(0.32 0.1 240);
   --ice-surface: oklch(0.22 0.03 240);
   --ice-dark: oklch(0.12 0.02 240);
 }
 
 /* Landing page ice atmosphere */
 .ice-gradient {
-  background: radial-gradient(ellipse 80% 60% at 20% 40%, var(--ice-surface) 0%, transparent 60%),
-              radial-gradient(ellipse 60% 80% at 80% 60%, oklch(0.92 0.02 240 / 0.4) 0%, transparent 50%),
-              var(--background);
+  background:
+    radial-gradient(ellipse 80% 60% at 20% 40%, var(--ice-surface) 0%, transparent 60%),
+    radial-gradient(ellipse 60% 80% at 80% 60%, oklch(0.92 0.02 240 / 0.4) 0%, transparent 50%),
+    var(--background);
 }
 
 .ice-strip {
@@ -197,7 +198,12 @@ body {
   top: -20%;
   width: 60%;
   height: 140%;
-  background: linear-gradient(135deg, transparent 40%, oklch(0.72 0.12 240 / 0.06) 50%, transparent 60%);
+  background: linear-gradient(
+    135deg,
+    transparent 40%,
+    oklch(0.72 0.12 240 / 0.06) 50%,
+    transparent 60%
+  );
   transform: skewX(-12deg);
   pointer-events: none;
 }
@@ -222,7 +228,11 @@ body {
 }
 
 .ice-glow-behind {
-  background: radial-gradient(ellipse 50% 50% at 50% 50%, oklch(0.72 0.12 240 / 0.25) 0%, transparent 70%);
+  background: radial-gradient(
+    ellipse 50% 50% at 50% 50%,
+    oklch(0.72 0.12 240 / 0.25) 0%,
+    transparent 70%
+  );
 }
 
 @layer base {

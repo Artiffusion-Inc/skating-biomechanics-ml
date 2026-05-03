@@ -14,7 +14,11 @@ interface RoleSelectProps {
 const ROLE_KEYS: { id: UserRole; labelKey: string; descKey: string }[] = [
   { id: "skater", labelKey: "roles.skater.label", descKey: "roles.skater.description" },
   { id: "coach", labelKey: "roles.coach.label", descKey: "roles.coach.description" },
-  { id: "choreographer", labelKey: "roles.choreographer.label", descKey: "roles.choreographer.description" },
+  {
+    id: "choreographer",
+    labelKey: "roles.choreographer.label",
+    descKey: "roles.choreographer.description",
+  },
 ]
 
 const SOURCE_KEYS = [
@@ -41,6 +45,7 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-6 flex items-center justify-end">
           <button
+            type="button"
             onClick={onSkip}
             className="text-sm text-muted-foreground hover:text-foreground transition-colors"
           >
@@ -52,21 +57,20 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
           <h1 className="mb-3 text-2xl font-medium tracking-tight text-foreground">
             {t("roleSelectTitle")}
           </h1>
-          <p className="text-sm text-muted-foreground">
-            {t("roleSelectSubtitle")}
-          </p>
+          <p className="text-sm text-muted-foreground">{t("roleSelectSubtitle")}</p>
         </div>
 
         <div className="space-y-3">
-          {ROLE_KEYS.map((role) => (
+          {ROLE_KEYS.map(role => (
             <button
+              type="button"
               key={role.id}
               onClick={() => setSelectedRole(role.id)}
               className={cn(
                 "w-full rounded-[1.25rem] border p-5 text-left transition-all duration-200",
                 selectedRole === role.id
                   ? "border-ice-deep bg-ice-deep/5"
-                  : "border-border bg-card hover:bg-accent"
+                  : "border-border bg-card hover:bg-accent",
               )}
             >
               <div className="flex items-center justify-between">
@@ -79,11 +83,17 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
                     "ml-4 flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2",
                     selectedRole === role.id
                       ? "border-ice-deep bg-ice-deep"
-                      : "border-muted-foreground/30"
+                      : "border-muted-foreground/30",
                   )}
                 >
                   {selectedRole === role.id && (
-                    <svg className="h-3 w-3 text-white" viewBox="0 0 12 12" fill="currentColor">
+                    <svg
+                      className="h-3 w-3 text-white"
+                      viewBox="0 0 12 12"
+                      fill="currentColor"
+                      aria-label="selected"
+                    >
+                      <title>selected</title>
                       <path d="M10.28 2.28a1 1 0 00-1.41 0L4 7.17 2.41 5.59a1 1 0 10-1.42 1.41l2.17 2.17a1 1 0 001.42 0l5.7-5.7a1 1 0 000-1.41z" />
                     </svg>
                   )}
@@ -94,17 +104,18 @@ export function RoleSelect({ onSelect, onSkip }: RoleSelectProps) {
         </div>
 
         <div className="mt-8">
-          <label className="mb-2 block text-sm font-medium text-foreground">
+          <label htmlFor="source-select" className="mb-2 block text-sm font-medium text-foreground">
             {t("howDidYouHear")}
             <span className="ml-1 text-muted-foreground font-normal">({t("optional")})</span>
           </label>
           <select
+            id="source-select"
             value={source}
-            onChange={(e) => setSource(e.target.value)}
+            onChange={e => setSource(e.target.value)}
             className="w-full rounded-lg border border-border bg-background px-3 py-2.5 text-sm text-foreground outline-none transition-colors focus:border-foreground"
           >
             <option value="">{t("sourceSelectPlaceholder")}</option>
-            {SOURCE_KEYS.map((key) => (
+            {SOURCE_KEYS.map(key => (
               <option key={key} value={t(key)}>
                 {t(key)}
               </option>

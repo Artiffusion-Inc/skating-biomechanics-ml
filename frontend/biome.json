@@ -99,6 +99,16 @@
           }
         }
       }
+    },
+    {
+      "includes": ["src/components/onboarding/tour-slider.tsx"],
+      "linter": {
+        "rules": {
+          "suspicious": {
+            "noArrayIndexKey": "off"
+          }
+        }
+      }
     }
   ]
 }
