@@ -1,0 +1,48 @@
+groups:
+  - name: inference_alerts
+    interval: 30s
+    rules:
+      - alert: GPUWorkerDown
+        expr: up{job="gpu-worker"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU worker {{ $labels.instance }} is down"
+          description: "GPU worker has been unreachable for more than 1 minute"
+
+      - alert: HighInferenceErrorRate
+        expr: job:inference_error_rate:percentage > 5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High inference error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}% (threshold: 5%)"
+
+      - alert: HighInferenceLatency
+        expr: job:inference_duration:p95 > 30
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High inference P95 latency"
+          description: "P95 latency is {{ $value | humanizeDuration }} (threshold: 30s)"
+
+      - alert: InferenceQueueBuildup
+        expr: avg_over_time(active_requests[5m]) > 3
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Inference queue building up"
+          description: "Average active requests: {{ $value }} (threshold: 3)"
+
+      - alert: GPUWorkerNoCUDA
+        expr: gpu_worker_ready{status="no_cuda"} == 1
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "GPU worker {{ $labels.instance }} has no CUDA"
+          description: "ONNX Runtime cannot find CUDAExecutionProvider"
