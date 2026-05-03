@@ -6,13 +6,24 @@ import sys
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from fastapi import status
+from app.routes.choreography import ChoreographyController
+from litestar.status_codes import HTTP_422_UNPROCESSABLE_ENTITY as HTTP_422
 
 # Mock aiobotocore before importing
 _mock_aiobotocore = MagicMock()
 _mock_aiobotocore_session = MagicMock()
 sys.modules["aiobotocore"] = _mock_aiobotocore
 sys.modules["aiobotocore.session"] = _mock_aiobotocore_session
+
+# Bypass Litestar Controller.__init__ which requires an owner argument;
+# none of the choreography route methods reference self.
+controller = object.__new__(ChoreographyController)
+
+
+def _bound(name):
+    """Return a bound controller method (bypasses HTTPRouteHandler __call__)."""
+    handler = getattr(controller, name)
+    return handler.fn.__get__(controller, ChoreographyController)
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +90,6 @@ def mock_tmp():
 @pytest.mark.asyncio
 async def test_upload_music_enqueues_job(mock_user, mock_db, mock_file, mock_request, mock_tmp):
     """Test that upload_music enqueues analyze_music_task and returns immediately."""
-    from app.routes.choreography import upload_music
     from app.schemas import UploadMusicResponse
 
     mock_music = MagicMock()
@@ -94,7 +104,7 @@ async def test_upload_music_enqueues_job(mock_user, mock_db, mock_file, mock_req
     ):
         mock_create.return_value = mock_music
 
-        response = await upload_music(mock_request, mock_user, mock_db, mock_file)
+        response = await _bound("upload_music")(mock_request, mock_user, mock_db, mock_file)
 
         assert isinstance(response, UploadMusicResponse)
         assert response.music_id == "music_456"
@@ -118,8 +128,7 @@ async def test_upload_music_handles_upload_failure(
     mock_user, mock_db, mock_file, mock_request, mock_tmp
 ):
     """Test that upload_music sets status to failed on upload error."""
-    from app.routes.choreography import upload_music
-    from fastapi import HTTPException
+    from litestar.exceptions import ClientException as HTTPException
 
     mock_music = MagicMock()
     mock_music.id = "music_456"
@@ -132,11 +141,10 @@ async def test_upload_music_handles_upload_failure(
         patch("app.routes.choreography.tempfile.NamedTemporaryFile", return_value=mock_tmp),
     ):
         with pytest.raises(HTTPException) as exc_info:
-            await upload_music(mock_request, mock_user, mock_db, mock_file)
+            await _bound("upload_music")(mock_request, mock_user, mock_db, mock_file)
 
-        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert exc_info.value.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
-        assert "Upload failed" in exc_info.value.detail["message"]
+        assert exc_info.value.status_code == HTTP_422
+        assert "Upload failed" in exc_info.value.detail
         mock_update.assert_called_once_with(mock_db, mock_music, status="failed")
 
 
@@ -180,33 +188,29 @@ def test_program_to_response():
 
 @pytest.mark.asyncio
 async def test_get_music_analysis_not_found(mock_user, mock_db):
-    from app.routes.choreography import get_music_analysis
-    from fastapi import HTTPException
+    from litestar.exceptions import ClientException as HTTPException
 
     with patch("app.routes.choreography.get_music_analysis_by_id", return_value=None):
         with pytest.raises(HTTPException) as exc:
-            await get_music_analysis("music_999", mock_user, mock_db)
+            await _bound("get_music_analysis")("music_999", mock_user, mock_db)
         assert exc.value.status_code == 404
 
 
 @pytest.mark.asyncio
 async def test_get_music_analysis_unauthorized(mock_db):
-    from app.routes.choreography import get_music_analysis
-    from fastapi import HTTPException
+    from litestar.exceptions import ClientException as HTTPException
 
     wrong_user = _make_mock_user("user_456")
     mock_music = _make_owned_entity("user_123")
 
     with patch("app.routes.choreography.get_music_analysis_by_id", return_value=mock_music):
         with pytest.raises(HTTPException) as exc:
-            await get_music_analysis("music_1", wrong_user, mock_db)
+            await _bound("get_music_analysis")("music_1", wrong_user, mock_db)
         assert exc.value.status_code == 403
 
 
 @pytest.mark.asyncio
 async def test_get_music_analysis_success(mock_user, mock_db):
-    from app.routes.choreography import get_music_analysis
-
     mock_music = MagicMock()
     mock_music.id = "music_1"
     mock_music.user_id = "user_123"
@@ -224,7 +228,7 @@ async def test_get_music_analysis_success(mock_user, mock_db):
     mock_music.updated_at = MagicMock(isoformat=lambda: "2026-01-01T00:01:00")
 
     with patch("app.routes.choreography.get_music_analysis_by_id", return_value=mock_music):
-        result = await get_music_analysis("music_1", mock_user, mock_db)
+        result = await _bound("get_music_analysis")("music_1", mock_user, mock_db)
 
     assert result["id"] == "music_1"
     assert result["status"] == "completed"
@@ -245,9 +249,8 @@ async def test_get_music_analysis_success(mock_user, mock_db):
 )
 @pytest.mark.asyncio
 async def test_generate_layout_errors(mock_db, user_id, entity, status_code):
-    from app.routes.choreography import generate_layout
     from app.schemas import GenerateRequest
-    from fastapi import HTTPException
+    from litestar.exceptions import ClientException as HTTPException
 
     user = _make_mock_user(user_id)
     body = GenerateRequest(
@@ -256,13 +259,12 @@ async def test_generate_layout_errors(mock_db, user_id, entity, status_code):
 
     with patch("app.routes.choreography.get_music_analysis_by_id", return_value=entity):
         with pytest.raises(HTTPException) as exc:
-            await generate_layout(body, user, mock_db)
+            await _bound("generate_layout")(body, user, mock_db)
         assert exc.value.status_code == status_code
 
 
 @pytest.mark.asyncio
 async def test_generate_layout_success(mock_user, mock_db):
-    from app.routes.choreography import generate_layout
     from app.schemas import GenerateRequest, GenerateResponse
 
     mock_music = MagicMock()
@@ -293,7 +295,7 @@ async def test_generate_layout_success(mock_user, mock_db):
         patch("app.routes.choreography.extract_features_for_csp", return_value={}),
         patch("app.routes.choreography.solve_layout", return_value=[layout_dict]),
     ):
-        result = await generate_layout(body, mock_user, mock_db)
+        result = await _bound("generate_layout")(body, mock_user, mock_db)
 
     assert isinstance(result, GenerateResponse)
     assert len(result.layouts) == 1
@@ -305,7 +307,6 @@ async def test_generate_layout_success(mock_user, mock_db):
 
 @pytest.mark.asyncio
 async def test_generate_layout_empty_result(mock_user, mock_db):
-    from app.routes.choreography import generate_layout
     from app.schemas import GenerateRequest, GenerateResponse
 
     mock_music = MagicMock()
@@ -327,7 +328,7 @@ async def test_generate_layout_empty_result(mock_user, mock_db):
         patch("app.routes.choreography.extract_features_for_csp", return_value={}),
         patch("app.routes.choreography.solve_layout", return_value=[]),
     ):
-        result = await generate_layout(body, mock_user, mock_db)
+        result = await _bound("generate_layout")(body, mock_user, mock_db)
 
     assert isinstance(result, GenerateResponse)
     assert len(result.layouts) == 0
@@ -347,7 +348,6 @@ async def test_generate_layout_empty_result(mock_user, mock_db):
 )
 @pytest.mark.asyncio
 async def test_validate_choreography(is_valid, errors, warnings):
-    from app.routes.choreography import validate_choreography
     from app.schemas import ValidateRequest, ValidateResponse
 
     elements = [{"code": "3A"}] if is_valid else [{"code": "3A"}, {"code": "3A"}, {"code": "3A"}]
@@ -361,7 +361,7 @@ async def test_validate_choreography(is_valid, errors, warnings):
     mock_result.warnings = warnings
 
     with patch("app.routes.choreography.validate_layout_engine", return_value=mock_result):
-        result = await validate_choreography(body)
+        result = await _bound("validate_choreography")(body)
 
     assert isinstance(result, ValidateResponse)
     assert result.is_valid is is_valid
@@ -376,20 +376,18 @@ async def test_validate_choreography(is_valid, errors, warnings):
 
 @pytest.mark.asyncio
 async def test_render_rink_diagram():
-    from app.routes.choreography import render_rink_diagram
     from app.schemas import RenderRinkRequest
 
     body = RenderRinkRequest(elements=[{"code": "3A", "x": 10.0, "y": 5.0}])
 
     with patch("app.routes.choreography.render_rink", return_value="<svg>...</svg>"):
-        result = await render_rink_diagram(body)
+        result = await _bound("render_rink_diagram")(body)
 
     assert result["svg"] == "<svg>...</svg>"
 
 
 @pytest.mark.asyncio
 async def test_render_rink_diagram_custom_size():
-    from app.routes.choreography import render_rink_diagram
     from app.schemas import RenderRinkRequest
 
     body = RenderRinkRequest(
@@ -403,7 +401,7 @@ async def test_render_rink_diagram_custom_size():
     with patch(
         "app.routes.choreography.render_rink", return_value="<svg>wide</svg>"
     ) as mock_render:
-        result = await render_rink_diagram(body)
+        result = await _bound("render_rink_diagram")(body)
 
     mock_render.assert_called_once_with(
         [], width=2000, height=1000, rink_width=56.0, rink_height=26.0
@@ -418,7 +416,6 @@ async def test_render_rink_diagram_custom_size():
 
 @pytest.mark.asyncio
 async def test_list_programs(mock_user, mock_db):
-    from app.routes.choreography import list_programs
     from app.schemas import ProgramListResponse
 
     mock_program = MagicMock()
@@ -442,7 +439,7 @@ async def test_list_programs(mock_user, mock_db):
         patch("app.routes.choreography.list_programs_by_user", return_value=[mock_program]),
         patch("app.routes.choreography.count_programs_by_user", return_value=1),
     ):
-        result = await list_programs(mock_user, mock_db, limit=10, offset=0)
+        result = await _bound("list_programs")(mock_user, mock_db, limit=10, offset=0)
 
     assert isinstance(result, ProgramListResponse)
     assert result.total == 1
@@ -452,7 +449,6 @@ async def test_list_programs(mock_user, mock_db):
 
 @pytest.mark.asyncio
 async def test_list_programs_empty(mock_db):
-    from app.routes.choreography import list_programs
     from app.schemas import ProgramListResponse
 
     user = _make_mock_user("user_empty")
@@ -461,7 +457,7 @@ async def test_list_programs_empty(mock_db):
         patch("app.routes.choreography.list_programs_by_user", return_value=[]),
         patch("app.routes.choreography.count_programs_by_user", return_value=0),
     ):
-        result = await list_programs(user, mock_db)
+        result = await _bound("list_programs")(user, mock_db)
 
     assert isinstance(result, ProgramListResponse)
     assert result.total == 0
@@ -475,7 +471,6 @@ async def test_list_programs_empty(mock_db):
 
 @pytest.mark.asyncio
 async def test_create_new_program(mock_user, mock_db):
-    from app.routes.choreography import create_new_program
     from app.schemas import SaveProgramRequest
 
     mock_program = MagicMock()
@@ -508,7 +503,7 @@ async def test_create_new_program(mock_user, mock_db):
     )
 
     with patch("app.routes.choreography.create_program", return_value=mock_program):
-        result = await create_new_program(body, mock_user, mock_db)
+        result = await _bound("create_new_program")(body, mock_user, mock_db)
 
     assert result.id == "prog_new"
     assert result.title == "New Program"
@@ -538,10 +533,12 @@ async def test_create_new_program(mock_user, mock_db):
 async def test_program_crud_errors(
     mock_db, route_func_name, crud_func_name, call_args, user_id, entity, status_code
 ):
-    from app.routes.choreography import delete_existing_program, get_program
-    from fastapi import HTTPException
+    from litestar.exceptions import ClientException as HTTPException
 
-    func_map = {"get_program": get_program, "delete_existing_program": delete_existing_program}
+    func_map = {
+        "get_program": _bound("get_program"),
+        "delete_existing_program": _bound("delete_existing_program"),
+    }
     func = func_map[route_func_name]
     user = _make_mock_user(user_id)
 
@@ -569,13 +566,12 @@ async def test_program_crud_errors(
 async def test_program_body_crud_errors(
     mock_db, route_func_name, call_args, user_id, entity, status_code
 ):
-    from app.routes.choreography import export_program, update_existing_program
     from app.schemas import ExportRequest, SaveProgramRequest
-    from fastapi import HTTPException
+    from litestar.exceptions import ClientException as HTTPException
 
     func_map = {
-        "update_existing_program": update_existing_program,
-        "export_program": export_program,
+        "update_existing_program": _bound("update_existing_program"),
+        "export_program": _bound("export_program"),
     }
     func = func_map[route_func_name]
     user = _make_mock_user(user_id)
@@ -598,8 +594,6 @@ async def test_program_body_crud_errors(
 
 @pytest.mark.asyncio
 async def test_get_program_success(mock_user, mock_db):
-    from app.routes.choreography import get_program
-
     mock_program = MagicMock()
     mock_program.id = "prog_1"
     mock_program.user_id = "user_123"
@@ -618,7 +612,7 @@ async def test_get_program_success(mock_user, mock_db):
     mock_program.validation_warnings = []
 
     with patch("app.routes.choreography.get_program_by_id", return_value=mock_program):
-        result = await get_program("prog_1", mock_user, mock_db)
+        result = await _bound("get_program")("prog_1", mock_user, mock_db)
 
     assert result.id == "prog_1"
     assert result.title == "My Program"
@@ -631,7 +625,6 @@ async def test_get_program_success(mock_user, mock_db):
 
 @pytest.mark.asyncio
 async def test_update_existing_program_success(mock_user, mock_db):
-    from app.routes.choreography import update_existing_program
     from app.schemas import SaveProgramRequest
 
     mock_program = MagicMock()
@@ -657,7 +650,7 @@ async def test_update_existing_program_success(mock_user, mock_db):
         patch("app.routes.choreography.get_program_by_id", return_value=mock_program),
         patch("app.routes.choreography.update_program", return_value=mock_program) as mock_update,
     ):
-        result = await update_existing_program("prog_1", body, mock_user, mock_db)
+        result = await _bound("update_existing_program")("prog_1", body, mock_user, mock_db)
 
     mock_update.assert_called_once()
     assert result.id == "prog_1"
@@ -670,15 +663,13 @@ async def test_update_existing_program_success(mock_user, mock_db):
 
 @pytest.mark.asyncio
 async def test_delete_existing_program_success(mock_user, mock_db):
-    from app.routes.choreography import delete_existing_program
-
     mock_program = _make_owned_entity("user_123")
 
     with (
         patch("app.routes.choreography.get_program_by_id", return_value=mock_program),
         patch("app.routes.choreography.delete_program") as mock_delete,
     ):
-        await delete_existing_program("prog_1", mock_user, mock_db)
+        await _bound("delete_existing_program")("prog_1", mock_user, mock_db)
 
     mock_delete.assert_called_once_with(mock_db, mock_program)
 
@@ -691,7 +682,6 @@ async def test_delete_existing_program_success(mock_user, mock_db):
 @pytest.mark.parametrize("fmt", ["json", "svg", "pdf"])
 @pytest.mark.asyncio
 async def test_export_program_format(mock_user, mock_db, fmt):
-    from app.routes.choreography import export_program
     from app.schemas import ExportRequest
 
     layout = (
@@ -725,10 +715,10 @@ async def test_export_program_format(mock_user, mock_db, fmt):
 
     if len(ctx) == 1:
         with ctx[0]:
-            result = await export_program("prog_1", body, mock_user, mock_db)
+            result = await _bound("export_program")("prog_1", body, mock_user, mock_db)
     else:
         with ctx[0], ctx[1]:
-            result = await export_program("prog_1", body, mock_user, mock_db)
+            result = await _bound("export_program")("prog_1", body, mock_user, mock_db)
 
     assert result["format"] == fmt
     if fmt == "json":
@@ -743,7 +733,6 @@ async def test_export_program_format(mock_user, mock_db, fmt):
 
 @pytest.mark.asyncio
 async def test_export_program_svg_no_layout(mock_user, mock_db):
-    from app.routes.choreography import export_program
     from app.schemas import ExportRequest
 
     mock_program = _make_owned_entity(
@@ -765,7 +754,7 @@ async def test_export_program_svg_no_layout(mock_user, mock_db):
             "app.routes.choreography.render_rink", return_value="<svg>empty</svg>"
         ) as mock_render,
     ):
-        result = await export_program("prog_1", body, mock_user, mock_db)
+        result = await _bound("export_program")("prog_1", body, mock_user, mock_db)
 
     mock_render.assert_called_once_with([])
     assert result["format"] == "svg"

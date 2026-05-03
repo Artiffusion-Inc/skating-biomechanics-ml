@@ -8,7 +8,7 @@ from litestar.response import Response
 from app.schemas import ErrorResponse
 
 
-async def http_exception_handler(request, exc: HTTPException) -> Response:
+def http_exception_handler(request, exc: HTTPException) -> Response:
     """Map Litestar HTTPException to structured ErrorResponse."""
     body = ErrorResponse(
         error=exc.detail if isinstance(exc.detail, str) else "Error",

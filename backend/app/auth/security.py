@@ -33,10 +33,12 @@ def create_access_token(user_id: str, expires_delta_seconds: int | None = None) 
     if expires_delta_seconds is None:
         expires_delta_seconds = settings.jwt.access_token_expire_minutes * 60
 
+    now = int(__import__("time").time())
     payload = {
         "sub": user_id,
         "type": "access",
-        "exp": int(__import__("time").time() + expires_delta_seconds),
+        "iat": now,
+        "exp": now + expires_delta_seconds,
     }
     return pyjwt.encode(payload, settings.jwt.secret_key.get_secret_value(), algorithm="HS256")
 

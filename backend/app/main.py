@@ -72,12 +72,16 @@ def create_app() -> Litestar:
     jwt_auth = JWTAuth[User](
         token_secret=settings.jwt.secret_key.get_secret_value(),
         retrieve_user_handler=retrieve_user_handler,
-        token_algorithm="HS256",  # noqa: S106
+        algorithm="HS256",  # noqa: S106
         exclude=[
             "/api/v1/auth/register",
             "/api/v1/auth/login",
             "/api/v1/auth/refresh",
+            "/api/v1/auth/logout",
             "/api/v1/health",
+            "/api/v1/models",
+            "/api/v1/outputs",
+            "/api/v1/metrics/registry",
             "/api/v1/docs",
             "/api/v1/redoc",
             "/api/v1/openapi.json",

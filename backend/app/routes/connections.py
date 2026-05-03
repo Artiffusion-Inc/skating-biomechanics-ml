@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, ClassVar
 from litestar import Controller, get, post
 from litestar.exceptions import ClientException
 from litestar.status_codes import (
+    HTTP_200_OK,
     HTTP_201_CREATED,
     HTTP_400_BAD_REQUEST,
     HTTP_403_FORBIDDEN,
@@ -77,7 +78,7 @@ class ConnectionsController(Controller):
         )
         return _conn_to_response(conn)
 
-    @post("/{conn_id:str}/accept")
+    @post("/{conn_id:str}/accept", status_code=HTTP_200_OK)
     async def accept_invite(self, conn_id: str, user: CurrentUser, db: DbDep) -> ConnectionResponse:
         """Invitee accepts a connection."""
         conn = await get_conn_by_id(db, conn_id)
@@ -102,7 +103,7 @@ class ConnectionsController(Controller):
         await db.refresh(conn)
         return _conn_to_response(conn)
 
-    @post("/{conn_id:str}/end")
+    @post("/{conn_id:str}/end", status_code=HTTP_200_OK)
     async def end_connection(
         self, conn_id: str, user: CurrentUser, db: DbDep
     ) -> ConnectionResponse:

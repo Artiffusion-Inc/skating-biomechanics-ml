@@ -38,7 +38,7 @@ class ProcessController(Controller):
     path = ""
     tags: ClassVar[list[str]] = ["process"]
 
-    @post("/queue")
+    @post("/queue", status_code=200)
     async def enqueue_process(
         self,
         request: Request,
@@ -100,7 +100,7 @@ class ProcessController(Controller):
             error=state.get("error"),
         )
 
-    @post("/{task_id:str}/cancel")
+    @post("/{task_id:str}/cancel", status_code=200)
     async def cancel_queued_process(self, task_id: str) -> dict:
         """Cancel a queued or running task via Valkey signal."""
         await set_cancel_signal(task_id)

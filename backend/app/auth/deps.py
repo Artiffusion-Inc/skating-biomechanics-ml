@@ -15,23 +15,25 @@ from app.models.user import User
 if TYPE_CHECKING:
     from litestar import Request
 
-settings = get_settings()
 
-
-async def retrieve_user_handler(token: dict, connection) -> User | None:
-    """Litestar JWTAuth callback: decode token dict and fetch user from DB.
-
-    Litestar JWTAuth decodes the JWT and passes the payload dict here.
-    """
-    user_id = token.get("sub")
+async def retrieve_user_handler(token, connection) -> User | None:
+    """Litestar JWTAuth callback: decode token and fetch user from DB."""
+    user_id = getattr(token, "sub", None)
+    if user_id is None and callable(getattr(token, "get", None)):
+        user_id = token.get("sub")
     if not user_id:
         return None
 
-    # We need a DB session — get it from the connection scope state
-    db: AsyncSession = connection.scope.get("db_session")
+    # Tests inject session via app.state; prod creates a fresh one.
+    db = getattr(connection.app.state, "test_db_session", None)
     if db is None:
-        return None
+        from app.database import async_session_factory
 
+        async with async_session_factory() as db:
+            result = await db.execute(
+                select(User).where(User.id == user_id, User.is_active.is_(True))
+            )
+            return result.scalar_one_or_none()
     result = await db.execute(select(User).where(User.id == user_id, User.is_active.is_(True)))
     return result.scalar_one_or_none()
 
@@ -42,7 +44,7 @@ async def get_current_user(request: Request, db_session: AsyncSession) -> User:
     Used as a dependency provider for routes that need the user object.
     When APP_SKIP_AUTH=true, returns the first active user.
     """
-    if settings.app.skip_auth:
+    if get_settings().app.skip_auth:
         result = await db_session.execute(
             select(User).where(User.is_active.is_(True)).order_by(User.created_at).limit(1)
         )

@@ -9,26 +9,6 @@ if TYPE_CHECKING:
     from pathlib import Path
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-
-@pytest.fixture
-def app():
-    """Create test FastAPI app with models routes."""
-    from app.routes.models import router
-    from fastapi import FastAPI
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1/models")
-    return app
-
-
-@pytest.fixture
-async def client(app):
-    """Create test HTTP client (no DB needed for models route)."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
 
 
 @pytest.fixture
@@ -50,7 +30,7 @@ def fake_models_dir(tmp_path):
 
 
 @pytest.mark.asyncio
-async def test_list_models_returns_six_entries(client: AsyncClient, fake_models_dir: Path):
+async def test_list_models_returns_six_entries(client, fake_models_dir: Path):
     """GET /models returns exactly 6 model entries."""
     with patch("app.routes.models._MODELS_DIR", fake_models_dir):
         response = await client.get("/api/v1/models")
@@ -61,7 +41,7 @@ async def test_list_models_returns_six_entries(client: AsyncClient, fake_models_
 
 
 @pytest.mark.asyncio
-async def test_list_models_available_flags(client: AsyncClient, fake_models_dir: Path):
+async def test_list_models_available_flags(client, fake_models_dir: Path):
     """GET /models correctly reports available=True/False based on file existence."""
     with patch("app.routes.models._MODELS_DIR", fake_models_dir):
         response = await client.get("/api/v1/models")
@@ -81,7 +61,7 @@ async def test_list_models_available_flags(client: AsyncClient, fake_models_dir:
 
 
 @pytest.mark.asyncio
-async def test_list_models_size_mb_when_available(client: AsyncClient, fake_models_dir: Path):
+async def test_list_models_size_mb_when_available(client, fake_models_dir: Path):
     """GET /models returns size_mb for available models, None for missing ones."""
     with patch("app.routes.models._MODELS_DIR", fake_models_dir):
         response = await client.get("/api/v1/models")
@@ -101,7 +81,7 @@ async def test_list_models_size_mb_when_available(client: AsyncClient, fake_mode
 
 
 @pytest.mark.asyncio
-async def test_list_models_all_missing(client: AsyncClient, tmp_path: Path):
+async def test_list_models_all_missing(client, tmp_path: Path):
     """GET /models with no files returns all available=False."""
     empty_dir = tmp_path / "empty_models"
     empty_dir.mkdir()
@@ -117,7 +97,7 @@ async def test_list_models_all_missing(client: AsyncClient, tmp_path: Path):
 
 
 @pytest.mark.asyncio
-async def test_list_models_response_schema(client: AsyncClient, fake_models_dir: Path):
+async def test_list_models_response_schema(client, fake_models_dir: Path):
     """GET /models response matches ModelStatus schema (id, available, size_mb)."""
     with patch("app.routes.models._MODELS_DIR", fake_models_dir):
         response = await client.get("/api/v1/models")

@@ -3,6 +3,7 @@
 from typing import ClassVar
 
 from litestar import Controller, get, patch
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: F401
 
 from app.auth.deps import CurrentUser, DbDep
 from app.crud.user import update
@@ -21,7 +22,7 @@ class UsersController(Controller):
     @get("")
     async def get_me(self, user: CurrentUser) -> UserResponse:
         """Get current user profile."""
-        return user
+        return UserResponse.model_validate(user)
 
     @patch("")
     async def update_profile(
@@ -39,7 +40,7 @@ class UsersController(Controller):
             height_cm=data.height_cm,
             weight_kg=data.weight_kg,
         )
-        return updated
+        return UserResponse.model_validate(updated)
 
     @patch("/settings")
     async def update_settings(
@@ -56,7 +57,7 @@ class UsersController(Controller):
             timezone=data.timezone,
             theme=data.theme,
         )
-        return updated
+        return UserResponse.model_validate(updated)
 
     @patch("/onboarding")
     async def update_onboarding_role(
@@ -67,4 +68,4 @@ class UsersController(Controller):
     ) -> UserResponse:
         """Update user's onboarding role."""
         updated = await update(db, user, onboarding_role=data.onboarding_role)
-        return updated
+        return UserResponse.model_validate(updated)

@@ -35,7 +35,7 @@ class UploadsController(Controller):
         file_name: str = Parameter(min_length=1),
         content_type: str = Parameter(default="video/mp4"),
         total_size: int = Parameter(gt=0),
-    ):
+    ) -> dict:
         """Initialize a multipart upload. Returns upload_id and pre-signed part URLs."""
         r2 = _client()
         bucket = get_settings().r2.bucket
@@ -74,7 +74,7 @@ class UploadsController(Controller):
         }
 
     @post("/complete")
-    async def complete_upload(self, user: CurrentUser, data: CompleteUploadRequest):
+    async def complete_upload(self, user: CurrentUser, data: CompleteUploadRequest) -> dict:
         """Complete a multipart upload. Returns the final object key."""
         r2 = _client()
         bucket = get_settings().r2.bucket

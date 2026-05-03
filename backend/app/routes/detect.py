@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import ClassVar
 
 from litestar import Controller, Request, get, post
-from litestar.datastructures import UploadFile  # noqa: TC002
 from litestar.exceptions import ClientException
 
 from app.schemas import (
@@ -28,18 +27,25 @@ class DetectController(Controller):
     path = ""
     tags: ClassVar[list[str]] = ["detect"]
 
-    @post("")
+    @post("", status_code=200)
     async def enqueue_detect(
         self,
         request: Request,
-        data: UploadFile,
         tracking: str = "auto",
     ) -> DetectQueueResponse:
         """Upload video, enqueue detection job, return task_id immediately."""
-        suffix = Path(data.filename or "video.mp4").suffix
+        form_data = await request.form()
+        video = form_data.get("video")
+        if not video:
+            raise ClientException(
+                status_code=400,
+                detail="No video file uploaded",
+            )
+
+        suffix = Path(video.filename or "video.mp4").suffix
         video_key = f"input/{uuid.uuid4().hex}{suffix}"
 
-        content = await data.read()
+        content = await video.read()
         await upload_bytes_async(content, video_key)
 
         task_id = f"det_{uuid.uuid4().hex[:12]}"

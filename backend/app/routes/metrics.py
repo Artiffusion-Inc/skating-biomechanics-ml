@@ -52,7 +52,7 @@ class MetricsController(Controller):
             for name, m in METRIC_REGISTRY.items()
         }
 
-    @get("/trend", cache=300)
+    @get("/trend")
     async def get_trend(
         self,
         user: CurrentUser,

@@ -5,6 +5,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING
 
+import redis.asyncio as aioredis
 from arq import create_pool
 from arq.connections import RedisSettings
 from litestar.stores.redis import RedisStore
@@ -28,12 +29,14 @@ async def app_lifespan(app: Litestar) -> AsyncGenerator[None, None]:
     await init_valkey_pool()
 
     # Response cache store via Litestar StoreRegistry
-    root_store = RedisStore(
+    redis_client = aioredis.Redis(
         host=settings.valkey.host,
         port=settings.valkey.port,
         db=settings.valkey.db,
         password=settings.valkey.password.get_secret_value() or None,
+        decode_responses=False,
     )
+    root_store = RedisStore(redis=redis_client)
     app.stores = StoreRegistry(default_factory=root_store.with_namespace)
 
     # arq pool for background job enqueue

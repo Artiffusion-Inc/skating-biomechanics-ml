@@ -1,12 +1,15 @@
 """Auth API routes: register, login, refresh, logout."""
 
+from __future__ import annotations
+
 import uuid
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
 from litestar import Controller, post
 from litestar.exceptions import ClientException
-from litestar.status_codes import HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from litestar.status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: F401
 
 from app.auth.deps import DbDep
 from app.auth.security import (
@@ -32,7 +35,7 @@ settings = get_settings()
 
 
 class AuthController(Controller):
-    path = "/auth"
+    path = ""
     tags: ClassVar[list[str]] = ["auth"]
 
     async def _issue_token_pair(
@@ -69,7 +72,7 @@ class AuthController(Controller):
         )
         return await self._issue_token_pair(db, user.id)
 
-    @post("/login")
+    @post("/login", status_code=HTTP_200_OK)
     async def login(self, db: DbDep, data: LoginRequest) -> TokenResponse:
         """Authenticate and return tokens."""
         user = await get_by_email(db, data.email)
@@ -80,7 +83,7 @@ class AuthController(Controller):
             )
         return await self._issue_token_pair(db, user.id)
 
-    @post("/refresh")
+    @post("/refresh", status_code=HTTP_200_OK)
     async def refresh(self, db: DbDep, data: RefreshRequest) -> TokenResponse:
         """Rotate refresh token and issue new token pair."""
         token_hash = hash_token(data.refresh_token)

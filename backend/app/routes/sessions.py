@@ -80,7 +80,7 @@ class SessionsController(Controller):
         )
         return await _session_to_response(session)
 
-    @get("", cache=60)
+    @get("")
     async def list_sessions(
         self,
         user: CurrentUser,

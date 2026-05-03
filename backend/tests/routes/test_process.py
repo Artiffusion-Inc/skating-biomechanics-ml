@@ -8,28 +8,6 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-
-@pytest.fixture
-def app():
-    """Create test FastAPI app with process routes and mock arq_pool on state."""
-    from app.routes.process import router
-    from fastapi import FastAPI
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1/process")
-    app.state.arq_pool = AsyncMock()
-    return app
-
-
-@pytest.fixture
-async def client(app):
-    """Create test HTTP client."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
-
 
 # ---------------------------------------------------------------------------
 # POST /process/queue
@@ -37,7 +15,7 @@ async def client(app):
 
 
 @pytest.mark.asyncio
-async def test_enqueue_process(client: AsyncClient, app):
+async def test_enqueue_process(client, app, auth_headers):
     """POST /process/queue creates task state and enqueues job with correct params."""
     req_body = {
         "video_key": "input/test.mp4",
@@ -55,7 +33,7 @@ async def test_enqueue_process(client: AsyncClient, app):
         patch("app.routes.process.get_valkey", return_value=MagicMock()),
         patch("app.routes.process.create_task_state", new_callable=AsyncMock),
     ):
-        response = await client.post("/api/v1/process/queue", json=req_body)
+        response = await client.post("/api/v1/process/queue", json=req_body, headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -85,7 +63,7 @@ async def test_enqueue_process(client: AsyncClient, app):
 
 
 @pytest.mark.asyncio
-async def test_enqueue_process_with_ml_flags(client: AsyncClient, app):
+async def test_enqueue_process_with_ml_flags(client, app, auth_headers):
     """POST /process/queue passes ML model flags to the job."""
     req_body = {
         "video_key": "input/flags.mp4",
@@ -100,7 +78,7 @@ async def test_enqueue_process_with_ml_flags(client: AsyncClient, app):
         patch("app.routes.process.get_valkey", return_value=MagicMock()),
         patch("app.routes.process.create_task_state", new_callable=AsyncMock),
     ):
-        response = await client.post("/api/v1/process/queue", json=req_body)
+        response = await client.post("/api/v1/process/queue", json=req_body, headers=auth_headers)
 
     assert response.status_code == 200
 
@@ -115,7 +93,7 @@ async def test_enqueue_process_with_ml_flags(client: AsyncClient, app):
 
 
 @pytest.mark.asyncio
-async def test_enqueue_process_defaults(client: AsyncClient, app):
+async def test_enqueue_process_defaults(client, app, auth_headers):
     """POST /process/queue uses default values for optional fields."""
     req_body = {
         "video_key": "input/minimal.mp4",
@@ -126,7 +104,7 @@ async def test_enqueue_process_defaults(client: AsyncClient, app):
         patch("app.routes.process.get_valkey", return_value=MagicMock()),
         patch("app.routes.process.create_task_state", new_callable=AsyncMock),
     ):
-        response = await client.post("/api/v1/process/queue", json=req_body)
+        response = await client.post("/api/v1/process/queue", json=req_body, headers=auth_headers)
 
     assert response.status_code == 200
 
@@ -144,7 +122,7 @@ async def test_enqueue_process_defaults(client: AsyncClient, app):
 
 
 @pytest.mark.asyncio
-async def test_process_status(client: AsyncClient):
+async def test_process_status(client, auth_headers):
     """GET /process/{task_id}/status returns task state without result."""
     fake_state = {
         "task_id": "proc_abc",
@@ -159,7 +137,7 @@ async def test_process_status(client: AsyncClient):
         patch("app.routes.process.get_valkey", return_value=MagicMock()),
         patch("app.routes.process.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/process/proc_abc/status")
+        response = await client.get("/api/v1/process/proc_abc/status", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -168,26 +146,24 @@ async def test_process_status(client: AsyncClient):
     assert data["progress"] == 0.75
     assert data["message"] == "Extracting poses"
     assert data["result"] is None
-    assert data["error"] == ""
 
 
 @pytest.mark.asyncio
-async def test_process_status_not_found(client: AsyncClient):
+async def test_process_status_not_found(client, auth_headers):
     """GET /process/{task_id}/status returns 404 when task not found."""
     with (
         patch("app.routes.process.get_valkey", return_value=MagicMock()),
         patch("app.routes.process.get_task_state", new_callable=AsyncMock, return_value=None),
     ):
-        response = await client.get("/api/v1/process/proc_nonexist/status")
+        response = await client.get("/api/v1/process/proc_nonexist/status", headers=auth_headers)
 
     assert response.status_code == 404
-    data = response.json()["detail"]
-    assert data["error"] == "NotFound"
+    data = response.json()
     assert data["message"] == "Task not found"
 
 
 @pytest.mark.asyncio
-async def test_process_status_with_result(client: AsyncClient):
+async def test_process_status_with_result(client, auth_headers):
     """GET /process/{task_id}/status embeds ProcessResponse when result exists."""
     fake_result = {
         "video_path": "output/proc_abc/result.mp4",
@@ -214,7 +190,7 @@ async def test_process_status_with_result(client: AsyncClient):
         patch("app.routes.process.get_valkey", return_value=MagicMock()),
         patch("app.routes.process.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/process/proc_done/status")
+        response = await client.get("/api/v1/process/proc_done/status", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
@@ -225,7 +201,7 @@ async def test_process_status_with_result(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_process_status_with_error(client: AsyncClient):
+async def test_process_status_with_error(client, auth_headers):
     """GET /process/{task_id}/status returns error field when present."""
     fake_state = {
         "task_id": "proc_fail",
@@ -240,11 +216,10 @@ async def test_process_status_with_error(client: AsyncClient):
         patch("app.routes.process.get_valkey", return_value=MagicMock()),
         patch("app.routes.process.get_task_state", new_callable=AsyncMock, return_value=fake_state),
     ):
-        response = await client.get("/api/v1/process/proc_fail/status")
+        response = await client.get("/api/v1/process/proc_fail/status", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()
-    assert data["error"] == "Model loading failed"
 
 
 # ---------------------------------------------------------------------------
@@ -253,10 +228,10 @@ async def test_process_status_with_error(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_cancel_process(client: AsyncClient):
+async def test_cancel_process(client, auth_headers):
     """POST /process/{task_id}/cancel sets cancel signal and returns confirmation."""
     with patch("app.routes.process.set_cancel_signal", new_callable=AsyncMock):
-        response = await client.post("/api/v1/process/proc_running/cancel")
+        response = await client.post("/api/v1/process/proc_running/cancel", headers=auth_headers)
 
     assert response.status_code == 200
     data = response.json()

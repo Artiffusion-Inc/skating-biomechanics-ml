@@ -5,30 +5,11 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from httpx import ASGITransport, AsyncClient
-
-
-@pytest.fixture
-def app():
-    """Create test FastAPI app with misc routes."""
-    from app.routes.misc import router
-    from fastapi import FastAPI
-
-    app = FastAPI()
-    app.include_router(router, prefix="/api/v1")
-    return app
-
-
-@pytest.fixture
-async def client(app):
-    """Create test HTTP client (no DB needed for misc routes)."""
-    transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
-        yield ac
+from litestar.testing import AsyncTestClient
 
 
 @pytest.mark.asyncio
-async def test_health_returns_ok(client: AsyncClient):
+async def test_health_returns_ok(client: AsyncTestClient):
     """GET /health returns {"status": "ok"} without authentication."""
     response = await client.get("/api/v1/health")
     assert response.status_code == 200
@@ -36,18 +17,17 @@ async def test_health_returns_ok(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_serve_output_not_found(client: AsyncClient):
+async def test_serve_output_not_found(client: AsyncTestClient):
     """GET /outputs/{key} returns 404 when object does not exist in R2."""
     with patch("app.routes.misc.object_exists_async", new_callable=AsyncMock, return_value=False):
         response = await client.get("/api/v1/outputs/nonexistent/video.mp4")
     assert response.status_code == 404
-    data = response.json()["detail"]
-    assert data["error"] == "NotFound"
+    data = response.json()
     assert data["message"] == "File not found"
 
 
 @pytest.mark.asyncio
-async def test_serve_output_streams_file(client: AsyncClient):
+async def test_serve_output_streams_file(client: AsyncTestClient):
     """GET /outputs/{key} streams the file from R2 with correct content-type."""
     fake_chunks = [b"chunk1", b"chunk2", b"chunk3"]
 
@@ -75,7 +55,7 @@ async def test_serve_output_streams_file(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_serve_output_content_type_by_extension(client: AsyncClient):
+async def test_serve_output_content_type_by_extension(client: AsyncTestClient):
     """GET /outputs/{key} overrides S3 content-type with extension-based type."""
 
     async def fake_iter_chunks(*, chunk_size):
@@ -99,7 +79,7 @@ async def test_serve_output_content_type_by_extension(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_serve_output_preserves_unknown_extension(client: AsyncClient):
+async def test_serve_output_preserves_unknown_extension(client: AsyncTestClient):
     """GET /outputs/{key} uses S3-reported content-type for unknown extensions."""
 
     async def fake_iter_chunks(*, chunk_size):
@@ -123,7 +103,7 @@ async def test_serve_output_preserves_unknown_extension(client: AsyncClient):
 
 
 @pytest.mark.asyncio
-async def test_serve_output_path_with_slashes(client: AsyncClient):
+async def test_serve_output_path_with_slashes(client: AsyncTestClient):
     """GET /outputs/{key:path} handles nested paths with slashes."""
     with patch("app.routes.misc.object_exists_async", new_callable=AsyncMock, return_value=False):
         response = await client.get("/api/v1/outputs/user/42/session/7/video.webm")
