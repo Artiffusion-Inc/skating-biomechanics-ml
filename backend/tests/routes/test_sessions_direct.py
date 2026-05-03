@@ -54,6 +54,7 @@ def _mock_session(
     s.created_at = datetime.now(UTC)
     s.processed_at = None
     s.metrics = []
+    s.process_task_id = None
     return s
 
 
@@ -78,6 +79,7 @@ def _mock_session_response(session_id: str = "sess_1", user_id: str = "user_1") 
         overall_score=None,
         created_at=datetime.now(UTC).isoformat(),
         processed_at=None,
+        process_task_id=None,
         metrics=[],
     )
 

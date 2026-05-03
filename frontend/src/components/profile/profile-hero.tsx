@@ -1,7 +1,8 @@
 "use client"
 
 import { Check, Pencil, X } from "lucide-react"
-import { type FormEvent, useEffect, useRef, useState } from "react"
+import { type FormEvent, useRef, useState } from "react"
+import { useMountEffect } from "@/lib/useMountEffect"
 import { toast } from "sonner"
 import { useAuth } from "@/components/auth-provider"
 import { useTranslations } from "@/i18n"
@@ -22,10 +23,10 @@ export function ProfileHero() {
   const [weight, setWeight] = useState(user?.weight_kg?.toString() ?? "")
   const [saving, setSaving] = useState(false)
 
-  useEffect(() => {
+  useMountEffect(() => {
     setHeight(user?.height_cm?.toString() ?? "")
     setWeight(user?.weight_kg?.toString() ?? "")
-  }, [user?.height_cm, user?.weight_kg])
+  })
 
   const saveBody = async () => {
     if (saving) return

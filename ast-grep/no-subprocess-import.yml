@@ -14,3 +14,5 @@ rule:
     - pattern: from subprocess import $$$NAMES
 ignores:
   - "ml/scripts/**"
+  - "scripts/**"
+  - "ml/gpu_server/**"

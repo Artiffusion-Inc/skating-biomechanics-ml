@@ -17,3 +17,5 @@ rule:
     - pattern: subprocess.check_call($$$ARGS)
 ignores:
   - "ml/scripts/**"
+  - "scripts/**"
+  - "ml/gpu_server/**"

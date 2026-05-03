@@ -6,11 +6,13 @@ import { useAuth } from "@/components/auth-provider"
 import { Button } from "@/components/ui/button"
 import { useTranslations } from "@/i18n"
 import { updateSettings } from "@/lib/auth"
+import { useRouter } from "next/navigation"
 
 export function SettingsForm() {
   const t = useTranslations("settings")
   const tc = useTranslations("common")
   const { user } = useAuth()
+  const router = useRouter()
 
   const [language, setLanguage] = useState(user?.language ?? "ru")
   const [timezone, setTimezone] = useState(user?.timezone ?? "Europe/Moscow")
@@ -94,7 +96,7 @@ export function SettingsForm() {
           className="w-full"
           onClick={() => {
             localStorage.removeItem("onboarding_completed")
-            window.location.href = "/onboarding"
+            router.push("/onboarding")
           }}
         >
           {t("restartOnboarding")}
