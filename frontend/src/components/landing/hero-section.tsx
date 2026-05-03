@@ -105,42 +105,42 @@ export function HeroSection() {
                 className="absolute inset-0 rounded-full opacity-20 blur-3xl"
                 style={{ background: "var(--ice-glow)" }}
               />
-              {/* Floating cards — glassmorphism */}
+              {/* Floating cards — matte ice */}
               <div
                 className="absolute top-[10%] left-[10%] rounded-2xl p-5"
                 style={{
-                  background: "oklch(0.95 0.01 240 / 0.45)",
-                  backdropFilter: "blur(16px)",
-                  border: "1px solid oklch(0.85 0.03 240 / 0.5)",
-                  boxShadow: "0 4px 24px oklch(0.42 0.12 240 / 0.15)",
+                  background: "rgba(255, 255, 255, 0.22)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
                 }}
               >
-                <p className="text-xs font-mono" style={{ color: "var(--ice-deep)" }}>CoM</p>
-                <p className="text-2xl font-medium text-foreground">1.24 m</p>
+                <p className="text-xs font-mono" style={{ color: "oklch(0.5 0.05 240)" }}>CoM</p>
+                <p className="text-2xl font-medium" style={{ color: "oklch(0.2 0 0)" }}>1.24 m</p>
               </div>
               <div
                 className="absolute right-[15%] bottom-[20%] rounded-2xl p-5"
                 style={{
-                  background: "oklch(0.95 0.01 240 / 0.45)",
-                  backdropFilter: "blur(16px)",
-                  border: "1px solid oklch(0.85 0.03 240 / 0.5)",
-                  boxShadow: "0 4px 24px oklch(0.42 0.12 240 / 0.15)",
+                  background: "rgba(255, 255, 255, 0.22)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
                 }}
               >
-                <p className="text-xs font-mono" style={{ color: "var(--ice-deep)" }}>Rotation</p>
-                <p className="text-2xl font-medium text-foreground">540°</p>
+                <p className="text-xs font-mono" style={{ color: "oklch(0.5 0.05 240)" }}>Rotation</p>
+                <p className="text-2xl font-medium" style={{ color: "oklch(0.2 0 0)" }}>540°</p>
               </div>
               <div
                 className="absolute top-[40%] right-[5%] rounded-2xl p-4"
                 style={{
-                  background: "oklch(0.95 0.01 240 / 0.45)",
-                  backdropFilter: "blur(16px)",
-                  border: "1px solid oklch(0.85 0.03 240 / 0.5)",
-                  boxShadow: "0 4px 24px oklch(0.42 0.12 240 / 0.15)",
+                  background: "rgba(255, 255, 255, 0.22)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  border: "1px solid rgba(255, 255, 255, 0.3)",
                 }}
               >
-                <p className="text-xs font-mono" style={{ color: "var(--ice-deep)" }}>Airtime</p>
-                <p className="text-xl font-medium text-foreground">0.72 s</p>
+                <p className="text-xs font-mono" style={{ color: "oklch(0.5 0.05 240)" }}>Airtime</p>
+                <p className="text-xl font-medium" style={{ color: "oklch(0.2 0 0)" }}>0.72 s</p>
               </div>
             </div>
           </div>
