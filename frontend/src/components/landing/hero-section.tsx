@@ -105,18 +105,42 @@ export function HeroSection() {
                 className="absolute inset-0 rounded-full opacity-20 blur-3xl"
                 style={{ background: "var(--ice-glow)" }}
               />
-              {/* Floating cards */}
-              <div className="frost-glass absolute top-[10%] left-[10%] rounded-2xl p-5">
-                <p className="text-xs font-mono text-muted-foreground">CoM</p>
-                <p className="text-2xl font-medium">1.24 m</p>
+              {/* Floating cards — glassmorphism */}
+              <div
+                className="absolute top-[10%] left-[10%] rounded-2xl p-5"
+                style={{
+                  background: "oklch(0.95 0.01 240 / 0.45)",
+                  backdropFilter: "blur(16px)",
+                  border: "1px solid oklch(0.85 0.03 240 / 0.5)",
+                  boxShadow: "0 4px 24px oklch(0.42 0.12 240 / 0.15)",
+                }}
+              >
+                <p className="text-xs font-mono" style={{ color: "var(--ice-deep)" }}>CoM</p>
+                <p className="text-2xl font-medium text-foreground">1.24 m</p>
               </div>
-              <div className="frost-glass absolute right-[15%] bottom-[20%] rounded-2xl p-5">
-                <p className="text-xs font-mono text-muted-foreground">Rotation</p>
-                <p className="text-2xl font-medium">540°</p>
+              <div
+                className="absolute right-[15%] bottom-[20%] rounded-2xl p-5"
+                style={{
+                  background: "oklch(0.95 0.01 240 / 0.45)",
+                  backdropFilter: "blur(16px)",
+                  border: "1px solid oklch(0.85 0.03 240 / 0.5)",
+                  boxShadow: "0 4px 24px oklch(0.42 0.12 240 / 0.15)",
+                }}
+              >
+                <p className="text-xs font-mono" style={{ color: "var(--ice-deep)" }}>Rotation</p>
+                <p className="text-2xl font-medium text-foreground">540°</p>
               </div>
-              <div className="frost-glass absolute top-[40%] right-[5%] rounded-2xl p-4">
-                <p className="text-xs font-mono text-muted-foreground">Airtime</p>
-                <p className="text-xl font-medium">0.72 s</p>
+              <div
+                className="absolute top-[40%] right-[5%] rounded-2xl p-4"
+                style={{
+                  background: "oklch(0.95 0.01 240 / 0.45)",
+                  backdropFilter: "blur(16px)",
+                  border: "1px solid oklch(0.85 0.03 240 / 0.5)",
+                  boxShadow: "0 4px 24px oklch(0.42 0.12 240 / 0.15)",
+                }}
+              >
+                <p className="text-xs font-mono" style={{ color: "var(--ice-deep)" }}>Airtime</p>
+                <p className="text-xl font-medium text-foreground">0.72 s</p>
               </div>
             </div>
           </div>
