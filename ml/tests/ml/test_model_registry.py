@@ -1,5 +1,6 @@
 """Tests for ModelRegistry."""
 
+from pathlib import Path
 from unittest import mock
 
 import pytest
@@ -150,3 +151,51 @@ class TestModelRegistry:
         reg.register("a", vram_mb=50, path="/tmp/a.onnx")
         reg.register("b", vram_mb=50, path="/tmp/b.onnx")
         assert reg.list_models() == ["a", "b"]
+
+
+class TestModelIntegrity:
+    """Tests for SHA256 integrity verification in ModelRegistry."""
+
+    def test_rejects_tampered_model(self):
+        """ModelRegistry.get() raises RuntimeError if SHA256 mismatch."""
+        import hashlib
+        import json
+        import tempfile
+
+        from src.extras.model_registry import ModelRegistry
+
+        reg = ModelRegistry()
+        with tempfile.TemporaryDirectory() as tmpdir:
+            model_path = Path(tmpdir) / "test.onnx"
+            model_path.write_bytes(b"fake onnx data")
+
+            # Compute actual hash of fake data, then use wrong hash in manifest
+            actual_hash = hashlib.sha256(b"fake onnx data").hexdigest()
+            wrong_hash = "0" * 64
+            assert wrong_hash != actual_hash
+
+            # Create manifest with wrong hash
+            manifest = {
+                "version": "1",
+                "models": {
+                    "tampered": {
+                        "sha256": wrong_hash,
+                        "local_filename": str(model_path),
+                    }
+                },
+            }
+            manifest_path = Path(tmpdir) / "models.manifest.json"
+            with manifest_path.open("w") as f:
+                json.dump(manifest, f)
+
+            # Patch MANIFEST_PATH
+            from src.extras import model_registry
+
+            orig_manifest = model_registry.MANIFEST_PATH
+            try:
+                model_registry.MANIFEST_PATH = manifest_path
+                reg.register("tampered", vram_mb=50, path=str(model_path))
+                with pytest.raises(RuntimeError, match="integrity"):
+                    reg.get("tampered")
+            finally:
+                model_registry.MANIFEST_PATH = orig_manifest

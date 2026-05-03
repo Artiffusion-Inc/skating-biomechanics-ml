@@ -6,14 +6,60 @@ when budget is exceeded. All models run via ONNX Runtime (no PyTorch at runtime)
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass
+from pathlib import Path
 
 import onnxruntime as ort
 
 from src.device import DeviceConfig
 
 logger = logging.getLogger(__name__)
+
+MANIFEST_PATH = Path("data/models/models.manifest.json")
+
+
+def _load_manifest() -> dict:
+    """Load model manifest for integrity checks."""
+    if not MANIFEST_PATH.exists():
+        return {"version": "1", "models": {}}
+    try:
+        with MANIFEST_PATH.open() as f:
+            return json.load(f)
+    except (json.JSONDecodeError, OSError):
+        logger.warning("Failed to load model manifest from %s", MANIFEST_PATH)
+        return {"version": "1", "models": {}}
+
+
+def _verify_integrity(model_id: str, path: str) -> bool:
+    """Verify model file SHA256 against manifest."""
+    import hashlib
+
+    manifest = _load_manifest()
+    entry = manifest.get("models", {}).get(model_id)
+    if not entry or not entry.get("sha256"):
+        return True  # No hash stored, skip verification
+
+    expected = entry["sha256"]
+    h = hashlib.sha256()
+    try:
+        with Path(path).open("rb") as f:
+            for chunk in iter(lambda: f.read(65536), b""):
+                h.update(chunk)
+    except FileNotFoundError:
+        return True  # File doesn't exist; let ONNX session fail naturally
+    actual = h.hexdigest()
+
+    if actual != expected:
+        logger.error(
+            "Integrity check failed for '%s': expected %s, got %s",
+            model_id,
+            expected,
+            actual,
+        )
+        return False
+    return True
 
 
 @dataclass
@@ -101,6 +147,14 @@ class ModelRegistry:
             raise RuntimeError(
                 f"Cannot load '{model_id}' ({entry.vram_mb}MB): "
                 f"would exceed VRAM budget ({self.vram_used_mb} + {entry.vram_mb} > {self._vram_budget_mb}MB)"
+            )
+
+        # Integrity check
+        if not _verify_integrity(model_id, entry.path):
+            raise RuntimeError(
+                f"Model '{model_id}' integrity check failed. "
+                f"File may be corrupted or tampered. "
+                f"Re-download with: uv run python ml/scripts/download_ml_models.py --model {model_id}"
             )
 
         logger.info(
