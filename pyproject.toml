@@ -149,6 +149,7 @@ markers = [
     "unit: marks tests as unit tests",
     "gpu: marks tests requiring CUDA GPU",
     "numba: marks tests that trigger JIT compilation",
+    "smoke: marks smoke tests (fast, no GPU/video, CI gate)",
 ]
 
 [tool.coverage.run]
