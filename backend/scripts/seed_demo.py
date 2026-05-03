@@ -31,16 +31,16 @@ logger = logging.getLogger(__name__)
 # Make backend package importable
 sys.path.insert(0, "/home/michael/Github/skating-biomechanics-ml/backend")
 
-from app.auth.security import hash_password
-from app.database import async_session_factory
-from app.metrics_registry import METRIC_REGISTRY
-from app.models import (
+from app.auth.security import hash_password  # noqa: E402
+from app.database import async_session_factory  # noqa: E402
+from app.metrics_registry import METRIC_REGISTRY  # noqa: E402
+from app.models import (  # noqa: E402
     Connection,
     Session,
     SessionMetric,
     User,
 )
-from app.models.connection import ConnectionStatus, ConnectionType
+from app.models.connection import ConnectionStatus, ConnectionType  # noqa: E402
 
 SKATER_EMAIL = "demo@skating.ai"
 SKATER_PASSWORD = "demo1234"
