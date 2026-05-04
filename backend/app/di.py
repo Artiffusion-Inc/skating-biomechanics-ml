@@ -2,19 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncGenerator  # noqa: TC003
 from contextlib import asynccontextmanager
-from typing import TYPE_CHECKING
 
 from litestar.di import Provide
+from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
 from app.auth.deps import get_current_user
 from app.config import Settings, get_settings
 from app.database import async_session_factory
-
-if TYPE_CHECKING:
-    from collections.abc import AsyncGenerator
-
-    from sqlalchemy.ext.asyncio import AsyncSession
 
 
 class DbSessionProxy:

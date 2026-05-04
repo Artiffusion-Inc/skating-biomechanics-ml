@@ -1,7 +1,41 @@
 """Shared pytest fixtures and configuration."""
 
 import sys
+import types
 from pathlib import Path
+
+# Fix tqdm.__spec__ missing in CI pytest collection (ultralytics import).
+# Must run BEFORE any import that transitively imports ultralytics.
+try:
+    import tqdm
+
+    if getattr(tqdm, "__spec__", None) is None:
+        tqdm.__spec__ = types.ModuleSpec("tqdm", None)
+        tqdm.__spec__.origin = None
+        tqdm.__spec__.submodule_search_locations = None
+except (ImportError, ValueError):
+    # Create a mock tqdm module with __spec__ so ultralytics can import it.
+    _fake_tqdm = types.ModuleType("tqdm")
+    _fake_tqdm.__spec__ = types.ModuleSpec("tqdm", None)
+    _fake_tqdm.__spec__.origin = None
+    _fake_tqdm.__spec__.submodule_search_locations = None
+
+    def _tqdm(iterable=None, **_kwargs):
+        if iterable is not None:
+            return iterable
+        return type(
+            "_TqdmMock",
+            (),
+            {
+                "update": lambda *_a: None,
+                "close": lambda *_a: None,
+                "__enter__": lambda s: s,
+                "__exit__": lambda *_a: None,
+            },
+        )()
+
+    _fake_tqdm.tqdm = _tqdm
+    sys.modules["tqdm"] = _fake_tqdm
 
 # Add ml to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
