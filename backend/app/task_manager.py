@@ -28,18 +28,25 @@ class TaskStatus(StrEnum):
     CANCELLED = "cancelled"
 
 
+def _create_redis() -> aioredis.Redis:
+    settings = get_settings()
+    url = settings.valkey.url
+    if url:
+        return aioredis.Redis.from_url(url, decode_responses=True)
+    return aioredis.Redis(
+        host=settings.valkey.host,
+        port=settings.valkey.port,
+        db=settings.valkey.db,
+        password=settings.valkey.password.get_secret_value() or None,
+        decode_responses=True,
+    )
+
+
 async def init_valkey_pool() -> None:
     """Create the shared Valkey connection pool (call once at startup)."""
     if "valkey" in _pool:
         return
-    settings = get_settings()
-    _pool["valkey"] = aioredis.Redis(
-        host=settings.valkey.host,
-        port=settings.valkey.port,
-        db=settings.valkey.db,
-        password=settings.valkey.password.get_secret_value(),
-        decode_responses=True,
-    )
+    _pool["valkey"] = _create_redis()
 
 
 def get_valkey() -> aioredis.Redis:
@@ -58,14 +65,7 @@ async def close_valkey_pool() -> None:
 
 
 async def get_valkey_client() -> aioredis.Redis:
-    settings = get_settings()
-    return aioredis.Redis(
-        host=settings.valkey.host,
-        port=settings.valkey.port,
-        db=settings.valkey.db,
-        password=settings.valkey.password.get_secret_value(),
-        decode_responses=True,
-    )
+    return _create_redis()
 
 
 async def create_task_state(

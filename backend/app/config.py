@@ -48,12 +48,15 @@ class BaseSettings(_BaseSettings):
 class ValkeyConfig(BaseSettings):
     """Valkey / Redis queue settings."""
 
+    url: str = ""
     host: str = "localhost"
     port: int = 6379
     db: int = 0
     password: SecretStr = SecretStr("")
 
     def build_url(self) -> str:
+        if self.url:
+            return self.url
         auth = f":{self.password.get_secret_value()}@" if self.password.get_secret_value() else ""
         return f"redis://{auth}{self.host}:{self.port}/{self.db}"
 

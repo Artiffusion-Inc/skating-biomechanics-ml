@@ -29,24 +29,14 @@ async def app_lifespan(app: Litestar) -> AsyncGenerator[None, None]:
     await init_valkey_pool()
 
     # Response cache store via Litestar StoreRegistry
-    redis_client = aioredis.Redis(
-        host=settings.valkey.host,
-        port=settings.valkey.port,
-        db=settings.valkey.db,
-        password=settings.valkey.password.get_secret_value() or None,
-        decode_responses=False,
-    )
+    url = settings.valkey.build_url()
+    redis_client = aioredis.Redis.from_url(url, decode_responses=False)
     root_store = RedisStore(redis=redis_client)
     app.stores = StoreRegistry(default_factory=root_store.with_namespace)
 
     # arq pool for background job enqueue
     app.state.arq_pool = await create_pool(
-        RedisSettings(
-            host=settings.valkey.host,
-            port=settings.valkey.port,
-            database=settings.valkey.db,
-            password=settings.valkey.password.get_secret_value(),
-        )
+        RedisSettings.from_url(url)
     )
 
     try:
