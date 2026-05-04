@@ -181,6 +181,7 @@ jobs:
             cd /opt/skating-app
             export TAG=${{ github.sha }}
             export GHCR_OWNER=${{ steps.ghcr.outputs.owner }}
+            echo "${{ secrets.GITHUB_TOKEN }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
             podman compose --env-file .env.prod -f compose.prod.yaml pull frontend backend
 
       - name: Rolling restart
