@@ -41,7 +41,7 @@ Build copies `backend/`, `ml/`, `data/`, builds frontend from `frontend/`. Does 
 ## GPU Worker (Vast.ai)
 
 Separate container in `ml/gpu_server/Containerfile` — multi-stage, 4.9GB, no torch/timm/triton.
-Image: `ghcr.io/xpos587/skating-ml-gpu:latest`
+Image: `ghcr.io/Artiffusion-Inc/skating-ml-gpu:latest`
 
 ## Environment Variables
 

@@ -1,8 +1,8 @@
 # Skating Biomechanics ML
 
-[![CI](https://github.com/Xpos587/skating-biomechanics-ml/actions/workflows/ci.yml/badge.svg?branch=master&label=CI)](https://github.com/Xpos587/skating-biomechanics-ml/actions)
-[![codecov](https://codecov.io/github/Xpos587/skating-biomechanics-ml/graph/badge.svg?token=0QK5TTR8QZ)](https://codecov.io/github/Xpos587/skating-biomechanics-ml)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Xpos587/skating-biomechanics-ml/pulls)
+[![CI](https://github.com/Artiffusion-Inc/skating-biomechanics-ml/actions/workflows/ci.yml/badge.svg?branch=master&label=CI)](https://github.com/Artiffusion-Inc/skating-biomechanics-ml/actions)
+[![codecov](https://codecov.io/github/Artiffusion-Inc/skating-biomechanics-ml/graph/badge.svg?token=0QK5TTR8QZ)](https://codecov.io/github/Artiffusion-Inc/skating-biomechanics-ml)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Artiffusion-Inc/skating-biomechanics-ml/pulls)
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![Litestar](https://img.shields.io/badge/Litestar-2.x%2B-EDDA7A?logo=python&logoColor=black)](https://litestar.dev)

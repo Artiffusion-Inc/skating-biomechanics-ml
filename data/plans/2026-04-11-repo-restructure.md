@@ -893,7 +893,7 @@ tasks:
     cmd: "bun run build"
 
   vastai-build:
-    cmd: podman build -f ml/gpu_server/Containerfile -t ghcr.io/xpos587/skating-ml-gpu:latest .
+    cmd: podman build -f ml/gpu_server/Containerfile -t ghcr.io/Artiffusion-Inc/skating-ml-gpu:latest .
 ```
 
 - [ ] **Step 2: Commit**
