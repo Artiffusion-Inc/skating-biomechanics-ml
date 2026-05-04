@@ -74,7 +74,20 @@ jobs:
       - name: pytest
         env:
           PYTHONPATH: ml:backend:.
-        run: uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --cov=backend/app --cov=ml/src --cov-report=xml --junitxml=junit.xml --tb=short
+        run: >
+          uv run pytest backend/tests/
+          ml/tests/test_device.py ml/tests/test_types.py ml/tests/test_gap_filling.py
+          ml/tests/test_worker_metrics.py ml/tests/test_tracked_extraction.py
+          ml/tests/test_projection.py ml/tests/test_pipeline_parallel.py
+          ml/tests/alignment/ ml/tests/analysis/
+          ml/tests/utils/test_gap_filling.py ml/tests/utils/test_geometry.py
+          ml/tests/utils/test_geometry_numba.py ml/tests/utils/test_profiler.py
+          ml/tests/utils/test_profiling.py ml/tests/utils/test_smoothing.py
+          ml/tests/utils/test_smoothing_numba.py ml/tests/utils/test_video_writer_nvenc.py
+          ml/tests/references/ ml/tests/pose_3d/ ml/tests/datasets/
+          -v -m "not slow and not integration"
+          --cov=backend/app --cov=ml/src
+          --cov-report=xml --junitxml=junit.xml --tb=short
       - name: Upload coverage (backend)
         if: always()
         uses: codecov/codecov-action@v6

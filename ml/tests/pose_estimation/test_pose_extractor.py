@@ -204,8 +204,8 @@ def mock_tqdm(monkeypatch):
             pass
 
     monkeypatch.setattr(
-        "src.pose_estimation.pose_extractor.tqdm",
-        FakeTqdm,
+        "src.pose_estimation.pose_extractor._get_tqdm",
+        lambda: FakeTqdm,
     )
 
 

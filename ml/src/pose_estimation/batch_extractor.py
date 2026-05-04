@@ -24,23 +24,29 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-try:
-    from tqdm import tqdm  # noqa: TC003, S110
-except (ImportError, ValueError):
 
-    def tqdm(iterable=None, **_kwargs):  # type: ignore[misc]
-        if iterable is not None:
-            return iterable
-        return type(
-            "_TqdmMock",
-            (),
-            {
-                "update": lambda *_a: None,
-                "close": lambda *_a: None,
-                "__enter__": lambda s: s,
-                "__exit__": lambda *_a: None,
-            },
-        )()
+def _get_tqdm():
+    try:
+        from tqdm import tqdm  # noqa: TC003, S110
+
+        return tqdm
+    except (ImportError, ValueError):
+
+        def _tqdm_mock(iterable=None, **_kwargs):
+            if iterable is not None:
+                return iterable
+            return type(
+                "_TqdmMock",
+                (),
+                {
+                    "update": lambda *_a: None,
+                    "close": lambda *_a: None,
+                    "__enter__": lambda s: s,
+                    "__exit__": lambda *_a: None,
+                },
+            )()
+
+        return _tqdm_mock
 
 
 if TYPE_CHECKING:
@@ -192,7 +198,7 @@ class BatchPoseExtractor:
             raise RuntimeError(f"Failed to open video: {video_path}")
 
         # Initialize progress bar
-        pbar = tqdm(
+        pbar = _get_tqdm()(
             total=num_frames,
             desc="Extracting poses (batched)",
             unit="frame",

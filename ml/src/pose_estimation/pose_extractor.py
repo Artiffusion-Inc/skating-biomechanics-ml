@@ -25,23 +25,29 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-try:
-    from tqdm import tqdm  # noqa: TC003, S110
-except (ImportError, ValueError):
 
-    def tqdm(iterable=None, **_kwargs):  # type: ignore[misc]
-        if iterable is not None:
-            return iterable
-        return type(
-            "_TqdmMock",
-            (),
-            {
-                "update": lambda *_a: None,
-                "close": lambda *_a: None,
-                "__enter__": lambda s: s,
-                "__exit__": lambda *_a: None,
-            },
-        )()
+def _get_tqdm():
+    try:
+        from tqdm import tqdm  # noqa: TC003, S110
+
+        return tqdm
+    except (ImportError, ValueError):
+
+        def _tqdm_mock(iterable=None, **_kwargs):
+            if iterable is not None:
+                return iterable
+            return type(
+                "_TqdmMock",
+                (),
+                {
+                    "update": lambda *_a: None,
+                    "close": lambda *_a: None,
+                    "__enter__": lambda s: s,
+                    "__exit__": lambda *_a: None,
+                },
+            )()
+
+        return _tqdm_mock
 
 
 if TYPE_CHECKING:
@@ -255,7 +261,7 @@ class PoseExtractor:
             raise RuntimeError(f"Failed to read first frame from video: {video_path}")
 
         # Initialize pbar before try block to avoid "possibly unbound" error
-        pbar = tqdm(
+        pbar = _get_tqdm()(
             total=num_frames,
             desc="Extracting poses",
             unit="frame",
@@ -650,7 +656,9 @@ class PoseExtractor:
         frame_indices = []
 
         try:
-            for idx in tqdm(range(num_frames), desc="Reading frames", unit="frame", ncols=100):
+            for idx in _get_tqdm()(
+                range(num_frames), desc="Reading frames", unit="frame", ncols=100
+            ):
                 if idx % self._frame_skip != 0:
                     continue
                 ret, frame = cap.read()
@@ -665,7 +673,7 @@ class PoseExtractor:
             raise ValueError(f"No frames read from video: {video_path}")
 
         # Process in batches
-        pbar = tqdm(
+        pbar = _get_tqdm()(
             total=len(frames_to_process),
             desc="Batch extracting poses",
             unit="batch",
@@ -1105,7 +1113,7 @@ class PoseExtractor:
         best_frame: np.ndarray | None = None  # keep the frame with highest avg confidence
 
         try:
-            for frame_idx in tqdm(
+            for frame_idx in _get_tqdm()(
                 range(num_frames), desc="Previewing persons", unit="frame", ncols=100
             ):
                 ret, frame = cap.read()
