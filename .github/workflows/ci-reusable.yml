@@ -73,7 +73,7 @@ jobs:
         run: uv sync --all-packages --frozen --dev
       - name: pytest
         env:
-          PYTHONPATH: .
+          PYTHONPATH: ml:backend:.
         run: uv run pytest backend/tests/ ml/tests/ -v -m "not slow and not integration" --cov=backend/app --cov=ml/src --cov-report=xml --junitxml=junit.xml --tb=short
       - name: Upload coverage (backend)
         if: always()
