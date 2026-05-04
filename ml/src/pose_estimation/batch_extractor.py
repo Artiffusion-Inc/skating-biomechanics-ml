@@ -25,10 +25,10 @@ import cv2
 import numpy as np
 
 try:
-    from tqdm import tqdm
+    from tqdm import tqdm  # noqa: TC003, S110
 except (ImportError, ValueError):
 
-    def tqdm(iterable=None, **_kwargs):
+    def tqdm(iterable=None, **_kwargs):  # type: ignore[misc]
         if iterable is not None:
             return iterable
         return type(
