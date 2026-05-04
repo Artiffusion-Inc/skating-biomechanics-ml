@@ -1,0 +1,16 @@
+id: no-dangerously-set-inner-html
+language: tsx
+message: |
+  Avoid `dangerouslySetInnerHTML` unless absolutely necessary. It opens XSS vectors.
+
+  Instead of:  <div dangerouslySetInnerHTML={{ __html: html }} />
+  Use:         Render content via React components and props.
+severity: error
+note: |
+  Allowed: trusted CMS/markdown rendering with DOMPurify sanitization.
+rule:
+  kind: jsx_attribute
+  has:
+    kind: property_identifier
+    regex: '^dangerouslySetInnerHTML$'
+    stopBy: end

@@ -1,0 +1,7 @@
+id: no-debugger
+language: tsx
+message: |
+  Remove `debugger` statements before committing. Use browser DevTools breakpoints instead.
+severity: error
+rule:
+  pattern: debugger
