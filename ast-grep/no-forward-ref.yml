@@ -1,0 +1,15 @@
+id: no-forward-ref
+language: tsx
+message: |
+  Don't use React.forwardRef. In React 19+, pass `ref` as a regular prop.
+
+  Instead of:  const MyInput = React.forwardRef((props, ref) => ...)
+  Use:         function MyInput({ ref, ...props }: MyInputProps) ...
+
+  See: https://react.dev/blog/2024/12/05/react-19#ref-as-a-prop
+severity: warning
+note: |
+  Allowed: third-party library wrappers where forwardRef is required by the lib API.
+rule:
+  kind: property_identifier
+  regex: '^forwardRef$'
