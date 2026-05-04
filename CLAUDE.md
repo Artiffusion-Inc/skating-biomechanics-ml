@@ -153,7 +153,7 @@ System CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs `.venv/cuda-compat/`
 
 Worker dispatches Vast.ai Serverless GPU when `VASTAI_API_KEY` set, fallback local GPU. Worker code `backend/app/worker.py`, Vast.ai server `ml/gpu_server/`.
 
-**Image**: `ghcr.io/xpos587/skating-ml-gpu:latest` — multi-stage, 4.9GB, no torch/timm/triton.
+**Image**: `ghcr.io/Artiffusion-Inc/skating-ml-gpu:latest` — multi-stage, 4.9GB, no torch/timm/triton.
 
 ## Tracking Debugging Workflow
 

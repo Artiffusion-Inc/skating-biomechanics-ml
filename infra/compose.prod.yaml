@@ -40,7 +40,7 @@ services:
 
   # --- Backend API ---
   backend:
-    image: ghcr.io/${GHCR_OWNER:-xpos587}/skating-backend:${TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-Artiffusion-Inc}/skating-backend:${TAG:-latest}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -68,7 +68,7 @@ services:
 
   # --- Frontend ---
   frontend:
-    image: ghcr.io/${GHCR_OWNER:-xpos587}/skating-frontend:${TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-Artiffusion-Inc}/skating-frontend:${TAG:-latest}
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
