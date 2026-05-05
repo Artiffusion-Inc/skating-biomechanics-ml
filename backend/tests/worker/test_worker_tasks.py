@@ -559,10 +559,9 @@ class TestDetectVideoTask:
         """asyncio.to_thread mock that returns no persons."""
 
         async def _mock_to_thread(func, *args, **kwargs):
-            func_name = getattr(func, "__name__", str(func))
-            if "download" in func_name or "download" in str(func):
+            if "download" in str(func):
                 return None
-            if "preview_persons" in func_name or "preview" in func_name:
+            if "preview" in str(func):
                 return ([], {})
             return None
 
@@ -572,11 +571,11 @@ class TestDetectVideoTask:
     def single_person_thread(self):
         """asyncio.to_thread mock that returns one person and handles cv2/video ops."""
 
-        async def _mock_to_thread(func, *args, **kwargs):
-            func_name = getattr(func, "__name__", str(func))
-            if "download" in func_name or "download" in str(func):
+        async def _mock_to_thread(func, *args, **kwargs):  # noqa: PLR0911
+            func_str = str(func)
+            if "download" in func_str or "release" in func_str:
                 return None
-            if "preview_persons" in func_name or "preview" in func_name:
+            if "preview" in func_str:
                 return (
                     [
                         {
@@ -588,20 +587,18 @@ class TestDetectVideoTask:
                     ],
                     {"fps": 30.0},
                 )
-            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+            if "VideoCapture" in func_str:
                 mock_cap = MagicMock()
                 mock_cap.read.return_value = (True, b"fake_frame")
                 mock_cap.release.return_value = None
                 return mock_cap
-            if "read" in func_name:
+            if "read" in func_str:
                 return (True, b"fake_frame")
-            if "release" in func_name:
-                return None
-            if "imencode" in func_name or "imencode" in str(func):
+            if "imencode" in func_str:
                 return (True, b"fake_png_bytes")
-            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+            if "render_person_preview" in func_str:
                 return b"fake_frame"
-            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+            if "get_video_meta" in func_str:
                 return MagicMock(width=1920, height=1080)
             return None
 
@@ -754,11 +751,11 @@ class TestDetectVideoTask:
     async def test_multiple_persons_detected(self, mock_valkey):
         """Multiple persons detected -> auto_click is None, status mentions count."""
 
-        async def mock_to_thread(func, *args, **kwargs):
-            func_name = getattr(func, "__name__", str(func))
-            if "download" in func_name or "download" in str(func):
+        async def mock_to_thread(func, *args, **kwargs):  # noqa: PLR0911
+            func_str = str(func)
+            if "download" in func_str or "release" in func_str:
                 return None
-            if "preview_persons" in func_name or "preview" in func_name:
+            if "preview" in func_str:
                 return (
                     [
                         {
@@ -776,20 +773,18 @@ class TestDetectVideoTask:
                     ],
                     {"fps": 30.0},
                 )
-            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+            if "VideoCapture" in func_str:
                 mock_cap = MagicMock()
                 mock_cap.read.return_value = (True, b"fake_frame")
                 mock_cap.release.return_value = None
                 return mock_cap
-            if "read" in func_name:
+            if "read" in func_str:
                 return (True, b"fake_frame")
-            if "release" in func_name:
-                return None
-            if "imencode" in func_name or "imencode" in str(func):
+            if "imencode" in func_str:
                 return (True, b"fake_png_bytes")
-            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+            if "render_person_preview" in func_str:
                 return b"fake_frame"
-            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+            if "get_video_meta" in func_str:
                 return MagicMock(width=1920, height=1080)
             return None
 
@@ -841,10 +836,9 @@ class TestDetectVideoTask:
         from app.worker import detect_video_task
 
         async def mock_to_thread(func, *args, **kwargs):
-            func_name = getattr(func, "__name__", str(func))
-            if "download" in func_name or "download" in str(func):
+            if "download" in str(func):
                 return None
-            if "preview_persons" in func_name or "preview" in func_name:
+            if "preview" in str(func):
                 return (
                     [
                         {
@@ -856,18 +850,18 @@ class TestDetectVideoTask:
                     ],
                     {"fps": 30.0},
                 )
-            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+            if "VideoCapture" in str(func):
                 mock_cap = MagicMock()
                 mock_cap.read.return_value = (False, None)  # Video read failure
                 mock_cap.release.return_value = None
                 return mock_cap
-            if "read" in func_name:
+            if "read" in str(func):
                 return (False, None)  # Video read failure
-            if "release" in func_name:
+            if "release" in str(func):
                 return None
-            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+            if "render_person_preview" in str(func):
                 return b"fake_frame"
-            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+            if "get_video_meta" in str(func):
                 return MagicMock(width=1920, height=1080)
             return None
 
@@ -889,11 +883,10 @@ class TestDetectVideoTask:
         """When cv2.imencode fails, RuntimeError is raised."""
         from app.worker import detect_video_task
 
-        async def mock_to_thread(func, *args, **kwargs):
-            func_name = getattr(func, "__name__", str(func))
-            if "download" in func_name or "download" in str(func):
+        async def mock_to_thread(func, *args, **kwargs):  # noqa: PLR0911
+            if "download" in str(func):
                 return None
-            if "preview_persons" in func_name or "preview" in func_name:
+            if "preview" in str(func):
                 return (
                     [
                         {
@@ -905,20 +898,20 @@ class TestDetectVideoTask:
                     ],
                     {"fps": 30.0},
                 )
-            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+            if "VideoCapture" in str(func):
                 mock_cap = MagicMock()
                 mock_cap.read.return_value = (True, b"fake_frame")
                 mock_cap.release.return_value = None
                 return mock_cap
-            if "read" in func_name:
+            if "read" in str(func):
                 return (True, b"fake_frame")
-            if "release" in func_name:
+            if "release" in str(func):
                 return None
-            if "imencode" == func_name or "imencode" in str(func):
+            if str(func) == "imencode" or "imencode" in str(func):
                 return (False, None)  # imencode failure
-            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+            if "render_person_preview" in str(func):
                 return b"fake_frame"
-            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+            if "get_video_meta" in str(func):
                 return MagicMock(width=1920, height=1080)
             return None
 
