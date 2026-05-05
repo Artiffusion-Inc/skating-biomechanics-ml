@@ -25,6 +25,7 @@ def reset_pool():
 def _mock_settings():
     """Create a mock Settings object with sensible defaults."""
     settings = MagicMock()
+    settings.valkey.url = ""
     settings.valkey.host = "localhost"
     settings.valkey.port = 6379
     settings.valkey.db = 0
