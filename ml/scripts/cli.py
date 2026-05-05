@@ -5,10 +5,11 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import getpass
 import json
+import mimetypes
 import os
 import sys
-import time
 from pathlib import Path
 
 import httpx
@@ -54,7 +55,7 @@ async def _ensure_access_token(client: httpx.AsyncClient) -> str:
     access_token = creds.get("access_token")
     headers = {"Authorization": f"Bearer {access_token}"} if access_token else {}
 
-    resp = await client.get(f"{API_BASE}/auth/me", headers=headers)
+    resp = await client.get(f"{API_BASE}/users/me", headers=headers)
     if resp.status_code == 401:
         refresh_token = creds.get("refresh_token")
         if not refresh_token:
@@ -80,7 +81,7 @@ async def _ensure_access_token(client: httpx.AsyncClient) -> str:
 
 async def login(args: argparse.Namespace) -> None:
     email = input("Email: ")
-    password = input("Password: ")
+    password = getpass.getpass("Password: ")
 
     async with httpx.AsyncClient() as client:
         resp = await client.post(
@@ -108,40 +109,47 @@ async def upload_video(client: httpx.AsyncClient, access_token: str, video_path:
 
     total_size = path.stat().st_size
     filename = path.name
+    content_type, _ = mimetypes.guess_type(str(path))
+    content_type = content_type or "application/octet-stream"
 
     # Init upload
     resp = await client.post(
         f"{API_BASE}/uploads/init",
         headers={"Authorization": f"Bearer {access_token}"},
-        json={"filename": filename, "size": total_size},
+        params={"file_name": filename, "content_type": content_type, "total_size": total_size},
     )
     if resp.status_code != 200:
         raise CLIError(f"Upload init failed: {resp.status_code} {resp.text}")
 
     init_data = resp.json()
     upload_id = init_data["upload_id"]
-    presigned_urls = init_data["urls"]
+    key = init_data["key"]
+    parts = init_data["parts"]
 
     # Upload chunks
+    etags: dict[int, str] = {}
+    chunk_size = init_data.get("chunk_size", CHUNK_SIZE)
     with path.open("rb") as f:
-        for idx, url in enumerate(presigned_urls):
-            chunk = f.read(CHUNK_SIZE)
-            put_resp = await client.put(url, content=chunk)
+        for part in parts:
+            chunk = f.read(chunk_size)
+            put_resp = await client.put(part["url"], content=chunk)
             if put_resp.status_code not in (200, 204):
                 raise CLIError(f"Chunk upload failed: {put_resp.status_code} {put_resp.text}")
-            print(f"Uploaded chunk {idx + 1}/{len(presigned_urls)}", file=sys.stderr)
+            etags[part["part_number"]] = put_resp.headers.get("etag", "")
+            print(f"Uploaded part {part['part_number']}/{len(parts)}", file=sys.stderr)
 
     # Complete upload
+    parts_payload = [{"part_number": n, "etag": etag} for n, etag in etags.items()]
     complete_resp = await client.post(
         f"{API_BASE}/uploads/complete",
         headers={"Authorization": f"Bearer {access_token}"},
-        json={"upload_id": upload_id},
+        json={"upload_id": upload_id, "key": key, "parts": parts_payload},
     )
     if complete_resp.status_code != 200:
         raise CLIError(f"Upload complete failed: {complete_resp.status_code} {complete_resp.text}")
 
     complete_data = complete_resp.json()
-    return complete_data["file_key"]
+    return complete_data["key"]
 
 
 async def analyze(args: argparse.Namespace) -> None:
@@ -161,19 +169,22 @@ async def analyze(args: argparse.Namespace) -> None:
         access_token = await _ensure_access_token(client)
 
         print("Uploading video...", file=sys.stderr)
-        file_key = await upload_video(client, access_token, video_path)
+        video_key = await upload_video(client, access_token, video_path)
 
         payload = {
-            "file_key": file_key,
-            "element": element,
+            "video_key": video_key,
             "person_click": person_click,
             "frame_skip": args.frame_skip,
             "layer": args.layer,
             "tracking": args.tracking,
-            "ml_3d": args.ml_3d,
-            "ml_select_person": args.ml_select_person,
-            "ml_segment": args.ml_segment,
-            "ml_force_cpu": args.ml_force_cpu,
+            "export": args.export,
+            "session_id": args.session_id,
+            "depth": args.depth,
+            "optical_flow": args.optical_flow,
+            "segment": args.segment,
+            "foot_track": args.foot_track,
+            "matting": args.matting,
+            "inpainting": args.inpainting,
         }
 
         print("Enqueuing task...", file=sys.stderr)
@@ -224,21 +235,21 @@ def main() -> None:
     # analyze
     analyze_parser = subparsers.add_parser("analyze", help="Analyze a video")
     analyze_parser.add_argument("video", help="Path to video file")
-    analyze_parser.add_argument("--element", required=True, help="Element to analyze")
+    analyze_parser.add_argument("--element", default="waltz_jump", help="Element to analyze")
     analyze_parser.add_argument(
         "--person-click", default=None, help="Person click coordinates 'x,y'"
     )
     analyze_parser.add_argument("--frame-skip", type=int, default=1)
     analyze_parser.add_argument("--layer", type=int, default=3)
     analyze_parser.add_argument("--tracking", default="auto")
-    analyze_parser.add_argument("--3d", dest="ml_3d", action="store_true", default=False)
-    analyze_parser.add_argument(
-        "--select-person", dest="ml_select_person", action="store_true", default=False
-    )
-    analyze_parser.add_argument("--segment", dest="ml_segment", action="store_true", default=False)
-    analyze_parser.add_argument(
-        "--force-cpu", dest="ml_force_cpu", action="store_true", default=False
-    )
+    analyze_parser.add_argument("--export", action="store_true", default=True)
+    analyze_parser.add_argument("--session-id", type=str, default=None)
+    analyze_parser.add_argument("--depth", action="store_true", default=False)
+    analyze_parser.add_argument("--optical-flow", action="store_true", default=False)
+    analyze_parser.add_argument("--segment", action="store_true", default=False)
+    analyze_parser.add_argument("--foot-track", action="store_true", default=False)
+    analyze_parser.add_argument("--matting", action="store_true", default=False)
+    analyze_parser.add_argument("--inpainting", action="store_true", default=False)
 
     args = parser.parse_args()
 
