@@ -45,7 +45,7 @@ async def test_sse_stream_exists():
 async def test_sse_stream_times_out_after_no_messages(mock_settings):
     """SSE stream should timeout after 60s of no messages, then yield final state with _timeout flag."""
     with (
-        patch("app.routes.process.get_valkey_client", new_callable=AsyncMock) as mock_valkey_fn,
+        patch("app.routes.process.get_valkey", new_callable=MagicMock) as mock_valkey_fn,
         patch("app.routes.process.get_task_state", new_callable=AsyncMock) as mock_state,
         patch("app.routes.process.SSE_STREAM_TIMEOUT", 0.01),  # 10ms for fast test
     ):
@@ -62,7 +62,6 @@ async def test_sse_stream_times_out_after_no_messages(mock_settings):
         mock_pubsub.unsubscribe = AsyncMock()
         mock_pubsub.aclose = AsyncMock()
         mock_valkey.pubsub.return_value = mock_pubsub
-        mock_valkey.close = AsyncMock()
         mock_valkey_fn.return_value = mock_valkey
 
         mock_state.return_value = {"status": "running", "progress": 0.5}
@@ -89,7 +88,7 @@ async def test_sse_stream_times_out_after_no_messages(mock_settings):
 async def test_sse_stream_yields_progress_events(mock_settings):
     """SSE stream should yield progress updates from pubsub."""
     with (
-        patch("app.routes.process.get_valkey_client", new_callable=AsyncMock) as mock_valkey_fn,
+        patch("app.routes.process.get_valkey", new_callable=MagicMock) as mock_valkey_fn,
         patch("app.routes.process.get_task_state", new_callable=AsyncMock) as mock_state,
     ):
         mock_valkey = MagicMock()
@@ -105,7 +104,6 @@ async def test_sse_stream_yields_progress_events(mock_settings):
         mock_pubsub.unsubscribe = AsyncMock()
         mock_pubsub.aclose = AsyncMock()
         mock_valkey.pubsub.return_value = mock_pubsub
-        mock_valkey.close = AsyncMock()
         mock_valkey_fn.return_value = mock_valkey
 
         mock_state.return_value = {"status": "running", "progress": 0.0}
