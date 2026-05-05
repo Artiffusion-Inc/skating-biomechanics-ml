@@ -37,6 +37,7 @@ async def test_list_workspaces(client, auth_headers, db_session):
     db_session.add(ws)
     await db_session.flush()
     from sqlalchemy import select
+
     result = await db_session.execute(select(User).where(User.email == "user@example.com"))
     owner = result.scalar_one()
     member = WorkspaceMember(workspace_id=ws.id, user_id=owner.id, role=WorkspaceRole.OWNER)
@@ -55,6 +56,7 @@ async def test_invite_member(client, auth_headers, member_user, db_session):
     db_session.add(ws)
     await db_session.flush()
     from sqlalchemy import select
+
     result = await db_session.execute(select(User).where(User.email == "user@example.com"))
     owner = result.scalar_one()
     owner_member = WorkspaceMember(workspace_id=ws.id, user_id=owner.id, role=WorkspaceRole.OWNER)
