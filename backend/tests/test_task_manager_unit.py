@@ -50,7 +50,7 @@ async def test_init_valkey_pool():
             host="localhost",
             port=6379,
             db=0,
-            password="",
+            password=None,
             decode_responses=True,
         )
         assert "valkey" in tm_module._pool
@@ -108,7 +108,7 @@ async def test_get_valkey_client():
             host="localhost",
             port=6379,
             db=0,
-            password="",
+            password=None,
             decode_responses=True,
         )
         assert client is MockRedis.return_value
