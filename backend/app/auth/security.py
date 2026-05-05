@@ -51,3 +51,8 @@ def create_refresh_token() -> str:
 def hash_token(token: str) -> str:
     """Hash a refresh token for DB storage (SHA-256)."""
     return hashlib.sha256(token.encode()).hexdigest()
+
+
+def create_password_reset_token() -> str:
+    """Create a random opaque password-reset token (hex-encoded 32 bytes)."""
+    return secrets.token_hex(32)

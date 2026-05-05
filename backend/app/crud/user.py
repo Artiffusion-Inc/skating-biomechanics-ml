@@ -42,3 +42,10 @@ async def update(db: AsyncSession, user: User, **kwargs) -> User:
     await db.flush()
     await db.refresh(user)
     return user
+
+
+async def update_password(db: AsyncSession, user: User, hashed_password: str) -> None:
+    """Update user password."""
+    user.hashed_password = hashed_password
+    db.add(user)
+    await db.flush()
