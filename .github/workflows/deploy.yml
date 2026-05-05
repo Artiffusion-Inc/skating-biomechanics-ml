@@ -199,6 +199,19 @@ jobs:
             podman compose --env-file .env.prod -f compose.prod.yaml \
               up -d --no-deps --force-recreate frontend backend 2>/dev/null
 
+      - name: Run database migrations
+        id: migrate
+        uses: appleboy/ssh-action@v1.2.5
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          key: ${{ secrets.VPS_SSH_KEY }}
+          command_timeout: 1m
+          script: |
+            cd /opt/skating-app
+            podman compose --env-file .env.prod -f compose.prod.yaml \
+              exec backend alembic upgrade head
+
       - name: Health check
         id: health
         uses: appleboy/ssh-action@v1.2.5
