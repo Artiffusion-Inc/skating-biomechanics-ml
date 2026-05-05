@@ -197,7 +197,7 @@ jobs:
             export TAG=${{ github.sha }}
             export GHCR_OWNER=${{ steps.ghcr.outputs.owner }}
             podman compose --env-file .env.prod -f compose.prod.yaml \
-              up -d --no-deps --force-recreate frontend backend
+              up -d --no-deps --force-recreate frontend backend 2>/dev/null
 
       - name: Health check
         id: health
