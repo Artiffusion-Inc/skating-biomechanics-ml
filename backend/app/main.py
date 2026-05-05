@@ -29,6 +29,7 @@ from app.routes import (
     sessions,
     uploads,
     users,
+    workspaces,
 )
 
 configure_logging()
@@ -54,6 +55,7 @@ def create_app() -> Litestar:
             connections,
             uploads,
             choreography,
+            workspaces,
         ],
     )
 
