@@ -33,7 +33,7 @@ from app.schemas import (
 
 
 class WorkspacesController(Controller):
-    path = "/workspaces"
+    path = ""
     tags: ClassVar[Sequence[str]] = ["workspaces"]
 
     @post("", status_code=HTTP_201_CREATED)
@@ -54,7 +54,9 @@ class WorkspacesController(Controller):
         return [WorkspaceResponse.model_validate(w) for w in workspaces]
 
     @get("/{workspace_id:str}")
-    async def get(self, workspace_id: str, user: CurrentUser, db: DbDep) -> WorkspaceResponse:
+    async def get_workspace(
+        self, workspace_id: str, user: CurrentUser, db: DbDep
+    ) -> WorkspaceResponse:
         await require_workspace_role(workspace_id, user, db)
         ws = await get_workspace_by_id(db, workspace_id)
         if not ws:
