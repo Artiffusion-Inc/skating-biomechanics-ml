@@ -39,6 +39,9 @@ logger = logging.getLogger(__name__)
 _settings = get_settings()
 os.environ.setdefault("OMP_NUM_THREADS", str(_settings.app.omp_num_threads))
 
+# Semaphore to limit concurrent Vast.ai serverless dispatches
+_VASTAI_SEMAPHORE = asyncio.Semaphore(5)
+
 
 def _sample_poses(
     poses: np.ndarray,
@@ -237,16 +240,17 @@ async def process_video_task(
             await mark_cancelled(task_id, valkey=valkey)
             return {"status": "cancelled"}
 
-        vast_result = await process_video_remote_async(
-            video_key=video_key,
-            person_click={"x": person_click["x"], "y": person_click["y"]} if person_click else None,
-            frame_skip=frame_skip,
-            layer=layer,
-            tracking=tracking,
-            export=export,
-            ml_flags=ml_flags,
-            element_type=element_type,
-        )
+        async with _VASTAI_SEMAPHORE:
+            vast_result = await process_video_remote_async(
+                video_key=video_key,
+                person_click={"x": person_click["x"], "y": person_click["y"]} if person_click else None,
+                frame_skip=frame_skip,
+                layer=layer,
+                tracking=tracking,
+                export=export,
+                ml_flags=ml_flags,
+                element_type=element_type,
+            )
         logger.info("Vast.ai processing complete for task %s", task_id)
         await update_progress(task_id, 0.7, "GPU processing complete", valkey=valkey)
         await publish_task_event(
@@ -433,22 +437,23 @@ async def detect_video_task(
                 await store_result(task_id, result_data, valkey=valkey)
                 return result_data
 
-            cap = cv2.VideoCapture(str(video_path))
-            ret, frame = cap.read()
-            cap.release()
+            cap = await asyncio.to_thread(cv2.VideoCapture, str(video_path))
+            ret, frame = await asyncio.to_thread(cap.read)
+            await asyncio.to_thread(cap.release)
 
             if not ret:
                 raise RuntimeError("Failed to read video frame")
 
-            meta = get_video_meta(video_path)
+            meta = await asyncio.to_thread(get_video_meta, video_path)
             w, h = meta.width, meta.height
 
-            annotated = render_person_preview(
-                frame,  # type: ignore[arg-type]
-                persons,  # type: ignore[arg-type]
+            annotated = await asyncio.to_thread(
+                render_person_preview,
+                frame,
+                persons,
                 selected_idx=None,
             )
-            success, buf = cv2.imencode(".png", annotated)
+            success, buf = await asyncio.to_thread(cv2.imencode, ".png", annotated)
             if not success:
                 raise RuntimeError("Failed to encode preview image")
             import base64

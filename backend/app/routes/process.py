@@ -26,7 +26,6 @@ from app.task_manager import (
     create_task_state,
     get_task_state,
     get_valkey,
-    get_valkey_client,
     set_cancel_signal,
 )
 
@@ -112,7 +111,7 @@ class ProcessController(Controller):
         """SSE endpoint for real-time task progress streaming."""
 
         async def event_generator():
-            valkey = await get_valkey_client()
+            valkey = get_valkey()
             pubsub = valkey.pubsub()
             channel = f"{TASK_EVENTS_PREFIX}{task_id}"
             await pubsub.subscribe(channel)
@@ -144,6 +143,5 @@ class ProcessController(Controller):
             finally:
                 await pubsub.unsubscribe(channel)
                 await pubsub.aclose()
-                await valkey.close()
 
         return ServerSentEvent(event_generator())
