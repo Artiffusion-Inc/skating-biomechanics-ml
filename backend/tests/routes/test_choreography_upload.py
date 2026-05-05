@@ -160,6 +160,7 @@ def test_program_to_response():
     mock_program = MagicMock()
     mock_program.id = "prog_1"
     mock_program.user_id = "user_123"
+    mock_program.workspace_id = None
     mock_program.music_analysis_id = None
     mock_program.title = "My Program"
     mock_program.discipline = "mens_singles"
@@ -421,6 +422,7 @@ async def test_list_programs(mock_user, mock_db):
     mock_program = MagicMock()
     mock_program.id = "prog_1"
     mock_program.user_id = "user_123"
+    mock_program.workspace_id = None
     mock_program.music_analysis_id = None
     mock_program.title = "Test Program"
     mock_program.discipline = "mens_singles"
@@ -476,6 +478,7 @@ async def test_create_new_program(mock_user, mock_db):
     mock_program = MagicMock()
     mock_program.id = "prog_new"
     mock_program.user_id = "user_123"
+    mock_program.workspace_id = None
     mock_program.music_analysis_id = None
     mock_program.title = "New Program"
     mock_program.discipline = "mens_singles"
@@ -597,6 +600,7 @@ async def test_get_program_success(mock_user, mock_db):
     mock_program = MagicMock()
     mock_program.id = "prog_1"
     mock_program.user_id = "user_123"
+    mock_program.workspace_id = None
     mock_program.music_analysis_id = None
     mock_program.title = "My Program"
     mock_program.discipline = "mens_singles"
@@ -630,6 +634,7 @@ async def test_update_existing_program_success(mock_user, mock_db):
     mock_program = MagicMock()
     mock_program.id = "prog_1"
     mock_program.user_id = "user_123"
+    mock_program.workspace_id = None
     mock_program.music_analysis_id = None
     mock_program.title = "Old Title"
     mock_program.discipline = "mens_singles"

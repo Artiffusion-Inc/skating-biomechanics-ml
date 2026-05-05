@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import types
+from importlib.util import spec_from_loader
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -14,13 +15,13 @@ try:
     import tqdm
 
     if getattr(tqdm, "__spec__", None) is None:
-        tqdm.__spec__ = types.ModuleSpec("tqdm", None)
+        tqdm.__spec__ = spec_from_loader("tqdm", None)
         tqdm.__spec__.origin = None
         tqdm.__spec__.submodule_search_locations = None
 except (ImportError, ValueError):
     # Create a mock tqdm module with __spec__ so ultralytics can import it.
     _fake_tqdm = types.ModuleType("tqdm")
-    _fake_tqdm.__spec__ = types.ModuleSpec("tqdm", None)
+    _fake_tqdm.__spec__ = spec_from_loader("tqdm", None)
     _fake_tqdm.__spec__.origin = None
     _fake_tqdm.__spec__.submodule_search_locations = None
 

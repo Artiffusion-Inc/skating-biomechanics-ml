@@ -26,6 +26,12 @@ class Session(TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         index=True,
     )
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     element_type: Mapped[str] = mapped_column(String(50), index=True)
     video_key: Mapped[str | None] = mapped_column(String(500))
     video_url: Mapped[str | None] = mapped_column(String(500))

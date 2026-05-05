@@ -10,7 +10,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.crud.workspace import get_workspace_member
 from app.models.user import User
+from app.models.workspace import WorkspaceMember, WorkspaceRole
 
 if TYPE_CHECKING:
     from litestar import Request
@@ -63,3 +65,26 @@ async def get_current_user(request: Request, db_session: AsyncSession) -> User:
 # Type alias for clean injection in route signatures
 CurrentUser = Annotated[User, Dependency()]
 DbDep = Annotated[AsyncSession, Dependency()]
+
+
+async def require_workspace_role(
+    workspace_id: str,
+    user: User,
+    db: AsyncSession,
+    min_role: WorkspaceRole = WorkspaceRole.STUDENT,
+) -> WorkspaceMember:
+    """Require user to have at least min_role in workspace."""
+    member = await get_workspace_member(db, workspace_id, user.id)
+    if member is None:
+        raise NotAuthorizedException("Not a member of this workspace")
+    # Simple hierarchy: owner > admin > coach > student > parent
+    hierarchy = {
+        WorkspaceRole.OWNER: 4,
+        WorkspaceRole.ADMIN: 3,
+        WorkspaceRole.COACH: 2,
+        WorkspaceRole.STUDENT: 1,
+        WorkspaceRole.PARENT: 0,
+    }
+    if hierarchy.get(member.role, -1) < hierarchy.get(min_role, -1):
+        raise NotAuthorizedException("Insufficient workspace permissions")
+    return member

@@ -15,6 +15,7 @@ from app.routes.process import ProcessController
 from app.routes.sessions import SessionsController
 from app.routes.uploads import UploadsController
 from app.routes.users import UsersController
+from app.routes.workspaces import WorkspacesController
 
 auth = Router(path="/auth", route_handlers=[AuthController])
 choreography = Router(path="/choreography", route_handlers=[ChoreographyController])
@@ -27,3 +28,4 @@ process = Router(path="/process", route_handlers=[ProcessController])
 sessions = Router(path="/sessions", route_handlers=[SessionsController])
 uploads = Router(path="/uploads", route_handlers=[UploadsController])
 users = Router(path="/users", route_handlers=[UsersController])
+workspaces = Router(path="/workspaces", route_handlers=[WorkspacesController])

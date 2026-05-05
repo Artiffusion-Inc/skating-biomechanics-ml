@@ -25,6 +25,12 @@ class MusicAnalysis(TimestampMixin, Base):
         ForeignKey("users.id", ondelete="CASCADE"),
         index=True,
     )
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
+    )
     filename: Mapped[str] = mapped_column(String(500))
     audio_url: Mapped[str] = mapped_column(String(500))
     duration_sec: Mapped[float] = mapped_column(Float)
@@ -54,6 +60,12 @@ class ChoreographyProgram(TimestampMixin, Base):
         String(36),
         ForeignKey("users.id", ondelete="CASCADE"),
         index=True,
+    )
+    workspace_id: Mapped[str | None] = mapped_column(
+        String(36),
+        ForeignKey("workspaces.id", ondelete="SET NULL"),
+        index=True,
+        nullable=True,
     )
     music_analysis_id: Mapped[str | None] = mapped_column(
         String(36),
