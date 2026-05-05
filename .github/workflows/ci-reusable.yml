@@ -7,14 +7,53 @@ on:
         required: false
         default: "3.11"
         type: string
+      skip-docker:
+        required: false
+        default: false
+        type: boolean
     outputs:
       ci-passed:
         description: "Whether all CI checks passed"
         value: ${{ jobs.ci-passed.outputs.result }}
 
 jobs:
+  changes:
+    name: Detect changed files
+    runs-on: ubuntu-latest
+    outputs:
+      python: ${{ steps.filter.outputs.python }}
+      ml: ${{ steps.filter.outputs.ml }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      docker: ${{ steps.filter.outputs.docker }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            python:
+              - "backend/**"
+              - "ml/src/**"
+              - "ml/tests/**"
+              - "pyproject.toml"
+              - "backend/pyproject.toml"
+              - "ml/pyproject.toml"
+            ml:
+              - "ml/**"
+              - "pyproject.toml"
+              - "ml/pyproject.toml"
+            frontend:
+              - "frontend/**"
+            docker:
+              - "backend/Containerfile"
+              - "frontend/Containerfile"
+              - ".containerignore"
+              - "infra/**"
+
   lint:
     name: Lint (ruff)
+    needs: [changes]
+    if: needs.changes.outputs.python == 'true'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
@@ -33,6 +72,8 @@ jobs:
 
   typecheck:
     name: Type Check (basedpyright)
+    needs: [changes]
+    if: needs.changes.outputs.python == 'true'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
@@ -49,6 +90,8 @@ jobs:
 
   ast-grep:
     name: Lint (ast-grep)
+    needs: [changes]
+    if: needs.changes.outputs.python == 'true' || needs.changes.outputs.frontend == 'true'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
@@ -59,8 +102,9 @@ jobs:
 
   test:
     name: Tests
+    needs: [changes, lint]
+    if: needs.changes.outputs.python == 'true'
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    needs: [lint]
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
@@ -105,8 +149,9 @@ jobs:
 
   smoke:
     name: Smoke Tests (ML inference)
+    needs: [changes, test]
+    if: needs.changes.outputs.ml == 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: [test]
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/setup-uv@v7
@@ -122,6 +167,8 @@ jobs:
 
   fe-lint:
     name: Lint (Biome)
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
@@ -135,6 +182,8 @@ jobs:
 
   fe-typecheck:
     name: Type Check (tsc)
+    needs: [changes]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: blacksmith-2vcpu-ubuntu-2404
     steps:
       - uses: actions/checkout@v6
@@ -148,8 +197,9 @@ jobs:
 
   fe-build:
     name: Build (Next.js)
+    needs: [changes, fe-lint, fe-typecheck]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: [fe-lint, fe-typecheck]
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -177,8 +227,9 @@ jobs:
 
   fe-test:
     name: Tests (Vitest)
+    needs: [changes, fe-lint]
+    if: needs.changes.outputs.frontend == 'true'
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    needs: [fe-lint]
     steps:
       - uses: actions/checkout@v6
       - uses: oven-sh/setup-bun@v2
@@ -205,8 +256,9 @@ jobs:
 
   docker-backend:
     name: Docker Build (Backend)
+    needs: [changes, lint, typecheck, test]
+    if: ${{ !inputs.skip-docker && needs.changes.outputs.docker == 'true' }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: [lint, typecheck, test]
     steps:
       - uses: actions/checkout@v6
       - name: Setup Blacksmith Builder
@@ -221,8 +273,9 @@ jobs:
 
   docker-frontend:
     name: Docker Build (Frontend)
+    needs: [changes, fe-lint, fe-typecheck, fe-build]
+    if: ${{ !inputs.skip-docker && needs.changes.outputs.docker == 'true' }}
     runs-on: blacksmith-4vcpu-ubuntu-2404
-    needs: [fe-lint, fe-typecheck, fe-build]
     steps:
       - uses: actions/checkout@v6
       - name: Setup Blacksmith Builder
@@ -238,7 +291,7 @@ jobs:
   ci-passed:
     name: CI Summary
     runs-on: blacksmith-2vcpu-ubuntu-2404
-    needs: [lint, typecheck, ast-grep, test, smoke, fe-lint, fe-typecheck, fe-build, fe-test, docker-backend, docker-frontend]
+    needs: [changes, lint, typecheck, ast-grep, test, smoke, fe-lint, fe-typecheck, fe-build, fe-test, docker-backend, docker-frontend]
     if: always()
     outputs:
       result: ${{ steps.check.outputs.result }}
@@ -257,6 +310,7 @@ jobs:
           DOCKER_BACKEND: ${{ needs.docker-backend.result }}
           DOCKER_FRONTEND: ${{ needs.docker-frontend.result }}
           AST_GREP: ${{ needs.ast-grep.result }}
+          CHANGES: ${{ needs.changes.result }}
         run: |
           FAILED=0
 
@@ -265,7 +319,7 @@ jobs:
 
           check_job() {
             local name="$1" result="$2"
-            if [[ "$result" == "success" ]]; then
+            if [[ "$result" == "success" || "$result" == "skipped" ]]; then
               echo "| :white_check_mark: ${name} | \`${result}\` |" >> "$GITHUB_STEP_SUMMARY"
             else
               echo "| :x: ${name} | \`${result}\` |" >> "$GITHUB_STEP_SUMMARY"
@@ -284,6 +338,12 @@ jobs:
           check_job "Docker Build (Backend)" "$DOCKER_BACKEND"
           check_job "Docker Build (Frontend)" "$DOCKER_FRONTEND"
           echo "| :mag: ast-grep | \`${AST_GREP}\` (informational) |" >> "$GITHUB_STEP_SUMMARY"
+
+          if [[ "$CHANGES" != "success" ]]; then
+            echo "::error::changes detection failed"
+            echo "result=failure" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
 
           if [[ "$FAILED" -eq 1 ]]; then
             echo "::error::CI failed"

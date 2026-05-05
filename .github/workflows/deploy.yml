@@ -25,6 +25,8 @@ jobs:
     uses: ./.github/workflows/ci-reusable.yml
     with:
       python-version: "3.11"
+      skip-docker: true
+    secrets: inherit
 
   build-frontend:
     name: Build Frontend Image
