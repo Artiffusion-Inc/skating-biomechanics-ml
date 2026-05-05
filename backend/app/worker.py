@@ -451,8 +451,8 @@ async def detect_video_task(
 
             annotated = await asyncio.to_thread(
                 render_person_preview,
-                frame,
-                persons,
+                frame,  # type: ignore[arg-type]
+                persons,  # type: ignore[arg-type]
                 selected_idx=None,
             )
             success, buf = await asyncio.to_thread(cv2.imencode, ".png", annotated)
