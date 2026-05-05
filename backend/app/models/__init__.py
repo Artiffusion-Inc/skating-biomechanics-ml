@@ -3,6 +3,7 @@
 from app.models.base import Base
 from app.models.choreography import ChoreographyProgram, MusicAnalysis
 from app.models.connection import Connection
+from app.models.password_reset_token import PasswordResetToken
 from app.models.refresh_token import RefreshToken
 from app.models.session import Session, SessionMetric
 from app.models.user import User
@@ -13,6 +14,7 @@ __all__ = [
     "ChoreographyProgram",
     "Connection",
     "MusicAnalysis",
+    "PasswordResetToken",
     "RefreshToken",
     "Session",
     "SessionMetric",

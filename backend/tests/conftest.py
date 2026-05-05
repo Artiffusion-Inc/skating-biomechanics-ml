@@ -125,49 +125,79 @@ def auth_headers(authed_user: User):
 # ---------------------------------------------------------------------------
 
 
+class _FakeValkey:
+    """Fake Valkey that never rate-limits (default for tests)."""
+
+    def pipeline(self):
+        class _Pipe:
+            async def execute(self):
+                return [1, 60]
+
+            def incr(self, key):
+                pass
+
+            def ttl(self, key):
+                return 60
+
+        return _Pipe()
+
+    async def expire(self, key, seconds):
+        pass
+
+
 @pytest.fixture
 def app():
     """Build a Litestar app with external dependencies mocked."""
-    with patch("app.main.configure_logging"):
-        with patch("app.lifespan.init_valkey_pool", new_callable=AsyncMock):
-            with patch("app.lifespan.close_valkey_pool", new_callable=AsyncMock):
-                with patch("app.lifespan.create_pool", new_callable=AsyncMock) as mock_create_pool:
-                    mock_pool = AsyncMock()
-                    mock_create_pool.return_value = mock_pool
+    # Seed the shared Valkey pool directly so get_valkey() never raises.
+    import app.task_manager as _tm
 
-                    with patch("app.main.get_settings") as mock_get:
-                        settings = MagicMock()
-                        settings.cors.origins = ["http://localhost:3000"]
-                        settings.jwt.secret_key.get_secret_value.return_value = "test-secret"
-                        settings.valkey.host = "localhost"
-                        settings.valkey.port = 6379
-                        settings.valkey.db = 0
-                        settings.valkey.password.get_secret_value.return_value = ""
-                        settings.valkey.build_url.return_value = "redis://localhost:6379/0"
-                        settings.app.log_level = "INFO"
-                        settings.app.skip_auth = True
-                        mock_get.return_value = settings
+    _tm._pool["valkey"] = _FakeValkey()
+    try:
+        with patch("app.main.configure_logging"):
+            with patch("app.lifespan.init_valkey_pool", new_callable=AsyncMock):
+                with patch("app.lifespan.close_valkey_pool", new_callable=AsyncMock):
+                    with patch(
+                        "app.lifespan.create_pool", new_callable=AsyncMock
+                    ) as mock_create_pool:
+                        mock_pool = AsyncMock()
+                        mock_create_pool.return_value = mock_pool
 
-                        class DummyRateLimitMiddleware:
-                            def __init__(self, app):
-                                self.app = app
+                        with patch("app.main.get_settings") as mock_get:
+                            settings = MagicMock()
+                            settings.cors.origins = ["http://localhost:3000"]
+                            settings.jwt.secret_key.get_secret_value.return_value = "test-secret"
+                            settings.valkey.host = "localhost"
+                            settings.valkey.port = 6379
+                            settings.valkey.db = 0
+                            settings.valkey.password.get_secret_value.return_value = ""
+                            settings.valkey.build_url.return_value = "redis://localhost:6379/0"
+                            settings.app.log_level = "INFO"
+                            settings.app.skip_auth = True
+                            settings.jwt.refresh_token_expire_days = 7
+                            mock_get.return_value = settings
 
-                            async def __call__(self, scope, receive, send):
-                                await self.app(scope, receive, send)
+                            class DummyRateLimitMiddleware:
+                                def __init__(self, app):
+                                    self.app = app
 
-                        with patch("app.main.RateLimitConfig") as mock_rl_cls:
-                            mock_rl_cls.return_value = MagicMock(
-                                middleware=DummyRateLimitMiddleware
-                            )
+                                async def __call__(self, scope, receive, send):
+                                    await self.app(scope, receive, send)
 
-                            with patch("app.main.ResponseCacheConfig") as mock_rc:
-                                mock_rc.return_value = None
+                            with patch("app.main.RateLimitConfig") as mock_rl_cls:
+                                mock_rl_cls.return_value = MagicMock(
+                                    middleware=DummyRateLimitMiddleware
+                                )
 
-                                from app.main import create_app
+                                with patch("app.main.ResponseCacheConfig") as mock_rc:
+                                    mock_rc.return_value = None
 
-                                litestar_app = create_app()
-                                litestar_app.state.arq_pool = AsyncMock()
-                                yield litestar_app
+                                    from app.main import create_app
+
+                                    litestar_app = create_app()
+                                    litestar_app.state.arq_pool = AsyncMock()
+                                    yield litestar_app
+    finally:
+        _tm._pool.pop("valkey", None)
 
 
 @pytest.fixture

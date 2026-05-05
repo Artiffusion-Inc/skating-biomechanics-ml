@@ -116,6 +116,18 @@ class VastAIConfig(BaseSettings):
         env_prefix = "VASTAI_"
 
 
+class ResendConfig(BaseSettings):
+    """Resend email service settings."""
+
+    api_key: SecretStr = SecretStr("")
+    from_email: str = "noreply@skating.ai"
+    from_name: str = "Skating AI Coach"
+    reset_url_template: str = "https://skating.ai/reset-password?token={token}"
+
+    class Config:
+        env_prefix = "RESEND_"
+
+
 class AppConfig(BaseSettings):
     """General application settings."""
 
@@ -147,6 +159,7 @@ class Settings(BaseSettings):
     cors: CORSConfig = Field(default_factory=CORSConfig)
     r2: R2Config = Field(default_factory=R2Config)
     vastai: VastAIConfig = Field(default_factory=VastAIConfig)
+    resend: ResendConfig = Field(default_factory=ResendConfig)
     app: AppConfig = Field(default_factory=AppConfig)
 
     model_config = SettingsConfigDict(

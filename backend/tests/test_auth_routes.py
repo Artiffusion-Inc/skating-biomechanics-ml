@@ -1,7 +1,10 @@
 """Tests for auth API routes."""
 
+from datetime import UTC, datetime, timedelta
+
 import pytest
-from app.auth.security import hash_password
+from app.auth.security import hash_password, hash_token
+from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -167,3 +170,277 @@ async def test_logout_with_nonexistent_token(client):
         json={"refresh_token": "b" * 64},
     )
     assert response.status_code == 204
+
+
+async def test_refresh_token_reuse_revokes_family(client, db_session):
+    """Using a refresh token twice revokes the whole family."""
+    user = User(email="reuse@example.com", hashed_password=hash_password("pass"))
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    login_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "reuse@example.com", "password": "pass"},
+    )
+    print("LOGIN STATUS:", login_resp.status_code)
+    print("LOGIN BODY:", login_resp.text)
+    tokens = login_resp.json()
+    refresh1 = tokens["refresh_token"]
+
+    # First refresh succeeds
+    r1 = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh1})
+    assert r1.status_code == 200
+
+    # Second refresh with same token fails and revokes family
+    r2 = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh1})
+    assert r2.status_code == 401
+    assert "reuse" in r2.json()["message"].lower()
+
+    # Even the new token from r1 should now be revoked
+    new_refresh = r1.json()["refresh_token"]
+    r3 = await client.post("/api/v1/auth/refresh", json={"refresh_token": new_refresh})
+    assert r3.status_code == 401
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_valkey():
+    """Fake Valkey client for rate-limit tests."""
+    _store = {}
+
+    class FakeValkey:
+        def pipeline(self):
+            class _Pipe:
+                async def execute(self):
+                    key = _store.get("last_key")
+                    val = _store.get(key, 0) + 1
+                    _store[key] = val
+                    return [val, -1 if val == 1 else 60]
+
+                def incr(self, key):
+                    _store["last_key"] = key
+
+                def ttl(self, _key):
+                    return -1 if _store.get("last_key", 0) == 1 else 60
+
+            return _Pipe()
+
+        async def expire(self, key, seconds):
+            pass
+
+    return FakeValkey()
+
+
+async def test_register_rate_limit_by_ip(client, mock_valkey):
+    """After 5 register requests from same IP, 6th returns 429."""
+    import app.task_manager as _tm
+
+    _tm._pool["valkey"] = mock_valkey
+    try:
+        for i in range(5):
+            resp = await client.post(
+                "/api/v1/auth/register",
+                json={"email": f"user{i}@test.com", "password": "password123"},
+            )
+            assert resp.status_code == 201, f"Request {i + 1} should succeed"
+
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"email": "overflow@test.com", "password": "password123"},
+        )
+        assert resp.status_code == 429
+        assert "Rate limit" in resp.json()["message"]
+    finally:
+        _tm._pool.pop("valkey", None)
+
+
+async def test_login_rate_limit_by_email(client, db_session, mock_valkey):
+    """After 5 failed logins for same email, 6th returns 429."""
+    user = User(email="rate@example.com", hashed_password=hash_password("correct"))
+    db_session.add(user)
+    await db_session.flush()
+
+    import app.task_manager as _tm
+
+    _tm._pool["valkey"] = mock_valkey
+    try:
+        for i in range(5):
+            resp = await client.post(
+                "/api/v1/auth/login",
+                json={"email": "rate@example.com", "password": "wrong"},
+            )
+            assert resp.status_code == 401, f"Request {i + 1} should fail auth"
+
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "rate@example.com", "password": "wrong"},
+        )
+        assert resp.status_code == 429
+    finally:
+        _tm._pool.pop("valkey", None)
+
+
+# ---------------------------------------------------------------------------
+# Password reset
+# ---------------------------------------------------------------------------
+
+
+async def test_forgot_password_existing_email(client, db_session: AsyncSession):
+    """Forgot-password returns 200 and creates a reset token."""
+    user = User(email="forgot@example.com", hashed_password=hash_password("pass"))
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    resp = await client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "forgot@example.com"},
+    )
+    assert resp.status_code == 200
+    assert "reset link sent" in resp.json()["message"].lower()
+
+    # Verify token created in DB
+    from sqlalchemy import select
+
+    result = await db_session.execute(
+        select(PasswordResetToken).where(PasswordResetToken.user_id == user.id)
+    )
+    token = result.scalar_one_or_none()
+    assert token is not None
+    assert token.used_at is None
+
+
+async def test_forgot_password_nonexistent_email(client):
+    """Forgot-password returns 200 with generic message for unknown email."""
+    resp = await client.post(
+        "/api/v1/auth/forgot-password",
+        json={"email": "nobody@example.com"},
+    )
+    assert resp.status_code == 200
+    assert "reset link sent" in resp.json()["message"].lower()
+
+
+async def test_forgot_password_rate_limit(client, mock_valkey):
+    """After 3 forgot-password requests, 4th returns 429."""
+    import app.task_manager as _tm
+
+    _tm._pool["valkey"] = mock_valkey
+    try:
+        for i in range(3):
+            resp = await client.post(
+                "/api/v1/auth/forgot-password",
+                json={"email": f"rate{i}@test.com"},
+            )
+            assert resp.status_code == 200, f"Request {i + 1} should succeed"
+
+        resp = await client.post(
+            "/api/v1/auth/forgot-password",
+            json={"email": "overflow@test.com"},
+        )
+        assert resp.status_code == 429
+    finally:
+        _tm._pool.pop("valkey", None)
+
+
+async def test_reset_password_valid_token(client, db_session: AsyncSession):
+    """Reset password with valid token succeeds and marks token used."""
+    user = User(email="reset@example.com", hashed_password=hash_password("oldpass"))
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    token_raw = "a" * 64
+    token_hash = hash_token(token_raw)
+    prt = PasswordResetToken(
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=datetime.now(UTC) + timedelta(hours=1),
+    )
+    db_session.add(prt)
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": token_raw, "password": "newpass123"},
+    )
+    assert resp.status_code == 200
+    assert "success" in resp.json()["message"].lower()
+
+    # Verify token marked used
+    from sqlalchemy import select
+
+    result = await db_session.execute(
+        select(PasswordResetToken).where(PasswordResetToken.id == prt.id)
+    )
+    token = result.scalar_one()
+    assert token.used_at is not None
+
+    # Verify password updated
+    result = await db_session.execute(select(User).where(User.id == user.id))
+    updated_user = result.scalar_one()
+    from app.auth.security import verify_password
+
+    assert verify_password("newpass123", updated_user.hashed_password)
+
+
+async def test_reset_password_invalid_token(client):
+    """Reset password with invalid token returns 400."""
+    resp = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": "invalidtoken", "password": "newpass123"},
+    )
+    assert resp.status_code == 400
+    assert "invalid" in resp.json()["message"].lower()
+
+
+async def test_reset_password_expired_token(client, db_session: AsyncSession):
+    """Reset password with expired token returns 400."""
+    user = User(email="expired@example.com", hashed_password=hash_password("oldpass"))
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    token_raw = "b" * 64
+    token_hash = hash_token(token_raw)
+    prt = PasswordResetToken(
+        user_id=user.id,
+        token_hash=token_hash,
+        expires_at=datetime.now(UTC) - timedelta(hours=1),
+    )
+    db_session.add(prt)
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/auth/reset-password",
+        json={"token": token_raw, "password": "newpass123"},
+    )
+    assert resp.status_code == 400
+    assert "invalid" in resp.json()["message"].lower()
+
+
+async def test_reset_password_rate_limit(client, mock_valkey):
+    """After 5 reset-password requests, 6th returns 429."""
+    import app.task_manager as _tm
+
+    _tm._pool["valkey"] = mock_valkey
+    try:
+        for i in range(5):
+            resp = await client.post(
+                "/api/v1/auth/reset-password",
+                json={"token": f"{'c' * 64}{i}", "password": "newpass123"},
+            )
+            # Each fails with 400 (invalid token) but counts toward rate limit
+            assert resp.status_code == 400, f"Request {i + 1} should fail auth"
+
+        resp = await client.post(
+            "/api/v1/auth/reset-password",
+            json={"token": "d" * 64, "password": "newpass123"},
+        )
+        assert resp.status_code == 429
+    finally:
+        _tm._pool.pop("valkey", None)
