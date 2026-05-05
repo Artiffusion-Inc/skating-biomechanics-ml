@@ -20,6 +20,7 @@ dependencies = [
     "ultralytics>=8.0.0",
     "aiobotocore>=3.4.0",
     "prometheus-client>=0.21.0",
+    "httpx>=0.28.0",
 ]
 
 [build-system]
