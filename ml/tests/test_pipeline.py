@@ -32,7 +32,6 @@ class TestAnalysisPipelineInit:
         assert pipeline._enable_smoothing is True
         assert pipeline._person_click is None
         assert pipeline._reestimate_camera is False
-        assert pipeline._compute_3d is False
         assert pipeline._profiler is not None
 
     def test_init_with_reference_store(self):
@@ -55,13 +54,11 @@ class TestAnalysisPipelineInit:
             enable_smoothing=False,
             reestimate_camera=True,
             profiler=mock_profiler,
-            compute_3d=True,
         )
 
         assert pipeline._enable_smoothing is False
         assert pipeline._reestimate_camera is True
         assert pipeline._profiler is mock_profiler
-        assert pipeline._compute_3d is True
 
 
 class TestAnalysisPipelineAnalyze:
@@ -100,12 +97,10 @@ class TestAnalysisPipelineAnalyze:
         sample_2d_poses,
         sample_phases,
         reference_store=None,
-        compute_3d=False,
     ):
         """Build pipeline with all heavy dependencies mocked."""
         pipeline = AnalysisPipeline(
             reference_store=reference_store,
-            compute_3d=compute_3d,
         )
 
         # Mock _extract_and_track to avoid video I/O and rtmlib
@@ -150,13 +145,6 @@ class TestAnalysisPipelineAnalyze:
         mock_aligner = MagicMock()
         mock_aligner.compute_distance = MagicMock(return_value=0.25)
         pipeline._get_aligner = MagicMock(return_value=mock_aligner)
-
-        if compute_3d:
-            mock_3d_extractor = MagicMock()
-            mock_3d_extractor.extract_sequence = MagicMock(
-                return_value=np.ones((10, 17, 3), dtype=np.float32)
-            )
-            pipeline._get_pose_3d_extractor = MagicMock(return_value=mock_3d_extractor)
 
         return pipeline
 
@@ -376,38 +364,6 @@ class TestAnalysisPipelineAnalyze:
 
         assert report.dtw_distance == 0.0
         pipeline._get_aligner().compute_distance.assert_not_called()
-
-    @patch("src.pipeline.get_video_meta")
-    @patch("src.detection.blade_edge_detector_3d.BladeEdgeDetector3D")
-    def test_analyze_with_3d_enabled(
-        self, mock_blade_cls, mock_get_meta, sample_3d_poses, sample_2d_poses, sample_phases
-    ):
-        """Should run 3D lifting and blade detection when compute_3d=True."""
-        mock_get_meta.return_value = VideoMeta(
-            path=Path("test.mp4"),
-            width=640,
-            height=480,
-            fps=30.0,
-            num_frames=10,
-        )
-
-        mock_blade_state = MagicMock()
-        mock_blade_state.blade_type.value = "inside"
-        mock_blade_detector = MagicMock()
-        mock_blade_detector.detect_frame = MagicMock(return_value=mock_blade_state)
-        mock_blade_cls.return_value = mock_blade_detector
-
-        pipeline = self._make_pipeline_with_mocks(
-            sample_3d_poses,
-            sample_2d_poses,
-            sample_phases,
-            compute_3d=True,
-        )
-
-        report = pipeline.analyze(Path("test.mp4"), element_type="waltz_jump")
-
-        assert report.blade_summary_left is not None
-        assert report.blade_summary_right is not None
 
     @patch("src.pipeline.get_video_meta")
     def test_analyze_profiling_recorded(
@@ -751,26 +707,6 @@ class TestAnalysisPipeline:
 
 
 @pytest.mark.integration
-class TestConditional3D:
-    """Tests for compute_3d gate."""
-
-    def test_compute_3d_defaults_false(self):
-        """compute_3d should default to False."""
-        pipeline = AnalysisPipeline()
-        assert pipeline._compute_3d is False
-
-    def test_compute_3d_explicit_true(self):
-        """compute_3d=True should be stored."""
-        pipeline = AnalysisPipeline(compute_3d=True)
-        assert pipeline._compute_3d is True
-
-    def test_compute_3d_explicit_false(self):
-        """compute_3d=False should be stored."""
-        pipeline = AnalysisPipeline(compute_3d=False)
-        assert pipeline._compute_3d is False
-
-
-@pytest.mark.integration
 class TestPipelineLazyLoading:
     """Test lazy loading of pipeline components.
 
@@ -801,18 +737,6 @@ class TestPipelineLazyLoading:
         extractor = pipeline._get_pose_2d_extractor()
         assert extractor is not None
         assert pipeline._pose_2d_extractor is not None
-
-    def test_pose_3d_extractor_lazy_load(self):
-        """Should return None when ONNX model is not found."""
-        from unittest.mock import patch
-
-        pipeline = AnalysisPipeline()
-
-        assert pipeline._pose_3d_extractor is None
-        with patch("src.pipeline.Path") as mock_path:
-            mock_path.return_value.exists.return_value = False
-            extractor = pipeline._get_pose_3d_extractor()
-        assert extractor is None
 
     def test_normalizer_lazy_load(self):
         """Should lazy-load normalizer."""

@@ -18,7 +18,6 @@ async def test_analyze_async_exists():
     pipeline = AnalysisPipeline(enable_smoothing=False)
 
     assert callable(pipeline.analyze_async)
-    assert hasattr(pipeline, "_lift_poses_3d_async")
     assert hasattr(pipeline, "_detect_phases_async")
     assert hasattr(pipeline, "_compute_metrics_async")
     assert hasattr(pipeline, "_load_reference_async")
@@ -105,22 +104,6 @@ async def test_parallel_stage_execution():
     assert len(results) == 2
     assert "task1" in results
     assert "task2" in results
-
-
-@pytest.mark.asyncio
-async def test_lift_poses_3d_async():
-    """Test _lift_poses_3d_async method."""
-    pipeline = AnalysisPipeline(enable_smoothing=False)
-
-    # Mock poses
-    poses_2d = np.random.randn(100, 17, 2).astype(np.float32)
-
-    # If 3D extractor is not available, should return None
-    result = await pipeline._lift_poses_3d_async(poses_2d, 30.0)
-
-    # Result should be (poses_3d, blade_summaries) or (None, None)
-    assert isinstance(result, tuple)
-    assert len(result) == 2
 
 
 @pytest.mark.asyncio

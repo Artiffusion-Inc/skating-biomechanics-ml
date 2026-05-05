@@ -18,10 +18,7 @@ from __future__ import annotations
 
 import asyncio
 import time
-from pathlib import Path
 from typing import TYPE_CHECKING
-
-import numpy as np
 
 from .device import DeviceConfig
 from .types import AnalysisReport, ElementPhase, PersonClick, SegmentationResult
@@ -30,6 +27,10 @@ from .utils.profiling import PipelineProfiler
 from .utils.video import VideoMeta, get_video_meta
 
 if TYPE_CHECKING:
+    from pathlib import Path
+
+    import numpy as np
+
     from .alignment import MotionAligner, MotionDTWAligner
     from .analysis.phase_detector import PhaseDetector
     from .analysis.recommender import Recommender
