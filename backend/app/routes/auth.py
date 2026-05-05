@@ -22,7 +22,7 @@ from app.auth.security import (
 )
 from app.config import get_settings
 from app.crud.refresh_token import create as create_refresh_token_crud
-from app.crud.refresh_token import get_active_by_hash, revoke
+from app.crud.refresh_token import get_active_by_hash, mark_used, revoke, revoke_family
 from app.crud.user import create as create_user
 from app.crud.user import get_by_email
 from app.middleware import check_rate_limit
@@ -106,7 +106,16 @@ class AuthController(Controller):
                 status_code=401,
                 detail="Invalid or expired refresh token",
             )
-        await revoke(db, existing)
+
+        # Reuse detection: if already used, assume theft → revoke entire family
+        if existing.last_used_at is not None:
+            await revoke_family(db, existing.family_id)
+            raise ClientException(
+                status_code=401,
+                detail="Token reuse detected. All sessions revoked.",
+            )
+
+        await mark_used(db, existing)
         return await self._issue_token_pair(db, existing.user_id, family_id=existing.family_id)
 
     @post("/logout", status_code=HTTP_204_NO_CONTENT)

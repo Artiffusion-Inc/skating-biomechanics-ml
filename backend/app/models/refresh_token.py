@@ -28,3 +28,4 @@ class RefreshToken(TimestampMixin, Base):
     family_id: Mapped[str] = mapped_column(String(36), index=True)
     is_revoked: Mapped[bool] = mapped_column(Boolean, default=False)
     expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

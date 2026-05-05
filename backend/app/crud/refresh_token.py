@@ -65,6 +65,13 @@ async def revoke_family(db: AsyncSession, family_id: str) -> int:
     return count
 
 
+async def mark_used(db: AsyncSession, token: RefreshToken) -> None:
+    """Mark a refresh token as used (for reuse detection)."""
+    token.last_used_at = datetime.now(UTC)
+    db.add(token)
+    await db.flush()
+
+
 async def get_active_by_hash(db: AsyncSession, token_hash: str) -> RefreshToken | None:
     """Get a non-revoked, non-expired refresh token by hash."""
     result = await db.execute(

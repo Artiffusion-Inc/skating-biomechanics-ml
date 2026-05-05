@@ -169,6 +169,37 @@ async def test_logout_with_nonexistent_token(client):
     assert response.status_code == 204
 
 
+async def test_refresh_token_reuse_revokes_family(client, db_session):
+    """Using a refresh token twice revokes the whole family."""
+    user = User(email="reuse@example.com", hashed_password=hash_password("pass"))
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    login_resp = await client.post(
+        "/api/v1/auth/login",
+        json={"email": "reuse@example.com", "password": "pass"},
+    )
+    print("LOGIN STATUS:", login_resp.status_code)
+    print("LOGIN BODY:", login_resp.text)
+    tokens = login_resp.json()
+    refresh1 = tokens["refresh_token"]
+
+    # First refresh succeeds
+    r1 = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh1})
+    assert r1.status_code == 200
+
+    # Second refresh with same token fails and revokes family
+    r2 = await client.post("/api/v1/auth/refresh", json={"refresh_token": refresh1})
+    assert r2.status_code == 401
+    assert "reuse" in r2.json()["message"].lower()
+
+    # Even the new token from r1 should now be revoked
+    new_refresh = r1.json()["refresh_token"]
+    r3 = await client.post("/api/v1/auth/refresh", json={"refresh_token": new_refresh})
+    assert r3.status_code == 401
+
+
 # ---------------------------------------------------------------------------
 # Rate limiting
 # ---------------------------------------------------------------------------
@@ -177,33 +208,24 @@ async def test_logout_with_nonexistent_token(client):
 @pytest.fixture
 def mock_valkey():
     """Fake Valkey client for rate-limit tests."""
-    from unittest.mock import AsyncMock
-
     _store = {}
 
     class FakeValkey:
-        async def pipeline(self):
-            pipe = AsyncMock()
+        def pipeline(self):
+            class _Pipe:
+                async def execute(self):
+                    key = _store.get("last_key")
+                    val = _store.get(key, 0) + 1
+                    _store[key] = val
+                    return [val, -1 if val == 1 else 60]
 
-            async def execute():
-                key = _store.get("last_key")
-                val = _store.get(key, 0) + 1
-                _store[key] = val
-                return [val, -1 if val == 1 else 60]
+                def incr(self, key):
+                    _store["last_key"] = key
 
-            pipe.execute = execute
+                def ttl(self, _key):
+                    return -1 if _store.get("last_key", 0) == 1 else 60
 
-            async def incr(key):
-                _store["last_key"] = key
-                _store[key] = _store.get(key, 0) + 1
-
-            pipe.incr = incr
-
-            async def ttl(_key):
-                return -1 if _store.get("last_key", 0) == 1 else 60
-
-            pipe.ttl = ttl
-            return pipe
+            return _Pipe()
 
         async def expire(self, key, seconds):
             pass
@@ -213,9 +235,10 @@ def mock_valkey():
 
 async def test_register_rate_limit_by_ip(client, mock_valkey):
     """After 5 register requests from same IP, 6th returns 429."""
-    from unittest.mock import patch
+    import app.task_manager as _tm
 
-    with patch("app.routes.auth.get_valkey", return_value=mock_valkey):
+    _tm._pool["valkey"] = mock_valkey
+    try:
         for i in range(5):
             resp = await client.post(
                 "/api/v1/auth/register",
@@ -229,6 +252,8 @@ async def test_register_rate_limit_by_ip(client, mock_valkey):
         )
         assert resp.status_code == 429
         assert "Rate limit" in resp.json()["message"]
+    finally:
+        _tm._pool.pop("valkey", None)
 
 
 async def test_login_rate_limit_by_email(client, db_session, mock_valkey):
@@ -237,9 +262,10 @@ async def test_login_rate_limit_by_email(client, db_session, mock_valkey):
     db_session.add(user)
     await db_session.flush()
 
-    from unittest.mock import patch
+    import app.task_manager as _tm
 
-    with patch("app.routes.auth.get_valkey", return_value=mock_valkey):
+    _tm._pool["valkey"] = mock_valkey
+    try:
         for i in range(5):
             resp = await client.post(
                 "/api/v1/auth/login",
@@ -252,3 +278,5 @@ async def test_login_rate_limit_by_email(client, db_session, mock_valkey):
             json={"email": "rate@example.com", "password": "wrong"},
         )
         assert resp.status_code == 429
+    finally:
+        _tm._pool.pop("valkey", None)
