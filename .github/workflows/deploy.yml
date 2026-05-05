@@ -210,21 +210,12 @@ jobs:
           script: |
             cd /opt/skating-app
             timeout 120 bash -c '
-              until podman compose --env-file .env.prod -f compose.prod.yaml ps --format json 2>/dev/null | \
-                python3 -c "
-            import sys, json
-            ok = True
-            for line in sys.stdin:
-              svc = json.loads(line)
-              name = svc.get('Name', '')
-              health = svc.get('Health', '')
-              if name in ('frontend', 'backend') and health != 'healthy':
-                print(f'  {name}: {health}')
-                ok = False
-            if ok:
-              print('All services healthy')
-            sys.exit(0 if ok else 1)
-            "; do
+              while true; do
+                bad=$(podman ps -a --format "{{.Names}}\t{{.Status}}" | grep -E "frontend|backend" | grep -cv "healthy")
+                if [ "$bad" -eq 0 ]; then
+                  echo "All services healthy"
+                  exit 0
+                fi
                 sleep 10
               done
             '
