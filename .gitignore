@@ -142,3 +142,4 @@ experiments/yolo26-pose-kd/runs/
 # Stray generated artifacts
 row
 runs/
+.worktrees/
