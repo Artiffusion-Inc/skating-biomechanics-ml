@@ -134,3 +134,19 @@ tasks:
     cmds:
       - task: vastai-build
       - task: vastai-push
+
+  # CLI tasks
+  cli-login:
+    desc: Authenticate CLI with backend
+    dir: ml
+    cmds:
+      - uv run python scripts/cli.py login
+
+  cli-analyze:
+    desc: Analyze a video using remote GPU (set VIDEO and ELEMENT vars)
+    dir: ml
+    cmds:
+      - uv run python scripts/cli.py analyze {{.VIDEO}} --element {{.ELEMENT}}
+    vars:
+      VIDEO: '{{.VIDEO | default "data/samples/test.mp4"}}'
+      ELEMENT: '{{.ELEMENT | default "waltz_jump"}}'
