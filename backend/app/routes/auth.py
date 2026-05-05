@@ -7,7 +7,7 @@ from collections.abc import Sequence  # noqa: TC003
 from datetime import UTC, datetime, timedelta
 from typing import ClassVar
 
-from litestar import Controller, post
+from litestar import Controller, Request, post
 from litestar.exceptions import ClientException
 from litestar.status_codes import HTTP_200_OK, HTTP_201_CREATED, HTTP_204_NO_CONTENT
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: F401
@@ -25,6 +25,7 @@ from app.crud.refresh_token import create as create_refresh_token_crud
 from app.crud.refresh_token import get_active_by_hash, revoke
 from app.crud.user import create as create_user
 from app.crud.user import get_by_email
+from app.middleware import check_rate_limit
 from app.schemas import (
     LoginRequest,
     RefreshRequest,
@@ -56,8 +57,12 @@ class AuthController(Controller):
         return TokenResponse(access_token=access, refresh_token=refresh_str)
 
     @post("/register", status_code=HTTP_201_CREATED)
-    async def register(self, db: DbDep, data: RegisterRequest) -> TokenResponse:
+    async def register(self, request: Request, db: DbDep, data: RegisterRequest) -> TokenResponse:
         """Register a new user."""
+        ip = request.client.host if request.client else "unknown"
+        await check_rate_limit(f"register_ip:{ip}", max_requests=5, window_seconds=60)
+        await check_rate_limit(f"register_email:{data.email}", max_requests=3, window_seconds=3600)
+
         existing = await get_by_email(db, data.email)
         if existing:
             raise ClientException(
@@ -74,8 +79,12 @@ class AuthController(Controller):
         return await self._issue_token_pair(db, user.id)
 
     @post("/login", status_code=HTTP_200_OK)
-    async def login(self, db: DbDep, data: LoginRequest) -> TokenResponse:
+    async def login(self, request: Request, db: DbDep, data: LoginRequest) -> TokenResponse:
         """Authenticate and return tokens."""
+        ip = request.client.host if request.client else "unknown"
+        await check_rate_limit(f"login_ip:{ip}", max_requests=10, window_seconds=60)
+        await check_rate_limit(f"login_email:{data.email}", max_requests=5, window_seconds=300)
+
         user = await get_by_email(db, data.email)
         if not user or not verify_password(data.password, user.hashed_password):
             raise ClientException(
@@ -85,8 +94,11 @@ class AuthController(Controller):
         return await self._issue_token_pair(db, user.id)
 
     @post("/refresh", status_code=HTTP_200_OK)
-    async def refresh(self, db: DbDep, data: RefreshRequest) -> TokenResponse:
+    async def refresh(self, request: Request, db: DbDep, data: RefreshRequest) -> TokenResponse:
         """Rotate refresh token and issue new token pair."""
+        ip = request.client.host if request.client else "unknown"
+        await check_rate_limit(f"refresh_ip:{ip}", max_requests=20, window_seconds=60)
+
         token_hash = hash_token(data.refresh_token)
         existing = await get_active_by_hash(db, token_hash)
         if not existing:

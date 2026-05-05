@@ -167,3 +167,88 @@ async def test_logout_with_nonexistent_token(client):
         json={"refresh_token": "b" * 64},
     )
     assert response.status_code == 204
+
+
+# ---------------------------------------------------------------------------
+# Rate limiting
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def mock_valkey():
+    """Fake Valkey client for rate-limit tests."""
+    from unittest.mock import AsyncMock
+
+    _store = {}
+
+    class FakeValkey:
+        async def pipeline(self):
+            pipe = AsyncMock()
+
+            async def execute():
+                key = _store.get("last_key")
+                val = _store.get(key, 0) + 1
+                _store[key] = val
+                return [val, -1 if val == 1 else 60]
+
+            pipe.execute = execute
+
+            async def incr(key):
+                _store["last_key"] = key
+                _store[key] = _store.get(key, 0) + 1
+
+            pipe.incr = incr
+
+            async def ttl(_key):
+                return -1 if _store.get("last_key", 0) == 1 else 60
+
+            pipe.ttl = ttl
+            return pipe
+
+        async def expire(self, key, seconds):
+            pass
+
+    return FakeValkey()
+
+
+async def test_register_rate_limit_by_ip(client, mock_valkey):
+    """After 5 register requests from same IP, 6th returns 429."""
+    from unittest.mock import patch
+
+    with patch("app.routes.auth.get_valkey", return_value=mock_valkey):
+        for i in range(5):
+            resp = await client.post(
+                "/api/v1/auth/register",
+                json={"email": f"user{i}@test.com", "password": "password123"},
+            )
+            assert resp.status_code == 201, f"Request {i + 1} should succeed"
+
+        resp = await client.post(
+            "/api/v1/auth/register",
+            json={"email": "overflow@test.com", "password": "password123"},
+        )
+        assert resp.status_code == 429
+        assert "Rate limit" in resp.json()["message"]
+
+
+async def test_login_rate_limit_by_email(client, db_session, mock_valkey):
+    """After 5 failed logins for same email, 6th returns 429."""
+    user = User(email="rate@example.com", hashed_password=hash_password("correct"))
+    db_session.add(user)
+    await db_session.flush()
+
+    from unittest.mock import patch
+
+    with patch("app.routes.auth.get_valkey", return_value=mock_valkey):
+        for i in range(5):
+            resp = await client.post(
+                "/api/v1/auth/login",
+                json={"email": "rate@example.com", "password": "wrong"},
+            )
+            assert resp.status_code == 401, f"Request {i + 1} should fail auth"
+
+        resp = await client.post(
+            "/api/v1/auth/login",
+            json={"email": "rate@example.com", "password": "wrong"},
+        )
+        assert resp.status_code == 429
