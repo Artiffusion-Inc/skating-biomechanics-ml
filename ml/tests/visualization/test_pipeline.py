@@ -141,7 +141,6 @@ class TestPreparePoses:
         with (
             mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
             mock.patch("src.visualization.pipeline.PoseExtractor") as MockExt,
-            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
             mock.patch("src.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
             mock.patch(
                 "src.visualization.pipeline._resolve_model_3d",
@@ -149,10 +148,6 @@ class TestPreparePoses:
             ),
         ):
             MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
-            MockLens.return_value.correct_sequence.return_value = (
-                np.random.rand(10, 17, 2).astype(np.float32) * 0.5 + 0.25,
-                np.random.rand(10, 17, 3).astype(np.float32),
-            )
             MockOnnx.return_value.estimate_3d.return_value = np.random.rand(10, 17, 3).astype(
                 np.float32
             )
@@ -166,30 +161,6 @@ class TestPreparePoses:
         assert result.poses_3d.shape == (10, 17, 3)
         assert result.n_valid == 10
         assert result.n_total == 10
-
-    def test_no_corrective_lens_when_disabled(self):
-        """When use_corrective_lens=False, CorrectiveLens is not called."""
-        from src.visualization.pipeline import prepare_poses
-
-        with (
-            mock.patch("src.visualization.pipeline.get_video_meta", return_value=_fake_meta()),
-            mock.patch("src.visualization.pipeline.PoseExtractor") as MockExt,
-            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
-            mock.patch("src.visualization.pipeline.ONNXPoseExtractor") as MockONNX,
-            mock.patch(
-                "src.visualization.pipeline._resolve_model_3d",
-                return_value=Path("model.onnx"),
-            ),
-        ):
-            MockExt.return_value.extract_video_tracked.return_value = _fake_extraction()
-            MockONNX.return_value.estimate_3d.return_value = np.random.rand(10, 17, 3).astype(
-                np.float32
-            )
-
-            result = prepare_poses(Path("test.mp4"), use_corrective_lens=False)
-
-        MockLens.assert_not_called()
-        assert result.poses_3d is not None
 
     def test_no_3d_when_model_missing(self):
         """When model not found, poses_3d is None but poses_norm is still valid."""
@@ -224,7 +195,6 @@ class TestPreparePoses:
                 return_value=_fake_meta(num_frames=20),
             ),
             mock.patch("src.visualization.pipeline.PoseExtractor") as MockExt,
-            mock.patch("src.visualization.pipeline.CorrectiveLens") as MockLens,
             mock.patch("src.visualization.pipeline.ONNXPoseExtractor") as MockOnnx,
             mock.patch(
                 "src.visualization.pipeline._resolve_model_3d",
@@ -232,10 +202,6 @@ class TestPreparePoses:
             ),
         ):
             MockExt.return_value.extract_video_tracked.return_value = extraction
-            MockLens.return_value.correct_sequence.return_value = (
-                np.random.rand(20, 17, 2).astype(np.float32) * 0.5 + 0.25,
-                np.random.rand(20, 17, 3).astype(np.float32),
-            )
             MockOnnx.return_value.estimate_3d.return_value = np.random.rand(20, 17, 3).astype(
                 np.float32
             )

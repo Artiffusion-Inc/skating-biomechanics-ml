@@ -65,7 +65,11 @@ from ..tracking.tracklet_merger import TrackletMerger, build_tracklets
 from ..types import PersonClick, TrackedExtraction
 from ..utils.frame_buffer import AsyncFrameReader
 from ..utils.video import get_video_meta
-from .h36m import _biometric_distance, coco_to_h36m
+from ._frame_processor import FrameProcessor
+from ._target_selector import TargetSelector
+from ._track_state import TrackState
+from ._track_validator import TrackValidator
+from .h36m import coco_to_h36m
 
 logger = logging.getLogger(__name__)
 
@@ -199,57 +203,43 @@ class PoseExtractor:
                 progress_cb=progress_cb,
                 batch_size=batch_size,
             )
+        return self._extract_per_frame(
+            video_path,
+            person_click=person_click,
+            progress_cb=progress_cb,
+        )
+
+    def _extract_per_frame(
+        self,
+        video_path: Path | str,
+        person_click: PersonClick | None = None,
+        progress_cb=None,
+    ) -> TrackedExtraction:
+        """Per-frame extraction path (delegates to shared components)."""
         video_path = Path(video_path)
         video_meta = get_video_meta(video_path)
         num_frames = video_meta.num_frames
 
-        # Pre-allocate with NaN
         all_poses = np.full((num_frames, 17, 3), np.nan, dtype=np.float32)
 
-        # Tracking state
-        if self._tracking_backend == "custom":
-            custom_tracker = CustomPoseTracker(
-                max_disappeared=30,
-                min_hits=3,
-                fps=video_meta.fps,
-            )
-        else:
-            custom_tracker = None  # type: ignore[assignment]
+        track_state = TrackState(
+            fps=video_meta.fps,
+            tracking_backend=self._tracking_backend,
+            tracking_mode=self._tracking_mode,
+        )
+        target_selector = TargetSelector(
+            click_norm=(
+                person_click.to_normalized(video_meta.width, video_meta.height)
+                if person_click is not None
+                else None
+            ),
+        )
+        validator = TrackValidator()
+        frame_processor = FrameProcessor(output_format=self._output_format)
 
-        # Новый трекинг (Sports2D / DeepSORT)
-        resolved_mode = self._resolve_tracking_mode()
-        sports2d_tracker = None
-        deepsort_tracker = None
-        if resolved_mode == "sports2d":
-            from ..tracking.sports2d import Sports2DTracker
-
-            sports2d_tracker = Sports2DTracker(max_disappeared=30, fps=video_meta.fps)
-        elif resolved_mode == "deepsort":
-            from ..tracking.deepsort_tracker import DeepSORTTracker
-
-            deepsort_tracker = DeepSORTTracker(max_age=30, embedder_gpu=True)
-
-        target_track_id: int | None = None
-        click_lock_window = 6  # ~0.2-0.24s at 25-30fps
-        click_norm: tuple[float, float] | None = None
-        if person_click is not None:
-            click_norm = person_click.to_normalized(video_meta.width, video_meta.height)
-
-        # Track hit counts for auto-select
-        track_hit_counts: dict[int, int] = {}
-
-        # Per-frame track_id→h36m_pose for retroactive fill
-        frame_track_data: dict[int, dict[int, np.ndarray]] = {}
-
-        # Last known target pose for biometric track migration
         last_target_pose: np.ndarray | None = None
         last_target_ratios: np.ndarray | None = None
         target_lost_frame: int | None = None
-
-        # rtmlib assigns its own IDs (int per tracked person).
-        # Map rtmlib_id → our internal track_id (0-based counter).
-        rtmlib_id_map: dict[int, int] = {}
-        next_internal_id = 0
 
         # Cache first frame for spatial reference
         cap_first = cv2.VideoCapture(str(video_path))
@@ -260,7 +250,6 @@ class PoseExtractor:
         if not ret:
             raise RuntimeError(f"Failed to read first frame from video: {video_path}")
 
-        # Initialize pbar before try block to avoid "possibly unbound" error
         pbar = _get_tqdm()(
             total=num_frames,
             desc="Extracting poses",
@@ -269,8 +258,6 @@ class PoseExtractor:
             disable=progress_cb is not None,
         )
 
-        # Double-buffered frame reader: background thread decodes frames
-        # while GPU processes the current one.
         reader = AsyncFrameReader(
             video_path,
             buffer_size=16,
@@ -283,19 +270,16 @@ class PoseExtractor:
                 result = reader.get_frame()
                 if result is None:
                     break
-                original_frame_idx, frame = result
-                frame_idx = original_frame_idx
-
+                frame_idx, frame = result
                 h, w = frame.shape[:2]
 
-                # Resize large frames for detection (rtmlib struggles with 4K)
+                # Resize large frames for detection
                 if max(h, w) > 1920:
                     scale = 1920 / max(h, w)
                     frame_ds = cv2.resize(frame, (int(w * scale), int(h * scale)))
                 else:
                     frame_ds = frame
 
-                # Run rtmlib
                 tracker = self.tracker
                 if tracker is None:
                     pbar.update(self._frame_skip)
@@ -305,117 +289,39 @@ class PoseExtractor:
                     pbar.update(self._frame_skip)
                     continue
                 keypoints, scores = tracker_result
-                # keypoints: (P, 17, 2) pixel coords, scores: (P, 17)
 
-                # Rescale keypoints back to original resolution
                 if frame_ds is not frame:
                     keypoints = keypoints * (max(h, w) / 1920)
 
                 if keypoints is None or len(keypoints) == 0:
-                    if custom_tracker is not None:
-                        custom_tracker.update(np.empty((0, 17, 2), dtype=np.float32))
+                    if track_state.custom_tracker is not None:
+                        track_state.custom_tracker.update(np.empty((0, 17, 2), dtype=np.float32))
                     pbar.update(self._frame_skip)
                     continue
 
-                n_persons = len(keypoints)
-                h36m_poses = np.zeros((n_persons, 17, 3), dtype=np.float32)
+                h36m_poses = frame_processor.convert_keypoints(keypoints, scores, w, h)
+                track_ids = track_state.update_tracking(
+                    h36m_poses, frame=frame, frame_width=w, frame_height=h
+                )
+                track_state.record_frame(frame_idx, h36m_poses, track_ids)
 
-                for p in range(n_persons):
-                    kp = keypoints[p].astype(np.float32)  # (17, 2) pixels
-                    conf = scores[p].astype(np.float32)  # (17,)
+                # Target selection via click
+                selected = target_selector.select_target(h36m_poses, track_ids, frame_idx)
+                if selected is not None:
+                    track_state.target_track_id = selected
 
-                    # Build COCO (17, 3) with confidence
-                    coco = np.zeros((17, 3), dtype=np.float32)
-                    coco[:, :2] = kp
-                    coco[:, 2] = conf
-
-                    # Normalize to [0, 1]
-                    coco[:, 0] /= w
-                    coco[:, 1] /= h
-
-                    # Convert to H3.6M 17kp
-                    h36m = coco_to_h36m(coco)
-
-                    # Convert to pixels if requested
-                    if self._output_format == "pixels":
-                        h36m[:, 0] *= w
-                        h36m[:, 1] *= h
-
-                    h36m_poses[p] = h36m
-
-                # --- Track association ---
-                if sports2d_tracker is not None:
-                    track_ids = sports2d_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
-                elif deepsort_tracker is not None:
-                    track_ids = deepsort_tracker.update(
-                        h36m_poses[:, :, :2],
-                        h36m_poses[:, :, 2],
-                        frame=frame,
-                        frame_width=w,
-                        frame_height=h,
-                    )
-                elif self._tracking_backend == "custom" and custom_tracker is not None:
-                    track_ids = custom_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
-                else:
-                    track_ids = self._assign_track_ids(h36m_poses, rtmlib_id_map, next_internal_id)
-                    next_internal_id = max(rtmlib_id_map.values(), default=-1) + 1
-
-                # Store per-track data for retroactive fill
-                frame_track_data[frame_idx] = {
-                    tid: h36m_poses[p].copy() for p, tid in enumerate(track_ids)
-                }
-
-                # Update hit counts
-                for tid in track_ids:
-                    track_hit_counts[tid] = track_hit_counts.get(tid, 0) + 1
-
-                # --- Target selection ---
-                # Phase 1: Click-based selection
-                if (
-                    target_track_id is None
-                    and click_norm is not None
-                    and frame_idx < click_lock_window
-                ):
-                    best_dist = float("inf")
-                    best_tid: int | None = None
-                    for p, tid in enumerate(track_ids):
-                        mid_hip_x = (h36m_poses[p, 4, 0] + h36m_poses[p, 1, 0]) / 2  # LHIP + RHIP
-                        mid_hip_y = (h36m_poses[p, 4, 1] + h36m_poses[p, 1, 1]) / 2
-                        dist = (mid_hip_x - click_norm[0]) ** 2 + (mid_hip_y - click_norm[1]) ** 2
-                        if dist < best_dist:
-                            best_dist = dist
-                            best_tid = tid
-                    if best_tid is not None:
-                        target_track_id = best_tid
-
-                # Fill target data for current frame
-                if target_track_id is not None:
+                # Fill target data
+                if track_state.target_track_id is not None:
+                    target_track_id = track_state.target_track_id
                     found = False
                     stolen = False
                     for p, tid in enumerate(track_ids):
                         if tid == target_track_id:
-                            # Validate: centroid must not jump too far
-                            if last_target_pose is not None:
-                                cur_cx = np.nanmean(h36m_poses[p, :, 0])
-                                cur_cy = np.nanmean(h36m_poses[p, :, 1])
-                                prev_cx = np.nanmean(last_target_pose[:, 0])
-                                prev_cy = np.nanmean(last_target_pose[:, 1])
-                                jump = np.sqrt((cur_cx - prev_cx) ** 2 + (cur_cy - prev_cy) ** 2)
-
-                                # Skeletal anomaly: sudden change in body proportions
-                                skeletal_anomaly = False
-                                if last_target_ratios is not None:
-                                    curr_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
-                                    ratio_change = float(
-                                        np.linalg.norm(curr_ratios - last_target_ratios)
-                                    )
-                                    skeletal_anomaly = ratio_change > 0.25
-
-                                # Require BOTH signals: position jump AND body change.
-                                # Skeletal anomaly alone fires during salchow leg swings.
-                                if jump > 0.15 and skeletal_anomaly:
-                                    stolen = True
-                                    break
+                            if last_target_pose is not None and validator.is_stolen(
+                                h36m_poses[p], last_target_pose, last_target_ratios
+                            ):
+                                stolen = True
+                                break
                             all_poses[frame_idx] = h36m_poses[p]
                             last_target_pose = h36m_poses[p].copy()
                             last_target_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
@@ -423,8 +329,6 @@ class PoseExtractor:
                             found = True
                             break
 
-                    # Track migration: biometric matching when target lost or stolen
-                    # When stolen, we must NOT keep the impostor's data
                     if stolen:
                         all_poses[frame_idx] = np.full((17, 3), np.nan, dtype=np.float32)
                         found = False
@@ -432,48 +336,33 @@ class PoseExtractor:
                     if (not found or stolen) and last_target_pose is not None:
                         if target_lost_frame is None:
                             target_lost_frame = frame_idx
-
-                        if frame_idx - target_lost_frame <= 60:
+                        if frame_idx - target_lost_frame <= TrackValidator.MAX_LOST_FRAMES:
                             best_dist = float("inf")
                             best_new_tid: int | None = None
                             best_new_pose: np.ndarray | None = None
-                            prev_cx = np.nanmean(last_target_pose[:, 0])
-                            prev_cy = np.nanmean(last_target_pose[:, 1])
                             for p, tid in enumerate(track_ids):
-                                # Skip the thief track
                                 if stolen and tid == target_track_id:
                                     continue
-                                cur_cx = np.nanmean(h36m_poses[p, :, 0])
-                                cur_cy = np.nanmean(h36m_poses[p, :, 1])
-                                pos_dist = np.sqrt(
-                                    (cur_cx - prev_cx) ** 2 + (cur_cy - prev_cy) ** 2
+                                score = validator.migration_score(
+                                    h36m_poses[p],
+                                    last_target_pose,
+                                    elapsed=frame_idx - target_lost_frame,
                                 )
-                                bio_dist = _biometric_distance(h36m_poses[p], last_target_pose)
-                                # Weight position heavily when recently lost,
-                                # biometry when lost for longer
-                                elapsed = frame_idx - (target_lost_frame or frame_idx)
-                                w_pos = max(0.2, 1.0 - elapsed * 0.02)
-                                w_bio = 1.0 - w_pos
-                                combined = w_pos * pos_dist / 0.15 + w_bio * bio_dist / 0.08
-                                if combined < best_dist:
-                                    best_dist = combined
+                                if score < best_dist:
+                                    best_dist = score
                                     best_new_tid = tid
                                     best_new_pose = h36m_poses[p]
-
                             if (
                                 best_new_tid is not None
-                                and best_dist < 1.5
+                                and best_dist < TrackValidator.MIGRATION_THRESHOLD
                                 and best_new_pose is not None
                             ):
-                                target_track_id = best_new_tid
+                                track_state.target_track_id = best_new_tid
                                 all_poses[frame_idx] = best_new_pose
                                 last_target_pose = best_new_pose.copy()
                                 last_target_ratios = compute_2d_skeletal_ratios(best_new_pose)
                                 target_lost_frame = None
-                                # Retroactively fill from stored frames
-                                for fidx, tmap in frame_track_data.items():
-                                    if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
-                                        all_poses[fidx] = tmap[target_track_id]
+                                track_state.retroactive_fill(all_poses, track_state.target_track_id)
 
                 pbar.update(self._frame_skip)
                 if progress_cb:
@@ -485,71 +374,15 @@ class PoseExtractor:
             reader.join()
             pbar.close()
 
-        # Phase 2 (deferred): Auto-select by most hits
-        if target_track_id is None and track_hit_counts:
-            target_track_id = max(
-                track_hit_counts,
-                key=lambda k: track_hit_counts[k],  # type: ignore[arg-type]
-            )
-            for fidx, tmap in frame_track_data.items():
-                if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
-                    all_poses[fidx] = tmap[target_track_id]
+        # Deferred auto-select by hits
+        if track_state.target_track_id is None and track_state.track_hit_counts:
+            track_state.target_track_id = track_state.auto_select_target()
+            if track_state.target_track_id is not None:
+                track_state.retroactive_fill(all_poses, track_state.target_track_id)
 
-        # --- Post-hoc tracklet merging for occlusion recovery ---
-        valid_mask_pre = ~np.isnan(all_poses[:, 0, 0])
-        if not valid_mask_pre.all() and frame_track_data:
-            model_3d = Path("data/models/motionagformer-s-ap3d.onnx")
-            identity_ext = None
-            if model_3d.exists():
-                from ..tracking.skeletal_identity import (
-                    SkeletalIdentityExtractor,
-                )
+        # Post-hoc tracklet merging
+        self._post_hoc_merge(all_poses, track_state.frame_track_data, track_state.target_track_id)
 
-                identity_ext = SkeletalIdentityExtractor(
-                    model_path=model_3d,
-                    device="auto",
-                )
-
-            merger = TrackletMerger(
-                identity_extractor=identity_ext,
-                similarity_threshold=0.80,
-            )
-            tracklets = build_tracklets(frame_track_data)
-
-            target_tracklet = None
-            for t in tracklets:
-                if t.track_id == target_track_id:
-                    target_tracklet = t
-                    break
-
-            if target_tracklet is not None:
-                valid_frames = np.where(valid_mask_pre)[0]
-                if len(valid_frames) > 0:
-                    last_valid = int(valid_frames[-1])
-                    if last_valid < num_frames - 1:
-                        candidates = [t for t in tracklets if t.track_id != target_track_id]
-                        match = merger.find_best_match(
-                            target_tracklet,
-                            candidates,
-                        )
-                        if match is not None:
-                            for f in match.frames:
-                                if f < num_frames and np.isnan(all_poses[f, 0, 0]):
-                                    all_poses[f] = match.poses.get(
-                                        f,
-                                        all_poses[f],
-                                    )
-                            logger.info(
-                                "Post-hoc merge: filled %d frames from track %d",
-                                sum(
-                                    1
-                                    for f in match.frames
-                                    if f < num_frames and np.isnan(all_poses[f, 0, 0])
-                                ),
-                                match.track_id,
-                            )
-
-        # Determine first_detection_frame
         valid_mask = ~np.isnan(all_poses[:, 0, 0])
         if not np.any(valid_mask):
             raise ValueError(f"No valid pose detected in video: {video_path}")
@@ -559,7 +392,7 @@ class PoseExtractor:
             poses=all_poses,
             frame_indices=np.arange(num_frames),
             first_detection_frame=first_detection_frame,
-            target_track_id=target_track_id,
+            target_track_id=track_state.target_track_id,
             fps=video_meta.fps,
             video_meta=video_meta,
             first_frame=first_frame,
@@ -573,10 +406,6 @@ class PoseExtractor:
         batch_size: int = 8,
     ) -> TrackedExtraction:
         """Extract poses using BatchRTMO for batched inference.
-
-        This method processes multiple frames in a single ONNX inference call,
-        then applies the same tracking and post-processing logic as the per-frame
-        path to produce identical TrackedExtraction results.
 
         Args:
             video_path: Path to video file.
@@ -594,10 +423,8 @@ class PoseExtractor:
         video_meta = get_video_meta(video_path)
         num_frames = video_meta.num_frames
 
-        # Pre-allocate with NaN
         all_poses = np.full((num_frames, 17, 3), np.nan, dtype=np.float32)
 
-        # Initialize BatchRTMO
         rtmo = BatchRTMO(
             mode=self._mode,
             device=self._device,
@@ -605,38 +432,24 @@ class PoseExtractor:
             nms_thr=0.45,
         )
 
-        # Tracking state (reuse existing tracking logic)
-        resolved_mode = self._resolve_tracking_mode()
-        sports2d_tracker = None
-        deepsort_tracker = None
-        if resolved_mode == "sports2d":
-            from ..tracking.sports2d import Sports2DTracker
+        track_state = TrackState(
+            fps=video_meta.fps,
+            tracking_backend=self._tracking_backend,
+            tracking_mode=self._tracking_mode,
+        )
+        target_selector = TargetSelector(
+            click_norm=(
+                person_click.to_normalized(video_meta.width, video_meta.height)
+                if person_click is not None
+                else None
+            ),
+        )
+        validator = TrackValidator()
+        frame_processor = FrameProcessor(output_format=self._output_format)
 
-            sports2d_tracker = Sports2DTracker(max_disappeared=30, fps=video_meta.fps)
-        elif resolved_mode == "deepsort":
-            from ..tracking.deepsort_tracker import DeepSORTTracker
-
-            deepsort_tracker = DeepSORTTracker(max_age=30, embedder_gpu=True)
-
-        target_track_id: int | None = None
-        click_lock_window = 6  # ~0.2-0.24s at 25-30fps
-        click_norm: tuple[float, float] | None = None
-        if person_click is not None:
-            click_norm = person_click.to_normalized(video_meta.width, video_meta.height)
-
-        # Track hit counts for auto-select
-        track_hit_counts: dict[int, int] = {}
-
-        # Per-frame track_id→h36m_pose for retroactive fill
-        frame_track_data: dict[int, dict[int, np.ndarray]] = {}
-
-        # Last known target pose for biometric track migration
         last_target_pose: np.ndarray | None = None
         last_target_ratios: np.ndarray | None = None
         target_lost_frame: int | None = None
-
-        # Track ID assignment
-        next_internal_id = 0
 
         # Read first frame for spatial reference
         cap_first = cv2.VideoCapture(str(video_path))
@@ -652,8 +465,8 @@ class PoseExtractor:
         if not cap.isOpened():
             raise RuntimeError(f"Failed to open video: {video_path}")
 
-        frames_to_process = []
-        frame_indices = []
+        frames_to_process: list[np.ndarray] = []
+        frame_indices: list[int] = []
 
         try:
             for idx in _get_tqdm()(
@@ -672,7 +485,6 @@ class PoseExtractor:
         if not frames_to_process:
             raise ValueError(f"No frames read from video: {video_path}")
 
-        # Process in batches
         pbar = _get_tqdm()(
             total=len(frames_to_process),
             desc="Batch extracting poses",
@@ -686,10 +498,8 @@ class PoseExtractor:
             batch_frames = frames_to_process[batch_start:batch_end]
             batch_indices = frame_indices[batch_start:batch_end]
 
-            # Run batch inference
             batch_results = rtmo.infer_batch(batch_frames)
 
-            # Process each frame in the batch
             for frame_idx, frame, (keypoints, scores) in zip(
                 batch_indices, batch_frames, batch_results, strict=True
             ):
@@ -699,103 +509,29 @@ class PoseExtractor:
                     pbar.update(1)
                     continue
 
-                n_persons = len(keypoints)
-                h36m_poses = np.zeros((n_persons, 17, 3), dtype=np.float32)
+                h36m_poses = frame_processor.convert_keypoints(keypoints, scores, w, h)
+                track_ids = track_state.update_tracking(
+                    h36m_poses, frame=frame, frame_width=w, frame_height=h
+                )
+                track_state.record_frame(frame_idx, h36m_poses, track_ids)
 
-                for p in range(n_persons):
-                    kp = keypoints[p].astype(np.float32)  # (17, 2) pixels
-                    conf = scores[p].astype(np.float32)  # (17,)
+                # Target selection via click
+                selected = target_selector.select_target(h36m_poses, track_ids, frame_idx)
+                if selected is not None:
+                    track_state.target_track_id = selected
 
-                    # Build COCO (17, 3) with confidence
-                    coco = np.zeros((17, 3), dtype=np.float32)
-                    coco[:, :2] = kp
-                    coco[:, 2] = conf
-
-                    # Normalize to [0, 1]
-                    coco[:, 0] /= w
-                    coco[:, 1] /= h
-
-                    # Convert to H3.6M 17kp
-                    h36m = coco_to_h36m(coco)
-
-                    # Convert to pixels if requested
-                    if self._output_format == "pixels":
-                        h36m[:, 0] *= w
-                        h36m[:, 1] *= h
-
-                    h36m_poses[p] = h36m
-
-                # --- Track association ---
-                if sports2d_tracker is not None:
-                    track_ids = sports2d_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
-                elif deepsort_tracker is not None:
-                    track_ids = deepsort_tracker.update(
-                        h36m_poses[:, :, :2],
-                        h36m_poses[:, :, 2],
-                        frame=frame,
-                        frame_width=w,
-                        frame_height=h,
-                    )
-                else:
-                    # Simple sequential ID assignment for batch path
-                    track_ids = list(range(next_internal_id, next_internal_id + n_persons))
-                    next_internal_id += n_persons
-
-                # Store per-track data for retroactive fill
-                frame_track_data[frame_idx] = {
-                    tid: h36m_poses[p].copy() for p, tid in enumerate(track_ids)
-                }
-
-                # Update hit counts
-                for tid in track_ids:
-                    track_hit_counts[tid] = track_hit_counts.get(tid, 0) + 1
-
-                # --- Target selection ---
-                # Phase 1: Click-based selection
-                if (
-                    target_track_id is None
-                    and click_norm is not None
-                    and frame_idx < click_lock_window
-                ):
-                    best_dist = float("inf")
-                    best_tid: int | None = None
-                    for p, tid in enumerate(track_ids):
-                        mid_hip_x = (h36m_poses[p, 4, 0] + h36m_poses[p, 1, 0]) / 2  # LHIP + RHIP
-                        mid_hip_y = (h36m_poses[p, 4, 1] + h36m_poses[p, 1, 1]) / 2
-                        dist = (mid_hip_x - click_norm[0]) ** 2 + (mid_hip_y - click_norm[1]) ** 2
-                        if dist < best_dist:
-                            best_dist = dist
-                            best_tid = tid
-                    if best_tid is not None:
-                        target_track_id = best_tid
-
-                # Fill target data for current frame
-                if target_track_id is not None:
+                # Fill target data
+                if track_state.target_track_id is not None:
+                    target_track_id = track_state.target_track_id
                     found = False
                     stolen = False
                     for p, tid in enumerate(track_ids):
                         if tid == target_track_id:
-                            # Validate: centroid must not jump too far
-                            if last_target_pose is not None:
-                                cur_cx = np.nanmean(h36m_poses[p, :, 0])
-                                cur_cy = np.nanmean(h36m_poses[p, :, 1])
-                                prev_cx = np.nanmean(last_target_pose[:, 0])
-                                prev_cy = np.nanmean(last_target_pose[:, 1])
-                                jump = np.sqrt((cur_cx - prev_cx) ** 2 + (cur_cy - prev_cy) ** 2)
-
-                                # Skeletal anomaly: sudden change in body proportions
-                                skeletal_anomaly = False
-                                if last_target_ratios is not None:
-                                    curr_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
-                                    ratio_change = float(
-                                        np.linalg.norm(curr_ratios - last_target_ratios)
-                                    )
-                                    skeletal_anomaly = ratio_change > 0.25
-
-                                # Require BOTH signals: position jump AND body change.
-                                if jump > 0.15 and skeletal_anomaly:
-                                    stolen = True
-                                    break
+                            if last_target_pose is not None and validator.is_stolen(
+                                h36m_poses[p], last_target_pose, last_target_ratios
+                            ):
+                                stolen = True
+                                break
                             all_poses[frame_idx] = h36m_poses[p]
                             last_target_pose = h36m_poses[p].copy()
                             last_target_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
@@ -803,7 +539,6 @@ class PoseExtractor:
                             found = True
                             break
 
-                    # Track migration: biometric matching when target lost or stolen
                     if stolen:
                         all_poses[frame_idx] = np.full((17, 3), np.nan, dtype=np.float32)
                         found = False
@@ -811,48 +546,33 @@ class PoseExtractor:
                     if (not found or stolen) and last_target_pose is not None:
                         if target_lost_frame is None:
                             target_lost_frame = frame_idx
-
-                        if frame_idx - target_lost_frame <= 60:
+                        if frame_idx - target_lost_frame <= TrackValidator.MAX_LOST_FRAMES:
                             best_dist = float("inf")
                             best_new_tid: int | None = None
                             best_new_pose: np.ndarray | None = None
-                            prev_cx = np.nanmean(last_target_pose[:, 0])
-                            prev_cy = np.nanmean(last_target_pose[:, 1])
                             for p, tid in enumerate(track_ids):
-                                # Skip the thief track
                                 if stolen and tid == target_track_id:
                                     continue
-                                cur_cx = np.nanmean(h36m_poses[p, :, 0])
-                                cur_cy = np.nanmean(h36m_poses[p, :, 1])
-                                pos_dist = np.sqrt(
-                                    (cur_cx - prev_cx) ** 2 + (cur_cy - prev_cy) ** 2
+                                score = validator.migration_score(
+                                    h36m_poses[p],
+                                    last_target_pose,
+                                    elapsed=frame_idx - target_lost_frame,
                                 )
-                                bio_dist = _biometric_distance(h36m_poses[p], last_target_pose)
-                                # Weight position heavily when recently lost,
-                                # biometry when lost for longer
-                                elapsed = frame_idx - (target_lost_frame or frame_idx)
-                                w_pos = max(0.2, 1.0 - elapsed * 0.02)
-                                w_bio = 1.0 - w_pos
-                                combined = w_pos * pos_dist / 0.15 + w_bio * bio_dist / 0.08
-                                if combined < best_dist:
-                                    best_dist = combined
+                                if score < best_dist:
+                                    best_dist = score
                                     best_new_tid = tid
                                     best_new_pose = h36m_poses[p]
-
                             if (
                                 best_new_tid is not None
-                                and best_dist < 1.5
+                                and best_dist < TrackValidator.MIGRATION_THRESHOLD
                                 and best_new_pose is not None
                             ):
-                                target_track_id = best_new_tid
+                                track_state.target_track_id = best_new_tid
                                 all_poses[frame_idx] = best_new_pose
                                 last_target_pose = best_new_pose.copy()
                                 last_target_ratios = compute_2d_skeletal_ratios(best_new_pose)
                                 target_lost_frame = None
-                                # Retroactively fill from stored frames
-                                for fidx, tmap in frame_track_data.items():
-                                    if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
-                                        all_poses[fidx] = tmap[target_track_id]
+                                track_state.retroactive_fill(all_poses, track_state.target_track_id)
 
                 pbar.update(1)
                 if progress_cb:
@@ -863,71 +583,15 @@ class PoseExtractor:
 
         pbar.close()
 
-        # Phase 2 (deferred): Auto-select by most hits
-        if target_track_id is None and track_hit_counts:
-            target_track_id = max(
-                track_hit_counts,
-                key=lambda k: track_hit_counts[k],  # type: ignore[arg-type]
-            )
-            for fidx, tmap in frame_track_data.items():
-                if target_track_id in tmap and np.isnan(all_poses[fidx, 0, 0]):
-                    all_poses[fidx] = tmap[target_track_id]
+        # Deferred auto-select by hits
+        if track_state.target_track_id is None and track_state.track_hit_counts:
+            track_state.target_track_id = track_state.auto_select_target()
+            if track_state.target_track_id is not None:
+                track_state.retroactive_fill(all_poses, track_state.target_track_id)
 
-        # --- Post-hoc tracklet merging for occlusion recovery ---
-        valid_mask_pre = ~np.isnan(all_poses[:, 0, 0])
-        if not valid_mask_pre.all() and frame_track_data:
-            model_3d = Path("data/models/motionagformer-s-ap3d.onnx")
-            identity_ext = None
-            if model_3d.exists():
-                from ..tracking.skeletal_identity import (
-                    SkeletalIdentityExtractor,
-                )
+        # Post-hoc tracklet merging
+        self._post_hoc_merge(all_poses, track_state.frame_track_data, track_state.target_track_id)
 
-                identity_ext = SkeletalIdentityExtractor(
-                    model_path=model_3d,
-                    device="auto",
-                )
-
-            merger = TrackletMerger(
-                identity_extractor=identity_ext,
-                similarity_threshold=0.80,
-            )
-            tracklets = build_tracklets(frame_track_data)
-
-            target_tracklet = None
-            for t in tracklets:
-                if t.track_id == target_track_id:
-                    target_tracklet = t
-                    break
-
-            if target_tracklet is not None:
-                valid_frames = np.where(valid_mask_pre)[0]
-                if len(valid_frames) > 0:
-                    last_valid = int(valid_frames[-1])
-                    if last_valid < num_frames - 1:
-                        candidates = [t for t in tracklets if t.track_id != target_track_id]
-                        match = merger.find_best_match(
-                            target_tracklet,
-                            candidates,
-                        )
-                        if match is not None:
-                            for f in match.frames:
-                                if f < num_frames and np.isnan(all_poses[f, 0, 0]):
-                                    all_poses[f] = match.poses.get(
-                                        f,
-                                        all_poses[f],
-                                    )
-                            logger.info(
-                                "Post-hoc merge: filled %d frames from track %d",
-                                sum(
-                                    1
-                                    for f in match.frames
-                                    if f < num_frames and np.isnan(all_poses[f, 0, 0])
-                                ),
-                                match.track_id,
-                            )
-
-        # Determine first_detection_frame
         valid_mask = ~np.isnan(all_poses[:, 0, 0])
         if not np.any(valid_mask):
             raise ValueError(f"No valid pose detected in video: {video_path}")
@@ -937,7 +601,7 @@ class PoseExtractor:
             poses=all_poses,
             frame_indices=np.arange(num_frames),
             first_detection_frame=first_detection_frame,
-            target_track_id=target_track_id,
+            target_track_id=track_state.target_track_id,
             fps=video_meta.fps,
             video_meta=video_meta,
             first_frame=first_frame,
@@ -1312,6 +976,57 @@ class PoseExtractor:
             track_ids.append(new_id)
 
         return track_ids
+
+    def _post_hoc_merge(
+        self,
+        all_poses: np.ndarray,
+        frame_track_data: dict[int, dict[int, np.ndarray]],
+        target_track_id: int | None,
+    ) -> None:
+        """Post-hoc tracklet merging for occlusion recovery."""
+        valid_mask_pre = ~np.isnan(all_poses[:, 0, 0])
+        if valid_mask_pre.all() or not frame_track_data or target_track_id is None:
+            return
+        model_3d = Path("data/models/motionagformer-s-ap3d.onnx")
+        identity_ext = None
+        if model_3d.exists():
+            from ..tracking.skeletal_identity import SkeletalIdentityExtractor
+
+            identity_ext = SkeletalIdentityExtractor(
+                model_path=model_3d,
+                device="auto",
+            )
+        merger = TrackletMerger(
+            identity_extractor=identity_ext,
+            similarity_threshold=0.80,
+        )
+        tracklets = build_tracklets(frame_track_data)
+        target_tracklet = None
+        for t in tracklets:
+            if t.track_id == target_track_id:
+                target_tracklet = t
+                break
+        if target_tracklet is None:
+            return
+        valid_frames = np.where(valid_mask_pre)[0]
+        if len(valid_frames) == 0:
+            return
+        last_valid = int(valid_frames[-1])
+        num_frames = all_poses.shape[0]
+        if last_valid >= num_frames - 1:
+            return
+        candidates = [t for t in tracklets if t.track_id != target_track_id]
+        match = merger.find_best_match(target_tracklet, candidates)
+        if match is None:
+            return
+        for f in match.frames:
+            if f < num_frames and np.isnan(all_poses[f, 0, 0]):
+                all_poses[f] = match.poses.get(f, all_poses[f])
+        logger.info(
+            "Post-hoc merge: filled %d frames from track %d",
+            sum(1 for f in match.frames if f < num_frames and np.isnan(all_poses[f, 0, 0])),
+            match.track_id,
+        )
 
     def close(self) -> None:
         """Release resources."""

@@ -64,13 +64,6 @@ def main() -> int:
         help="Enable 3D blade detection (edge zones, motion direction, ice trace)",
     )
     parser.add_argument(
-        "--3d-blend-threshold",
-        dest="blend_threshold",
-        type=float,
-        default=0.5,
-        help="Confidence threshold for blending raw vs 3D-corrected 2D poses (default: 0.5)",
-    )
-    parser.add_argument(
         "--floor-mode",
         action="store_true",
         help="Floor mode: analysis without ice skates (disables blade detection)",
@@ -247,7 +240,6 @@ def main() -> int:
         poses[:, :, 0] *= meta.width
         poses[:, :, 1] *= meta.height
         poses_3d = None
-        raw_foot_kps = None
         confs = np.ones_like(poses_viz[:, :, 0])
         prepared = None
     else:
@@ -267,16 +259,13 @@ def main() -> int:
             person_click=person_click,
             frame_skip=1,
             tracking=args.tracking,
-            use_corrective_lens=True,
             model_3d_path=model_3d,
-            blend_threshold=args.blend_threshold,
             device="auto",
         )
 
         poses_viz = prepared.poses_norm
         poses = prepared.poses_px
         poses_3d = prepared.poses_3d
-        raw_foot_kps = prepared.foot_kps
         confs = prepared.confs
         meta = prepared.meta
 
@@ -330,7 +319,6 @@ def main() -> int:
         meta=meta,
         poses_norm=poses_viz,
         poses_px=poses,
-        foot_kps=raw_foot_kps,
         poses_3d=poses_3d,
         layer=args.layer,
         confs=confs,
@@ -464,12 +452,6 @@ def main() -> int:
             # Export data collection via VizPipeline
             if args.export:
                 pipe.collect_export_data(frame_idx, current_pose_idx, floor_angle=floor_angle)
-
-            # Detect visible side from HALPE26 foot keypoints
-            if raw_foot_kps is not None and current_pose_idx < len(raw_foot_kps):
-                fk = raw_foot_kps[current_pose_idx]
-                if fk is not None and len(fk) >= 6:
-                    visible_side = detect_visible_side(fk.reshape(1, 6, 3))
 
         # Draw HUD (all layers) — element info + frame counter + blade state
         active_segment = _get_active_segment(segments, frame_idx)

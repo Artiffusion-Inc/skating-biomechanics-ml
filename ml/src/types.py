@@ -503,8 +503,6 @@ class AnalysisReport:
         dtw_distance: DTW distance to reference (lower = better).
         recommendations: List of Russian recommendation strings.
         overall_score: Overall score [0, 10].
-        blade_summary_left: Left foot blade edge summary (optional).
-        blade_summary_right: Right foot blade edge summary (optional).
         physics: Physics metrics (CoM trajectory, jump height, inertia, etc.).
         profiling: Pipeline profiler timing data (optional).
     """
@@ -515,8 +513,6 @@ class AnalysisReport:
     dtw_distance: float
     recommendations: list[str]
     overall_score: float
-    blade_summary_left: dict[str, Any] = field(default_factory=dict)
-    blade_summary_right: dict[str, Any] = field(default_factory=dict)
     physics: dict[str, Any] = field(default_factory=dict)
     profiling: dict[str, Any] | None = None
 
@@ -538,9 +534,7 @@ class AnalysisReport:
         ]
 
         for metric in self.metrics:
-            status = (
-                "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
-            )
+            status = "✓ ОК" if metric.is_good else "✗ ПЛОХО"
             lines.append(
                 f"  {metric.name}: {metric.value:.2f} {metric.unit} [{status}] "
                 f"(референс: {metric.reference_range[0]:.2f}-{metric.reference_range[1]:.2f})"
@@ -549,7 +543,7 @@ class AnalysisReport:
         lines.extend(
             [
                 "",
-                "--- \u0421\u0445\u043e\u0434\u0441\u0442\u0432\u043e \u0441 \u0440\u0435\u0444\u0435\u0440\u0435\u043d\u0441\u043e\u043c ---",
+                "--- Сходство с референсом ---",
                 f"  DTW-расстояние: {self.dtw_distance:.3f} (0 = идеально)",
                 "",
                 "--- РЕКОМЕНДАЦИИ ---",
@@ -558,35 +552,6 @@ class AnalysisReport:
 
         for i, rec in enumerate(self.recommendations, 1):
             lines.append(f"  {i}. {rec}")
-
-        # Blade edge information
-        if self.blade_summary_left or self.blade_summary_right:
-            lines.extend(
-                [
-                    "",
-                    "--- Состояние лезвия ---",
-                ]
-            )
-            if self.blade_summary_left:
-                lines.append(
-                    f"  Левая нога: {self.blade_summary_left.get('dominant_edge', 'unknown')}"
-                )
-                if "type_percentages" in self.blade_summary_left:
-                    types_str = ", ".join(
-                        f"{k}: {v:.1f}%"
-                        for k, v in self.blade_summary_left["type_percentages"].items()
-                    )
-                    lines.append(f"    Распределение: {types_str}")
-            if self.blade_summary_right:
-                lines.append(
-                    f"  Правая нога: {self.blade_summary_right.get('dominant_edge', 'unknown')}"
-                )
-                if "type_percentages" in self.blade_summary_right:
-                    types_str = ", ".join(
-                        f"{k}: {v:.1f}%"
-                        for k, v in self.blade_summary_right["type_percentages"].items()
-                    )
-                    lines.append(f"    Распределение: {types_str}")
 
         # Physics information
         if self.physics:
@@ -601,14 +566,10 @@ class AnalysisReport:
                 lines.append(f"  Высота прыжка (CoM): {h:.2f} м")
             if "flight_time" in self.physics:
                 t = self.physics["flight_time"]
-                lines.append(
-                    f"  \u0412\u0440\u0435\u043c\u044f \u043f\u043e\u043b\u0451\u0442\u0430: {t:.2f} \u0441"
-                )
+                lines.append(f"  Время полёта: {t:.2f} с")
             if "takeoff_velocity" in self.physics:
                 v = self.physics["takeoff_velocity"]
-                lines.append(
-                    f"  \u0421\u043a\u043e\u0440\u043e\u0441\u0442\u044c \u043e\u0442\u0440\u044b\u0432\u0430: {v:.2f} \u043c/\u0441"
-                )
+                lines.append(f"  Скорость отрыва: {v:.2f} м/с")
             if "avg_inertia" in self.physics:
                 i = self.physics["avg_inertia"]
                 lines.append(f"  Средний момент инерции: {i:.3f} кг·м²")
