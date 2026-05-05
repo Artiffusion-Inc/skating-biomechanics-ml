@@ -243,7 +243,9 @@ async def process_video_task(
         async with _VASTAI_SEMAPHORE:
             vast_result = await process_video_remote_async(
                 video_key=video_key,
-                person_click={"x": person_click["x"], "y": person_click["y"]} if person_click else None,
+                person_click={"x": person_click["x"], "y": person_click["y"]}
+                if person_click
+                else None,
                 frame_skip=frame_skip,
                 layer=layer,
                 tracking=tracking,
