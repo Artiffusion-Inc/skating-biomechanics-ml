@@ -1,7 +1,8 @@
 {$DOMAIN} {
 	tls {
-		dns cloudflare {env.CLOUDFLARE_API_TOKEN}
-		propagation_timeout -1
+		dns cloudflare {env.CLOUDFLARE_API_TOKEN} {
+			propagation_timeout -1
+		}
 	}
 
 	# Security headers
