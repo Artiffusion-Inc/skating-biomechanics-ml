@@ -41,9 +41,9 @@ VALKEY_URL=redis://valkey:6379/0
 JWT_SECRET=CHANGE_ME_GENERATE_WITH_openssl_rand_hex_32
 
 # === R2 Storage ===
-R2_ENDPOINT=
-R2_ACCESS_KEY=
-R2_SECRET_KEY=
+R2_ENDPOINT_URL=
+R2_ACCESS_KEY_ID=
+R2_SECRET_ACCESS_KEY=
 R2_BUCKET=
 
 # === Vast.ai (optional, enables GPU dispatch) ===

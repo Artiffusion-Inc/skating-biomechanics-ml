@@ -48,6 +48,6 @@ Image: `ghcr.io/Artiffusion-Inc/skating-ml-gpu:latest`
 See `backend/app/config.py` for full list. Key ones:
 - `DATABASE_URL` — PostgreSQL connection string
 - `VALKEY_URL` — Valkey/Redis connection string
-- `R2_ENDPOINT`, `R2_ACCESS_KEY`, `R2_SECRET_KEY`, `R2_BUCKET` — Cloudflare R2
+- `R2_ENDPOINT_URL`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET` — Cloudflare R2
 - `VASTAI_API_KEY` — enables remote GPU dispatch
 - `JWT_SECRET` — JWT signing key
