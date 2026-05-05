@@ -3,7 +3,6 @@
 H3.6M Architecture:
     This pipeline uses H3.6M 17-keypoint format as the primary format.
     2D extraction: PoseExtractor (rtmlib RTMO Body)
-    3D lifting: AthletePose3DExtractor (MotionAGFormer)
 
 Pipeline stages:
     1. Extract & track: PoseExtractor.extract_video_tracked() + gap fill + spatial ref
@@ -11,9 +10,8 @@ Pipeline stages:
     3. Temporal smoothing (One-Euro Filter)
     4. Phase detection
     5. Biomechanics metrics
-    6. 3D pose estimation (optional, for blade detection & physics)
-    7. Reference comparison (DTW)
-    8. Recommendations
+    6. Reference comparison (DTW)
+    7. Recommendations
 """
 
 from __future__ import annotations
@@ -36,7 +34,6 @@ if TYPE_CHECKING:
     from .analysis.phase_detector import PhaseDetector
     from .analysis.recommender import Recommender
     from .detection import PersonDetector
-    from .pose_3d import AthletePose3DExtractor
     from .pose_estimation.normalizer import PoseNormalizer
     from .pose_estimation.pose_extractor import PoseExtractor
     from .references import ReferenceStore
@@ -48,7 +45,6 @@ class AnalysisPipeline:
 
     H3.6M Architecture:
         - 2D poses: PoseExtractor (17 keypoints, normalized [0,1], rtmlib backend)
-        - 3D poses: AthletePose3DExtractor (MotionAGFormer)
     """
 
     def __init__(
@@ -60,7 +56,6 @@ class AnalysisPipeline:
         person_click: PersonClick | None = None,
         reestimate_camera: bool = False,
         profiler: PipelineProfiler | None = None,
-        compute_3d: bool = False,
     ) -> None:
         """Initialize analysis pipeline.
 
@@ -73,9 +68,6 @@ class AnalysisPipeline:
             person_click: Optional click point to select target person in multi-person videos.
             reestimate_camera: Enable per-frame camera re-estimation for moving cameras.
             profiler: Optional PipelineProfiler for recording stage timings.
-            compute_3d: Whether to run 3D pose lifting (CorrectiveLens + blade detection).
-                Disabled by default since 3D lifting adds significant compute
-                and the model file is often not present.
         """
         self._reference_store = reference_store
         self._device_config = DeviceConfig(device) if isinstance(device, str) else device
@@ -84,12 +76,10 @@ class AnalysisPipeline:
         self._person_click = person_click
         self._reestimate_camera = reestimate_camera
         self._profiler = profiler or PipelineProfiler()
-        self._compute_3d = compute_3d
 
         # Components will be lazy-loaded
         self._detector: PersonDetector | None = None  # type: ignore[valid-type]
         self._pose_2d_extractor: PoseExtractor | None = None  # type: ignore[valid-type]
-        self._pose_3d_extractor: AthletePose3DExtractor | None = None  # type: ignore[valid-type]
         self._normalizer: PoseNormalizer | None = None  # type: ignore[valid-type]
         self._smoother: PoseSmoother | None = None  # type: ignore[valid-type]
         self._phase_detector: PhaseDetector | None = None  # type: ignore[valid-type]
@@ -254,45 +244,6 @@ class AnalysisPipeline:
             smoothed = normalized
         self._profiler.record("smooth", time.perf_counter() - t0)
 
-        # Stage 3.6: 3D pose estimation (for blade detection & physics)
-        t0 = time.perf_counter()
-        poses_3d = None
-        blade_summary_left = None
-        blade_summary_right = None
-        if self._compute_3d:
-            try:
-                # Use MotionAGFormer for 3D lifting (H3.6M format)
-                poses_3d = self._get_pose_3d_extractor().extract_sequence(smoothed)
-
-                from .detection.blade_edge_detector_3d import BladeEdgeDetector3D
-
-                # Detect blade edge states using 3D poses
-                blade_detector_3d = BladeEdgeDetector3D(fps=meta.fps)
-                blade_states_left = []
-                blade_states_right = []
-                for i, pose_3d in enumerate(poses_3d):
-                    left_state = blade_detector_3d.detect_frame(pose_3d, i, foot="left")
-                    right_state = blade_detector_3d.detect_frame(pose_3d, i, foot="right")
-                    blade_states_left.append(left_state)
-                    blade_states_right.append(right_state)
-
-                blade_summary_left = {
-                    "inside": sum(1 for s in blade_states_left if s.blade_type.value == "inside"),
-                    "outside": sum(1 for s in blade_states_left if s.blade_type.value == "outside"),
-                    "flat": sum(1 for s in blade_states_left if s.blade_type.value == "flat"),
-                }
-                blade_summary_right = {
-                    "inside": sum(1 for s in blade_states_right if s.blade_type.value == "inside"),
-                    "outside": sum(
-                        1 for s in blade_states_right if s.blade_type.value == "outside"
-                    ),
-                    "flat": sum(1 for s in blade_states_right if s.blade_type.value == "flat"),
-                }
-            except Exception:
-                # 3D lifting is optional, don't fail if it errors
-                pass
-        self._profiler.record("3d_lift_and_blade", time.perf_counter() - t0)
-
         # Stage 4-7: Element-specific analysis (only when element_type provided)
         if element_type is not None and element_def is not None:
             # Stage 4: Detect phases (or use manual)
@@ -331,27 +282,6 @@ class AnalysisPipeline:
             # Stage 6.5: Physics calculations (3D pose + biomechanics)
             t0 = time.perf_counter()
             physics_dict: dict = {}
-            if poses_3d is not None:
-                try:
-                    from .analysis.physics_engine import PhysicsEngine
-
-                    physics_engine = PhysicsEngine(body_mass=60.0)
-
-                    if phases.takeoff > 0 and phases.landing > 0:
-                        trajectory = physics_engine.fit_jump_trajectory(
-                            poses_3d, phases.takeoff, phases.landing
-                        )
-                        physics_dict["jump_height"] = trajectory["height"]
-                        physics_dict["flight_time"] = trajectory["flight_time"]
-                        physics_dict["takeoff_velocity"] = trajectory["takeoff_velocity"]
-                        physics_dict["fit_quality"] = trajectory["fit_quality"]
-
-                    inertia = physics_engine.calculate_moment_of_inertia(
-                        poses_3d[phases.start : phases.end]
-                    )
-                    physics_dict["avg_inertia"] = float(np.mean(inertia))
-                except Exception:
-                    pass
             self._profiler.record("physics", time.perf_counter() - t0)
 
             # Stage 7: Generate recommendations
@@ -378,8 +308,6 @@ class AnalysisPipeline:
             recommendations=recommendations,
             overall_score=overall_score if overall_score is not None else 0.0,
             dtw_distance=dtw_distance if dtw_distance is not None else 0.0,
-            blade_summary_left=blade_summary_left if blade_summary_left is not None else {},
-            blade_summary_right=blade_summary_right if blade_summary_right is not None else {},
             physics=physics_dict,
             profiling=self._profiler.to_dict(),
         )
@@ -442,20 +370,6 @@ class AnalysisPipeline:
                 device=self._device_config.device,
             )
         return self._pose_2d_extractor  # type: ignore[return-value]
-
-    def _get_pose_3d_extractor(self) -> AthletePose3DExtractor | None:  # type: ignore[valid-type]
-        """Lazy-load 3D pose lifter (MotionAGFormer). Returns None if model not found."""
-        if self._pose_3d_extractor is None:
-            model_path = Path("data/models/motionagformer-s-ap3d.onnx")
-            if not model_path.exists():
-                return None
-            from .pose_3d import AthletePose3DExtractor
-
-            self._pose_3d_extractor = AthletePose3DExtractor(
-                model_path=model_path,
-                device=self._device_config.device,
-            )
-        return self._pose_3d_extractor
 
     def _get_normalizer(self) -> PoseNormalizer:  # type: ignore[valid-type]
         """Lazy-load pose normalizer."""
@@ -575,9 +489,7 @@ class AnalysisPipeline:
         # Metrics
         lines.append("\n--- Биомеханические метрики ---")
         for metric in report.metrics:
-            status = (
-                "\u2713 \u041e\u041a" if metric.is_good else "\u2717 \u041f\u041b\u041e\u0425\u041e"
-            )
+            status = "✓ ОК" if metric.is_good else "✗ ПЛОХО"
             ref_min, ref_max = metric.reference_range
             lines.append(
                 f"  {metric.name}: {metric.value:.2f} {metric.unit} [{status}] "
@@ -586,28 +498,8 @@ class AnalysisPipeline:
 
         # DTW distance
         if report.dtw_distance is not None:
-            lines.append(
-                "\n--- \u0421\u0445\u043e\u0434\u0441\u0442\u0432\u043e \u0441 \u0440\u0435\u0444\u0435\u0440\u0435\u043d\u0441\u043e\u043c ---"
-            )
+            lines.append("\n--- Сходство с референсом ---")
             lines.append(f"  DTW-расстояние: {report.dtw_distance:.3f} (0 = идеально)")
-
-        # Blade edge information
-        if report.blade_summary_left or report.blade_summary_right:
-            lines.append("\n--- Состояние лезвия ---")
-            if report.blade_summary_left:
-                lines.append(
-                    f"  Левая нога: {report.blade_summary_left.get('dominant_edge', 'unknown')}"
-                )
-                if "type_percentages" in report.blade_summary_left:
-                    types = report.blade_summary_left["type_percentages"]
-                    lines.append(f"    Распределение: {types}")
-            if report.blade_summary_right:
-                lines.append(
-                    f"  Правая нога: {report.blade_summary_right.get('dominant_edge', 'unknown')}"
-                )
-                if "type_percentages" in report.blade_summary_right:
-                    types = report.blade_summary_right["type_percentages"]
-                    lines.append(f"    Распределение: {types}")
 
         # Recommendations
         if report.recommendations:
@@ -620,9 +512,7 @@ class AnalysisPipeline:
 
         # Overall score
         if report.overall_score is not None:
-            lines.append(
-                f"\n\u041e\u0431\u0449\u0438\u0439 \u0431\u0430\u043b\u043b: {report.overall_score:.1f} / 10"
-            )
+            lines.append(f"\nОбщий балл: {report.overall_score:.1f} / 10")
 
         lines.append("=" * 60)
 
@@ -694,23 +584,18 @@ class AnalysisPipeline:
             smoothed = normalized
 
         # Default phases for non-element analysis
-        poses_3d: np.ndarray | None = None
-        blade_summaries: tuple | None = None
         phases = ElementPhase(name="unknown", start=0, takeoff=0, peak=0, landing=0, end=0)
         reference: np.ndarray | None = None
 
         # Element-specific analysis with wave-based parallelism
+        physics_dict: dict = {}
+
         if element_type is not None and element_def is not None:
-            # Pre-compute CoM once (shared by metrics + 3D physics)
+            # Pre-compute CoM once (shared by metrics)
             com_trajectory = calculate_com_trajectory(smoothed)
 
-            # === Wave 1: 3D lift, phase detection, reference load in parallel ===
+            # === Wave 1: phase detection, reference load in parallel ===
             wave1_tasks: list[asyncio.Task] = []
-
-            if self._compute_3d:
-                wave1_tasks.append(
-                    asyncio.create_task(self._lift_poses_3d_async(smoothed, meta.fps))
-                )
 
             wave1_tasks.append(
                 asyncio.create_task(
@@ -724,23 +609,11 @@ class AnalysisPipeline:
             wave1_results = await asyncio.gather(*wave1_tasks)
 
             # Unpack wave 1 results
-            result_idx = 0
-            if self._compute_3d:
-                poses_3d, blade_summaries = wave1_results[result_idx]
-                result_idx += 1
+            phases = wave1_results[0]
+            reference = wave1_results[1] if len(wave1_results) > 1 else None
 
-            phases = wave1_results[result_idx]
-            result_idx += 1
-
-            reference = wave1_results[result_idx] if result_idx < len(wave1_results) else None
-
-            # === Wave 2: physics, metrics in parallel ===
+            # === Wave 2: metrics ===
             wave2_tasks: list[asyncio.Task] = []
-
-            if poses_3d is not None:
-                wave2_tasks.append(
-                    asyncio.create_task(self._compute_physics_async(poses_3d, phases))
-                )
 
             wave2_tasks.append(
                 asyncio.create_task(
@@ -756,15 +629,7 @@ class AnalysisPipeline:
 
             wave2_results = await asyncio.gather(*wave2_tasks)
 
-            # Unpack wave 2 results
-            result_idx = 0
-            if poses_3d is not None:
-                physics_dict = wave2_results[result_idx] or {}
-                result_idx += 1
-            else:
-                physics_dict = {}
-
-            metrics = wave2_results[result_idx]
+            metrics = wave2_results[0]
 
             # DTW alignment (needs phases + reference)
             dtw_distance = None
@@ -786,10 +651,6 @@ class AnalysisPipeline:
             dtw_distance = None
             physics_dict = {}
 
-        # Extract blade summaries
-        blade_summary_left = blade_summaries[0] if blade_summaries and blade_summaries[0] else {}
-        blade_summary_right = blade_summaries[1] if blade_summaries and blade_summaries[1] else {}
-
         return AnalysisReport(
             element_type=element_type or "unknown",
             phases=phases,
@@ -797,59 +658,8 @@ class AnalysisPipeline:
             recommendations=recommendations,
             overall_score=overall_score if overall_score is not None else 0.0,
             dtw_distance=dtw_distance if dtw_distance is not None else 0.0,
-            blade_summary_left=blade_summary_left,
-            blade_summary_right=blade_summary_right,
             physics=physics_dict,
         )
-
-    async def _lift_poses_3d_async(
-        self,
-        poses_2d: np.ndarray,
-        fps: float,
-    ) -> tuple[np.ndarray | None, tuple[dict, dict] | None]:
-        """Async 3D pose lifting with blade detection.
-
-        Args:
-            poses_2d: (N, 17, 2) normalized 2D poses.
-            fps: Video frame rate.
-
-        Returns:
-            Tuple of (poses_3d, (blade_summary_left, blade_summary_right)).
-        """
-        extractor = self._get_pose_3d_extractor()
-        if extractor is None:
-            return None, None
-
-        # Run in thread pool (NumPy/ONNX are CPU-bound)
-        loop = asyncio.get_event_loop()
-        poses_3d = await loop.run_in_executor(None, extractor.extract_sequence, poses_2d)
-
-        # Blade detection (also CPU-bound)
-        if poses_3d is not None:
-            from .detection.blade_edge_detector_3d import BladeEdgeDetector3D
-
-            detector = BladeEdgeDetector3D(fps=fps)
-            blade_states_left = []
-            blade_states_right = []
-            for i, pose_3d in enumerate(poses_3d):
-                left_state = detector.detect_frame(pose_3d, i, foot="left")
-                right_state = detector.detect_frame(pose_3d, i, foot="right")
-                blade_states_left.append(left_state)
-                blade_states_right.append(right_state)
-
-            blade_summary_left = {
-                "inside": sum(1 for s in blade_states_left if s.blade_type.value == "inside"),
-                "outside": sum(1 for s in blade_states_left if s.blade_type.value == "outside"),
-                "flat": sum(1 for s in blade_states_left if s.blade_type.value == "flat"),
-            }
-            blade_summary_right = {
-                "inside": sum(1 for s in blade_states_right if s.blade_type.value == "inside"),
-                "outside": sum(1 for s in blade_states_right if s.blade_type.value == "outside"),
-                "flat": sum(1 for s in blade_states_right if s.blade_type.value == "flat"),
-            }
-            return poses_3d, (blade_summary_left, blade_summary_right)
-
-        return None, None
 
     async def _detect_phases_async(
         self,
@@ -924,44 +734,3 @@ class AnalysisPipeline:
             None, self._reference_store.get_best_match, element_type
         )
         return reference
-
-    async def _compute_physics_async(
-        self,
-        poses_3d: np.ndarray,
-        phases: ElementPhase,
-    ) -> dict | None:
-        """Async physics calculations with CoM caching.
-
-        Args:
-            poses_3d: (N, 17, 3) 3D pose array.
-            phases: Element phase boundaries.
-
-        Returns:
-            Physics dict with jump_height, flight_time, avg_inertia, takeoff_velocity,
-            fit_quality, or None on error.
-        """
-        try:
-            from .analysis.physics_engine import PhysicsEngine
-
-            physics_engine = PhysicsEngine(body_mass=60.0)
-            result = physics_engine.analyze(
-                poses_3d, takeoff_idx=phases.takeoff, landing_idx=phases.landing
-            )
-            physics_dict: dict = {
-                "avg_inertia": float(np.mean(result.moment_of_inertia)),
-            }
-            if result.jump_height is not None:
-                physics_dict["jump_height"] = result.jump_height
-                physics_dict["flight_time"] = result.flight_time
-
-            # Restore trajectory fit details for types.py report rendering
-            if phases.takeoff is not None and phases.landing is not None:
-                trajectory = physics_engine._fit_jump_trajectory_with_com(
-                    poses_3d, phases.takeoff, phases.landing, result.center_of_mass
-                )
-                physics_dict["takeoff_velocity"] = trajectory["takeoff_velocity"]
-                physics_dict["fit_quality"] = trajectory["fit_quality"]
-
-            return physics_dict
-        except Exception:
-            return None

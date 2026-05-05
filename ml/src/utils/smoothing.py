@@ -326,9 +326,9 @@ class PoseSmoother:
     Supports H3.6M 17-keypoint format for 3D-only pipeline.
 
     Integration point in pipeline:
-        AthletePose3DExtractor → PoseNormalizer → PoseSmoother → PhaseDetector
-                                                                     ↓
-                                                                BiomechanicsAnalyzer
+        PoseExtractor → PoseNormalizer → PoseSmoother → PhaseDetector
+                                                          ↓
+                                                    BiomechanicsAnalyzer
     """
 
     def __init__(

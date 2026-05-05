@@ -252,7 +252,6 @@ _DEFAULT_MODEL_3D_CANDIDATES = [
 ]
 
 # Module-level imports for testability (mock.patch targets module-level names).
-from src.pose_3d import CorrectiveLens  # noqa: E402
 from src.pose_3d.onnx_extractor import ONNXPoseExtractor  # noqa: E402
 from src.pose_estimation.pose_extractor import PoseExtractor  # noqa: E402
 
@@ -298,15 +297,13 @@ def prepare_poses(
     *,
     frame_skip: int = 1,
     tracking: str = "auto",
-    use_corrective_lens: bool = False,
     model_3d_path: Path | str | None = None,
-    blend_threshold: float = 0.5,
     device: str = "auto",
     progress_cb=None,
 ) -> PreparedPoses:
     """Unified pose preparation pipeline.
 
-    Extract 2D poses -> fill gaps -> smooth -> 3D lift + CorrectiveLens.
+    Extract 2D poses -> fill gaps -> smooth -> optional 3D lift.
 
     Both CLI and Gradio call this function. Any improvement here
     automatically applies to all frontends.
@@ -316,9 +313,7 @@ def prepare_poses(
         person_click: PersonClick to select target person, or None.
         frame_skip: Process every Nth frame (default 1 = every frame).
         tracking: Tracking mode ("auto", "sports2d", "deepsort").
-        use_corrective_lens: Apply 3D-corrected 2D overlay (default True).
         model_3d_path: Path to 3D model, or None to auto-detect.
-        blend_threshold: CorrectiveLens confidence blend threshold.
         device: Device string ("auto", "cuda", "cpu").
         progress_cb: Optional callback ``(progress_0_to_1, message)``.
 
@@ -379,26 +374,14 @@ def prepare_poses(
     if progress_cb:
         progress_cb(0.4, "3D pose estimation...")
 
-    # --- Step 4: 3D lift + CorrectiveLens ---
+    # --- Step 4: 3D lift ---
     poses_3d = None
     model_path = _resolve_model_3d(model_3d_path)
 
-    if model_path is not None and use_corrective_lens:
-        lens = CorrectiveLens(model_path=model_path, device=cfg.device)
-        poses_norm_corrected, poses_3d = lens.correct_sequence(
-            poses_2d_norm=poses_norm,
-            fps=meta.fps,
-            width=meta.width,
-            height=meta.height,
-            confidences=confs,
-            blend_threshold=blend_threshold,
-        )
-        poses_norm = np.clip(poses_norm_corrected, 0.0, 1.0)
-        logger.info("CorrectiveLens applied (blend_threshold=%.2f)", blend_threshold)
-    elif model_path is not None:
+    if model_path is not None:
         onnx = ONNXPoseExtractor(model_path, device=cfg.device)
         poses_3d = onnx.estimate_3d(poses_norm)
-        logger.info("3D poses estimated (no CorrectiveLens)")
+        logger.info("3D poses estimated")
     else:
         logger.warning("No 3D model found. Skeleton will use raw 2D poses without correction.")
 
