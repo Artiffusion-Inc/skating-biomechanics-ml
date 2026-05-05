@@ -13,7 +13,6 @@ ml/
 │   ├── types.py                      # Core types: H36Key, FrameKeypoints, PersonClick, etc.
 │   ├── device.py                     # DeviceConfig — GPU/CPU auto-detection
 │   ├── pipeline.py                   # AnalysisPipeline orchestrator
-│   ├── cli.py                        # argparse CLI (analyze, build-ref, segment)
 │   ├── web_helpers.py                # Preview rendering for detect endpoint
 │   ├── pose_estimation/              # 2D pose extraction
 │   │   ├── pose_extractor.py       # RTMO via rtmlib (COCO 17kp) — PRIMARY
@@ -78,6 +77,7 @@ ml/
 │   ├── server.py                     # FastAPI server for GPU worker
 │   └── Containerfile                 # Multi-stage build (4.9GB)
 ├── scripts/                          # Standalone scripts
+│   ├── cli.py                        # Backend API CLI — upload, enqueue, poll, JSON stdout
 │   ├── visualize_with_skeleton.py    # Main viz script (--layer, --3d, --select-person)
 │   ├── setup_cuda_compat.sh          # CUDA 12 compat libs for CUDA 13.x
 │   ├── download_ml_models.py         # Download model weights
@@ -177,6 +177,29 @@ Both jobs download video from R2, process on GPU, store results. When `VASTAI_AP
 ## Tracking Debugging
 
 Skeleton jump to wrong person → follow data-driven approach in @CLAUDE.md (Tracking Debugging Workflow).
+
+## CLI for Remote Processing (`scripts/cli.py`)
+
+Use `scripts/cli.py` to dispatch video processing to Vast.ai Serverless GPU via the backend API. No local GPU needed.
+
+```bash
+cd ml
+
+# Authenticate (stores JWT in ~/.config/skating-cli/credentials.json, mode 600)
+uv run python scripts/cli.py login
+
+# Analyze a video — upload → enqueue → poll → JSON stdout
+uv run python scripts/cli.py analyze /path/to/video.mov --element waltz_jump
+
+# Or via go-task
+go-task cli-analyze VIDEO=/path/to/video.mov ELEMENT=waltz_jump
+```
+
+**Auth flow:** `login` → save refresh token → each request auto-refreshes access token on expiry.
+
+**Output:** Only JSON to stdout. Progress to stderr.
+
+**Backend API endpoints used:** `POST /auth/login`, `POST /auth/refresh`, `GET /users/me`, `POST /uploads/init`, `PUT` presigned chunks, `POST /uploads/complete`, `POST /process/queue`, `GET /process/{task_id}/status`.
 
 ## Before Committing
 
