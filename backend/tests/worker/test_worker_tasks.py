@@ -570,7 +570,7 @@ class TestDetectVideoTask:
 
     @pytest.fixture
     def single_person_thread(self):
-        """asyncio.to_thread mock that returns one person."""
+        """asyncio.to_thread mock that returns one person and handles cv2/video ops."""
 
         async def _mock_to_thread(func, *args, **kwargs):
             func_name = getattr(func, "__name__", str(func))
@@ -588,6 +588,21 @@ class TestDetectVideoTask:
                     ],
                     {"fps": 30.0},
                 )
+            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+                mock_cap = MagicMock()
+                mock_cap.read.return_value = (True, b"fake_frame")
+                mock_cap.release.return_value = None
+                return mock_cap
+            if "read" in func_name:
+                return (True, b"fake_frame")
+            if "release" in func_name:
+                return None
+            if "imencode" in func_name or "imencode" in str(func):
+                return (True, b"fake_png_bytes")
+            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+                return b"fake_frame"
+            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+                return MagicMock(width=1920, height=1080)
             return None
 
         return _mock_to_thread
@@ -712,7 +727,7 @@ class TestDetectVideoTask:
         assert "status" in result
 
     @pytest.mark.asyncio
-    async def test_single_person_detected(self, mock_valkey, single_person_thread, mock_cv2_ok):
+    async def test_single_person_detected(self, mock_valkey, single_person_thread):
         """Single person detected -> auto_click is set, preview_image is non-empty."""
         from app.worker import detect_video_task
 
@@ -720,12 +735,6 @@ class TestDetectVideoTask:
             patch("app.worker.get_valkey_client", return_value=mock_valkey),
             patch("app.worker.get_settings"),
             patch("asyncio.to_thread", side_effect=single_person_thread),
-            patch.dict("sys.modules", {"cv2": mock_cv2_ok}),
-            patch("src.web_helpers.render_person_preview", return_value=b"fake_frame"),
-            patch(
-                "src.utils.video.get_video_meta", return_value=MagicMock(width=1920, height=1080)
-            ),
-            patch("builtins.open", MagicMock()),
         ):
             result = await detect_video_task(
                 ctx={},
@@ -742,7 +751,7 @@ class TestDetectVideoTask:
         assert len(result["persons"]) == 1
 
     @pytest.mark.asyncio
-    async def test_multiple_persons_detected(self, mock_valkey, mock_cv2_ok):
+    async def test_multiple_persons_detected(self, mock_valkey):
         """Multiple persons detected -> auto_click is None, status mentions count."""
 
         async def mock_to_thread(func, *args, **kwargs):
@@ -767,6 +776,21 @@ class TestDetectVideoTask:
                     ],
                     {"fps": 30.0},
                 )
+            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+                mock_cap = MagicMock()
+                mock_cap.read.return_value = (True, b"fake_frame")
+                mock_cap.release.return_value = None
+                return mock_cap
+            if "read" in func_name:
+                return (True, b"fake_frame")
+            if "release" in func_name:
+                return None
+            if "imencode" in func_name or "imencode" in str(func):
+                return (True, b"fake_png_bytes")
+            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+                return b"fake_frame"
+            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+                return MagicMock(width=1920, height=1080)
             return None
 
         from app.worker import detect_video_task
@@ -775,12 +799,6 @@ class TestDetectVideoTask:
             patch("app.worker.get_valkey_client", return_value=mock_valkey),
             patch("app.worker.get_settings"),
             patch("asyncio.to_thread", side_effect=mock_to_thread),
-            patch.dict("sys.modules", {"cv2": mock_cv2_ok}),
-            patch("src.web_helpers.render_person_preview", return_value=b"fake_frame"),
-            patch(
-                "src.utils.video.get_video_meta", return_value=MagicMock(width=1920, height=1080)
-            ),
-            patch("builtins.open", MagicMock()),
         ):
             result = await detect_video_task(
                 ctx={},
@@ -818,25 +836,45 @@ class TestDetectVideoTask:
                     )
 
     @pytest.mark.asyncio
-    async def test_video_read_failure(self, mock_valkey, single_person_thread):
+    async def test_video_read_failure(self, mock_valkey):
         """When VideoCapture.read() fails, RuntimeError is raised."""
         from app.worker import detect_video_task
 
-        mock_cv2 = MagicMock()
-        mock_cap = MagicMock()
-        mock_cap.read.return_value = (False, None)  # Video read failure
-        mock_cv2.VideoCapture.return_value = mock_cap
+        async def mock_to_thread(func, *args, **kwargs):
+            func_name = getattr(func, "__name__", str(func))
+            if "download" in func_name or "download" in str(func):
+                return None
+            if "preview_persons" in func_name or "preview" in func_name:
+                return (
+                    [
+                        {
+                            "track_id": 0,
+                            "hits": 50,
+                            "bbox": [0.1, 0.1, 0.5, 0.8],
+                            "mid_hip": [0.3, 0.6],
+                        }
+                    ],
+                    {"fps": 30.0},
+                )
+            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+                mock_cap = MagicMock()
+                mock_cap.read.return_value = (False, None)  # Video read failure
+                mock_cap.release.return_value = None
+                return mock_cap
+            if "read" in func_name:
+                return (False, None)  # Video read failure
+            if "release" in func_name:
+                return None
+            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+                return b"fake_frame"
+            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+                return MagicMock(width=1920, height=1080)
+            return None
 
         with (
             patch("app.worker.get_valkey_client", return_value=mock_valkey),
             patch("app.worker.get_settings"),
-            patch("asyncio.to_thread", side_effect=single_person_thread),
-            patch.dict("sys.modules", {"cv2": mock_cv2}),
-            patch("src.web_helpers.render_person_preview", return_value=b"fake_frame"),
-            patch(
-                "src.utils.video.get_video_meta", return_value=MagicMock(width=1920, height=1080)
-            ),
-            patch("builtins.open", MagicMock()),
+            patch("asyncio.to_thread", side_effect=mock_to_thread),
         ):
             with pytest.raises(RuntimeError, match="Failed to read video frame"):
                 await detect_video_task(
@@ -847,26 +885,47 @@ class TestDetectVideoTask:
                 )
 
     @pytest.mark.asyncio
-    async def test_imencode_failure(self, mock_valkey, single_person_thread):
+    async def test_imencode_failure(self, mock_valkey):
         """When cv2.imencode fails, RuntimeError is raised."""
         from app.worker import detect_video_task
 
-        mock_cv2 = MagicMock()
-        mock_cap = MagicMock()
-        mock_cap.read.return_value = (True, b"fake_frame")
-        mock_cv2.VideoCapture.return_value = mock_cap
-        mock_cv2.imencode.return_value = (False, None)  # imencode failure
+        async def mock_to_thread(func, *args, **kwargs):
+            func_name = getattr(func, "__name__", str(func))
+            if "download" in func_name or "download" in str(func):
+                return None
+            if "preview_persons" in func_name or "preview" in func_name:
+                return (
+                    [
+                        {
+                            "track_id": 0,
+                            "hits": 50,
+                            "bbox": [0.1, 0.1, 0.5, 0.8],
+                            "mid_hip": [0.3, 0.6],
+                        }
+                    ],
+                    {"fps": 30.0},
+                )
+            if "VideoCapture" in func_name or "VideoCapture" in str(func):
+                mock_cap = MagicMock()
+                mock_cap.read.return_value = (True, b"fake_frame")
+                mock_cap.release.return_value = None
+                return mock_cap
+            if "read" in func_name:
+                return (True, b"fake_frame")
+            if "release" in func_name:
+                return None
+            if "imencode" == func_name or "imencode" in str(func):
+                return (False, None)  # imencode failure
+            if "render_person_preview" in func_name or "render_person_preview" in str(func):
+                return b"fake_frame"
+            if "get_video_meta" in func_name or "get_video_meta" in str(func):
+                return MagicMock(width=1920, height=1080)
+            return None
 
         with (
             patch("app.worker.get_valkey_client", return_value=mock_valkey),
             patch("app.worker.get_settings"),
-            patch("asyncio.to_thread", side_effect=single_person_thread),
-            patch.dict("sys.modules", {"cv2": mock_cv2}),
-            patch("src.web_helpers.render_person_preview", return_value=b"fake_frame"),
-            patch(
-                "src.utils.video.get_video_meta", return_value=MagicMock(width=1920, height=1080)
-            ),
-            patch("builtins.open", MagicMock()),
+            patch("asyncio.to_thread", side_effect=mock_to_thread),
         ):
             with pytest.raises(RuntimeError, match="Failed to encode preview image"):
                 await detect_video_task(
