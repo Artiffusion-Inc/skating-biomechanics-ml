@@ -92,6 +92,85 @@ class UpdateOnboardingRoleRequest(BaseModel):
 
 
 # ---------------------------------------------------------------------------
+# Workspaces
+# ---------------------------------------------------------------------------
+
+
+class CreateWorkspaceRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=255)
+    slug: str = Field(min_length=1, max_length=100, pattern=r"^[a-z0-9_-]+$")
+    description: str | None = Field(default=None, max_length=1000)
+
+
+class WorkspaceResponse(BaseModel):
+    id: str
+    name: str
+    slug: str
+    description: str | None
+    avatar_url: str | None
+    is_active: bool
+    created_at: str
+    updated_at: str
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def validate_datetime(cls, v: Any) -> str:
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
+
+
+class WorkspaceMemberResponse(BaseModel):
+    id: str
+    workspace_id: str
+    user_id: str
+    role: str
+    joined_at: str
+    invited_by: str | None
+    user_name: str | None = None
+    user_email: str | None = None
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("joined_at", mode="before")
+    @classmethod
+    def validate_datetime(cls, v: Any) -> str:
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
+
+
+class InviteMemberRequest(BaseModel):
+    email: EmailStr
+    role: str = Field(pattern=r"^(admin|coach|student|parent)$")
+
+
+class SubscriptionResponse(BaseModel):
+    id: str
+    workspace_id: str
+    plan: str
+    status: str
+    seats: int | None
+    max_seats: int | None
+    trial_ends_at: str | None
+    current_period_start: str | None
+    current_period_end: str | None
+
+    model_config = {"from_attributes": True}
+
+    @field_validator("trial_ends_at", "current_period_start", "current_period_end", mode="before")
+    @classmethod
+    def validate_datetime(cls, v: Any) -> str | None:
+        if v is None:
+            return None
+        if isinstance(v, datetime):
+            return v.isoformat()
+        return str(v)
+
+
+# ---------------------------------------------------------------------------
 # Detect & Process
 # ---------------------------------------------------------------------------
 
@@ -259,6 +338,7 @@ class PhasesData(BaseModel):
 class SessionResponse(BaseModel):
     id: str
     user_id: str
+    workspace_id: str | None = None
     element_type: str
     video_key: str | None = None
     video_url: str | None
@@ -387,6 +467,7 @@ class ConnectionListResponse(PaginatedResponse):
 class MusicAnalysisResponse(BaseModel):
     id: str
     user_id: str
+    workspace_id: str | None = None
     filename: str
     audio_url: str
     duration_sec: float
@@ -466,6 +547,7 @@ class RenderRinkRequest(BaseModel):
 class ChoreographyProgramResponse(BaseModel):
     id: str
     user_id: str
+    workspace_id: str | None = None
     music_analysis_id: str | None
     title: str | None
     discipline: str
