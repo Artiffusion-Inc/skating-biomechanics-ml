@@ -5,8 +5,8 @@ Usage:
     cd backend && uv run python scripts/seed_demo.py
 
 Creates:
-    - 1 skater user (demo@skating.ai)
-    - 1 coach user (coach@skating.ai)
+    - 1 skater user (demo@skatelab.ru)
+    - 1 coach user (coach@skatelab.ru)
     - 20 sessions for the skater over last 90 days
     - Biomechanical metrics per session (some PRs)
     - Coach-student connection
@@ -42,9 +42,9 @@ from app.models import (  # noqa: E402
 )
 from app.models.connection import ConnectionStatus, ConnectionType  # noqa: E402
 
-SKATER_EMAIL = "demo@skating.ai"
+SKATER_EMAIL = "demo@skatelab.ru"
 SKATER_PASSWORD = "demo1234"
-COACH_EMAIL = "coach@skating.ai"
+COACH_EMAIL = "coach@skatelab.ru"
 COACH_PASSWORD = "coach1234"
 
 ELEMENT_TYPES = ["waltz_jump", "toe_loop", "flip", "salchow", "loop", "lutz", "axel"]

@@ -50,7 +50,7 @@ async def test_enqueue_process(client, app, auth_headers):
     assert call_kwargs["tracking"] == "auto"
     assert call_kwargs["export"] is True
     assert call_kwargs["session_id"] == "sess_123"
-    assert call_kwargs["_queue_name"] == "skating:queue:heavy"
+    assert call_kwargs["_queue_name"] == "skatelab:queue:heavy"
 
     # Verify MLModelFlags are passed correctly
     ml_flags = call_kwargs["ml_flags"]

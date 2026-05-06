@@ -5,7 +5,7 @@ set -euo pipefail
 # Run this on the VPS: bash setup-vps.sh <domain>
 
 DOMAIN="${1:?Usage: bash setup-vps.sh <domain>}"
-APP_DIR="/opt/skating-app"
+APP_DIR="/opt/skatelab"
 
 echo "=== Setting up skatelab on VPS ==="
 
@@ -31,12 +31,12 @@ cd "$APP_DIR"
 if [ ! -f .env.prod ]; then
     cat > .env.prod <<ENVEOF
 # === Database ===
-POSTGRES_DB=skating_ml
-POSTGRES_USER=skating
+POSTGRES_DB=skatelab
+POSTGRES_USER=skatelab
 POSTGRES_PASSWORD=CHANGE_ME_GENERATE_WITH_openssl_rand_hex_32
 
 # === Backend ===
-DATABASE_URL=postgresql+asyncpg://skating:CHANGE_ME@postgres:5432/skating_ml
+DATABASE_URL=postgresql+asyncpg://skatelab:CHANGE_ME@postgres:5432/skatelab
 VALKEY_URL=redis://valkey:6379/0
 JWT_SECRET=CHANGE_ME_GENERATE_WITH_openssl_rand_hex_32
 

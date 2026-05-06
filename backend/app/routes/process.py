@@ -70,7 +70,7 @@ class ProcessController(Controller):
             export=data.export,
             ml_flags=ml_flags,
             session_id=data.session_id,
-            _queue_name="skating:queue:heavy",
+            _queue_name="skatelab:queue:heavy",
         )
 
         return QueueProcessResponse(task_id=task_id)

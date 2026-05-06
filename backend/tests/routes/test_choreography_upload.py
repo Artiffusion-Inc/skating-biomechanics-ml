@@ -119,7 +119,7 @@ async def test_upload_music_enqueues_job(mock_user, mock_db, mock_file, mock_req
             "analyze_music_task",
             music_id="music_456",
             r2_key="music/user_123/music_456.mp3",
-            _queue_name="skating:queue:fast",
+            _queue_name="skatelab:queue:fast",
         )
 
 
