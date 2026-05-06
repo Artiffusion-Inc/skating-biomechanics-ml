@@ -132,8 +132,8 @@ def test_worker_queue_names():
     """Each WorkerSettings class should use its own queue name."""
     from backend.app.worker import FastWorkerSettings, HeavyWorkerSettings
 
-    assert FastWorkerSettings.queue_name == "skating:queue:fast"
-    assert HeavyWorkerSettings.queue_name == "skating:queue:heavy"
+    assert FastWorkerSettings.queue_name == "skatelab:queue:fast"
+    assert HeavyWorkerSettings.queue_name == "skatelab:queue:heavy"
 
 
 def test_worker_graceful_shutdown():

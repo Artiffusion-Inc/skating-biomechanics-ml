@@ -41,7 +41,7 @@ async def test_enqueue_detect(client, app, auth_headers):
         task_id=data["task_id"],
         video_key=data["video_key"],
         tracking="auto",
-        _queue_name="skating:queue:fast",
+        _queue_name="skatelab:queue:fast",
     )
 
 

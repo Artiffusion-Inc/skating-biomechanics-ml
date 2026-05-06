@@ -396,7 +396,37 @@ async def detect_video_task(
         from src.device import DeviceConfig
         from src.pose_estimation.pose_extractor import PoseExtractor
         from src.utils.video import get_video_meta
-        from src.web_helpers import render_person_preview
+
+        def render_person_preview(frame, persons, selected_idx=None):
+            annotated = frame.copy()
+            h, w = frame.shape[:2]
+            colors = [(255, 165, 0), (0, 200, 200), (200, 100, 0), (200, 0, 200), (0, 180, 255)]
+            for i, p in enumerate(persons):
+                x1, y1, x2, y2 = p["bbox"]
+                px1, py1 = int(x1 * w), int(y1 * h)
+                px2, py2 = int(x2 * w), int(y2 * h)
+                if selected_idx is not None and i == selected_idx:
+                    color = (0, 255, 0)
+                    thickness = 3
+                else:
+                    color = colors[i % len(colors)]
+                    thickness = 2
+                cv2.rectangle(annotated, (px1, py1), (px2, py2), color, thickness)
+                label = f"#{i + 1} (hits: {p['hits']})"
+                cv2.rectangle(
+                    annotated, (px1, py1 - 28), (px1 + len(label) * 10 + 10, py1), color, -1
+                )
+                cv2.putText(
+                    annotated,
+                    label,
+                    (px1 + 5, py1 - 8),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    0.6,
+                    (255, 255, 255),
+                    1,
+                    cv2.LINE_AA,
+                )
+            return annotated
 
         await update_progress(task_id, 0.1, "Downloading video...", valkey=valkey)
         await publish_task_event(
@@ -651,7 +681,7 @@ async def analyze_music_task(
 class FastWorkerSettings:
     """arq worker for lightweight detection tasks."""
 
-    queue_name: str = "skating:queue:fast"
+    queue_name: str = "skatelab:queue:fast"
     max_jobs: int = (
         _settings.app.worker_max_jobs_remote
         if _settings.vastai.api_key.get_secret_value()
@@ -677,7 +707,7 @@ class FastWorkerSettings:
 class HeavyWorkerSettings:
     """arq worker for full ML pipeline processing."""
 
-    queue_name: str = "skating:queue:heavy"
+    queue_name: str = "skatelab:queue:heavy"
     max_jobs: int = 1  # GPU-bound, can't parallelize
     retry_jobs: bool = True
     retry_delays: ClassVar[list[int]] = _settings.app.worker_retry_delays

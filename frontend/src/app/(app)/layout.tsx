@@ -6,16 +6,12 @@ import { getTranslations } from "next-intl/server"
 import { AppNav } from "@/components/app-nav"
 import { BottomDock } from "@/components/layout/bottom-dock"
 import { OnboardingGate } from "@/components/onboarding/onboarding-gate"
-import { skipAuth } from "@/lib/env"
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations("app")
 
-  // Server-side auth gate — skip when NEXT_PUBLIC_SKIP_AUTH=true
-  if (!skipAuth) {
-    const hasAuth = (await cookies()).get("sb_auth")?.value
-    if (!hasAuth) redirect("/login")
-  }
+  const hasAuth = (await cookies()).get("sb_auth")?.value
+  if (!hasAuth) redirect("/login")
 
   return (
     <OnboardingGate>

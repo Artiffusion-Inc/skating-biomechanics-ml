@@ -57,8 +57,8 @@ jobs:
           file: frontend/Containerfile
           push: true
           tags: |
-            ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-frontend:latest
-            ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-frontend:${{ github.sha }}
+            ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-frontend:latest
+            ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-frontend:${{ github.sha }}
 
       - name: Frontend build summary
         if: always()
@@ -69,7 +69,7 @@ jobs:
           | Metric | Value |
           |--------|-------|
           | Status | \`${{ steps.build.outcome }}\` |
-          | Image | \`ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-frontend:${{ github.sha }}\` |
+          | Image | \`ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-frontend:${{ github.sha }}\` |
 
           EOF
 
@@ -138,7 +138,7 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
           source: "infra/deploy.yaml,infra/Caddyfile,infra/prometheus.yml,infra/prometheus/rules"
-          target: "/opt/skating-app/"
+          target: "/opt/skatelab/"
           strip_components: 1
 
       - name: Login to GHCR
@@ -161,9 +161,9 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 3m
           script: |
-            cd /opt/skating-app
+            cd /opt/skatelab
             export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
-            export DATABASE_URL="postgresql+asyncpg://skating:${{ secrets.POSTGRES_PASSWORD }}@127.0.0.1:5432/skating"
+            export DATABASE_URL="postgresql+asyncpg://skatelab:${{ secrets.POSTGRES_PASSWORD }}@127.0.0.1:5432/skatelab"
             export R2_ENDPOINT_URL="${{ secrets.CF_R2_ENDPOINT_URL }}"
             export R2_ACCESS_KEY_ID="${{ secrets.CF_R2_ACCESS_KEY_ID }}"
             export R2_SECRET_ACCESS_KEY="${{ secrets.CF_R2_SECRET_ACCESS_KEY }}"
@@ -177,12 +177,12 @@ jobs:
 
             envsubst < deploy.yaml > deploy-rendered.yaml
             sed -i "s|ghcr.io/artiffusion-inc/skatelab-backend:latest|ghcr.io/${GHCR_OWNER}/skatelab-backend:${TAG}|g" deploy-rendered.yaml
-            sed -i "s|ghcr.io/artiffusion-inc/skating-frontend:latest|ghcr.io/${GHCR_OWNER}/skating-frontend:${TAG}|g" deploy-rendered.yaml
+            sed -i "s|ghcr.io/artiffusion-inc/skatelab-frontend:latest|ghcr.io/${GHCR_OWNER}/skatelab-frontend:${TAG}|g" deploy-rendered.yaml
 
             # Clean up old compose containers and pods before kube play
-            podman stop $(podman ps -aq --filter name=skating-app) 2>/dev/null || true
-            podman rm -f $(podman ps -aq --filter name=skating-app) 2>/dev/null || true
-            podman pod rm -f $(podman pod ps -q --filter name=skating-app) 2>/dev/null || true
+            podman stop $(podman ps -aq --filter name=skatelab) 2>/dev/null || true
+            podman rm -f $(podman ps -aq --filter name=skatelab) 2>/dev/null || true
+            podman pod rm -f $(podman pod ps -q --filter name=skatelab) 2>/dev/null || true
 
             podman kube play --replace deploy-rendered.yaml
 
@@ -196,7 +196,7 @@ jobs:
           command_timeout: 1m
           script: |
             sleep 10
-            podman exec skating-app-backend alembic upgrade head
+            podman exec skatelab-backend alembic upgrade head
 
       - name: Health check
         id: health
@@ -209,9 +209,9 @@ jobs:
           script: |
             timeout 120 bash -c '
               while true; do
-                status=$(podman pod ps --format "{{.Name}}\t{{.Status}}" | grep skating-app | awk "{print \$2}")
+                status=$(podman pod ps --format "{{.Name}}\t{{.Status}}" | grep skatelab | awk "{print \$2}")
                 if [ "$status" = "Running" ]; then
-                  if podman exec skating-app-backend \
+                  if podman exec skatelab-backend \
                     bash -c "python -c \"import urllib.request; urllib.request.urlopen(\\\"http://127.0.0.1:8000/api/v1/health\\\", timeout=2)\"" 2>/dev/null; then
                     echo "All services healthy"
                     exit 0

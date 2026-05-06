@@ -1,6 +1,6 @@
 # Backend
 
-FastAPI-based REST API for the figure skating biomechanics platform.
+FastAPI-based REST API for SkateLab.
 
 ## Quick Start
 

@@ -10,29 +10,18 @@ describe("renderRink", () => {
     expect(svg).toContain('viewBox="0 0 60 30"')
   })
 
-  it("renders jump elements", () => {
-    const svg = renderRink([{ code: "3Lz", position: { x: 30, y: 15 } }])
-    expect(svg).toContain("3Lz")
-    expect(svg).toContain("#ea580c")
-  })
-
-  it("renders spin elements", () => {
-    const svg = renderRink([{ code: "CSp4", position: { x: 20, y: 10 } }])
-    expect(svg).toContain("CSp4")
-    expect(svg).toContain("#7c3aed")
-  })
-
-  it("renders step sequences", () => {
-    const svg = renderRink([{ code: "StSq4", position: { x: 40, y: 10 } }])
-    expect(svg).toContain("StSq4")
-    expect(svg).toContain("#16a34a")
-  })
-
-  it("renders choreo sequences", () => {
-    const svg = renderRink([{ code: "ChSq1", position: { x: 15, y: 20 } }])
-    expect(svg).toContain("ChSq1")
-    expect(svg).toContain("#2563eb")
-  })
+  for (const { note, code, color, position } of [
+    { note: "jump elements", code: "3Lz", color: "#ea580c", position: { x: 30, y: 15 } },
+    { note: "spin elements", code: "CSp4", color: "#7c3aed", position: { x: 20, y: 10 } },
+    { note: "step sequences", code: "StSq4", color: "#16a34a", position: { x: 40, y: 10 } },
+    { note: "choreo sequences", code: "ChSq1", color: "#2563eb", position: { x: 15, y: 20 } },
+  ]) {
+    it(`renders ${note}`, () => {
+      const svg = renderRink([{ code, position }])
+      expect(svg).toContain(code)
+      expect(svg).toContain(color)
+    })
+  }
 
   it("draws connecting paths between elements", () => {
     const svg = renderRink([

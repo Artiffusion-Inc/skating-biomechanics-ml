@@ -128,7 +128,7 @@ class ChoreographyController(Controller):
                 "analyze_music_task",
                 music_id=music.id,
                 r2_key=r2_key,
-                _queue_name="skating:queue:fast",
+                _queue_name="skatelab:queue:fast",
             )
             logger.info("Enqueued analyze_music_task for music_id=%s", music.id)
         except (OSError, ValueError, RuntimeError) as e:

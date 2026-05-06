@@ -1,8 +1,8 @@
 id: no-process-env
 snapshots:
-  if (process.env.SKIP_AUTH === "true") {}:
+  if (process.env.SOME_VAR === "true") {}:
     labels:
-    - source: process.env.SKIP_AUTH
+    - source: process.env.SOME_VAR
       style: primary
       start: 4
       end: 25

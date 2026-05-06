@@ -13,7 +13,7 @@ ml/
 │   ├── types.py                      # Core types: H36Key, FrameKeypoints, PersonClick, etc.
 │   ├── device.py                     # DeviceConfig — GPU/CPU auto-detection
 │   ├── pipeline.py                   # AnalysisPipeline orchestrator
-│   ├── web_helpers.py                # Preview rendering for detect endpoint
+│   ├── web_helpers.py                # DELETED — render_person_preview inlined in worker
 │   ├── pose_estimation/              # 2D pose extraction
 │   │   ├── pose_extractor.py       # PersonDetector + MogaNetBatch (COCO 17kp) — PRIMARY
 │   │   ├── h36m.py                   # H3.6M 17kp format handling
