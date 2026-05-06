@@ -32,21 +32,22 @@ def _get_tqdm():
         return tqdm
     except (ImportError, ValueError):
 
-        def _tqdm_mock(iterable=None, **_kwargs):
-            if iterable is not None:
-                return iterable
-            return type(
-                "_TqdmMock",
-                (),
-                {
-                    "update": lambda *_a: None,
-                    "close": lambda *_a: None,
-                    "__enter__": lambda s: s,
-                    "__exit__": lambda *_a: None,
-                },
-            )()
+        class _TqdmMock:
+            """Minimal tqdm mock for when tqdm is unavailable."""
+            def __init__(self, iterable=None, **_):
+                self.iterable = iterable
+            def update(self, *_a):
+                pass
+            def close(self):
+                pass
+            def __enter__(self):
+                return self
+            def __exit__(self, *_a):
+                pass
+            def __iter__(self):
+                return iter(self.iterable or [])
 
-        return _tqdm_mock
+        return _TqdmMock
 
 
 class BatchPoseExtractor:
@@ -113,7 +114,7 @@ class BatchPoseExtractor:
             original frame coordinates.
         """
         h, w = frame.shape[:2]
-        detection = self._person_detector.detect_frame(frame)
+        detection = self._person_detector.detect_frame(frame)  # type: ignore[reportOptionalMemberAccess]
         if detection is None:
             return [], []
 
@@ -181,7 +182,6 @@ class BatchPoseExtractor:
                     break
 
                 h, w = frame.shape[:2]
-
                 # Resize large frames for detection
                 if max(h, w) > 1920:
                     scale = 1920 / max(h, w)
@@ -193,7 +193,7 @@ class BatchPoseExtractor:
                     # No detection → NaN pose (already pre-allocated)
                     pass
                 else:
-                    keypoints, scores = self._moganet.infer_batch(crops, bboxes)
+                    keypoints, scores = self._moganet.infer_batch(crops, bboxes)  # type: ignore[reportOptionalMemberAccess]
                     if keypoints is not None and len(keypoints) > 0:
                         # Use first detected person (same as old behaviour)
                         kp = keypoints[0].astype(np.float32)  # (17, 2) pixels

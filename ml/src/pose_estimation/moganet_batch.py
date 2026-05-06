@@ -196,10 +196,10 @@ class MogaNetBatch:
             self._device = device
 
         # Verify model exists
-        model_path = Path(model_path)
-        if not model_path.exists():
+        model_path_obj = Path(model_path)
+        if not model_path_obj.exists():
             raise FileNotFoundError(
-                f"MogaNet-B model not found: {model_path}\n"
+                f"MogaNet-B model not found: {model_path_obj}\n"
                 f"Download models with: uv run python ml/scripts/download_ml_models.py"
             )
 
@@ -219,7 +219,7 @@ class MogaNetBatch:
             else ["CPUExecutionProvider"]
         )
         self._session = onnxruntime.InferenceSession(
-            str(model_path),
+            str(model_path_obj),
             sess_options=opts,
             providers=providers,
         )
@@ -234,7 +234,7 @@ class MogaNetBatch:
 
         logger.info(
             "MogaNetBatch initialized: model=%s, device=%s, score_thr=%.2f",
-            model_path.name,
+            model_path_obj.name,
             self._device,
             self._score_thr,
         )
@@ -278,7 +278,7 @@ class MogaNetBatch:
             {self._input_name: batch_tensor},
         )
 
-        heatmaps = outputs[0]  # (B, 17, H_hm, W_hm)
+        heatmaps = np.asarray(outputs[0])
 
         # Decode heatmaps
         keypoints, scores = decode_heatmaps(heatmaps)

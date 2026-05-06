@@ -39,21 +39,22 @@ def _get_tqdm():
         return tqdm
     except (ImportError, ValueError):
 
-        def _tqdm_mock(iterable=None, **_kwargs):
-            if iterable is not None:
-                return iterable
-            return type(
-                "_TqdmMock",
-                (),
-                {
-                    "update": lambda *_a: None,
-                    "close": lambda *_a: None,
-                    "__enter__": lambda s: s,
-                    "__exit__": lambda *_a: None,
-                },
-            )()
+        class _TqdmMock:
+            """Minimal tqdm mock for when tqdm is unavailable."""
+            def __init__(self, iterable=None, **_):
+                self.iterable = iterable
+            def update(self, *_a):
+                pass
+            def close(self):
+                pass
+            def __enter__(self):
+                return self
+            def __exit__(self, *_a):
+                pass
+            def __iter__(self):
+                return iter(self.iterable or [])
 
-        return _tqdm_mock
+        return _TqdmMock
 
 
 class PoseExtractor:
@@ -96,7 +97,7 @@ class PoseExtractor:
 
             self._device = DeviceConfig(device="auto").device
 
-        self._person_detector = PersonDetector(device=self._device)
+        self._person_detector = PersonDetector(confidence=conf_threshold)
         self._moganet = MogaNetBatch(
             model_path=model_path,
             device=self._device,
@@ -271,8 +272,6 @@ class PoseExtractor:
                     continue
 
                 keypoints, scores = self._moganet.infer_batch(crops, bboxes)
-                # keypoints: (P, 17, 2) in original frame coords
-                # scores: (P, 17)
 
                 if keypoints.shape[0] == 0:
                     pbar.update(self._frame_skip)
