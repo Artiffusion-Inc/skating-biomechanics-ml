@@ -38,8 +38,9 @@ export class ChunkedUploader {
     const CONCURRENCY = 3
     let uploaded = 0
 
-    // Upload parts with limited concurrency
+    // Upload parts with limited concurrency, collecting ETags
     const queue = [...init.parts]
+    const etags = new Map<number, string>()
     const inFlight = new Set<Promise<void>>()
 
     const processPart = async (part: { part_number: number; url: string }) => {
@@ -53,6 +54,9 @@ export class ChunkedUploader {
         signal: this.abortController.signal,
       })
       if (!res.ok) throw new Error(`Part ${part.part_number} upload failed`)
+
+      const etag = res.headers.get("ETag")?.replace(/"/g, "") ?? ""
+      etags.set(part.part_number, etag)
 
       uploaded += end - start
       this.onProgress(uploaded, this.file.size)
@@ -72,13 +76,16 @@ export class ChunkedUploader {
       }
     }
 
-    // Complete upload
+    // Complete upload with collected ETags
     await apiFetch("/uploads/complete", z.object({ status: z.string(), key: z.string() }), {
       method: "POST",
       body: JSON.stringify({
         upload_id: init.upload_id,
         key: init.key,
-        parts: init.parts.map(p => ({ part_number: p.part_number, etag: "" })),
+        parts: init.parts.map(p => ({
+          part_number: p.part_number,
+          etag: etags.get(p.part_number) ?? "",
+        })),
       }),
     })
 
