@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:provider/provider.dart';
 
 import 'providers/app_providers.dart';
 import 'theme/app_theme.dart';
@@ -23,7 +22,7 @@ class EdgeSenseApp extends StatelessWidget {
       theme: AppTheme.dark,
       routerConfig: buildRouter(),
       locale: TranslationProvider.of(context).flutterLocale,
-      supportedLocales: LocaleSettings.supportedLocales,
+      supportedLocales: AppLocaleUtils.supportedLocales,
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
     );
   }

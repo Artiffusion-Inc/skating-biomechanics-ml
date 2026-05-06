@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:provider/provider.dart';
 
 import 'routes.dart';
 import '../permissions/permissions_screen.dart';
@@ -65,7 +64,7 @@ GoRouter buildRouter() {
       GoRoute(
         path: AppRoutes.exporting,
         builder: (context, state) {
-          final path = state.exportPath;
+          final path = state.uri.queryParameters['path'];
           return ExportResultScreen(
             exportPath: path,
             onNewCapture: () => context.go(AppRoutes.bleScan),
