@@ -3,7 +3,7 @@
  */
 
 import { z } from "zod"
-import { API_BASE, ApiError, apiFetch, getAccessToken } from "@/lib/api-client"
+import { ApiError, apiFetch, authFetch } from "@/lib/api-client"
 import type { PersonInfo, ProcessResponse } from "@/lib/schemas"
 import {
   DetectQueueResponseSchema,
@@ -90,11 +90,9 @@ export async function detectEnqueue(
   const form = new FormData()
   form.append("video", file)
   form.append("tracking", tracking)
-  const token = getAccessToken()
-  const res = await fetch(`${API_BASE}/detect`, {
+  const res = await authFetch("/detect", {
     method: "POST",
     body: form,
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
   })
   if (!res.ok)
     throw new ApiError(

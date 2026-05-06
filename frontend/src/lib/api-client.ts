@@ -1,9 +1,10 @@
 /**
- * Shared API infrastructure: base URL, token storage, typed fetch helper.
+ * Shared API infrastructure: base URL, token storage, typed fetch helper,
+ * silent refresh with mutex on 401.
  */
 
 import { redirect } from "next/navigation"
-import type { z } from "zod"
+import { z } from "zod"
 
 export const API_BASE = "/api/v1"
 
@@ -54,10 +55,39 @@ export class ApiError extends Error {
 }
 
 // ---------------------------------------------------------------------------
-// Typed fetch
+// Silent refresh mutex
 // ---------------------------------------------------------------------------
 
-const MAX_RETRIES = 3
+let refreshPromise: Promise<boolean> | null = null
+
+async function silentRefresh(): Promise<boolean> {
+  const refresh = getRefreshToken()
+  if (!refresh) return false
+
+  try {
+    const res = await fetch(`${API_BASE}/auth/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refresh }),
+    })
+    if (!res.ok) return false
+
+    const data: { access_token: string; refresh_token: string } = await res.json()
+    setTokens(data.access_token, data.refresh_token)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function handleAuthFailure(): never {
+  clearTokens()
+  redirect("/login")
+}
+
+// ---------------------------------------------------------------------------
+// Typed fetch
+// ---------------------------------------------------------------------------
 
 function authHeaders(): Record<string, string> {
   const token = getAccessToken()
@@ -71,47 +101,84 @@ export async function apiFetch<T>(
 ): Promise<T> {
   const { auth = true, headers, ...rest } = init ?? {}
 
-  let lastError: ApiError | undefined
-
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    if (typeof navigator !== "undefined" && !navigator.onLine) {
-      throw new ApiError("No internet connection", 0)
-    }
-
-    if (attempt > 0) {
-      const delay = 300 * 2 ** (attempt - 1)
-      await new Promise(resolve => setTimeout(resolve, delay))
-    }
-
-    let res: Response
-    try {
-      res = await fetch(`${API_BASE}${path}`, {
-        ...rest,
-        headers: { ...(auth ? authHeaders() : {}), ...headers },
-      })
-    } catch (error) {
-      lastError = new ApiError(error instanceof Error ? error.message : "Network error", 0)
-      continue
-    }
-
-    if (!res.ok) {
-      if (res.status === 401 && !SKIP_AUTH) {
-        clearTokens()
-        redirect("/login")
-      }
-      const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-      lastError = new ApiError(body.detail, res.status)
-      if (res.status >= 400 && res.status < 500 && res.status !== 429) {
-        throw lastError
-      }
-      continue
-    }
-
-    if (res.status === 204) return undefined as T
-    return schema.parse(await res.json())
+  if (typeof navigator !== "undefined" && !navigator.onLine) {
+    throw new ApiError("No internet connection", 0)
   }
 
-  throw lastError ?? new ApiError("Request failed", 0)
+  let res: Response
+  try {
+    res = await fetch(`${API_BASE}${path}`, {
+      ...rest,
+      headers: { ...(auth ? authHeaders() : {}), ...headers },
+    })
+  } catch (error) {
+    throw new ApiError(error instanceof Error ? error.message : "Network error", 0)
+  }
+
+  // Silent refresh on 401: mutex ensures only one refresh at a time
+  if (res.status === 401 && auth && !SKIP_AUTH) {
+    if (!refreshPromise) {
+      refreshPromise = silentRefresh().finally(() => {
+        refreshPromise = null
+      })
+    }
+    const refreshed = await refreshPromise
+    if (refreshed) {
+      try {
+        const retryRes = await fetch(`${API_BASE}${path}`, {
+          ...rest,
+          headers: { ...authHeaders(), ...headers },
+        })
+        if (retryRes.status === 204) return undefined as T
+        if (!retryRes.ok) {
+          const body = await retryRes.json().catch(() => ({ detail: `HTTP ${retryRes.status}` }))
+          throw new ApiError(body.detail, retryRes.status)
+        }
+        return schema.parse(await retryRes.json())
+      } catch (error) {
+        if (error instanceof ApiError) throw error
+        throw new ApiError(error instanceof Error ? error.message : "Network error", 0)
+      }
+    }
+    handleAuthFailure()
+  }
+
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
+    throw new ApiError(body.detail, res.status)
+  }
+
+  if (res.status === 204) return undefined as T
+  return schema.parse(await res.json())
+}
+
+// ---------------------------------------------------------------------------
+// Raw auth fetch (for FormData, SSE, etc.)
+// ---------------------------------------------------------------------------
+
+export async function authFetch(path: string, init?: RequestInit): Promise<Response> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: { ...authHeaders(), ...init?.headers },
+  })
+
+  if (res.status === 401 && !SKIP_AUTH) {
+    if (!refreshPromise) {
+      refreshPromise = silentRefresh().finally(() => {
+        refreshPromise = null
+      })
+    }
+    const refreshed = await refreshPromise
+    if (refreshed) {
+      return fetch(`${API_BASE}${path}`, {
+        ...init,
+        headers: { ...authHeaders(), ...init?.headers },
+      })
+    }
+    handleAuthFailure()
+  }
+
+  return res
 }
 
 // ---------------------------------------------------------------------------
@@ -134,10 +201,8 @@ export async function apiPatch<T>(path: string, schema: z.ZodSchema<T>, body: un
   })
 }
 
+const VoidSchema = z.unknown().transform(() => undefined)
+
 export async function apiDelete(path: string): Promise<void> {
-  const res = await fetch(`${API_BASE}${path}`, { method: "DELETE", headers: authHeaders() })
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }))
-    throw new ApiError(body.detail, res.status)
-  }
+  return apiFetch(path, VoidSchema, { method: "DELETE" })
 }

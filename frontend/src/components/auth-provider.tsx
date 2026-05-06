@@ -5,6 +5,7 @@ import { createContext, type ReactNode, useContext, useState } from "react"
 import { devMockAuth, isDevelopment } from "@/lib/env"
 import type { UserResponse } from "@/lib/auth"
 import * as auth from "@/lib/auth"
+import { clearTokens, getAccessToken, getRefreshToken } from "@/lib/api-client"
 import { useMountEffect } from "@/lib/useMountEffect"
 
 interface AuthContextValue {
@@ -44,31 +45,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    const token = auth.getAccessToken()
-    if (!token) {
+    const hasToken = getAccessToken() || getRefreshToken()
+    if (!hasToken) {
       setIsLoading(false)
       return
     }
 
+    // apiFetch handles 401 → silent refresh → retry automatically.
+    // If both tokens expired, apiFetch redirects to /login.
     auth
       .fetchMe()
       .then(setUser)
-      .catch(async () => {
-        const refresh = auth.getRefreshToken()
-        if (!refresh) {
-          auth.clearTokens()
-          router.push("/login")
-          return
-        }
-        try {
-          const tokens = await auth.refreshToken(refresh)
-          auth.setTokens(tokens.access_token, tokens.refresh_token)
-          const u = await auth.fetchMe()
-          setUser(u)
-        } catch {
-          auth.clearTokens()
-          router.push("/login")
-        }
+      .catch(() => {
+        clearTokens()
+        router.push("/login")
       })
       .finally(() => setIsLoading(false))
   })

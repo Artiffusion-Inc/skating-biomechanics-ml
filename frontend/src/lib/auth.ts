@@ -90,17 +90,12 @@ export async function login(data: LoginRequest): Promise<TokenResponse> {
 }
 
 export async function refreshToken(refresh: string): Promise<TokenResponse> {
-  try {
-    return await apiFetch("/auth/refresh", TokenResponseSchema, {
-      method: "POST",
-      auth: false,
-      headers: JSON_POST,
-      body: JSON.stringify({ refresh_token: refresh }),
-    })
-  } catch {
-    clearTokens()
-    throw new ApiError("Session expired", 401)
-  }
+  return apiFetch("/auth/refresh", TokenResponseSchema, {
+    method: "POST",
+    auth: false,
+    headers: JSON_POST,
+    body: JSON.stringify({ refresh_token: refresh }),
+  })
 }
 
 export async function logout(): Promise<void> {
