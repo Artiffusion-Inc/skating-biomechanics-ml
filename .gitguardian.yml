@@ -1,0 +1,6 @@
+version: 2
+secret:
+  ignored-matches:
+    - name: POSTGRES_PASSWORD in compose.yaml
+      match: POSTGRES_PASSWORD
+      path: infra/compose.yaml
