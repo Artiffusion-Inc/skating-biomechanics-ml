@@ -66,6 +66,15 @@ class BleManager extends ChangeNotifier {
     notifyListeners();
   }
 
+  void unassignDevice(String side) {
+    if (side == 'left') {
+      leftDevice = null;
+    } else {
+      rightDevice = null;
+    }
+    notifyListeners();
+  }
+
   Future<void> connectAll() async {
     await Future.wait([
       if (leftDevice != null) leftDevice!.connect(),
