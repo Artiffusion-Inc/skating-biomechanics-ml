@@ -37,7 +37,7 @@ WORKDIR /app
 
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv venv /app/.venv \
-    && uv sync --frozen --no-dev --package skating-backend --no-install-project
+    && uv sync --frozen --no-dev --package backend --no-install-project
 
 # ---------------------------------------------------------
 # Runtime (no build tools)
