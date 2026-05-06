@@ -72,6 +72,7 @@ def test_layouts_have_unique_tes():
         discipline="mens_singles",
         segment="free_skate",
         num_layouts=3,
+        seed=42,
     )
     if len(layouts) >= 2:
         tes_values = [lay["total_tes"] for lay in layouts]
