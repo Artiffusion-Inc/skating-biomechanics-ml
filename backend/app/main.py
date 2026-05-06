@@ -1,4 +1,4 @@
-"""Litestar application for the figure skating biomechanics web UI."""
+"""Litestar application for SkateLab."""
 
 from __future__ import annotations
 
