@@ -134,6 +134,11 @@ jobs:
           if not found:
               print('  NO modules found under src!')
           print()
+          try:
+              import src.pose_estimation
+              print('import src.pose_estimation: OK')
+          except Exception as e:
+              print('import src.pose_estimation: FAIL', type(e).__name__, e)
           print('Editable .pth files:')
           import glob
           for p in glob.glob('/home/runner/_work/**/*.pth', recursive=True):
