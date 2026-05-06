@@ -3,59 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'wt901_parser.dart';
+import 'imu_device.dart';
 import 'package:async/async.dart';
-
-class IMUDevice {
-  final BluetoothDevice device;
-  final String side;
-  bool isConnected = false;
-  final VoidCallback? onStateChanged;
-  StreamSubscription? _notifySubscription;
-  StreamSubscription? _connectionSubscription;
-
-  IMUDevice({required this.device, required this.side, this.onStateChanged}) {
-    isConnected = device.isConnected;
-    _connectionSubscription = device.connectionState.listen((state) {
-      final wasConnected = isConnected;
-      isConnected = state == BluetoothConnectionState.connected;
-      print('[BLE] ${device.platformName} state: $state (isConnected=$isConnected)');
-      if (wasConnected != isConnected) onStateChanged?.call();
-    });
-  }
-
-  Future<void> connect() async {
-    print('[BLE] IMUDevice.connect() called for ${device.platformName}');
-    await device.connect(autoConnect: false);
-    print('[BLE] IMUDevice.connect() completed for ${device.platformName}');
-  }
-
-  Future<void> disconnect() async {
-    await _notifySubscription?.cancel();
-    _notifySubscription = null;
-    await _connectionSubscription?.cancel();
-    _connectionSubscription = null;
-    try {
-      await device.disconnect();
-    } catch (_) {}
-    isConnected = false;
-  }
-
-  Stream<WT901Packet> startNotifications() async* {
-    final services = await device.discoverServices();
-    final targetService = services.firstWhere(
-      (s) => s.uuid.toString().toLowerCase().contains('ffe0'),
-      orElse: () => services.first,
-    );
-    final characteristic = targetService.characteristics.firstWhere(
-      (c) => c.properties.notify,
-    );
-    await characteristic.setNotifyValue(true);
-    await for (final event in characteristic.lastValueStream) {
-      final packet = WT901Parser.parse(event);
-      if (packet != null) yield packet;
-    }
-  }
-}
 
 class BleManager extends ChangeNotifier {
   List<ScanResult> scanResults = [];
@@ -173,12 +122,10 @@ class BleManager extends ChangeNotifier {
   }
 
   Future<void> _connectDevice(IMUDevice imu) async {
-    print('[BLE] Connecting to ${imu.device.platformName} (${imu.device.id.id})...');
     try {
       await imu.connect();
-      print('[BLE] Connected to ${imu.device.platformName}');
     } catch (e) {
-      print('[BLE] Connection failed: $e');
+      // Connection will be retried or user can tap to retry
     }
   }
 
