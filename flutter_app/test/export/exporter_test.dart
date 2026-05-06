@@ -12,7 +12,10 @@ void main() {
   setUpAll(() {
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
-      if (call.method == 'getTemporaryDirectory') {
+      if (call.method == 'getDownloadsDirectory') {
+        return tempDir.path;
+      }
+      if (call.method == 'getExternalStorageDirectory') {
         return tempDir.path;
       }
       return null;
@@ -36,10 +39,10 @@ void main() {
         leftRef: [1.0, 0.0, 0.0, 0.0],
         rightRef: [1.0, 0.0, 0.0, 0.0],
       );
-      expect(result.endsWith('.esense.zip'), isTrue);
+      expect(result.endsWith('.zip'), isTrue);
     });
 
-    test('includes samples in protobuf stream', () async {
+    test('includes samples in csv and zip', () async {
       final exporter = Exporter();
       final result = await exporter.export(
         videoPath: '/dev/null',

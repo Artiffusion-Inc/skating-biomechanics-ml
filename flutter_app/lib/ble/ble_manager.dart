@@ -16,6 +16,8 @@ class BleManager extends ChangeNotifier {
   String? scanError;
   bool locationPermissionGranted = false;
 
+  final Map<String, double> batteryLevels = {};
+
   StreamSubscription? _scanSubscription;
   StreamSubscription? _adapterSubscription;
 

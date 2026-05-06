@@ -7,6 +7,7 @@ import '../capture/capture_controller.dart';
 import '../capture/capture_state.dart';
 import '../calibration/calibration_service.dart';
 import '../camera/recorder.dart';
+import 'package:share_plus/share_plus.dart';
 import '../export/exporter.dart';
 import '../overlay/edge_overlay.dart';
 
@@ -90,6 +91,7 @@ class _CapturingScreenState extends State<CapturingScreen> {
         leftRef: leftRef,
         rightRef: rightRef,
       );
+      await Share.shareXFiles([XFile(exportPath)], text: 'EdgeSense Capture');
       if (mounted) widget.onComplete(exportPath);
     } catch (e) {
       if (mounted) widget.onComplete(null);
