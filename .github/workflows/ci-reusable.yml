@@ -117,7 +117,7 @@ jobs:
         run: uv sync --all-packages --frozen --dev
       - name: pytest
         env:
-          PYTHONPATH: ml:backend:.
+          PYTHONPATH: ml/src:ml:backend:.
         run: >
           uv run pytest backend/tests/
           ml/tests/test_device.py ml/tests/test_types.py ml/tests/test_gap_filling.py
