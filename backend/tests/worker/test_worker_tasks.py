@@ -18,15 +18,16 @@ sys.modules["aiobotocore.session"] = _mock_aiobotocore_session
 sys.modules["cv2"] = MagicMock()
 
 # Pre-register ML submodules as MagicMocks so patch() can resolve them
-# without pulling in heavy/optional deps like av, opencv, tqdm, rtmlib, etc.
+# without pulling in heavy/optional deps like av, opencv, etc.
 # Note: do NOT mock src.pose_estimation here. Replacing it with a MagicMock
 # (which has no __path__) prevents subsequent submodule imports like
 # `from src.pose_estimation.batch_extractor import ...` from working when
 # ml/tests/pose_estimation/ tests are collected later in the same session.
+# Likewise, do NOT mock real installed modules like tqdm here: a MagicMock
+# does not expose __spec__, which breaks importlib.util.find_spec(...) calls
+# from third-party libs (e.g. torch._dynamo.trace_rules) collected later.
 sys.modules["src.web_helpers"] = MagicMock()
 sys.modules["src.utils.video"] = MagicMock()
-sys.modules["tqdm"] = MagicMock()
-sys.modules["rtmlib"] = MagicMock()
 
 
 # ---------------------------------------------------------------------------
