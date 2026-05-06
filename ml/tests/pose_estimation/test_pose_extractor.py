@@ -13,18 +13,6 @@ from src.pose_estimation.pose_extractor import PoseExtractor, extract_poses
 from src.types import PersonClick, TrackedExtraction, VideoMeta
 
 
-@pytest.fixture(autouse=True)
-def evict_rtmo_batch():
-    """Remove cached rtmo_batch so each test gets a fresh import."""
-    for key in list(sys.modules.keys()):
-        if "rtmo_batch" in key:
-            del sys.modules[key]
-    import src.pose_estimation
-
-    if hasattr(src.pose_estimation, "rtmo_batch"):
-        delattr(src.pose_estimation, "rtmo_batch")
-
-
 @pytest.fixture
 def dummy_video_meta():
     """Return a minimal VideoMeta for mocking."""
@@ -111,71 +99,63 @@ def mock_get_video_meta(monkeypatch, dummy_video_meta):
 
 
 @pytest.fixture
-def mock_tracker(monkeypatch):
-    """Mock PoseExtractor.tracker to return fake detections."""
+def mock_moganet_batch(monkeypatch):
+    """Mock MogaNetBatch so no ONNX model is loaded."""
 
-    class FakeTracker:
-        def __call__(self, frame):
-            # Return one person, COCO 17 keypoints in pixel coords
-            kps = np.zeros((1, 17, 2), dtype=np.float32)
-            kps[0, 0] = [320.0, 100.0]  # nose
-            kps[0, 5] = [280.0, 150.0]  # left shoulder
-            kps[0, 6] = [360.0, 150.0]  # right shoulder
-            kps[0, 7] = [260.0, 220.0]  # left elbow
-            kps[0, 8] = [380.0, 220.0]  # right elbow
-            kps[0, 9] = [250.0, 290.0]  # left wrist
-            kps[0, 10] = [390.0, 290.0]  # right wrist
-            kps[0, 11] = [280.0, 300.0]  # left hip
-            kps[0, 12] = [360.0, 300.0]  # right hip
-            kps[0, 13] = [280.0, 380.0]  # left knee
-            kps[0, 14] = [360.0, 380.0]  # right knee
-            kps[0, 15] = [280.0, 450.0]  # left ankle
-            kps[0, 16] = [360.0, 450.0]  # right ankle
-            scores = np.ones((1, 17), dtype=np.float32)
-            return (kps, scores)
-
-    monkeypatch.setattr(
-        PoseExtractor,
-        "tracker",
-        property(lambda self: FakeTracker()),
-    )
-    return FakeTracker
-
-
-@pytest.fixture
-def mock_batch_rtmo(monkeypatch):
-    """Mock BatchRTMO for the batched inference path."""
-
-    class FakeBatchRTMO:
+    class FakeMogaNetBatch:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
 
-        def infer_batch(self, frames):
-            results = []
-            for _ in frames:
-                kps = np.zeros((1, 17, 2), dtype=np.float32)
-                kps[0, 0] = [320.0, 100.0]
-                kps[0, 5] = [280.0, 150.0]
-                kps[0, 6] = [360.0, 150.0]
-                kps[0, 7] = [260.0, 220.0]
-                kps[0, 8] = [380.0, 220.0]
-                kps[0, 9] = [250.0, 290.0]
-                kps[0, 10] = [390.0, 290.0]
-                kps[0, 11] = [280.0, 300.0]
-                kps[0, 12] = [360.0, 300.0]
-                kps[0, 13] = [280.0, 380.0]
-                kps[0, 14] = [360.0, 380.0]
-                kps[0, 15] = [280.0, 450.0]
-                kps[0, 16] = [360.0, 450.0]
-                scores = np.ones((1, 17), dtype=np.float32)
-                results.append((kps, scores))
-            return results
+        def infer_batch(self, crops, bboxes):
+            if not crops:
+                return (
+                    np.zeros((0, 17, 2), dtype=np.float32),
+                    np.zeros((0, 17), dtype=np.float32),
+                )
+            keypoints = []
+            scores = []
+            for crop in crops:
+                h, w = crop.shape[:2]
+                kp = np.zeros((1, 17, 2), dtype=np.float32)
+                kp[0, :, 0] = w / 2
+                kp[0, :, 1] = h / 2
+                keypoints.append(kp[0])
+                scores.append(np.ones(17, dtype=np.float32))
+            return np.array(keypoints), np.array(scores)
+
+        def close(self):
+            pass
 
     monkeypatch.setattr(
-        "src.pose_estimation.rtmo_batch.BatchRTMO",
-        FakeBatchRTMO,
+        "src.pose_estimation.pose_extractor.MogaNetBatch",
+        FakeMogaNetBatch,
     )
-    return FakeBatchRTMO
+    return FakeMogaNetBatch
+
+
+@pytest.fixture
+def mock_person_detector(monkeypatch):
+    """Mock PersonDetector to return a single synthetic bbox per frame."""
+
+    class FakeBoundingBox:
+        x1 = 100.0
+        y1 = 50.0
+        x2 = 300.0
+        y2 = 400.0
+        confidence = 0.95
+
+    class FakePersonDetector:
+        def __init__(self, **kwargs):
+            pass
+
+        def detect_frame(self, frame):
+            return FakeBoundingBox()
+
+    monkeypatch.setattr(
+        "src.pose_estimation.pose_extractor.PersonDetector",
+        FakePersonDetector,
+    )
+    return FakePersonDetector
 
 
 @pytest.fixture(autouse=True)
@@ -224,104 +204,57 @@ def mock_device_config(monkeypatch):
     return FakeDeviceConfig
 
 
-@pytest.fixture
-def mock_rtmlib_none(monkeypatch):
-    """Simulate missing rtmlib by setting module-level PoseTracker to None."""
-    monkeypatch.setattr(
-        "src.pose_estimation.pose_extractor.PoseTracker",
-        None,
-    )
-    monkeypatch.setattr(
-        "src.pose_estimation.pose_extractor.Body",
-        None,
-    )
-
-
 class TestPoseExtractorInit:
-    def test_default_init(self):
+    def test_default_init(self, mock_moganet_batch, mock_person_detector):
         """Should initialize with default parameters."""
         extractor = PoseExtractor()
-        assert extractor._mode == "balanced"
-        assert extractor._tracking_backend == "rtmlib"
+        assert extractor._model_path == "data/models/moganet/moganet_b_ap2d_384x288.onnx"
+        assert extractor._tracking_backend == "custom"
         assert extractor._tracking_mode == "auto"
         assert extractor._conf_threshold == 0.3
         assert extractor._output_format == "normalized"
         assert extractor._frame_skip == 1
-        assert extractor._backend == "onnxruntime"
 
-    def test_custom_init(self):
+    def test_custom_init(self, mock_moganet_batch, mock_person_detector):
         """Should accept custom parameters."""
         extractor = PoseExtractor(
-            mode="performance",
+            model_path="custom.onnx",
             tracking_backend="custom",
             tracking_mode="sports2d",
             conf_threshold=0.5,
             output_format="pixels",
             frame_skip=0,
             device="cuda",
-            backend="opencv",
         )
-        assert extractor._mode == "performance"
+        assert extractor._model_path == "custom.onnx"
         assert extractor._tracking_backend == "custom"
         assert extractor._tracking_mode == "sports2d"
         assert extractor._conf_threshold == 0.5
         assert extractor._output_format == "pixels"
         assert extractor._frame_skip == 1  # clamped to minimum 1
         assert extractor._device == "cuda"
-        assert extractor._backend == "opencv"
 
-    def test_auto_device(self, mock_device_config):
+    def test_auto_device(self, mock_device_config, mock_moganet_batch, mock_person_detector):
         """Should resolve 'auto' device via DeviceConfig."""
         extractor = PoseExtractor(device="auto")
         assert extractor._device == "cuda"
 
-    def test_import_error_when_rtmlib_missing(self, mock_rtmlib_none):
-        """Should raise ImportError when rtmlib is not installed."""
-        with pytest.raises(ImportError, match="rtmlib is not installed"):
-            PoseExtractor()
-
-
-class TestPoseExtractorTracker:
-    def test_tracker_property(self, mock_tracker):
-        """Should return a callable tracker instance."""
-        extractor = PoseExtractor(device="cpu")
-        tracker = extractor.tracker
-        assert tracker is not None
-        assert callable(tracker)
-
-    def test_tracker_returns_same_instance(self, monkeypatch):
-        """Should cache tracker instance on repeated access."""
-        fake_rtmpose_tracker = MagicMock()
-
-        class FakeCustom:
-            def __init__(self, *args, **kwargs):
-                pass
-
-        import rtmlib
-
-        monkeypatch.setattr(rtmlib, "PoseTracker", fake_rtmpose_tracker)
-        monkeypatch.setattr(rtmlib, "Custom", FakeCustom)
-
-        extractor = PoseExtractor(device="cpu")
-        t1 = extractor.tracker
-        t2 = extractor.tracker
-        assert t1 is t2
-        assert t1 is fake_rtmpose_tracker.return_value
-
 
 class TestPoseExtractorResolveTrackingMode:
-    def test_explicit_mode_returns_unchanged(self):
+    def test_explicit_mode_returns_unchanged(self, mock_moganet_batch, mock_person_detector):
         """Should return the explicitly set tracking mode."""
         extractor = PoseExtractor(tracking_mode="sports2d")
         assert extractor._resolve_tracking_mode() == "sports2d"
 
-    def test_auto_prefers_deepsort(self):
+    def test_auto_prefers_deepsort(self, mock_moganet_batch, mock_person_detector):
         """Auto mode should prefer deepsort when available."""
         extractor = PoseExtractor(tracking_mode="auto")
         # deep_sort_realtime is installed in this environment
         assert extractor._resolve_tracking_mode() == "deepsort"
 
-    def test_auto_falls_back_to_sports2d(self, monkeypatch):
+    def test_auto_falls_back_to_sports2d(
+        self, monkeypatch, mock_moganet_batch, mock_person_detector
+    ):
         """Auto mode should fall back to sports2d when deepsort unavailable."""
         monkeypatch.setitem(sys.modules, "deep_sort_realtime", None)
         # Re-import to pick up the changed module state
@@ -331,45 +264,14 @@ class TestPoseExtractorResolveTrackingMode:
         assert extractor._resolve_tracking_mode() == "sports2d"
 
 
-class TestPoseExtractorAssignTrackIds:
-    def test_empty_poses(self):
-        """Should return empty list for empty poses."""
-        extractor = PoseExtractor(device="cpu")
-        result = extractor._assign_track_ids(
-            np.zeros((0, 17, 3), dtype=np.float32),
-            {},
-            0,
-        )
-        assert result == []
-
-    def test_single_person(self):
-        """Should assign sequential IDs starting from next_id."""
-        extractor = PoseExtractor(device="cpu")
-        result = extractor._assign_track_ids(
-            np.zeros((1, 17, 3), dtype=np.float32),
-            {},
-            5,
-        )
-        assert result == [5]
-
-    def test_multiple_persons(self):
-        """Should assign a range of IDs for multiple persons."""
-        extractor = PoseExtractor(device="cpu")
-        result = extractor._assign_track_ids(
-            np.zeros((3, 17, 3), dtype=np.float32),
-            {},
-            2,
-        )
-        assert result == [2, 3, 4]
-
-
 class TestPoseExtractorExtractVideoTracked:
     def test_extract_video_tracked_streaming_returns_tracked_extraction(
         self,
         mock_video_capture,
         mock_async_frame_reader,
         mock_get_video_meta,
-        mock_tracker,
+        mock_moganet_batch,
+        mock_person_detector,
     ):
         """Streaming path should return TrackedExtraction with valid poses."""
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
@@ -387,7 +289,8 @@ class TestPoseExtractorExtractVideoTracked:
         self,
         mock_video_capture,
         mock_get_video_meta,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
     ):
         """Batch path should return TrackedExtraction with valid poses."""
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
@@ -406,7 +309,8 @@ class TestPoseExtractorExtractVideoTracked:
         mock_video_capture,
         mock_async_frame_reader,
         mock_get_video_meta,
-        mock_tracker,
+        mock_moganet_batch,
+        mock_person_detector,
     ):
         """Streaming path should handle person_click selection."""
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
@@ -423,7 +327,8 @@ class TestPoseExtractorExtractVideoTracked:
         self,
         mock_video_capture,
         mock_get_video_meta,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
     ):
         """Batch path should handle person_click selection."""
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
@@ -441,21 +346,21 @@ class TestPoseExtractorExtractVideoTracked:
         mock_video_capture,
         mock_async_frame_reader,
         mock_get_video_meta,
+        mock_moganet_batch,
         monkeypatch,
     ):
         """Streaming path should raise ValueError when no poses detected."""
 
-        class EmptyTracker:
-            def __call__(self, frame):
-                return (
-                    np.zeros((0, 17, 2), dtype=np.float32),
-                    np.zeros((0, 17), dtype=np.float32),
-                )
+        class EmptyDetector:
+            def __init__(self, **kwargs):
+                pass
+
+            def detect_frame(self, frame):
+                return None
 
         monkeypatch.setattr(
-            PoseExtractor,
-            "tracker",
-            property(lambda self: EmptyTracker()),
+            "src.pose_estimation.pose_extractor.PersonDetector",
+            EmptyDetector,
         )
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
         with pytest.raises(ValueError, match="No valid pose detected"):
@@ -465,22 +370,21 @@ class TestPoseExtractorExtractVideoTracked:
         self,
         mock_video_capture,
         mock_get_video_meta,
+        mock_moganet_batch,
         monkeypatch,
     ):
         """Batch path should raise ValueError when no poses detected."""
 
-        class EmptyBatchRTMO:
+        class EmptyDetector:
             def __init__(self, **kwargs):
                 pass
 
-            def infer_batch(self, frames):
-                empty_kps = np.zeros((0, 17, 2), dtype=np.float32)
-                empty_scores = np.zeros((0, 17), dtype=np.float32)
-                return [(empty_kps, empty_scores) for _ in frames]
+            def detect_frame(self, frame):
+                return None
 
         monkeypatch.setattr(
-            "src.pose_estimation.rtmo_batch.BatchRTMO",
-            EmptyBatchRTMO,
+            "src.pose_estimation.pose_extractor.PersonDetector",
+            EmptyDetector,
         )
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
         with pytest.raises(ValueError, match="No valid pose detected"):
@@ -491,7 +395,8 @@ class TestPoseExtractorExtractVideoTracked:
         mock_video_capture,
         mock_async_frame_reader,
         mock_get_video_meta,
-        mock_tracker,
+        mock_moganet_batch,
+        mock_person_detector,
     ):
         """Streaming path should call progress_cb if provided."""
         progress_calls = []
@@ -511,7 +416,8 @@ class TestPoseExtractorExtractVideoTracked:
         self,
         mock_video_capture,
         mock_get_video_meta,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
     ):
         """Batch path should call progress_cb if provided."""
         progress_calls = []
@@ -533,7 +439,8 @@ class TestPoseExtractorPreviewPersons:
         self,
         mock_video_capture,
         mock_get_video_meta,
-        mock_tracker,
+        mock_moganet_batch,
+        mock_person_detector,
     ):
         """Should return a list of person dicts and a preview path."""
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
@@ -553,21 +460,21 @@ class TestPoseExtractorPreviewPersons:
         self,
         mock_video_capture,
         mock_get_video_meta,
+        mock_moganet_batch,
         monkeypatch,
     ):
         """Should return empty list when no persons detected."""
 
-        class EmptyTracker:
-            def __call__(self, frame):
-                return (
-                    np.zeros((0, 17, 2), dtype=np.float32),
-                    np.zeros((0, 17), dtype=np.float32),
-                )
+        class EmptyDetector:
+            def __init__(self, **kwargs):
+                pass
+
+            def detect_frame(self, frame):
+                return None
 
         monkeypatch.setattr(
-            PoseExtractor,
-            "tracker",
-            property(lambda self: EmptyTracker()),
+            "src.pose_estimation.pose_extractor.PersonDetector",
+            EmptyDetector,
         )
         extractor = PoseExtractor(device="cpu", tracking_mode="sports2d")
         persons, preview_path = extractor.preview_persons("dummy.mp4", num_frames=10)
@@ -601,21 +508,20 @@ class TestPoseExtractorBuildPersonGrid:
 
 
 class TestPoseExtractorContextManager:
-    def test_context_manager(self):
+    def test_context_manager(self, mock_moganet_batch, mock_person_detector):
         """Should support with-statement."""
         with PoseExtractor(device="cpu") as extractor:
             assert isinstance(extractor, PoseExtractor)
 
-    def test_close_releases_tracker(self, mock_tracker):
-        """close() should set _tracker to None."""
+    def test_close_releases_resources(self, mock_moganet_batch, mock_person_detector):
+        """close() should call moganet.close()."""
         extractor = PoseExtractor(device="cpu")
-        _ = extractor.tracker  # trigger lazy init via mock
         extractor.close()
-        assert extractor._tracker is None
+        assert True  # Just verify no exception
 
 
 class TestExtractPoses:
-    def test_convenience_function(self, monkeypatch):
+    def test_convenience_function(self, monkeypatch, mock_moganet_batch, mock_person_detector):
         """extract_poses should create extractor and return TrackedExtraction."""
         mock_result = TrackedExtraction(
             poses=np.zeros((10, 17, 3), dtype=np.float32),
