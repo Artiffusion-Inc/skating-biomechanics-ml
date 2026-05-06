@@ -130,19 +130,19 @@ jobs:
         id: ghcr
         run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_OUTPUT"
 
-      - name: Sync compose & Caddyfile to VPS
+      - name: Sync deploy files to VPS
         id: sync
         uses: appleboy/scp-action@v1
         with:
           host: ${{ secrets.VPS_HOST }}
           username: ${{ secrets.VPS_USER }}
           key: ${{ secrets.VPS_SSH_KEY }}
-          source: "infra/compose.prod.yaml,infra/Caddyfile"
+          source: "infra/deploy.yaml,infra/Caddyfile,infra/prometheus.yml,infra/prometheus/rules"
           target: "/opt/skating-app/"
           strip_components: 1
 
-      - name: Create .env.prod on server
-        id: envfile
+      - name: Login to GHCR
+        id: login
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -150,29 +150,10 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 1m
           script: |
-            cat > /opt/skating-app/.env.prod <<'ENVEOF'
-            TAG=${{ github.sha }}
-            GHCR_OWNER=${{ steps.ghcr.outputs.owner }}
-            POSTGRES_DB=skating
-            POSTGRES_USER=skating
-            POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
-            DATABASE_URL=postgresql+asyncpg://skating:${{ secrets.POSTGRES_PASSWORD }}@postgres:5432/skating
-            VALKEY_URL=redis://valkey:6379/0
-            R2_ENDPOINT_URL=${{ secrets.CF_R2_ENDPOINT_URL }}
-            R2_ACCESS_KEY_ID=${{ secrets.CF_R2_ACCESS_KEY_ID }}
-            R2_SECRET_ACCESS_KEY=${{ secrets.CF_R2_SECRET_ACCESS_KEY }}
-            R2_BUCKET=${{ secrets.CF_R2_BUCKET }}
-            JWT_SECRET=${{ secrets.JWT_SECRET }}
-            VASTAI_API_KEY=${{ secrets.VASTAI_API_KEY }}
-            RESEND_API_KEY=${{ secrets.RESEND_API_KEY }}
-            LOG_LEVEL=info
-            NEXT_PUBLIC_API_URL=/api
-            DOMAIN=bbank.pro
-            CLOUDFLARE_API_TOKEN=${{ secrets.CLOUDFLARE_API_TOKEN }}
-            ENVEOF
+            echo "${{ secrets.GHCR_PAT }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
 
-      - name: Pull images
-        id: pull
+      - name: Deploy pod
+        id: deploy
         uses: appleboy/ssh-action@v1.2.5
         with:
           host: ${{ secrets.VPS_HOST }}
@@ -181,33 +162,24 @@ jobs:
           command_timeout: 3m
           script: |
             cd /opt/skating-app
-            export TAG=${{ github.sha }}
-            export GHCR_OWNER=${{ steps.ghcr.outputs.owner }}
-            echo "${{ secrets.GHCR_PAT }}" | podman login ghcr.io -u ${{ github.actor }} --password-stdin
-            podman compose --env-file .env.prod -f compose.prod.yaml pull frontend backend
+            export POSTGRES_PASSWORD="${{ secrets.POSTGRES_PASSWORD }}"
+            export DATABASE_URL="postgresql+asyncpg://skating:${{ secrets.POSTGRES_PASSWORD }}@127.0.0.1:5432/skating"
+            export R2_ENDPOINT_URL="${{ secrets.CF_R2_ENDPOINT_URL }}"
+            export R2_ACCESS_KEY_ID="${{ secrets.CF_R2_ACCESS_KEY_ID }}"
+            export R2_SECRET_ACCESS_KEY="${{ secrets.CF_R2_SECRET_ACCESS_KEY }}"
+            export R2_BUCKET="${{ secrets.CF_R2_BUCKET }}"
+            export JWT_SECRET="${{ secrets.JWT_SECRET }}"
+            export VASTAI_API_KEY="${{ secrets.VASTAI_API_KEY }}"
+            export RESEND_API_KEY="${{ secrets.RESEND_API_KEY }}"
+            export CLOUDFLARE_API_TOKEN="${{ secrets.CLOUDFLARE_API_TOKEN }}"
+            export TAG="${{ github.sha }}"
+            export GHCR_OWNER="${{ steps.ghcr.outputs.owner }}"
 
-      - name: Rolling restart
-        id: restart
-        uses: appleboy/ssh-action@v1.2.5
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          key: ${{ secrets.VPS_SSH_KEY }}
-          command_timeout: 2m
-          script: |
-            cd /opt/skating-app
-            export TAG=${{ github.sha }}
-            export GHCR_OWNER=${{ steps.ghcr.outputs.owner }}
-            # podman-compose v1.3.0 does not honour --force-recreate with
-            # dependencies, so we stop + rm + recreate explicitly.
-            podman stop -t 2 skating-app_caddy_1 || true
-            podman rm -f skating-app_caddy_1 || true
-            podman stop -t 5 skating-app_frontend_1 || true
-            podman rm -f skating-app_frontend_1 || true
-            podman stop -t 5 skating-app_backend_1 || true
-            podman rm -f skating-app_backend_1 || true
-            podman compose --env-file .env.prod -f compose.prod.yaml \
-              up -d backend frontend caddy
+            envsubst < deploy.yaml > deploy-rendered.yaml
+            sed -i "s|ghcr.io/artiffusion-inc/skating-backend:latest|ghcr.io/${GHCR_OWNER}/skating-backend:${TAG}|g" deploy-rendered.yaml
+            sed -i "s|ghcr.io/artiffusion-inc/skating-frontend:latest|ghcr.io/${GHCR_OWNER}/skating-frontend:${TAG}|g" deploy-rendered.yaml
+
+            podman kube play --replace deploy-rendered.yaml
 
       - name: Run database migrations
         id: migrate
@@ -218,9 +190,8 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 1m
           script: |
-            cd /opt/skating-app
-            podman compose --env-file .env.prod -f compose.prod.yaml \
-              exec backend alembic upgrade head
+            sleep 10
+            podman exec skating-app-backend alembic upgrade head
 
       - name: Health check
         id: health
@@ -231,13 +202,15 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 3m
           script: |
-            cd /opt/skating-app
             timeout 120 bash -c '
               while true; do
-                bad=$(podman ps -a --format "{{.Names}}\t{{.Status}}" | grep -E "frontend|backend" | grep -cv "healthy")
-                if [ "$bad" -eq 0 ]; then
-                  echo "All services healthy"
-                  exit 0
+                status=$(podman pod ps --format "{{.Name}}\t{{.Status}}" | grep skating-app | awk "{print \$2}")
+                if [ "$status" = "Running" ]; then
+                  if podman exec skating-app-backend \
+                    bash -c "python -c \"import urllib.request; urllib.request.urlopen(\\\"http://127.0.0.1:8000/api/v1/health\\\", timeout=2)\"" 2>/dev/null; then
+                    echo "All services healthy"
+                    exit 0
+                  fi
                 fi
                 sleep 10
               done
@@ -253,7 +226,6 @@ jobs:
           key: ${{ secrets.VPS_SSH_KEY }}
           command_timeout: 1m
           script: |
-            cd /opt/skating-app
             podman image prune -f --filter "until=24h" > /dev/null 2>&1
 
       - name: Deploy summary
@@ -265,8 +237,9 @@ jobs:
           | Step | Status |
           |------|--------|
           | Sync files | \`${{ steps.sync.outcome }}\` |
-          | Pull images | \`${{ steps.pull.outcome }}\` |
-          | Rolling restart | \`${{ steps.restart.outcome }}\` |
+          | Login GHCR | \`${{ steps.login.outcome }}\` |
+          | Kube play replace | \`${{ steps.deploy.outcome }}\` |
+          | Migrations | \`${{ steps.migrate.outcome }}\` |
           | Health check | \`${{ steps.health.outcome }}\` |
           | Cleanup | \`${{ steps.cleanup.outcome }}\` |
 
