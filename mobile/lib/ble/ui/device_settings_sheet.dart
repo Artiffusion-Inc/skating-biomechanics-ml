@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import '../../../i18n/strings.g.dart';
 import '../wt901_commander.dart';
 
 class DeviceSettingsSheet extends StatelessWidget {
@@ -22,6 +23,7 @@ class DeviceSettingsSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     return SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -43,10 +45,10 @@ class DeviceSettingsSheet extends StatelessWidget {
             _ReturnRateTile(onSelected: onSetReturnRate),
             ListTile(
               leading: const Icon(Icons.edit),
-              title: const Text('Переименовать (ID 0-255)'),
+              title: Text(t.ble.rename.title),
               trailing: FilledButton.tonal(
                 onPressed: onRenamePressed,
-                child: const Text('Изменить'),
+                child: Text(t.ble.rename.action),
               ),
             ),
           ],
@@ -66,13 +68,14 @@ class _BatteryTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     return ListTile(
       leading: Icon(Icons.battery_full, color: _color),
-      title: const Text('Заряд батареи'),
-      subtitle: Text(voltage == null ? 'Неизвестно — запросите' : '${voltage!.toStringAsFixed(2)} В'),
+      title: Text(t.ble.battery.title),
+      subtitle: Text(voltage == null ? t.ble.battery.unknown : '${voltage!.toStringAsFixed(2)} В'),
       trailing: TextButton(
         onPressed: onRequest,
-        child: const Text('Запросить'),
+        child: Text(t.ble.battery.request),
       ),
     );
   }
@@ -84,13 +87,14 @@ class _ReturnRateTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     return ListTile(
       leading: const Icon(Icons.speed),
-      title: const Text('Частота передачи'),
-      subtitle: const Text('Гц (после записи переподключить)'),
+      title: Text(t.ble.returnRate.title),
+      subtitle: Text(t.ble.returnRate.hint),
       trailing: DropdownButton<int>(
         value: null,
-        hint: const Text('Выбрать'),
+        hint: Text(t.ble.returnRate.select),
         underline: const SizedBox.shrink(),
         items: const [
           DropdownMenuItem(value: 0x01, child: Text('0.2 Гц')),

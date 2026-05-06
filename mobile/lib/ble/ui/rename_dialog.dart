@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import '../../../i18n/strings.g.dart';
 import '../wt901_commander.dart';
 
 class RenameDialog extends StatefulWidget {
@@ -29,24 +30,25 @@ class _RenameDialogState extends State<RenameDialog> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     return AlertDialog(
-      title: const Text('Переименовать датчик'),
+      title: Text(t.ble.rename.dialogTitle),
       content: TextField(
         controller: _ctrl,
-        decoration: const InputDecoration(
-          labelText: 'Новый ID (0-255)',
-          hintText: 'Например: 1',
+        decoration: InputDecoration(
+          labelText: t.ble.rename.label,
+          hintText: t.ble.rename.placeholder,
         ),
         keyboardType: TextInputType.number,
       ),
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Отмена'),
+          child: Text(t.ble.rename.cancel),
         ),
         FilledButton(
           onPressed: _save,
-          child: const Text('Сохранить'),
+          child: Text(t.ble.rename.save),
         ),
       ],
     );

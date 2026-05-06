@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../i18n/strings.g.dart';
 import '../ble/ble_manager.dart';
 import '../metrics/metrics_screen.dart';
 import 'grid_overlay.dart';
@@ -38,6 +39,7 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     final recorder = context.watch<CameraRecorder>();
 
     if (_initializing) {
@@ -46,19 +48,19 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
 
     if (_error != null || !recorder.isInitialized) {
       return Scaffold(
-        appBar: AppBar(title: const Text('Камера')),
+        appBar: AppBar(title: Text(t.camera.title)),
         body: Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               const Icon(Icons.videocam_off, size: 64, color: Colors.white54),
               const SizedBox(height: 16),
-              Text(_error ?? 'Камера недоступна', style: const TextStyle(fontSize: 16)),
+              Text(_error ?? t.camera.unavailable, style: const TextStyle(fontSize: 16)),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _initCamera,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Повторить'),
+                label: Text(t.camera.retry),
               ),
             ],
           ),
@@ -112,13 +114,13 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                           color: recorder.showGrid ? Colors.blue : Colors.white,
                           size: 22,
                         ),
-                        tooltip: 'Сетка',
+                        tooltip: t.camera.grid,
                         onPressed: () => recorder.toggleGrid(),
                       ),
                       // Settings
                       IconButton(
                         icon: const Icon(Icons.settings, color: Colors.white, size: 22),
-                        tooltip: 'Настройки',
+                        tooltip: t.camera.settings,
                         onPressed: () => _showSettings(context),
                       ),
                       const Spacer(),
@@ -145,7 +147,7 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                       // Metrics button
                       IconButton(
                         icon: const Icon(Icons.show_chart, color: Colors.white, size: 22),
-                        tooltip: 'Датчики',
+                        tooltip: t.camera.sensors,
                         onPressed: () {
                           Navigator.push(
                             context,
@@ -171,7 +173,7 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
                                   label: Text(
-                                    'Левый ${ble.leftDevice!.isConnected.value ? "✓" : "…"}',
+                                    '${t.ble.left} ${ble.leftDevice!.isConnected.value ? "✓" : "…"}',
                                     style: const TextStyle(fontSize: 10),
                                   ),
                                   backgroundColor: ble.leftDevice!.isConnected.value
@@ -183,7 +185,7 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                                   visualDensity: VisualDensity.compact,
                                   padding: EdgeInsets.zero,
                                   label: Text(
-                                    'Правый ${ble.rightDevice!.isConnected.value ? "✓" : "…"}',
+                                    '${t.ble.right} ${ble.rightDevice!.isConnected.value ? "✓" : "…"}',
                                     style: const TextStyle(fontSize: 10),
                                   ),
                                   backgroundColor: ble.rightDevice!.isConnected.value
@@ -253,6 +255,7 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
   }
 
   void _showSettings(BuildContext context) {
+    final t = Translations.of(context);
     showModalBottomSheet(
       context: context,
       builder: (ctx) => SafeArea(
@@ -262,9 +265,9 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Настройки камеры',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              Text(
+                t.camera.settingsTitle,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 16),
               Consumer<CameraRecorder>(
@@ -272,18 +275,18 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                   children: [
                     ListTile(
                       leading: const Icon(Icons.hd),
-                      title: const Text('Разрешение'),
+                      title: Text(t.camera.resolution),
                       trailing: DropdownButton<ResolutionPreset>(
                         value: recorder.resolution,
                         underline: const SizedBox.shrink(),
                         items: ResolutionPreset.values.map((r) {
                           final label = {
-                            ResolutionPreset.low: '320×240 (низкое)',
-                            ResolutionPreset.medium: '720×480 (среднее)',
-                            ResolutionPreset.high: '1280×720 (HD)',
-                            ResolutionPreset.veryHigh: '1920×1080 (Full HD)',
-                            ResolutionPreset.ultraHigh: '3840×2160 (4K)',
-                            ResolutionPreset.max: 'Максимальное',
+                            ResolutionPreset.low: t.camera.resolutions.low,
+                            ResolutionPreset.medium: t.camera.resolutions.medium,
+                            ResolutionPreset.high: t.camera.resolutions.high,
+                            ResolutionPreset.veryHigh: t.camera.resolutions.veryHigh,
+                            ResolutionPreset.ultraHigh: t.camera.resolutions.ultraHigh,
+                            ResolutionPreset.max: t.camera.resolutions.max,
                           }[r] ?? r.name;
                           return DropdownMenuItem(value: r, child: Text(label));
                         }).toList(),
@@ -294,8 +297,8 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                     ),
                     SwitchListTile(
                       secondary: const Icon(Icons.screen_lock_portrait),
-                      title: const Text('Блокировка ориентации'),
-                      subtitle: const Text('Портретный режим'),
+                      title: Text(t.camera.orientation),
+                      subtitle: Text(t.camera.portrait),
                       value: recorder.orientationLocked,
                       onChanged: (v) => recorder.setOrientationLocked(v),
                     ),

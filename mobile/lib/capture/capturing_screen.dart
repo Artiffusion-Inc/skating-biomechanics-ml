@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../i18n/strings.g.dart';
 import '../ble/ble_manager.dart';
 import '../capture/capture_provider.dart';
 import '../capture/capture_state.dart';
@@ -106,7 +107,8 @@ class _CapturingScreenState extends State<CapturingScreen> {
         leftRef: leftRef,
         rightRef: rightRef,
       );
-      await Share.shareXFiles([XFile(exportPath)], text: 'EdgeSense Capture');
+      final t = Translations.of(context);
+      await Share.shareXFiles([XFile(exportPath)], text: t.capture.shareText);
       if (mounted) widget.onComplete(exportPath);
     } catch (e) {
       if (mounted) widget.onComplete(null);
@@ -115,6 +117,7 @@ class _CapturingScreenState extends State<CapturingScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     final recorder = context.watch<CameraRecorder>();
     final ble = context.watch<BleManager>();
 
@@ -216,7 +219,7 @@ class _CapturingScreenState extends State<CapturingScreen> {
         icon: _stopping
             ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
             : const Icon(Icons.stop),
-        label: Text(_stopping ? 'Сохранение...' : 'Стоп'),
+        label: Text(_stopping ? t.capture.saving : t.capture.stop),
         backgroundColor: Colors.red,
       ),
     );

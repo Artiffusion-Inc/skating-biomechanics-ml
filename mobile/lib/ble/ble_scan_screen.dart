@@ -8,6 +8,7 @@ import 'ui/scanner_tile.dart';
 import 'ui/connection_sheet.dart';
 import 'ui/device_settings_sheet.dart';
 import 'ui/rename_dialog.dart';
+import '../../i18n/strings.g.dart';
 
 class BleScanScreen extends StatefulWidget {
   final VoidCallback onReady;
@@ -30,11 +31,12 @@ class _BleScanScreenState extends State<BleScanScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     final ble = context.watch<BleManager>();
     final devices = ble.namedScanResults;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Подключение IMU')),
+      appBar: AppBar(title: Text(t.ble.scanTitle)),
       body: Column(
         children: [
           StatusBar(leftDevice: ble.leftDevice, rightDevice: ble.rightDevice),
@@ -43,16 +45,16 @@ class _BleScanScreenState extends State<BleScanScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               color: Colors.red.shade900,
-              child: const Text('Bluetooth выключен', style: TextStyle(fontSize: 14)),
+              child: Text(t.ble.bluetoothOff, style: const TextStyle(fontSize: 14)),
             ),
           if (!ble.locationPermissionGranted)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               color: Colors.orange.shade900,
-              child: const Text(
-                'Для BLE сканирования нужно разрешение на местоположение',
-                style: TextStyle(fontSize: 14),
+              child: Text(
+                t.permissions.bleRequired,
+                style: const TextStyle(fontSize: 14),
               ),
             ),
           if (ble.scanError != null)
@@ -70,7 +72,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
                         : TextButton.icon(
                             onPressed: _startScan,
                             icon: const Icon(Icons.refresh),
-                            label: const Text('Сканировать снова'),
+                            label: Text(t.ble.rescan),
                           ),
                   )
                 : ListView.builder(
@@ -93,7 +95,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
                   child: OutlinedButton.icon(
                     onPressed: ble.isScanning ? null : _startScan,
                     icon: const Icon(Icons.search),
-                    label: const Text('Сканировать'),
+                    label: Text(t.ble.scan),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -101,7 +103,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
                   child: FilledButton.icon(
                     onPressed: ble.canProceed ? widget.onReady : null,
                     icon: const Icon(Icons.arrow_forward),
-                    label: const Text('Далее'),
+                    label: Text(t.ble.next),
                   ),
                 ),
               ],

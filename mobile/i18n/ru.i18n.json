@@ -1,0 +1,97 @@
+{
+  "app": {
+    "title": "EdgeSense Capture"
+  },
+  "permissions": {
+    "grant": "Предоставить разрешения",
+    "bleRequired": "Для BLE сканирования нужно разрешение на местоположение",
+    "required": "Для работы нужны разрешения",
+    "list": "Bluetooth, Камера, Микрофон, Местоположение"
+  },
+  "ble": {
+    "scanTitle": "Подключение IMU",
+    "scan": "Сканировать",
+    "rescan": "Сканировать снова",
+    "next": "Далее",
+    "bluetoothOff": "Bluetooth выключен",
+    "assignHint": "Нажмите на устройство для назначения",
+    "left": "Левый",
+    "right": "Правый",
+    "bothConnected": "оба подключены",
+    "oneConnected": "можно продолжить",
+    "connecting": "подключение…",
+    "sensorSettings": "Настройки датчика",
+    "battery": {
+      "title": "Заряд батареи",
+      "unknown": "Неизвестно — запросите",
+      "request": "Запросить"
+    },
+    "returnRate": {
+      "title": "Частота передачи",
+      "hint": "Гц (после записи переподключить)",
+      "select": "Выбрать"
+    },
+    "rename": {
+      "title": "Переименовать (ID 0-255)",
+      "action": "Изменить",
+      "dialogTitle": "Переименовать датчик",
+      "label": "Новый ID (0-255)",
+      "placeholder": "Например: 1",
+      "cancel": "Отмена",
+      "save": "Сохранить"
+    }
+  },
+  "calibration": {
+    "title": "Калибровка",
+    "instruction": "Удерживайте датчики неподвижно\nдля калибровки нулевого угла",
+    "left": "Левый",
+    "right": "Правый",
+    "start": "Начать запись",
+    "calibrate": "Калибровать",
+    "skip": "Пропустить",
+    "done": "Калибровка завершена",
+    "running": "Стойте неподвижно...",
+    "errorPrefix": "Ошибка подключения",
+    "noData": "нет данных",
+    "startCapture": "Начать запись"
+  },
+  "camera": {
+    "title": "Камера",
+    "startCapture": "Начать запись",
+    "unavailable": "Камера недоступна",
+    "retry": "Повторить",
+    "resolution": "Разрешение",
+    "orientation": "Блокировка ориентации",
+    "portrait": "Портретный режим",
+    "grid": "Сетка",
+    "settings": "Настройки",
+    "sensors": "Датчики",
+    "settingsTitle": "Настройки камеры",
+    "resolutions": {
+      "low": "320×240 (низкое)",
+      "medium": "720×480 (среднее)",
+      "high": "1280×720 (HD)",
+      "veryHigh": "1920×1080 (Full HD)",
+      "ultraHigh": "3840×2160 (4K)",
+      "max": "Максимальное"
+    }
+  },
+  "capture": {
+    "recording": "Запись...",
+    "stop": "Стоп",
+    "saving": "Сохранение...",
+    "shareText": "EdgeSense Capture"
+  },
+  "metrics": {
+    "title": "Датчики",
+    "gyro": "Гироскоп",
+    "accel": "Акселерометр",
+    "edgeAngle": "Edge Angle"
+  },
+  "export": {
+    "title": "Результат",
+    "success": "Запись сохранена",
+    "error": "Ошибка при сохранении",
+    "newCapture": "Новая запись"
+  }
+}

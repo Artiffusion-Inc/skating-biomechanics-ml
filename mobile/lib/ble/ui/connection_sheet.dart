@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import '../../../i18n/strings.g.dart';
 
 class ConnectionSheet extends StatelessWidget {
   final BluetoothDevice device;
@@ -15,6 +16,7 @@ class ConnectionSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -26,7 +28,7 @@ class ConnectionSheet extends StatelessWidget {
           const Divider(),
           ListTile(
             leading: const Icon(Icons.skip_previous, color: Colors.blue),
-            title: const Text('Левый датчик'),
+            title: Text(t.ble.left),
             onTap: () {
               onLeft();
               Navigator.pop(context);
@@ -34,7 +36,7 @@ class ConnectionSheet extends StatelessWidget {
           ),
           ListTile(
             leading: const Icon(Icons.skip_next, color: Colors.purple),
-            title: const Text('Правый датчик'),
+            title: Text(t.ble.right),
             onTap: () {
               onRight();
               Navigator.pop(context);

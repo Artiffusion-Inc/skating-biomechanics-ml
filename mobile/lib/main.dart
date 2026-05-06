@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:provider/provider.dart';
 
 import 'providers/app_providers.dart';
 import 'theme/app_theme.dart';
 import 'routing/app_router.dart';
+import 'i18n/strings.g.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const AppProviders(child: EdgeSenseApp()));
+  LocaleSettings.useDeviceLocale();
+  runApp(TranslationProvider(child: const AppProviders(child: EdgeSenseApp())));
 }
 
 class EdgeSenseApp extends StatelessWidget {
@@ -19,6 +22,9 @@ class EdgeSenseApp extends StatelessWidget {
       title: 'EdgeSense Capture',
       theme: AppTheme.dark,
       routerConfig: buildRouter(),
+      locale: TranslationProvider.of(context).flutterLocale,
+      supportedLocales: LocaleSettings.supportedLocales,
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
     );
   }
 }
