@@ -110,7 +110,15 @@ class BleManager extends ChangeNotifier {
   }
 
   void assignDevice(String side, BluetoothDevice device) {
-    final imu = IMUDevice(device: device, side: side, onStateChanged: notifyListeners);
+    final imu = IMUDevice(
+      device: device,
+      side: side,
+      onStateChanged: notifyListeners,
+      onBattery: (v) {
+        batteryLevels[device.id.id] = v;
+        notifyListeners();
+      },
+    );
     if (side == 'left') {
       leftDevice?.disconnect();
       leftDevice = imu;

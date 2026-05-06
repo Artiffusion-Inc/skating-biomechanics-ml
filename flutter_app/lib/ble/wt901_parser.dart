@@ -1,7 +1,7 @@
 import 'dart:typed_data';
 import 'wt901_constants.dart';
 
-enum WT901PacketType { accelerometer, gyroscope, quaternion, angle, unknown }
+enum WT901PacketType { accelerometer, gyroscope, quaternion, angle, battery, unknown }
 
 class WT901Packet {
   final WT901PacketType type;
@@ -9,6 +9,7 @@ class WT901Packet {
   final double? gyroX, gyroY, gyroZ;
   final double? angleX, angleY, angleZ;
   final double? quatW, quatX, quatY, quatZ;
+  final double? battery; // voltage in V
 
   const WT901Packet({
     required this.type,
@@ -16,6 +17,7 @@ class WT901Packet {
     this.gyroX, this.gyroY, this.gyroZ,
     this.angleX, this.angleY, this.angleZ,
     this.quatW, this.quatX, this.quatY, this.quatZ,
+    this.battery,
   });
 }
 
@@ -46,6 +48,7 @@ class WT901Parser {
       case typeGyro: type = WT901PacketType.gyroscope; break;
       case typeAngle: type = WT901PacketType.angle; break;
       case typeQuat: type = WT901PacketType.quaternion; break;
+      case typeBattery: type = WT901PacketType.battery; break;
       default: type = WT901PacketType.unknown;
     }
 
@@ -57,6 +60,7 @@ class WT901Parser {
     double? gyroX, gyroY, gyroZ;
     double? angleX, angleY, angleZ;
     double? quatW, quatX, quatY, quatZ;
+    double? battery;
 
     if (type == WT901PacketType.accelerometer) {
       accX = _readInt16Scaled(data, 2, scaleAcc);
@@ -75,6 +79,8 @@ class WT901Parser {
       quatX = _readInt16Scaled(data, 4, scaleQuat);
       quatY = _readInt16Scaled(data, 6, scaleQuat);
       quatZ = _readInt16Scaled(data, 8, scaleQuat);
+    } else if (type == WT901PacketType.battery) {
+      battery = data.getInt16(2, Endian.little) / 100.0;
     }
 
     return WT901Packet(
@@ -83,6 +89,7 @@ class WT901Parser {
       gyroX: gyroX, gyroY: gyroY, gyroZ: gyroZ,
       angleX: angleX, angleY: angleY, angleZ: angleZ,
       quatW: quatW, quatX: quatX, quatY: quatY, quatZ: quatZ,
+      battery: battery,
     );
   }
 }

@@ -8,10 +8,16 @@ class IMUDevice {
   final String side;
   bool isConnected = false;
   final VoidCallback? onStateChanged;
+  final void Function(double voltage)? onBattery;
   StreamSubscription? _notifySubscription;
   StreamSubscription? _connectionSubscription;
 
-  IMUDevice({required this.device, required this.side, this.onStateChanged}) {
+  IMUDevice({
+    required this.device,
+    required this.side,
+    this.onStateChanged,
+    this.onBattery,
+  }) {
     isConnected = device.isConnected;
     _connectionSubscription = device.connectionState.listen((state) {
       final wasConnected = isConnected;
@@ -45,7 +51,12 @@ class IMUDevice {
     await characteristic.setNotifyValue(true);
     await for (final event in characteristic.lastValueStream) {
       final packet = WT901Parser.parse(event);
-      if (packet != null) yield packet;
+      if (packet != null) {
+        if (packet.type == WT901PacketType.battery && packet.battery != null) {
+          onBattery?.call(packet.battery!);
+        }
+        yield packet;
+      }
     }
   }
 }

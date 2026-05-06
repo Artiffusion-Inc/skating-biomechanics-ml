@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'package:provider/provider.dart';
 import 'ble_manager.dart';
+import 'wt901_commander.dart';
 
 class BleScanScreen extends StatefulWidget {
   final VoidCallback onReady;
@@ -73,6 +74,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
                       result: devices[i],
                       ble: ble,
                       onAssign: () => _showAssignSheet(devices[i], ble),
+                      onSettings: () => _showSensorSettings(devices[i], ble),
                     ),
                   ),
           ),
@@ -149,6 +151,128 @@ class _BleScanScreenState extends State<BleScanScreen> {
       ),
     );
   }
+
+  void _showSensorSettings(ScanResult result, BleManager ble) {
+    final voltage = ble.batteryLevels[result.device.id.id];
+    final commander = WT901Commander(result.device);
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                result.device.platformName,
+                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              ),
+              Text(result.device.id.id, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+              const SizedBox(height: 16),
+              // Battery display
+              ListTile(
+                leading: Icon(
+                  Icons.battery_full,
+                  color: voltage == null
+                      ? Colors.grey
+                      : voltage > 3.7
+                          ? Colors.green
+                          : voltage > 3.5
+                              ? Colors.orange
+                              : Colors.red,
+                ),
+                title: const Text('Заряд батареи'),
+                subtitle: Text(voltage == null ? 'Неизвестно — запросите' : '${voltage.toStringAsFixed(2)} В'),
+                trailing: TextButton(
+                  onPressed: () async {
+                    await commander.requestBattery();
+                    if (ctx.mounted) Navigator.pop(ctx);
+                  },
+                  child: const Text('Запросить'),
+                ),
+              ),
+              const Divider(),
+              // Return rate
+              ListTile(
+                leading: const Icon(Icons.speed),
+                title: const Text('Частота передачи'),
+                subtitle: const Text('Гц (после записи переподключить)'),
+                trailing: DropdownButton<int>(
+                  value: null,
+                  hint: const Text('Выбрать'),
+                  underline: const SizedBox.shrink(),
+                  items: const [
+                    DropdownMenuItem(value: 0x01, child: Text('0.2 Гц')),
+                    DropdownMenuItem(value: 0x02, child: Text('0.5 Гц')),
+                    DropdownMenuItem(value: 0x03, child: Text('1 Гц')),
+                    DropdownMenuItem(value: 0x04, child: Text('2 Гц')),
+                    DropdownMenuItem(value: 0x05, child: Text('5 Гц')),
+                    DropdownMenuItem(value: 0x06, child: Text('10 Гц')),
+                    DropdownMenuItem(value: 0x07, child: Text('20 Гц')),
+                    DropdownMenuItem(value: 0x08, child: Text('50 Гц')),
+                    DropdownMenuItem(value: 0x09, child: Text('100 Гц')),
+                    DropdownMenuItem(value: 0x0B, child: Text('200 Гц')),
+                  ],
+                  onChanged: (code) async {
+                    if (code != null) {
+                      await commander.setReturnRate(code);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    }
+                  },
+                ),
+              ),
+              // Rename
+              ListTile(
+                leading: const Icon(Icons.edit),
+                title: const Text('Переименовать (ID 0-255)'),
+                trailing: FilledButton.tonal(
+                  onPressed: () => _showRenameDialog(result.device),
+                  child: const Text('Изменить'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showRenameDialog(BluetoothDevice device) {
+    final ctrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Переименовать датчик'),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(
+            labelText: 'Новый ID (0-255)',
+            hintText: 'Например: 1',
+          ),
+          keyboardType: TextInputType.number,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              final id = int.tryParse(ctrl.text);
+              if (id != null && id >= 0 && id <= 255) {
+                final commander = WT901Commander(device);
+                await commander.rename(id);
+                if (ctx.mounted) Navigator.pop(ctx);
+              }
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _StatusBar extends StatelessWidget {
@@ -194,11 +318,13 @@ class _DeviceTile extends StatelessWidget {
   final ScanResult result;
   final BleManager ble;
   final VoidCallback onAssign;
+  final VoidCallback onSettings;
 
   const _DeviceTile({
     required this.result,
     required this.ble,
     required this.onAssign,
+    required this.onSettings,
   });
 
   @override
@@ -206,6 +332,7 @@ class _DeviceTile extends StatelessWidget {
     final isLeft = ble.leftDevice?.device.id == result.device.id;
     final isRight = ble.rightDevice?.device.id == result.device.id;
     final name = result.device.platformName;
+    final voltage = ble.batteryLevels[result.device.id.id];
 
     return ListTile(
       leading: Icon(
@@ -214,17 +341,56 @@ class _DeviceTile extends StatelessWidget {
       ),
       title: Text(name),
       subtitle: Text(result.device.id.id),
-      trailing: isLeft
-          ? Chip(
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (voltage != null)
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    Icons.battery_full,
+                    size: 14,
+                    color: voltage > 3.7
+                        ? Colors.green
+                        : voltage > 3.5
+                            ? Colors.orange
+                            : Colors.red,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '${voltage.toStringAsFixed(1)}V',
+                    style: TextStyle(
+                      fontSize: 11,
+                      color: voltage > 3.7
+                          ? Colors.green
+                          : voltage > 3.5
+                              ? Colors.orange
+                              : Colors.red,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (isLeft)
+            Chip(
               label: Text('Левый ${ble.leftDevice?.isConnected ?? false ? '✓' : '…'}'),
               backgroundColor: Colors.blue.shade800,
             )
-          : isRight
-              ? Chip(
-                  label: Text('Правый ${ble.rightDevice?.isConnected ?? false ? '✓' : '…'}'),
-                  backgroundColor: Colors.purple.shade800,
-                )
-              : null,
+          else if (isRight)
+            Chip(
+              label: Text('Правый ${ble.rightDevice?.isConnected ?? false ? '✓' : '…'}'),
+              backgroundColor: Colors.purple.shade800,
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.settings, size: 20),
+              onPressed: onSettings,
+            ),
+        ],
+      ),
       onTap: onAssign,
     );
   }
