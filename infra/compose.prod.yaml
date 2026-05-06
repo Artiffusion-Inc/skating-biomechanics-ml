@@ -9,13 +9,13 @@ services:
     image: docker.io/library/postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-skating}
-      POSTGRES_USER: ${POSTGRES_USER:-skating}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skating}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 3s
       retries: 5
@@ -40,18 +40,18 @@ services:
 
   # --- Backend API ---
   backend:
-    image: ghcr.io/${GHCR_OWNER:-Artiffusion-Inc}/skatelab-backend:${TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER}/skatelab-backend:${TAG}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL}
-      VALKEY_URL: ${VALKEY_URL:-redis://valkey:6379/0}
+      VALKEY_URL: ${VALKEY_URL}
       R2_ENDPOINT_URL: ${R2_ENDPOINT_URL}
       R2_ACCESS_KEY_ID: ${R2_ACCESS_KEY_ID}
       R2_SECRET_ACCESS_KEY: ${R2_SECRET_ACCESS_KEY}
       R2_BUCKET: ${R2_BUCKET}
       JWT_SECRET: ${JWT_SECRET}
       VASTAI_API_KEY: ${VASTAI_API_KEY}
-      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_LEVEL: ${LOG_LEVEL}
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'python -c \"import urllib.request; urllib.request.urlopen(\\\"http://127.0.0.1:8000/api/v1/health\\\", timeout=2)\"'"]
       interval: 30s
@@ -68,10 +68,10 @@ services:
 
   # --- Frontend ---
   frontend:
-    image: ghcr.io/${GHCR_OWNER:-Artiffusion-Inc}/skating-frontend:${TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER}/skatelab-frontend:${TAG}
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-/api}
+      NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     healthcheck:
       test: ["CMD", "wget", "-q", "--spider", "http://127.0.0.1:3000/"]
       interval: 30s

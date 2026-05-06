@@ -59,7 +59,7 @@ class DetectController(Controller):
             task_id=task_id,
             video_key=video_key,
             tracking=tracking,
-            _queue_name="skating:queue:fast",
+            _queue_name="skatelab:queue:fast",
         )
 
         return DetectQueueResponse(task_id=task_id, video_key=video_key)

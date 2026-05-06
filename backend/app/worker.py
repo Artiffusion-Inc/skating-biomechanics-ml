@@ -651,7 +651,7 @@ async def analyze_music_task(
 class FastWorkerSettings:
     """arq worker for lightweight detection tasks."""
 
-    queue_name: str = "skating:queue:fast"
+    queue_name: str = "skatelab:queue:fast"
     max_jobs: int = (
         _settings.app.worker_max_jobs_remote
         if _settings.vastai.api_key.get_secret_value()
@@ -677,7 +677,7 @@ class FastWorkerSettings:
 class HeavyWorkerSettings:
     """arq worker for full ML pipeline processing."""
 
-    queue_name: str = "skating:queue:heavy"
+    queue_name: str = "skatelab:queue:heavy"
     max_jobs: int = 1  # GPU-bound, can't parallelize
     retry_jobs: bool = True
     retry_delays: ClassVar[list[int]] = _settings.app.worker_retry_delays

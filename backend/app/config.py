@@ -67,7 +67,7 @@ class ValkeyConfig(BaseSettings):
 class DatabaseConfig(BaseSettings):
     """PostgreSQL connection settings."""
 
-    url: str = "postgresql+asyncpg://skating:skating_dev@localhost:5432/skating_ml"
+    url: str = "postgresql+asyncpg://skatelab:skatelab_dev@localhost:5432/skatelab"
 
     class Config:
         env_prefix = "DATABASE_"
@@ -120,9 +120,9 @@ class ResendConfig(BaseSettings):
     """Resend email service settings."""
 
     api_key: SecretStr = SecretStr("")
-    from_email: str = "noreply@skating.ai"
-    from_name: str = "Skating AI Coach"
-    reset_url_template: str = "https://skating.ai/reset-password?token={token}"
+    from_email: str = "noreply@skatelab.ru"
+    from_name: str = "SkateLab"
+    reset_url_template: str = "https://skatelab.ru/reset-password?token={token}"
 
     class Config:
         env_prefix = "RESEND_"
