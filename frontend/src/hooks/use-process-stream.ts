@@ -17,7 +17,7 @@ export function useProcessStream(taskId: string | null) {
   useEffect(() => {
     if (!taskId) return
 
-    const es = new EventSource(`/api/process/${taskId}/stream`)
+    const es = new EventSource(`/api/v1/process/${taskId}/stream`)
     esRef.current = es
 
     es.onopen = () => setIsConnected(true)
