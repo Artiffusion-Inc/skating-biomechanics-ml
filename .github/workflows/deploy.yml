@@ -198,8 +198,16 @@ jobs:
             cd /opt/skating-app
             export TAG=${{ github.sha }}
             export GHCR_OWNER=${{ steps.ghcr.outputs.owner }}
+            # podman-compose v1.3.0 does not honour --force-recreate with
+            # dependencies, so we stop + rm + recreate explicitly.
+            podman stop -t 2 skating-app_caddy_1 || true
+            podman rm -f skating-app_caddy_1 || true
+            podman stop -t 5 skating-app_frontend_1 || true
+            podman rm -f skating-app_frontend_1 || true
+            podman stop -t 5 skating-app_backend_1 || true
+            podman rm -f skating-app_backend_1 || true
             podman compose --env-file .env.prod -f compose.prod.yaml \
-              up -d --no-deps --force-recreate frontend backend 2>/dev/null
+              up -d backend frontend caddy
 
       - name: Run database migrations
         id: migrate
