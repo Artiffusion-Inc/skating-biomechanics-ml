@@ -62,7 +62,14 @@ class _BleScanScreenState extends State<BleScanScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               color: Colors.red.shade900,
-              child: Text(ble.scanError!, style: const TextStyle(fontSize: 12)),
+              child: Text(
+                switch (ble.scanError!) {
+                  BleScanError.bluetoothOff => t.ble.bluetoothOff,
+                  BleScanError.locationRequired => t.ble.errors.locationRequired,
+                  BleScanError.unknown => ble.scanErrorMessage ?? t.ble.errors.locationRequired,
+                },
+                style: const TextStyle(fontSize: 12),
+              ),
             ),
           Expanded(
             child: devices.isEmpty

@@ -5,6 +5,12 @@ import 'package:permission_handler/permission_handler.dart';
 import 'wt901_parser.dart';
 import 'imu_device.dart';
 
+enum BleScanError {
+  bluetoothOff,
+  locationRequired,
+  unknown,
+}
+
 class BleManager extends ChangeNotifier {
   List<ScanResult> scanResults = [];
   List<ScanResult> get namedScanResults =>
@@ -12,7 +18,8 @@ class BleManager extends ChangeNotifier {
   IMUDevice? leftDevice;
   IMUDevice? rightDevice;
   bool isScanning = false;
-  String? scanError;
+  BleScanError? scanError;
+  String? scanErrorMessage;
   bool locationPermissionGranted = false;
 
   final Map<String, double> batteryLevels = {};
@@ -50,17 +57,20 @@ class BleManager extends ChangeNotifier {
   Future<void> startScan() async {
     if (isScanning) return;
     if (!isBluetoothOn) {
-      scanError = 'Bluetooth выключен';
+      scanError = BleScanError.bluetoothOff;
+      scanErrorMessage = null;
       notifyListeners();
       return;
     }
     if (!await checkLocationPermission()) {
-      scanError = 'Требуется разрешение на местоположение для BLE сканирования';
+      scanError = BleScanError.locationRequired;
+      scanErrorMessage = null;
       notifyListeners();
       return;
     }
 
     scanError = null;
+    scanErrorMessage = null;
 
     // Throttle: Android blocks scan if restarted within ~5s
     if (_lastScanStop != null) {
@@ -91,7 +101,8 @@ class BleManager extends ChangeNotifier {
         androidScanMode: AndroidScanMode.lowLatency,
       );
     } catch (e) {
-      scanError = e.toString();
+      scanError = BleScanError.unknown;
+      scanErrorMessage = e.toString();
     }
 
     isScanning = false;

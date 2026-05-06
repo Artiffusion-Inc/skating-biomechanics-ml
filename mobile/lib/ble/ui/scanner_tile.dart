@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import '../../../i18n/strings.g.dart';
 import '../imu_device.dart';
 
 class ScannerTile extends StatelessWidget {
@@ -22,6 +23,7 @@ class ScannerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     final isLeft = leftDevice?.device.remoteId == result.device.remoteId;
     final isRight = rightDevice?.device.remoteId == result.device.remoteId;
     final name = result.device.platformName;
@@ -43,12 +45,12 @@ class ScannerTile extends StatelessWidget {
             ),
           if (isLeft)
             _SideChip(
-              label: 'Левый ${leftDevice?.isConnected.value ?? false ? '✓' : '…'}',
+              label: '${t.ble.left} ${leftDevice?.isConnected.value ?? false ? t.ble.status.connected : t.ble.status.disconnected}',
               color: Colors.blue.shade800,
             )
           else if (isRight)
             _SideChip(
-              label: 'Правый ${rightDevice?.isConnected.value ?? false ? '✓' : '…'}',
+              label: '${t.ble.right} ${rightDevice?.isConnected.value ?? false ? t.ble.status.connected : t.ble.status.disconnected}',
               color: Colors.purple.shade800,
             ),
           IconButton(

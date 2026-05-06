@@ -128,6 +128,8 @@ class TranslationsBleRu {
 	/// ru: 'Настройки датчика'
 	String get sensorSettings => 'Настройки датчика';
 
+	late final TranslationsBleStatusRu status = TranslationsBleStatusRu.internal(_root);
+	late final TranslationsBleErrorsRu errors = TranslationsBleErrorsRu.internal(_root);
 	late final TranslationsBleBatteryRu battery = TranslationsBleBatteryRu.internal(_root);
 	late final TranslationsBleReturnRateRu returnRate = TranslationsBleReturnRateRu.internal(_root);
 	late final TranslationsBleRenameRu rename = TranslationsBleRenameRu.internal(_root);
@@ -176,6 +178,9 @@ class TranslationsCalibrationRu {
 
 	/// ru: 'Начать запись'
 	String get startCapture => 'Начать запись';
+
+	/// ru: 'сек'
+	String get seconds => 'сек';
 }
 
 // Path: camera
@@ -303,6 +308,33 @@ class TranslationsExportRu {
 	String get newCapture => 'Новая запись';
 }
 
+// Path: ble.status
+class TranslationsBleStatusRu {
+	TranslationsBleStatusRu.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// ru: '✓'
+	String get connected => '✓';
+
+	/// ru: '…'
+	String get disconnected => '…';
+}
+
+// Path: ble.errors
+class TranslationsBleErrorsRu {
+	TranslationsBleErrorsRu.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// ru: 'Требуется разрешение на местоположение для BLE сканирования'
+	String get locationRequired => 'Требуется разрешение на местоположение для BLE сканирования';
+}
+
 // Path: ble.battery
 class TranslationsBleBatteryRu {
 	TranslationsBleBatteryRu.internal(this._root);
@@ -319,6 +351,9 @@ class TranslationsBleBatteryRu {
 
 	/// ru: 'Запросить'
 	String get request => 'Запросить';
+
+	/// ru: 'В'
+	String get unit => 'В';
 }
 
 // Path: ble.returnRate
@@ -337,6 +372,36 @@ class TranslationsBleReturnRateRu {
 
 	/// ru: 'Выбрать'
 	String get select => 'Выбрать';
+
+	/// ru: '0.2 Гц'
+	String get hz02 => '0.2 Гц';
+
+	/// ru: '0.5 Гц'
+	String get hz05 => '0.5 Гц';
+
+	/// ru: '1 Гц'
+	String get hz1 => '1 Гц';
+
+	/// ru: '2 Гц'
+	String get hz2 => '2 Гц';
+
+	/// ru: '5 Гц'
+	String get hz5 => '5 Гц';
+
+	/// ru: '10 Гц'
+	String get hz10 => '10 Гц';
+
+	/// ru: '20 Гц'
+	String get hz20 => '20 Гц';
+
+	/// ru: '50 Гц'
+	String get hz50 => '50 Гц';
+
+	/// ru: '100 Гц'
+	String get hz100 => '100 Гц';
+
+	/// ru: '200 Гц'
+	String get hz200 => '200 Гц';
 }
 
 // Path: ble.rename
@@ -421,12 +486,26 @@ extension on Translations {
 			'ble.oneConnected' => 'можно продолжить',
 			'ble.connecting' => 'подключение…',
 			'ble.sensorSettings' => 'Настройки датчика',
+			'ble.status.connected' => '✓',
+			'ble.status.disconnected' => '…',
+			'ble.errors.locationRequired' => 'Требуется разрешение на местоположение для BLE сканирования',
 			'ble.battery.title' => 'Заряд батареи',
 			'ble.battery.unknown' => 'Неизвестно — запросите',
 			'ble.battery.request' => 'Запросить',
+			'ble.battery.unit' => 'В',
 			'ble.returnRate.title' => 'Частота передачи',
 			'ble.returnRate.hint' => 'Гц (после записи переподключить)',
 			'ble.returnRate.select' => 'Выбрать',
+			'ble.returnRate.hz02' => '0.2 Гц',
+			'ble.returnRate.hz05' => '0.5 Гц',
+			'ble.returnRate.hz1' => '1 Гц',
+			'ble.returnRate.hz2' => '2 Гц',
+			'ble.returnRate.hz5' => '5 Гц',
+			'ble.returnRate.hz10' => '10 Гц',
+			'ble.returnRate.hz20' => '20 Гц',
+			'ble.returnRate.hz50' => '50 Гц',
+			'ble.returnRate.hz100' => '100 Гц',
+			'ble.returnRate.hz200' => '200 Гц',
 			'ble.rename.title' => 'Переименовать (ID 0-255)',
 			'ble.rename.action' => 'Изменить',
 			'ble.rename.dialogTitle' => 'Переименовать датчик',
@@ -446,6 +525,7 @@ extension on Translations {
 			'calibration.errorPrefix' => 'Ошибка подключения',
 			'calibration.noData' => 'нет данных',
 			'calibration.startCapture' => 'Начать запись',
+			'calibration.seconds' => 'сек',
 			'camera.title' => 'Камера',
 			'camera.startCapture' => 'Начать запись',
 			'camera.unavailable' => 'Камера недоступна',

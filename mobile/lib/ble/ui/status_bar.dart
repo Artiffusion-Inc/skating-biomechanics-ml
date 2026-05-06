@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../../i18n/strings.g.dart';
 import '../imu_device.dart';
 
 class StatusBar extends StatelessWidget {
@@ -9,12 +10,13 @@ class StatusBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     final parts = <String>[];
     if (leftDevice != null) {
-      parts.add('Левый ${leftDevice!.isConnected.value ? '✓' : '…'}');
+      parts.add('${t.ble.left} ${leftDevice!.isConnected.value ? t.ble.status.connected : t.ble.status.disconnected}');
     }
     if (rightDevice != null) {
-      parts.add('Правый ${rightDevice!.isConnected.value ? '✓' : '…'}');
+      parts.add('${t.ble.right} ${rightDevice!.isConnected.value ? t.ble.status.connected : t.ble.status.disconnected}');
     }
 
     final leftOk = leftDevice?.isConnected.value ?? false;
@@ -26,12 +28,12 @@ class StatusBar extends StatelessWidget {
             : Colors.grey.shade800;
 
     final text = parts.isEmpty
-        ? 'Нажмите на устройство для назначения'
+        ? t.ble.assignHint
         : leftOk && rightOk
-            ? '${parts.join('  ')}  —  оба подключены'
+            ? '${parts.join('  ')}  —  ${t.ble.bothConnected}'
             : leftOk || rightOk
-                ? '${parts.join('  ')}  —  можно продолжить'
-                : '${parts.join('  ')}  —  подключение…';
+                ? '${parts.join('  ')}  —  ${t.ble.oneConnected}'
+                : '${parts.join('  ')}  —  ${t.ble.connecting}';
 
     return Container(
       width: double.infinity,

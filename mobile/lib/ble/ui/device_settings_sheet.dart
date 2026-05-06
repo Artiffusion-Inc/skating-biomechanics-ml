@@ -72,7 +72,7 @@ class _BatteryTile extends StatelessWidget {
     return ListTile(
       leading: Icon(Icons.battery_full, color: _color),
       title: Text(t.ble.battery.title),
-      subtitle: Text(voltage == null ? t.ble.battery.unknown : '${voltage!.toStringAsFixed(2)} В'),
+      subtitle: Text(voltage == null ? t.ble.battery.unknown : '${voltage!.toStringAsFixed(2)} ${t.ble.battery.unit}'),
       trailing: TextButton(
         onPressed: onRequest,
         child: Text(t.ble.battery.request),
@@ -96,17 +96,17 @@ class _ReturnRateTile extends StatelessWidget {
         value: null,
         hint: Text(t.ble.returnRate.select),
         underline: const SizedBox.shrink(),
-        items: const [
-          DropdownMenuItem(value: 0x01, child: Text('0.2 Гц')),
-          DropdownMenuItem(value: 0x02, child: Text('0.5 Гц')),
-          DropdownMenuItem(value: 0x03, child: Text('1 Гц')),
-          DropdownMenuItem(value: 0x04, child: Text('2 Гц')),
-          DropdownMenuItem(value: 0x05, child: Text('5 Гц')),
-          DropdownMenuItem(value: 0x06, child: Text('10 Гц')),
-          DropdownMenuItem(value: 0x07, child: Text('20 Гц')),
-          DropdownMenuItem(value: 0x08, child: Text('50 Гц')),
-          DropdownMenuItem(value: 0x09, child: Text('100 Гц')),
-          DropdownMenuItem(value: 0x0B, child: Text('200 Гц')),
+        items: [
+          DropdownMenuItem(value: 0x01, child: Text(t.ble.returnRate.hz02)),
+          DropdownMenuItem(value: 0x02, child: Text(t.ble.returnRate.hz05)),
+          DropdownMenuItem(value: 0x03, child: Text(t.ble.returnRate.hz1)),
+          DropdownMenuItem(value: 0x04, child: Text(t.ble.returnRate.hz2)),
+          DropdownMenuItem(value: 0x05, child: Text(t.ble.returnRate.hz5)),
+          DropdownMenuItem(value: 0x06, child: Text(t.ble.returnRate.hz10)),
+          DropdownMenuItem(value: 0x07, child: Text(t.ble.returnRate.hz20)),
+          DropdownMenuItem(value: 0x08, child: Text(t.ble.returnRate.hz50)),
+          DropdownMenuItem(value: 0x09, child: Text(t.ble.returnRate.hz100)),
+          DropdownMenuItem(value: 0x0B, child: Text(t.ble.returnRate.hz200)),
         ],
         onChanged: (code) {
           if (code != null) onSelected(code);

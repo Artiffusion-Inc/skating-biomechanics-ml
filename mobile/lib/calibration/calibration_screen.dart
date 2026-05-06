@@ -126,7 +126,7 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${(_progress * _calibDuration.inSeconds).toStringAsFixed(1)} / ${_calibDuration.inSeconds} сек',
+                  '${(_progress * _calibDuration.inSeconds).toStringAsFixed(1)} / ${_calibDuration.inSeconds} ${t.calibration.seconds}',
                   style: const TextStyle(color: Colors.white70),
                 ),
               ],
