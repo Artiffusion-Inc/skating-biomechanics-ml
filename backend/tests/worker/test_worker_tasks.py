@@ -19,12 +19,14 @@ sys.modules["cv2"] = MagicMock()
 
 # Pre-register ML submodules as MagicMocks so patch() can resolve them
 # without pulling in heavy/optional deps like av, opencv, tqdm, rtmlib, etc.
+# Note: do NOT mock src.pose_estimation here. Replacing it with a MagicMock
+# (which has no __path__) prevents subsequent submodule imports like
+# `from src.pose_estimation.batch_extractor import ...` from working when
+# ml/tests/pose_estimation/ tests are collected later in the same session.
 sys.modules["src.web_helpers"] = MagicMock()
 sys.modules["src.utils.video"] = MagicMock()
 sys.modules["tqdm"] = MagicMock()
 sys.modules["rtmlib"] = MagicMock()
-sys.modules["src.pose_estimation"] = MagicMock()
-sys.modules["src.pose_estimation.pose_extractor"] = MagicMock()
 
 
 # ---------------------------------------------------------------------------
