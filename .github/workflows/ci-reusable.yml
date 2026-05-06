@@ -284,7 +284,7 @@ jobs:
           context: frontend
           file: frontend/Containerfile
           push: false
-          tags: skating-frontend:ci
+          tags: skatelab-frontend:ci
 
   ci-passed:
     name: CI Summary
