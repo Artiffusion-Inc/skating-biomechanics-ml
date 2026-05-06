@@ -120,7 +120,7 @@ Tasks: `process_video_task`, `detect_video_task`, `music_analysis_task`.
 
 ```bash
 # Build image (from repo root)
-podman build -f backend/Containerfile -t skating-backend .
+podman build -f backend/Containerfile -t skatelab-backend .
 ```
 
 ## License

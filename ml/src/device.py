@@ -60,7 +60,7 @@ def _resolve_device_name(device: str) -> DeviceName:
     device = device.lower().strip()
 
     # Environment variable override takes priority
-    env = os.environ.get("SKATING_DEVICE", "").lower().strip()
+    env = os.environ.get("SKATELAB_DEVICE", "").lower().strip()
     if env:
         device = env
 

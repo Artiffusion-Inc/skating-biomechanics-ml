@@ -1,5 +1,5 @@
 # $schema: https://raw.githubusercontent.com/evilmartians/lefthook/master/schema.json
-# Lefthook configuration for skating-biomechanics-ml
+# Lefthook configuration for skatelab
 assert_lefthook_installed: true
 colors: true
 

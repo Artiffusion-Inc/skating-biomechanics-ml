@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# One-time VPS setup for skating-biomechanics-ml
+# One-time VPS setup for skatelab
 # Run this on the VPS: bash setup-vps.sh <domain>
 
 DOMAIN="${1:?Usage: bash setup-vps.sh <domain>}"
 APP_DIR="/opt/skating-app"
 
-echo "=== Setting up skating-biomechanics-ml on VPS ==="
+echo "=== Setting up skatelab on VPS ==="
 
 # Install Docker if not present
 if ! command -v docker &>/dev/null; then

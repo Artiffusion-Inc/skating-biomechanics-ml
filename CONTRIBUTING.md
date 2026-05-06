@@ -24,7 +24,7 @@
 
 ```bash
 # Clone and enter project
-git clone <repo-url> && cd skating-biomechanics-ml
+git clone <repo-url> && cd skatelab
 
 # Install Python dependencies
 uv sync

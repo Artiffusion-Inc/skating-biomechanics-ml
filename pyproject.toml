@@ -1,7 +1,7 @@
 [project]
-name = "skating-biomechanics-ml"
+name = "skatelab"
 version = "0.1.0"
-description = "ML-based figure skating biomechanics analysis"
+description = "SkateLab — AI-powered figure skating biomechanics analysis"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []

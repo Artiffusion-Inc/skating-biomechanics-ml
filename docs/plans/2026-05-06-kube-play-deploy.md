@@ -77,7 +77,7 @@ spec:
         startPeriod: 10s
 
     - name: backend
-      image: ghcr.io/artiffusion-inc/skating-backend:latest
+      image: ghcr.io/artiffusion-inc/skatelab-backend:latest
       env:
         - name: DATABASE_URL
           valueFrom:
@@ -363,7 +363,7 @@ Remove the explicit pull step — `podman kube play --replace` pulls automatical
             envsubst < deploy.yaml > deploy-rendered.yaml
 
             # Replace images with sha-tagged versions
-            sed -i "s|ghcr.io/artiffusion-inc/skating-backend:latest|ghcr.io/${GHCR_OWNER}/skating-backend:${TAG}|g" deploy-rendered.yaml
+            sed -i "s|ghcr.io/artiffusion-inc/skatelab-backend:latest|ghcr.io/${GHCR_OWNER}/skatelab-backend:${TAG}|g" deploy-rendered.yaml
             sed -i "s|ghcr.io/artiffusion-inc/skating-frontend:latest|ghcr.io/${GHCR_OWNER}/skating-frontend:${TAG}|g" deploy-rendered.yaml
 
             podman kube play --replace deploy-rendered.yaml

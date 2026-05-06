@@ -32,8 +32,8 @@ Defaults in `compose.yaml` use env vars with `:-` fallbacks (`VALKEY_HOST_PORT`,
 ## Container Build
 
 ```bash
-podman build -t skating-ml -f infra/Containerfile .
-podman run -p 8000:8000 --env-file .env skating-ml
+podman build -t skatelab -f infra/Containerfile .
+podman run -p 8000:8000 --env-file .env skatelab
 ```
 
 Build copies `backend/`, `ml/`, `data/`, builds frontend from `frontend/`. Does **not** include `docs/`, `experiments/`, or `infra/`.
@@ -41,7 +41,7 @@ Build copies `backend/`, `ml/`, `data/`, builds frontend from `frontend/`. Does 
 ## GPU Worker (Vast.ai)
 
 Separate container in `ml/gpu_server/Containerfile` — multi-stage, 4.9GB, no torch/timm/triton.
-Image: `ghcr.io/Artiffusion-Inc/skating-ml-gpu:latest`
+Image: `ghcr.io/Artiffusion-Inc/skatelab-worker:latest`
 
 ## Environment Variables
 

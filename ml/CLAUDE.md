@@ -140,7 +140,7 @@ cfg = DeviceConfig.default()        # Auto-detect (CUDA preferred)
 cfg = DeviceConfig(device="cpu")    # Explicit CPU
 cfg.onnx_providers                  # ["CUDAExecutionProvider", "CPUExecutionProvider"]
 
-# Environment override: SKATING_DEVICE=cpu
+# Environment override: SKATELAB_DEVICE=cpu
 ```
 
 ## Numba JIT Optimizations
@@ -185,7 +185,7 @@ Use `scripts/cli.py` to dispatch video processing to Vast.ai Serverless GPU via 
 ```bash
 cd ml
 
-# Authenticate (stores JWT in ~/.config/skating-cli/credentials.json, mode 600)
+# Authenticate (stores JWT in ~/.config/skatelab/credentials.json, mode 600)
 uv run python scripts/cli.py login
 
 # Analyze a video — upload → enqueue → poll → JSON stdout

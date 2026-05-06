@@ -21,7 +21,7 @@ ML-based AI coach for figure skating. Analyzes video, compares attempts to profe
 ## Directory Structure
 
 ```
-skating-biomechanics-ml/
+skatelab/
 ├── backend/                          # FastAPI API server
 │   ├── app/                          # Python package (backend.app.*)
 │   │   ├── routes/                   # FastAPI routers
@@ -142,7 +142,7 @@ System has CUDA 13.2, onnxruntime-gpu needs CUDA 12 compat libs in `.venv/cuda-c
 
 Worker dispatches to Vast.ai Serverless GPU when `VASTAI_API_KEY` is set, falls back to local GPU. Worker code lives in `backend/app/worker.py`, Vast.ai server in `ml/gpu_server/`.
 
-**Image**: `ghcr.io/Artiffusion-Inc/skating-ml-gpu:latest` — multi-stage, 4.9GB, no torch/timm/triton.
+**Image**: `ghcr.io/Artiffusion-Inc/skatelab-worker:latest` — multi-stage, 4.9GB, no torch/timm/triton.
 
 ## Tracking Debugging Workflow
 

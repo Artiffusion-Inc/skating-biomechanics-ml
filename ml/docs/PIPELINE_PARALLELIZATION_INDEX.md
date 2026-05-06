@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-18
 **Agent:** Pipeline Architecture Agent
-**Repository:** skating-biomechanics-ml
+**Repository:** skatelab
 
 ---
 
