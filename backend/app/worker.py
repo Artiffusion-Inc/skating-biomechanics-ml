@@ -411,8 +411,8 @@ async def detect_video_task(
 
             cfg = DeviceConfig.default()
             extractor = PoseExtractor(
-                mode="balanced",
-                tracking_backend="rtmlib",
+                model_path="data/models/moganet/moganet_b_ap2d_384x288.onnx",
+                tracking_backend="custom",
                 tracking_mode=tracking,
                 conf_threshold=0.3,
                 output_format="normalized",
