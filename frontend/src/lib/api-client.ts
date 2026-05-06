@@ -8,8 +8,6 @@ import { z } from "zod"
 
 export const API_BASE = "/api/v1"
 
-export const SKIP_AUTH = process.env.NEXT_PUBLIC_SKIP_AUTH === "true"
-
 // ---------------------------------------------------------------------------
 // Token storage
 // ---------------------------------------------------------------------------
@@ -116,7 +114,7 @@ export async function apiFetch<T>(
   }
 
   // Silent refresh on 401: mutex ensures only one refresh at a time
-  if (res.status === 401 && auth && !SKIP_AUTH) {
+  if (res.status === 401 && auth) {
     if (!refreshPromise) {
       refreshPromise = silentRefresh().finally(() => {
         refreshPromise = null
@@ -162,7 +160,7 @@ export async function authFetch(path: string, init?: RequestInit): Promise<Respo
     headers: { ...authHeaders(), ...init?.headers },
   })
 
-  if (res.status === 401 && !SKIP_AUTH) {
+  if (res.status === 401) {
     if (!refreshPromise) {
       refreshPromise = silentRefresh().finally(() => {
         refreshPromise = null

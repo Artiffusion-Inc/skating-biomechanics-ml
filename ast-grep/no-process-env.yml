@@ -3,8 +3,8 @@ language: tsx
 message: |
   Don't access process.env directly in source code. Centralize env access in a config module.
 
-  Instead of:  if (process.env.NEXT_PUBLIC_SKIP_AUTH === "true")
-  Use:         import { skipAuth } from "@/lib/env"; if (skipAuth)
+  Instead of:  if (process.env.SOME_VAR === "true")
+  Use:         import { someVar } from "@/lib/env"; if (someVar)
 severity: warning
 note: |
   All env access should go through a single config module so values are typed,

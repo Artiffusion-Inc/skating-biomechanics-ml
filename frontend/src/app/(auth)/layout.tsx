@@ -3,13 +3,9 @@ import { cookies } from "next/headers"
 import Link from "next/link"
 import { redirect } from "next/navigation"
 import { getTranslations } from "next-intl/server"
-import { skipAuth } from "@/lib/env"
 
 export default async function AuthLayout({ children }: { children: React.ReactNode }) {
   const t = await getTranslations("app")
-
-  // Already authenticated — redirect to app (skip when NEXT_PUBLIC_SKIP_AUTH=true)
-  if (skipAuth) redirect("/feed")
 
   const hasAuth = (await cookies()).get("sb_auth")?.value
   if (hasAuth) redirect("/feed")

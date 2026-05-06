@@ -5,5 +5,5 @@ valid:
 invalid:
   - 'process.env.NEXT_PUBLIC_API_URL'
   - 'process.env.NODE_ENV'
-  - 'if (process.env.SKIP_AUTH === "true") {}'
+  - 'if (process.env.SOME_VAR === "true") {}'
   - 'process.env["SOME_KEY"]'
