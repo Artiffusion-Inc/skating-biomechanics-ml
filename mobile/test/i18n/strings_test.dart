@@ -33,12 +33,26 @@ void main() {
       expect(t.ble.oneConnected, isNotEmpty);
       expect(t.ble.connecting, isNotEmpty);
       expect(t.ble.sensorSettings, isNotEmpty);
+      expect(t.ble.status.connected, isNotEmpty);
+      expect(t.ble.status.disconnected, isNotEmpty);
+      expect(t.ble.errors.locationRequired, isNotEmpty);
       expect(t.ble.battery.title, isNotEmpty);
       expect(t.ble.battery.unknown, isNotEmpty);
       expect(t.ble.battery.request, isNotEmpty);
+      expect(t.ble.battery.unit, isNotEmpty);
       expect(t.ble.returnRate.title, isNotEmpty);
       expect(t.ble.returnRate.hint, isNotEmpty);
       expect(t.ble.returnRate.select, isNotEmpty);
+      expect(t.ble.returnRate.hz02, isNotEmpty);
+      expect(t.ble.returnRate.hz05, isNotEmpty);
+      expect(t.ble.returnRate.hz1, isNotEmpty);
+      expect(t.ble.returnRate.hz2, isNotEmpty);
+      expect(t.ble.returnRate.hz5, isNotEmpty);
+      expect(t.ble.returnRate.hz10, isNotEmpty);
+      expect(t.ble.returnRate.hz20, isNotEmpty);
+      expect(t.ble.returnRate.hz50, isNotEmpty);
+      expect(t.ble.returnRate.hz100, isNotEmpty);
+      expect(t.ble.returnRate.hz200, isNotEmpty);
       expect(t.ble.rename.title, isNotEmpty);
       expect(t.ble.rename.action, isNotEmpty);
       expect(t.ble.rename.dialogTitle, isNotEmpty);
@@ -61,6 +75,7 @@ void main() {
       expect(t.calibration.errorPrefix, isNotEmpty);
       expect(t.calibration.noData, isNotEmpty);
       expect(t.calibration.startCapture, isNotEmpty);
+      expect(t.calibration.seconds, isNotEmpty);
     });
 
     test('camera namespace keys are non-empty', () {
@@ -102,6 +117,12 @@ void main() {
       expect(t.metrics.gyro, isNotEmpty);
       expect(t.metrics.accel, isNotEmpty);
       expect(t.metrics.edgeAngle, isNotEmpty);
+    });
+
+    test('overlay namespace keys are non-empty', () {
+      expect(t.overlay.leftLabel, isNotEmpty);
+      expect(t.overlay.rightLabel, isNotEmpty);
+      expect(t.overlay.staleAlert, isNotEmpty);
     });
   });
 }
