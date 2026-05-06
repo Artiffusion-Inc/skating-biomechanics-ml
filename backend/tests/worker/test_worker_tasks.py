@@ -14,20 +14,15 @@ _mock_aiobotocore_session = MagicMock()
 sys.modules["aiobotocore"] = _mock_aiobotocore
 sys.modules["aiobotocore.session"] = _mock_aiobotocore_session
 
-# Mock cv2 so detect_video_task tests don't require opencv-python
-sys.modules["cv2"] = MagicMock()
-
-# Pre-register ML submodules as MagicMocks so patch() can resolve them
-# without pulling in heavy/optional deps like av, opencv, etc.
-# Note: do NOT mock src.pose_estimation here. Replacing it with a MagicMock
-# (which has no __path__) prevents subsequent submodule imports like
-# `from src.pose_estimation.batch_extractor import ...` from working when
-# ml/tests/pose_estimation/ tests are collected later in the same session.
-# Likewise, do NOT mock real installed modules like tqdm here: a MagicMock
-# does not expose __spec__, which breaks importlib.util.find_spec(...) calls
-# from third-party libs (e.g. torch._dynamo.trace_rules) collected later.
-sys.modules["src.web_helpers"] = MagicMock()
-sys.modules["src.utils.video"] = MagicMock()
+# Note: do NOT replace real installed modules (cv2, tqdm, src.pose_estimation,
+# src.utils.video, src.web_helpers, etc.) in sys.modules with MagicMock.
+# A MagicMock-as-module pollutes sys.modules for the rest of the pytest session,
+# breaking later-collected ml/tests/* that need the real modules: e.g. cv2
+# functions get replaced with MagicMocks (numpy assignments fail), src.pose_estimation
+# loses __path__ (submodule imports fail), tqdm loses __spec__
+# (importlib.util.find_spec fails inside torch._dynamo.trace_rules).
+# Instead, patch the specific symbol at the call site per test (see autouse
+# fixtures and `with patch(...)` blocks below).
 
 
 # ---------------------------------------------------------------------------
@@ -556,6 +551,12 @@ class TestProcessVideoTask:
 
 class TestDetectVideoTask:
     """Tests for detect_video_task."""
+
+    @pytest.fixture(autouse=True)
+    def _mock_pose_extractor(self):
+        """Patch PoseExtractor so detect_video_task does not load the real ONNX model."""
+        with patch("src.pose_estimation.pose_extractor.PoseExtractor"):
+            yield
 
     @pytest.fixture
     def empty_detect_thread(self):
