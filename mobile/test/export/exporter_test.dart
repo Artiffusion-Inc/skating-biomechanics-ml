@@ -32,15 +32,29 @@ void main() {
       final samples = [
         {
           'relative_timestamp_ms': 0,
-          'acc_x': 0.0, 'acc_y': 0.0, 'acc_z': 1.0,
-          'gyro_x': 0.0, 'gyro_y': 0.0, 'gyro_z': 0.0,
-          'quat_w': 1.0, 'quat_x': 0.0, 'quat_y': 0.0, 'quat_z': 0.0,
+          'acc_x': 0.0,
+          'acc_y': 0.0,
+          'acc_z': 1.0,
+          'gyro_x': 0.0,
+          'gyro_y': 0.0,
+          'gyro_z': 0.0,
+          'quat_w': 1.0,
+          'quat_x': 0.0,
+          'quat_y': 0.0,
+          'quat_z': 0.0,
         },
         {
           'relative_timestamp_ms': 10,
-          'acc_x': 0.1, 'acc_y': 0.0, 'acc_z': 0.9,
-          'gyro_x': 0.5, 'gyro_y': 0.0, 'gyro_z': 0.0,
-          'quat_w': 0.99, 'quat_x': 0.01, 'quat_y': 0.0, 'quat_z': 0.0,
+          'acc_x': 0.1,
+          'acc_y': 0.0,
+          'acc_z': 0.9,
+          'gyro_x': 0.5,
+          'gyro_y': 0.0,
+          'gyro_z': 0.0,
+          'quat_w': 0.99,
+          'quat_x': 0.01,
+          'quat_y': 0.0,
+          'quat_z': 0.0,
         },
       ];
 
@@ -62,8 +76,14 @@ void main() {
 
       final filenames = archive.map((f) => f.name).toList();
       expect(filenames, contains('capture_20240101_120000.json')); // manifest
-      expect(filenames, contains('capture_20240101_120000_left.pb')); // protobuf
-      expect(filenames, contains('capture_20240101_120000_right.pb')); // protobuf
+      expect(
+        filenames,
+        contains('capture_20240101_120000_left.pb'),
+      ); // protobuf
+      expect(
+        filenames,
+        contains('capture_20240101_120000_right.pb'),
+      ); // protobuf
 
       // Verify protobuf deserializes correctly
       final leftPbFile = archive.firstWhere((f) => f.name.endsWith('_left.pb'));
@@ -77,11 +97,47 @@ void main() {
     test('export computes max duration from both channels', () async {
       final videoPath = await _createDummyVideo();
       final left = [
-        {'relative_timestamp_ms': 0, 'acc_x': 0.0, 'acc_y': 0.0, 'acc_z': 1.0, 'gyro_x': 0.0, 'gyro_y': 0.0, 'gyro_z': 0.0, 'quat_w': 1.0, 'quat_x': 0.0, 'quat_y': 0.0, 'quat_z': 0.0},
+        {
+          'relative_timestamp_ms': 0,
+          'acc_x': 0.0,
+          'acc_y': 0.0,
+          'acc_z': 1.0,
+          'gyro_x': 0.0,
+          'gyro_y': 0.0,
+          'gyro_z': 0.0,
+          'quat_w': 1.0,
+          'quat_x': 0.0,
+          'quat_y': 0.0,
+          'quat_z': 0.0,
+        },
       ];
       final right = [
-        {'relative_timestamp_ms': 0, 'acc_x': 0.0, 'acc_y': 0.0, 'acc_z': 1.0, 'gyro_x': 0.0, 'gyro_y': 0.0, 'gyro_z': 0.0, 'quat_w': 1.0, 'quat_x': 0.0, 'quat_y': 0.0, 'quat_z': 0.0},
-        {'relative_timestamp_ms': 500, 'acc_x': 0.0, 'acc_y': 0.0, 'acc_z': 1.0, 'gyro_x': 0.0, 'gyro_y': 0.0, 'gyro_z': 0.0, 'quat_w': 1.0, 'quat_x': 0.0, 'quat_y': 0.0, 'quat_z': 0.0},
+        {
+          'relative_timestamp_ms': 0,
+          'acc_x': 0.0,
+          'acc_y': 0.0,
+          'acc_z': 1.0,
+          'gyro_x': 0.0,
+          'gyro_y': 0.0,
+          'gyro_z': 0.0,
+          'quat_w': 1.0,
+          'quat_x': 0.0,
+          'quat_y': 0.0,
+          'quat_z': 0.0,
+        },
+        {
+          'relative_timestamp_ms': 500,
+          'acc_x': 0.0,
+          'acc_y': 0.0,
+          'acc_z': 1.0,
+          'gyro_x': 0.0,
+          'gyro_y': 0.0,
+          'gyro_z': 0.0,
+          'quat_w': 1.0,
+          'quat_x': 0.0,
+          'quat_y': 0.0,
+          'quat_z': 0.0,
+        },
       ];
 
       final zipPath = await exporter.export(

@@ -15,9 +15,11 @@ class CaptureRepository {
   StreamSubscription? _streamSubscription;
   DateTime? _t0;
 
-  CaptureRepository({required BleManager bleManager, required CameraRecorder cameraRecorder})
-      : _bleManager = bleManager,
-        _cameraRecorder = cameraRecorder;
+  CaptureRepository({
+    required BleManager bleManager,
+    required CameraRecorder cameraRecorder,
+  }) : _bleManager = bleManager,
+       _cameraRecorder = cameraRecorder;
 
   DateTime? get startTime => _t0;
   int get leftSampleCount => _leftBuffer.length;

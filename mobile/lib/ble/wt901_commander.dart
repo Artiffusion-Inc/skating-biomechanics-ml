@@ -6,7 +6,7 @@ class WT901Commander {
   WT901Commander(this.device);
 
   static final List<int> _unlock = [0xFF, 0xAA, 0x69, 0x88, 0xB5];
-  static final List<int> _save   = [0xFF, 0xAA, 0x00, 0x00, 0x00];
+  static final List<int> _save = [0xFF, 0xAA, 0x00, 0x00, 0x00];
 
   Future<void> _sendCommand(List<int> cmd) async {
     final services = await device.discoverServices();

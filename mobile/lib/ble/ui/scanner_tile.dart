@@ -45,12 +45,14 @@ class ScannerTile extends StatelessWidget {
             ),
           if (isLeft)
             _SideChip(
-              label: '${t.ble.left} ${leftDevice?.isConnected.value ?? false ? t.ble.status.connected : t.ble.status.disconnected}',
+              label:
+                  '${t.ble.left} ${leftDevice?.isConnected.value ?? false ? t.ble.status.connected : t.ble.status.disconnected}',
               color: Colors.blue.shade800,
             )
           else if (isRight)
             _SideChip(
-              label: '${t.ble.right} ${rightDevice?.isConnected.value ?? false ? t.ble.status.connected : t.ble.status.disconnected}',
+              label:
+                  '${t.ble.right} ${rightDevice?.isConnected.value ?? false ? t.ble.status.connected : t.ble.status.disconnected}',
               color: Colors.purple.shade800,
             ),
           IconButton(
@@ -68,8 +70,11 @@ class _BatteryIndicator extends StatelessWidget {
   final double voltage;
   const _BatteryIndicator({required this.voltage});
 
-  Color get _color =>
-      voltage > 3.7 ? Colors.green : voltage > 3.5 ? Colors.orange : Colors.red;
+  Color get _color => voltage > 3.7
+      ? Colors.green
+      : voltage > 3.5
+      ? Colors.orange
+      : Colors.red;
 
   @override
   Widget build(BuildContext context) {
@@ -94,9 +99,6 @@ class _SideChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Chip(
-      label: Text(label),
-      backgroundColor: color,
-    );
+    return Chip(label: Text(label), backgroundColor: color);
   }
 }

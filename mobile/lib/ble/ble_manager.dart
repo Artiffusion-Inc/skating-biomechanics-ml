@@ -5,11 +5,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'wt901_parser.dart';
 import 'imu_device.dart';
 
-enum BleScanError {
-  bluetoothOff,
-  locationRequired,
-  unknown,
-}
+enum BleScanError { bluetoothOff, locationRequired, unknown }
 
 class BleManager extends ChangeNotifier {
   List<ScanResult> scanResults = [];
@@ -40,7 +36,8 @@ class BleManager extends ChangeNotifier {
       FlutterBluePlus.adapterStateNow == BluetoothAdapterState.on;
 
   bool get canProceed =>
-      (leftDevice?.isConnected.value ?? false) || (rightDevice?.isConnected.value ?? false);
+      (leftDevice?.isConnected.value ?? false) ||
+      (rightDevice?.isConnected.value ?? false);
 
   Future<bool> checkLocationPermission() async {
     locationPermissionGranted = await Permission.location.isGranted;
@@ -164,8 +161,10 @@ class BleManager extends ChangeNotifier {
 
   Future<void> connectAll() async {
     await Future.wait([
-      if (leftDevice != null && !leftDevice!.isConnected.value) leftDevice!.connect(),
-      if (rightDevice != null && !rightDevice!.isConnected.value) rightDevice!.connect(),
+      if (leftDevice != null && !leftDevice!.isConnected.value)
+        leftDevice!.connect(),
+      if (rightDevice != null && !rightDevice!.isConnected.value)
+        rightDevice!.connect(),
     ]);
   }
 
@@ -177,7 +176,8 @@ class BleManager extends ChangeNotifier {
   }
 
   Stream<(WT901Packet?, WT901Packet?)> startStreams() {
-    final controller = StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
+    final controller =
+        StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
     WT901Packet? lastLeft, lastRight;
     StreamSubscription? leftSub, rightSub;
     Timer? timer;

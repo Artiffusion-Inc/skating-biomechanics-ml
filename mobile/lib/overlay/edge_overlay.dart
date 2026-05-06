@@ -41,7 +41,11 @@ class EdgeOverlay extends StatelessWidget {
                 if (leftStale) ...[
                   Tooltip(
                     message: t.overlay.staleAlert,
-                    child: Icon(Icons.warning_amber, color: Colors.red.shade400, size: 16),
+                    child: Icon(
+                      Icons.warning_amber,
+                      color: Colors.red.shade400,
+                      size: 16,
+                    ),
                   ),
                   const SizedBox(width: 4),
                 ],
@@ -60,7 +64,11 @@ class EdgeOverlay extends StatelessWidget {
                 if (rightStale) ...[
                   Tooltip(
                     message: t.overlay.staleAlert,
-                    child: Icon(Icons.warning_amber, color: Colors.red.shade400, size: 16),
+                    child: Icon(
+                      Icons.warning_amber,
+                      color: Colors.red.shade400,
+                      size: 16,
+                    ),
                   ),
                   const SizedBox(width: 4),
                 ],

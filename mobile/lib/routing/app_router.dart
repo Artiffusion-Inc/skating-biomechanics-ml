@@ -32,25 +32,29 @@ GoRouter buildRouter() {
       GoRoute(
         path: AppRoutes.permissions,
         builder: (_, __) => PermissionsScreen(
-          onGranted: () => _rootNavigatorKey.currentContext?.go(AppRoutes.bleScan),
+          onGranted: () =>
+              _rootNavigatorKey.currentContext?.go(AppRoutes.bleScan),
         ),
       ),
       GoRoute(
         path: AppRoutes.bleScan,
         builder: (_, __) => BleScanScreen(
-          onReady: () => _rootNavigatorKey.currentContext?.go(AppRoutes.calibration),
+          onReady: () =>
+              _rootNavigatorKey.currentContext?.go(AppRoutes.calibration),
         ),
       ),
       GoRoute(
         path: AppRoutes.calibration,
         builder: (_, __) => CalibrationScreen(
-          onComplete: () => _rootNavigatorKey.currentContext?.go(AppRoutes.camera),
+          onComplete: () =>
+              _rootNavigatorKey.currentContext?.go(AppRoutes.camera),
         ),
       ),
       GoRoute(
         path: AppRoutes.camera,
         builder: (_, __) => CameraReadyScreen(
-          onStartCapture: () => _rootNavigatorKey.currentContext?.go(AppRoutes.capturing),
+          onStartCapture: () =>
+              _rootNavigatorKey.currentContext?.go(AppRoutes.capturing),
         ),
       ),
       GoRoute(

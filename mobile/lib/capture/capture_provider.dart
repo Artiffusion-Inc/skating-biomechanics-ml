@@ -13,8 +13,13 @@ class CaptureProvider extends ChangeNotifier {
   int get leftSampleCount => _repo.leftSampleCount;
   int get rightSampleCount => _repo.rightSampleCount;
 
-  CaptureProvider({required BleManager bleManager, required CameraRecorder cameraRecorder})
-      : _repo = CaptureRepository(bleManager: bleManager, cameraRecorder: cameraRecorder);
+  CaptureProvider({
+    required BleManager bleManager,
+    required CameraRecorder cameraRecorder,
+  }) : _repo = CaptureRepository(
+         bleManager: bleManager,
+         cameraRecorder: cameraRecorder,
+       );
 
   Future<CaptureResult?> start({
     required void Function(double edgeAngle) onLeftEdgeAngle,

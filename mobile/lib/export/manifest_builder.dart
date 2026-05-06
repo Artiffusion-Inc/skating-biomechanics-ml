@@ -37,10 +37,7 @@ class ManifestBuilder {
           'start_offset_ms': 0,
         },
       },
-      'calibration': {
-        'left': leftRef,
-        'right': rightRef,
-      },
+      'calibration': {'left': leftRef, 'right': rightRef},
     };
     return const JsonEncoder.withIndent('  ').convert(manifest);
   }

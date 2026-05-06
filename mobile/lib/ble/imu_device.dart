@@ -13,11 +13,7 @@ class IMUDevice {
   StreamSubscription? _notifySubscription;
   StreamSubscription? _connectionSubscription;
 
-  IMUDevice({
-    required this.device,
-    required this.side,
-    this.onBattery,
-  }) {
+  IMUDevice({required this.device, required this.side, this.onBattery}) {
     isConnected.value = device.isConnected;
     _connectionSubscription = device.connectionState.listen((state) {
       final connected = state == BluetoothConnectionState.connected;
@@ -35,7 +31,9 @@ class IMUDevice {
     await _notifySubscription?.cancel();
     _notifySubscription = null;
     // Do NOT mutate isConnected.value here. Let device.connectionState stream do it.
-    try { await device.disconnect(); } catch (_) {}
+    try {
+      await device.disconnect();
+    } catch (_) {}
     // Do NOT cancel _connectionSubscription here — the platform stack may still
     // emit a disconnected event we want to observe.
   }

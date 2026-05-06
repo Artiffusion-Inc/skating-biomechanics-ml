@@ -4,21 +4,24 @@ import 'package:edgesense_capture/ble/wt901_constants.dart';
 
 void main() {
   group('WT901Parser', () {
-    test('parses concatenated packet by taking only first packetLength bytes', () {
-      final valid = List<int>.filled(packetLength, 0x55);
-      valid[0] = packetHeader;
-      valid[1] = typeAccel;
-      var sum = 0;
-      for (var i = 0; i < packetLength - 1; i++) sum += valid[i];
-      valid[packetLength - 1] = sum & 0xFF;
+    test(
+      'parses concatenated packet by taking only first packetLength bytes',
+      () {
+        final valid = List<int>.filled(packetLength, 0x55);
+        valid[0] = packetHeader;
+        valid[1] = typeAccel;
+        var sum = 0;
+        for (var i = 0; i < packetLength - 1; i++) sum += valid[i];
+        valid[packetLength - 1] = sum & 0xFF;
 
-      final garbage = List<int>.filled(packetLength, 0xFF);
-      final concatenated = [...valid, ...garbage];
+        final garbage = List<int>.filled(packetLength, 0xFF);
+        final concatenated = [...valid, ...garbage];
 
-      final result = WT901Parser.parse(concatenated);
-      expect(result, isNotNull);
-      expect(result!.type, WT901PacketType.accelerometer);
-    });
+        final result = WT901Parser.parse(concatenated);
+        expect(result, isNotNull);
+        expect(result!.type, WT901PacketType.accelerometer);
+      },
+    );
 
     test('returns null for truncated packet', () {
       final truncated = [packetHeader, typeAccel];

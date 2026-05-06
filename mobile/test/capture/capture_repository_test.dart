@@ -20,7 +20,10 @@ void main() {
     setUp(() {
       bleManager = MockBleManager();
       cameraRecorder = MockCameraRecorder();
-      repo = CaptureRepository(bleManager: bleManager, cameraRecorder: cameraRecorder);
+      repo = CaptureRepository(
+        bleManager: bleManager,
+        cameraRecorder: cameraRecorder,
+      );
     });
 
     tearDown(() {
@@ -58,14 +61,17 @@ void main() {
     });
 
     test('stop returns CaptureResult with samples and t0', () async {
-      final controller = StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
+      final controller =
+          StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
 
       when(() => bleManager.connectAll()).thenAnswer((_) async {});
       when(() => cameraRecorder.startRecording()).thenAnswer((_) async {});
-      when(() => bleManager.startStreams()).thenAnswer((_) => controller.stream);
-      when(() => cameraRecorder.stopRecording()).thenAnswer(
-        (_) async => XFile('/tmp/video.mp4'),
-      );
+      when(
+        () => bleManager.startStreams(),
+      ).thenAnswer((_) => controller.stream);
+      when(
+        () => cameraRecorder.stopRecording(),
+      ).thenAnswer((_) async => XFile('/tmp/video.mp4'));
       when(() => bleManager.disconnectAll()).thenAnswer((_) async {});
 
       await repo.start(onLeftEdgeAngle: (_) {}, onRightEdgeAngle: (_) {});
@@ -99,14 +105,17 @@ void main() {
     });
 
     test('buffers are cleared on subsequent start', () async {
-      final controller = StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
+      final controller =
+          StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
 
       when(() => bleManager.connectAll()).thenAnswer((_) async {});
       when(() => cameraRecorder.startRecording()).thenAnswer((_) async {});
-      when(() => bleManager.startStreams()).thenAnswer((_) => controller.stream);
-      when(() => cameraRecorder.stopRecording()).thenAnswer(
-        (_) async => XFile('/tmp/video.mp4'),
-      );
+      when(
+        () => bleManager.startStreams(),
+      ).thenAnswer((_) => controller.stream);
+      when(
+        () => cameraRecorder.stopRecording(),
+      ).thenAnswer((_) async => XFile('/tmp/video.mp4'));
       when(() => bleManager.disconnectAll()).thenAnswer((_) async {});
 
       // First capture
@@ -118,11 +127,14 @@ void main() {
       await repo.stop();
 
       // Second capture — buffers should be empty initially
-      final controller2 = StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
-      when(() => bleManager.startStreams()).thenAnswer((_) => controller2.stream);
-      when(() => cameraRecorder.stopRecording()).thenAnswer(
-        (_) async => XFile('/tmp/video2.mp4'),
-      );
+      final controller2 =
+          StreamController<(WT901Packet?, WT901Packet?)>.broadcast();
+      when(
+        () => bleManager.startStreams(),
+      ).thenAnswer((_) => controller2.stream);
+      when(
+        () => cameraRecorder.stopRecording(),
+      ).thenAnswer((_) async => XFile('/tmp/video2.mp4'));
 
       await repo.start(onLeftEdgeAngle: (_) {}, onRightEdgeAngle: (_) {});
       expect(repo.leftSampleCount, equals(0));

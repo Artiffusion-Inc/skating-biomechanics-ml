@@ -15,7 +15,9 @@ void main() {
       mockDevice = MockBluetoothDevice();
       stateController = StreamController<BluetoothConnectionState>.broadcast();
       when(() => mockDevice.isConnected).thenReturn(true);
-      when(() => mockDevice.connectionState).thenAnswer((_) => stateController.stream);
+      when(
+        () => mockDevice.connectionState,
+      ).thenAnswer((_) => stateController.stream);
       when(() => mockDevice.disconnect()).thenAnswer((_) async {});
     });
 

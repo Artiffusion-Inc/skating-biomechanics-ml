@@ -45,7 +45,10 @@ class _BleScanScreenState extends State<BleScanScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               color: Colors.red.shade900,
-              child: Text(t.ble.bluetoothOff, style: const TextStyle(fontSize: 14)),
+              child: Text(
+                t.ble.bluetoothOff,
+                style: const TextStyle(fontSize: 14),
+              ),
             ),
           if (!ble.locationPermissionGranted)
             Container(
@@ -62,14 +65,12 @@ class _BleScanScreenState extends State<BleScanScreen> {
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               color: Colors.red.shade900,
-              child: Text(
-                switch (ble.scanError!) {
-                  BleScanError.bluetoothOff => t.ble.bluetoothOff,
-                  BleScanError.locationRequired => t.ble.errors.locationRequired,
-                  BleScanError.unknown => ble.scanErrorMessage ?? t.ble.errors.locationRequired,
-                },
-                style: const TextStyle(fontSize: 12),
-              ),
+              child: Text(switch (ble.scanError!) {
+                BleScanError.bluetoothOff => t.ble.bluetoothOff,
+                BleScanError.locationRequired => t.ble.errors.locationRequired,
+                BleScanError.unknown =>
+                  ble.scanErrorMessage ?? t.ble.errors.locationRequired,
+              }, style: const TextStyle(fontSize: 12)),
             ),
           Expanded(
             child: devices.isEmpty
@@ -88,7 +89,8 @@ class _BleScanScreenState extends State<BleScanScreen> {
                       result: devices[i],
                       leftDevice: ble.leftDevice,
                       rightDevice: ble.rightDevice,
-                      voltage: ble.batteryLevels[devices[i].device.remoteId.str],
+                      voltage:
+                          ble.batteryLevels[devices[i].device.remoteId.str],
                       onAssign: () => _showAssignSheet(devices[i], ble),
                       onSettings: () => _showSensorSettings(devices[i], ble),
                     ),

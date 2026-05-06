@@ -61,13 +61,19 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
         _leftQuats.add([left.quatW!, left.quatX!, left.quatY!, left.quatZ!]);
       }
       if (right != null && right.quatW != null) {
-        _rightQuats.add([right.quatW!, right.quatX!, right.quatY!, right.quatZ!]);
+        _rightQuats.add([
+          right.quatW!,
+          right.quatX!,
+          right.quatY!,
+          right.quatZ!,
+        ]);
       }
 
       final elapsed = sw.elapsed;
       if (mounted) {
         setState(() {
-          _progress = (elapsed.inMilliseconds / _calibDuration.inMilliseconds).clamp(0.0, 1.0);
+          _progress = (elapsed.inMilliseconds / _calibDuration.inMilliseconds)
+              .clamp(0.0, 1.0);
         });
       }
 
@@ -113,8 +119,8 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
                 _done
                     ? t.calibration.done
                     : _running
-                        ? t.calibration.running
-                        : t.calibration.instruction,
+                    ? t.calibration.running
+                    : t.calibration.instruction,
                 style: Theme.of(context).textTheme.titleMedium,
                 textAlign: TextAlign.center,
               ),
@@ -136,9 +142,15 @@ class _CalibrationScreenState extends State<CalibrationScreen> {
               ],
               if (_done) ...[
                 const SizedBox(height: 16),
-                _CalibResult(label: t.calibration.left, ref: context.watch<CalibrationService>().leftRef),
+                _CalibResult(
+                  label: t.calibration.left,
+                  ref: context.watch<CalibrationService>().leftRef,
+                ),
                 const SizedBox(height: 8),
-                _CalibResult(label: t.calibration.right, ref: context.watch<CalibrationService>().rightRef),
+                _CalibResult(
+                  label: t.calibration.right,
+                  ref: context.watch<CalibrationService>().rightRef,
+                ),
                 const SizedBox(height: 24),
                 FilledButton.icon(
                   onPressed: widget.onComplete,
@@ -175,7 +187,11 @@ class _CalibResult extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Translations.of(context);
-    if (ref == null) return Text('$label: ${t.calibration.noData}', style: const TextStyle(color: Colors.white54));
+    if (ref == null)
+      return Text(
+        '$label: ${t.calibration.noData}',
+        style: const TextStyle(color: Colors.white54),
+      );
     return Text(
       '$label: q=[${ref![0].toStringAsFixed(3)}, ${ref![1].toStringAsFixed(3)}, ${ref![2].toStringAsFixed(3)}, ${ref![3].toStringAsFixed(3)}]',
       style: const TextStyle(fontFamily: 'monospace', fontSize: 12),

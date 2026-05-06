@@ -7,12 +7,17 @@ void main() {
   group('AppRouter', () {
     test('initial location is permissions', () {
       final router = buildRouter();
-      expect(router.routeInformationProvider.value.uri.path, AppRoutes.permissions);
+      expect(
+        router.routeInformationProvider.value.uri.path,
+        AppRoutes.permissions,
+      );
     });
 
     test('route paths match expected', () {
       final router = buildRouter();
-      final paths = router.configuration.routes.map((r) => (r as GoRoute).path).toList();
+      final paths = router.configuration.routes
+          .map((r) => (r as GoRoute).path)
+          .toList();
       expect(paths, contains(AppRoutes.permissions));
       expect(paths, contains(AppRoutes.bleScan));
       expect(paths, contains(AppRoutes.calibration));

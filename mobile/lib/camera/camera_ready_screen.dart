@@ -55,7 +55,10 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
             children: [
               const Icon(Icons.videocam_off, size: 64, color: Colors.white54),
               const SizedBox(height: 16),
-              Text(_error ?? t.camera.unavailable, style: const TextStyle(fontSize: 16)),
+              Text(
+                _error ?? t.camera.unavailable,
+                style: const TextStyle(fontSize: 16),
+              ),
               const SizedBox(height: 24),
               FilledButton.icon(
                 onPressed: _initCamera,
@@ -95,15 +98,17 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
           else
             const SizedBox.expand(),
           // Grid overlay
-          if (recorder.showGrid)
-            const Positioned.fill(child: GridOverlay()),
+          if (recorder.showGrid) const Positioned.fill(child: GridOverlay()),
           // Top bar
           SafeArea(
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   color: Colors.black54,
                   child: Row(
                     children: [
@@ -119,7 +124,11 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                       ),
                       // Settings
                       IconButton(
-                        icon: const Icon(Icons.settings, color: Colors.white, size: 22),
+                        icon: const Icon(
+                          Icons.settings,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                         tooltip: t.camera.settings,
                         onPressed: () => _showSettings(context),
                       ),
@@ -131,14 +140,24 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                             if (ble.leftDevice != null) ...[
                               _BatteryChip(
                                 label: 'L',
-                                voltage: ble.batteryLevels[ble.leftDevice!.device.remoteId.str],
+                                voltage:
+                                    ble.batteryLevels[ble
+                                        .leftDevice!
+                                        .device
+                                        .remoteId
+                                        .str],
                               ),
                               const SizedBox(width: 6),
                             ],
                             if (ble.rightDevice != null) ...[
                               _BatteryChip(
                                 label: 'R',
-                                voltage: ble.batteryLevels[ble.rightDevice!.device.remoteId.str],
+                                voltage:
+                                    ble.batteryLevels[ble
+                                        .rightDevice!
+                                        .device
+                                        .remoteId
+                                        .str],
                               ),
                             ],
                           ],
@@ -146,12 +165,18 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                       ),
                       // Metrics button
                       IconButton(
-                        icon: const Icon(Icons.show_chart, color: Colors.white, size: 22),
+                        icon: const Icon(
+                          Icons.show_chart,
+                          color: Colors.white,
+                          size: 22,
+                        ),
                         tooltip: t.camera.sensors,
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (_) => const MetricsScreen()),
+                            MaterialPageRoute(
+                              builder: (_) => const MetricsScreen(),
+                            ),
                           );
                         },
                       ),
@@ -160,10 +185,14 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                 ),
                 // IMU status chips
                 Consumer<BleManager>(
-                  builder: (ctx, ble, _) => ble.leftDevice != null || ble.rightDevice != null
+                  builder: (ctx, ble, _) =>
+                      ble.leftDevice != null || ble.rightDevice != null
                       ? Container(
                           width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 4,
+                          ),
                           color: Colors.black38,
                           child: Wrap(
                             spacing: 8,
@@ -176,7 +205,8 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                                     '${t.ble.left} ${ble.leftDevice!.isConnected.value ? "✓" : "…"}',
                                     style: const TextStyle(fontSize: 10),
                                   ),
-                                  backgroundColor: ble.leftDevice!.isConnected.value
+                                  backgroundColor:
+                                      ble.leftDevice!.isConnected.value
                                       ? Colors.green.shade800
                                       : Colors.orange.shade800,
                                 ),
@@ -188,7 +218,8 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                                     '${t.ble.right} ${ble.rightDevice!.isConnected.value ? "✓" : "…"}',
                                     style: const TextStyle(fontSize: 10),
                                   ),
-                                  backgroundColor: ble.rightDevice!.isConnected.value
+                                  backgroundColor:
+                                      ble.rightDevice!.isConnected.value
                                       ? Colors.green.shade800
                                       : Colors.orange.shade800,
                                 ),
@@ -207,12 +238,18 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
             right: 0,
             child: SafeArea(
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24,
+                  vertical: 16,
+                ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.7),
+                    ],
                   ),
                 ),
                 child: Row(
@@ -220,7 +257,11 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                   children: [
                     // Flip camera
                     IconButton(
-                      icon: const Icon(Icons.flip_camera_ios, color: Colors.white70, size: 28),
+                      icon: const Icon(
+                        Icons.flip_camera_ios,
+                        color: Colors.white70,
+                        size: 28,
+                      ),
                       onPressed: () => recorder.toggleCamera(),
                     ),
                     // Record button
@@ -267,7 +308,10 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
             children: [
               Text(
                 t.camera.settingsTitle,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 16),
               Consumer<CameraRecorder>(
@@ -280,14 +324,20 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                         value: recorder.resolution,
                         underline: const SizedBox.shrink(),
                         items: ResolutionPreset.values.map((r) {
-                          final label = {
-                            ResolutionPreset.low: t.camera.resolutions.low,
-                            ResolutionPreset.medium: t.camera.resolutions.medium,
-                            ResolutionPreset.high: t.camera.resolutions.high,
-                            ResolutionPreset.veryHigh: t.camera.resolutions.veryHigh,
-                            ResolutionPreset.ultraHigh: t.camera.resolutions.ultraHigh,
-                            ResolutionPreset.max: t.camera.resolutions.max,
-                          }[r] ?? r.name;
+                          final label =
+                              {
+                                ResolutionPreset.low: t.camera.resolutions.low,
+                                ResolutionPreset.medium:
+                                    t.camera.resolutions.medium,
+                                ResolutionPreset.high:
+                                    t.camera.resolutions.high,
+                                ResolutionPreset.veryHigh:
+                                    t.camera.resolutions.veryHigh,
+                                ResolutionPreset.ultraHigh:
+                                    t.camera.resolutions.ultraHigh,
+                                ResolutionPreset.max: t.camera.resolutions.max,
+                              }[r] ??
+                              r.name;
                           return DropdownMenuItem(value: r, child: Text(label));
                         }).toList(),
                         onChanged: (v) {
@@ -325,19 +375,15 @@ class _BatteryChip extends StatelessWidget {
     final color = v == null
         ? Colors.grey
         : v > 3.7
-            ? Colors.green
-            : v > 3.5
-                ? Colors.orange
-                : Colors.red;
+        ? Colors.green
+        : v > 3.5
+        ? Colors.orange
+        : Colors.red;
 
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(
-          Icons.battery_full,
-          color: color,
-          size: 14,
-        ),
+        Icon(Icons.battery_full, color: color, size: 14),
         const SizedBox(width: 2),
         Text(
           '$label ${v?.toStringAsFixed(1) ?? "—"}V',

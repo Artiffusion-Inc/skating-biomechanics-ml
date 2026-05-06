@@ -162,24 +162,37 @@ class _CapturingScreenState extends State<CapturingScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   color: Colors.black54,
                   child: Row(
                     children: [
                       // REC chip
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
                         decoration: BoxDecoration(
                           color: Colors.red.shade900,
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           children: [
-                            Icon(Icons.fiber_manual_record, color: Colors.red.shade300, size: 12),
+                            Icon(
+                              Icons.fiber_manual_record,
+                              color: Colors.red.shade300,
+                              size: 12,
+                            ),
                             const SizedBox(width: 4),
                             Text(
                               '${_elapsed.inMinutes.toString().padLeft(2, '0')}:${(_elapsed.inSeconds % 60).toString().padLeft(2, '0')}',
-                              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
                             ),
                           ],
                         ),
@@ -189,14 +202,24 @@ class _CapturingScreenState extends State<CapturingScreen> {
                       if (ble.leftDevice != null) ...[
                         _BatteryChip(
                           label: 'L',
-                          voltage: ble.batteryLevels[ble.leftDevice!.device.remoteId.str],
+                          voltage:
+                              ble.batteryLevels[ble
+                                  .leftDevice!
+                                  .device
+                                  .remoteId
+                                  .str],
                         ),
                         const SizedBox(width: 6),
                       ],
                       if (ble.rightDevice != null) ...[
                         _BatteryChip(
                           label: 'R',
-                          voltage: ble.batteryLevels[ble.rightDevice!.device.remoteId.str],
+                          voltage:
+                              ble.batteryLevels[ble
+                                  .rightDevice!
+                                  .device
+                                  .remoteId
+                                  .str],
                         ),
                       ],
                       const SizedBox(width: 6),
@@ -204,7 +227,10 @@ class _CapturingScreenState extends State<CapturingScreen> {
                       Text(
                         'L:${context.select<CaptureProvider, int>((c) => c.leftSampleCount)}  '
                         'R:${context.select<CaptureProvider, int>((c) => c.rightSampleCount)}',
-                        style: const TextStyle(fontSize: 11, color: Colors.white70),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: Colors.white70,
+                        ),
                       ),
                     ],
                   ),
@@ -217,7 +243,11 @@ class _CapturingScreenState extends State<CapturingScreen> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _stopping ? null : _stopCapture,
         icon: _stopping
-            ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+            ? const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             : const Icon(Icons.stop),
         label: Text(_stopping ? t.capture.saving : t.capture.stop),
         backgroundColor: Colors.red,
@@ -238,10 +268,10 @@ class _BatteryChip extends StatelessWidget {
     final color = v == null
         ? Colors.grey
         : v > 3.7
-            ? Colors.green
-            : v > 3.5
-                ? Colors.orange
-                : Colors.red;
+        ? Colors.green
+        : v > 3.5
+        ? Colors.orange
+        : Colors.red;
 
     return Row(
       mainAxisSize: MainAxisSize.min,

@@ -13,10 +13,14 @@ class StatusBar extends StatelessWidget {
     final t = Translations.of(context);
     final parts = <String>[];
     if (leftDevice != null) {
-      parts.add('${t.ble.left} ${leftDevice!.isConnected.value ? t.ble.status.connected : t.ble.status.disconnected}');
+      parts.add(
+        '${t.ble.left} ${leftDevice!.isConnected.value ? t.ble.status.connected : t.ble.status.disconnected}',
+      );
     }
     if (rightDevice != null) {
-      parts.add('${t.ble.right} ${rightDevice!.isConnected.value ? t.ble.status.connected : t.ble.status.disconnected}');
+      parts.add(
+        '${t.ble.right} ${rightDevice!.isConnected.value ? t.ble.status.connected : t.ble.status.disconnected}',
+      );
     }
 
     final leftOk = leftDevice?.isConnected.value ?? false;
@@ -24,16 +28,16 @@ class StatusBar extends StatelessWidget {
     final color = leftOk && rightOk
         ? Colors.green.shade800
         : leftOk || rightOk
-            ? Colors.orange.shade800
-            : Colors.grey.shade800;
+        ? Colors.orange.shade800
+        : Colors.grey.shade800;
 
     final text = parts.isEmpty
         ? t.ble.assignHint
         : leftOk && rightOk
-            ? '${parts.join('  ')}  —  ${t.ble.bothConnected}'
-            : leftOk || rightOk
-                ? '${parts.join('  ')}  —  ${t.ble.oneConnected}'
-                : '${parts.join('  ')}  —  ${t.ble.connecting}';
+        ? '${parts.join('  ')}  —  ${t.ble.bothConnected}'
+        : leftOk || rightOk
+        ? '${parts.join('  ')}  —  ${t.ble.oneConnected}'
+        : '${parts.join('  ')}  —  ${t.ble.connecting}';
 
     return Container(
       width: double.infinity,

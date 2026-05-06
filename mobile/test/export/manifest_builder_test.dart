@@ -15,8 +15,14 @@ void main() {
         videoFps: 60,
         leftImuFilename: 'capture_20240101_120000_left.pb',
         rightImuFilename: 'capture_20240101_120000_right.pb',
-        leftRef: {'quat_ref': [1.0, 0.0, 0.0, 0.0], 'calibrated_at': t0.toIso8601String()},
-        rightRef: {'quat_ref': [0.99, 0.01, 0.0, 0.0], 'calibrated_at': t0.toIso8601String()},
+        leftRef: {
+          'quat_ref': [1.0, 0.0, 0.0, 0.0],
+          'calibrated_at': t0.toIso8601String(),
+        },
+        rightRef: {
+          'quat_ref': [0.99, 0.01, 0.0, 0.0],
+          'calibrated_at': t0.toIso8601String(),
+        },
       );
 
       final json = jsonDecode(manifest) as Map<String, dynamic>;

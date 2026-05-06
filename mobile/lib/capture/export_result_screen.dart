@@ -29,7 +29,9 @@ class ExportResultScreen extends StatelessWidget {
               ),
               const SizedBox(height: 24),
               Text(
-                success ? Translations.of(context).export.success : Translations.of(context).export.error,
+                success
+                    ? Translations.of(context).export.success
+                    : Translations.of(context).export.error,
                 style: Theme.of(context).textTheme.headlineSmall,
               ),
               if (success) ...[
@@ -42,7 +44,10 @@ class ExportResultScreen extends StatelessWidget {
                   ),
                   child: SelectableText(
                     exportPath!,
-                    style: const TextStyle(fontFamily: 'monospace', fontSize: 12),
+                    style: const TextStyle(
+                      fontFamily: 'monospace',
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],

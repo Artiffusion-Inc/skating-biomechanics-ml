@@ -46,10 +46,7 @@ class _RenameDialogState extends State<RenameDialog> {
           onPressed: () => Navigator.pop(context),
           child: Text(t.ble.rename.cancel),
         ),
-        FilledButton(
-          onPressed: _save,
-          child: Text(t.ble.rename.save),
-        ),
+        FilledButton(onPressed: _save, child: Text(t.ble.rename.save)),
       ],
     );
   }

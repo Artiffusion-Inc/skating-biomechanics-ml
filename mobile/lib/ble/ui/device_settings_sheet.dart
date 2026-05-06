@@ -35,12 +35,12 @@ class DeviceSettingsSheet extends StatelessWidget {
               device.platformName,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Text(device.remoteId.str, style: const TextStyle(fontSize: 12, color: Colors.white70)),
-            const SizedBox(height: 16),
-            _BatteryTile(
-              voltage: voltage,
-              onRequest: onRequestBattery,
+            Text(
+              device.remoteId.str,
+              style: const TextStyle(fontSize: 12, color: Colors.white70),
             ),
+            const SizedBox(height: 16),
+            _BatteryTile(voltage: voltage, onRequest: onRequestBattery),
             const Divider(),
             _ReturnRateTile(onSelected: onSetReturnRate),
             ListTile(
@@ -63,8 +63,13 @@ class _BatteryTile extends StatelessWidget {
   final VoidCallback onRequest;
   const _BatteryTile({this.voltage, required this.onRequest});
 
-  Color get _color =>
-      voltage == null ? Colors.grey : voltage! > 3.7 ? Colors.green : voltage! > 3.5 ? Colors.orange : Colors.red;
+  Color get _color => voltage == null
+      ? Colors.grey
+      : voltage! > 3.7
+      ? Colors.green
+      : voltage! > 3.5
+      ? Colors.orange
+      : Colors.red;
 
   @override
   Widget build(BuildContext context) {
@@ -72,7 +77,11 @@ class _BatteryTile extends StatelessWidget {
     return ListTile(
       leading: Icon(Icons.battery_full, color: _color),
       title: Text(t.ble.battery.title),
-      subtitle: Text(voltage == null ? t.ble.battery.unknown : '${voltage!.toStringAsFixed(2)} ${t.ble.battery.unit}'),
+      subtitle: Text(
+        voltage == null
+            ? t.ble.battery.unknown
+            : '${voltage!.toStringAsFixed(2)} ${t.ble.battery.unit}',
+      ),
       trailing: TextButton(
         onPressed: onRequest,
         child: Text(t.ble.battery.request),

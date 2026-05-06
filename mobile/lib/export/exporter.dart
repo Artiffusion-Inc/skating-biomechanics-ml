@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:isolate';
 import 'package:archive/archive.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:fixnum/fixnum.dart';
@@ -48,19 +49,26 @@ class Exporter {
     final manifestPath = '${dir.path}/$basename.json';
     await File(manifestPath).writeAsString(manifest);
 
-    final archive = Archive();
-    if (await targetVideo.exists()) {
-      archive.addFile(await _archiveFile(targetVideo));
-    }
-    archive.addFile(await _archiveFile(File(leftPbPath)));
-    archive.addFile(await _archiveFile(File(rightPbPath)));
-    archive.addFile(await _archiveFile(File(manifestPath)));
+    final entries = <MapEntry<String, List<int>>>[
+      if (await targetVideo.exists())
+        MapEntry('$basename.mp4', await targetVideo.readAsBytes()),
+      MapEntry('${basename}_left.pb', await File(leftPbPath).readAsBytes()),
+      MapEntry('${basename}_right.pb', await File(rightPbPath).readAsBytes()),
+      MapEntry('$basename.json', await File(manifestPath).readAsBytes()),
+    ];
 
-    final zipEncoder = ZipEncoder();
-    final zipBytes = zipEncoder.encode(archive);
+    final zipBytes = await Isolate.run(() => _buildZip(entries));
     final zipPath = '${dir.path}/$basename.zip';
     await File(zipPath).writeAsBytes(zipBytes);
     return zipPath;
+  }
+
+  static List<int> _buildZip(List<MapEntry<String, List<int>>> entries) {
+    final archive = Archive();
+    for (final e in entries) {
+      archive.addFile(ArchiveFile(e.key, e.value.length, e.value));
+    }
+    return ZipEncoder().encode(archive);
   }
 
   Future<Directory> _ensureExportDir(String? outputDir) async {
@@ -90,33 +98,35 @@ class Exporter {
     return 'capture_$y$m$d\_$h$min$s';
   }
 
-  Future<void> _writeProtobuf(String path, List<Map<String, dynamic>> samples) async {
+  Future<void> _writeProtobuf(
+    String path,
+    List<Map<String, dynamic>> samples,
+  ) async {
     final stream = IMUStream();
     for (final s in samples) {
-      stream.samples.add(IMUSample(
-        relativeTimestampMs: Int64(s['relative_timestamp_ms'] as int),
-        accX: (s['acc_x'] as num?)?.toDouble(),
-        accY: (s['acc_y'] as num?)?.toDouble(),
-        accZ: (s['acc_z'] as num?)?.toDouble(),
-        gyroX: (s['gyro_x'] as num?)?.toDouble(),
-        gyroY: (s['gyro_y'] as num?)?.toDouble(),
-        gyroZ: (s['gyro_z'] as num?)?.toDouble(),
-        quatW: (s['quat_w'] as num?)?.toDouble(),
-        quatX: (s['quat_x'] as num?)?.toDouble(),
-        quatY: (s['quat_y'] as num?)?.toDouble(),
-        quatZ: (s['quat_z'] as num?)?.toDouble(),
-      ));
+      stream.samples.add(
+        IMUSample(
+          relativeTimestampMs: Int64(s['relative_timestamp_ms'] as int),
+          accX: (s['acc_x'] as num?)?.toDouble(),
+          accY: (s['acc_y'] as num?)?.toDouble(),
+          accZ: (s['acc_z'] as num?)?.toDouble(),
+          gyroX: (s['gyro_x'] as num?)?.toDouble(),
+          gyroY: (s['gyro_y'] as num?)?.toDouble(),
+          gyroZ: (s['gyro_z'] as num?)?.toDouble(),
+          quatW: (s['quat_w'] as num?)?.toDouble(),
+          quatX: (s['quat_x'] as num?)?.toDouble(),
+          quatY: (s['quat_y'] as num?)?.toDouble(),
+          quatZ: (s['quat_z'] as num?)?.toDouble(),
+        ),
+      );
     }
     await File(path).writeAsBytes(stream.writeToBuffer());
   }
 
-  Future<ArchiveFile> _archiveFile(File file) async {
-    final bytes = await file.readAsBytes();
-    final name = file.path.split('/').last;
-    return ArchiveFile(name, bytes.length, bytes);
-  }
-
-  int _computeDuration(List<Map<String, dynamic>> left, List<Map<String, dynamic>> right) {
+  int _computeDuration(
+    List<Map<String, dynamic>> left,
+    List<Map<String, dynamic>> right,
+  ) {
     int maxTs = 0;
     for (final s in left) {
       final ts = s['relative_timestamp_ms'] as int? ?? 0;

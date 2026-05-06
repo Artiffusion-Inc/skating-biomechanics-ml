@@ -32,8 +32,14 @@ class RadialGauge extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text('${value.toStringAsFixed(1)} $unit', style: const TextStyle(fontSize: 12)),
-        Text(label, style: const TextStyle(fontSize: 10, color: Colors.white70)),
+        Text(
+          '${value.toStringAsFixed(1)} $unit',
+          style: const TextStyle(fontSize: 12),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 10, color: Colors.white70),
+        ),
       ],
     );
   }

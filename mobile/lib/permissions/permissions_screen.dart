@@ -19,9 +19,15 @@ class PermissionsScreen extends StatelessWidget {
             children: [
               const Icon(Icons.security, size: 64, color: Colors.white54),
               const SizedBox(height: 24),
-              Text(t.permissions.required, style: const TextStyle(fontSize: 18)),
+              Text(
+                t.permissions.required,
+                style: const TextStyle(fontSize: 18),
+              ),
               const SizedBox(height: 8),
-              Text(t.permissions.list, style: const TextStyle(color: Colors.white70)),
+              Text(
+                t.permissions.list,
+                style: const TextStyle(color: Colors.white70),
+              ),
               const SizedBox(height: 32),
               FilledButton.icon(
                 key: const Key('grantPermissionsBtn'),

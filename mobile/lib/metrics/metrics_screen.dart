@@ -42,7 +42,10 @@ class _MetricsScreenState extends State<MetricsScreen> {
   }
 
   double _computeRoll(WT901Packet p) {
-    final qx = p.quatX ?? 0, qy = p.quatY ?? 0, qz = p.quatZ ?? 0, qw = p.quatW ?? 0;
+    final qx = p.quatX ?? 0,
+        qy = p.quatY ?? 0,
+        qz = p.quatZ ?? 0,
+        qw = p.quatW ?? 0;
     final roll = math.atan2(
       2.0 * (qw * qx + qy * qz),
       1.0 - 2.0 * (qx * qx + qy * qy),
@@ -67,7 +70,10 @@ class _MetricsScreenState extends State<MetricsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(t.metrics.gyro, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  t.metrics.gyro,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 RadialGauge(value: _gx, label: 'X', unit: '°/s'),
                 const SizedBox(height: 8),
@@ -81,7 +87,10 @@ class _MetricsScreenState extends State<MetricsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(t.metrics.accel, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  t.metrics.accel,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 RadialGauge(value: _ax, label: 'X', unit: 'g'),
                 const SizedBox(height: 8),
@@ -95,7 +104,10 @@ class _MetricsScreenState extends State<MetricsScreen> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Text(t.metrics.edgeAngle, style: const TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  t.metrics.edgeAngle,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 const SizedBox(height: 8),
                 RadialGauge(
                   value: _edgeAngle,

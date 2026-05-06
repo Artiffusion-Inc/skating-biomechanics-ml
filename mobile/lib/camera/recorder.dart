@@ -56,7 +56,9 @@ class CameraRecorder extends ChangeNotifier {
   Future<void> setOrientationLocked(bool locked) async {
     _orientationLocked = locked;
     if (locked) {
-      await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
+      await SystemChrome.setPreferredOrientations([
+        DeviceOrientation.portraitUp,
+      ]);
     } else {
       await SystemChrome.setPreferredOrientations([]);
     }

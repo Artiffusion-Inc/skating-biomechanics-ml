@@ -1,7 +1,14 @@
 import 'dart:typed_data';
 import 'wt901_constants.dart';
 
-enum WT901PacketType { accelerometer, gyroscope, quaternion, angle, battery, unknown }
+enum WT901PacketType {
+  accelerometer,
+  gyroscope,
+  quaternion,
+  angle,
+  battery,
+  unknown,
+}
 
 class WT901Packet {
   final WT901PacketType type;
@@ -13,10 +20,19 @@ class WT901Packet {
 
   const WT901Packet({
     required this.type,
-    this.accX, this.accY, this.accZ,
-    this.gyroX, this.gyroY, this.gyroZ,
-    this.angleX, this.angleY, this.angleZ,
-    this.quatW, this.quatX, this.quatY, this.quatZ,
+    this.accX,
+    this.accY,
+    this.accZ,
+    this.gyroX,
+    this.gyroY,
+    this.gyroZ,
+    this.angleX,
+    this.angleY,
+    this.angleZ,
+    this.quatW,
+    this.quatX,
+    this.quatY,
+    this.quatZ,
     this.battery,
   });
 }
@@ -45,17 +61,26 @@ class WT901Parser {
     final typeByte = packet[1];
     WT901PacketType type;
     switch (typeByte) {
-      case typeAccel: type = WT901PacketType.accelerometer; break;
-      case typeGyro: type = WT901PacketType.gyroscope; break;
-      case typeAngle: type = WT901PacketType.angle; break;
-      case typeQuat: type = WT901PacketType.quaternion; break;
-      case typeBattery: type = WT901PacketType.battery; break;
-      default: type = WT901PacketType.unknown;
+      case typeAccel:
+        type = WT901PacketType.accelerometer;
+        break;
+      case typeGyro:
+        type = WT901PacketType.gyroscope;
+        break;
+      case typeAngle:
+        type = WT901PacketType.angle;
+        break;
+      case typeQuat:
+        type = WT901PacketType.quaternion;
+        break;
+      case typeBattery:
+        type = WT901PacketType.battery;
+        break;
+      default:
+        type = WT901PacketType.unknown;
     }
 
-    final data = ByteData.sublistView(
-      Uint8List.fromList(packet),
-    );
+    final data = ByteData.sublistView(Uint8List.fromList(packet));
 
     double? accX, accY, accZ;
     double? gyroX, gyroY, gyroZ;
@@ -86,10 +111,19 @@ class WT901Parser {
 
     return WT901Packet(
       type: type,
-      accX: accX, accY: accY, accZ: accZ,
-      gyroX: gyroX, gyroY: gyroY, gyroZ: gyroZ,
-      angleX: angleX, angleY: angleY, angleZ: angleZ,
-      quatW: quatW, quatX: quatX, quatY: quatY, quatZ: quatZ,
+      accX: accX,
+      accY: accY,
+      accZ: accZ,
+      gyroX: gyroX,
+      gyroY: gyroY,
+      gyroZ: gyroZ,
+      angleX: angleX,
+      angleY: angleY,
+      angleZ: angleZ,
+      quatW: quatW,
+      quatX: quatX,
+      quatY: quatY,
+      quatZ: quatZ,
       battery: battery,
     );
   }
