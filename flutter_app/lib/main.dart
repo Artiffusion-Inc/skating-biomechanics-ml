@@ -10,6 +10,7 @@ import 'capture/capturing_screen.dart';
 import 'capture/export_result_screen.dart';
 import 'calibration/calibration_screen.dart';
 import 'permissions/permission_service.dart';
+import 'metrics/metrics_screen.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();

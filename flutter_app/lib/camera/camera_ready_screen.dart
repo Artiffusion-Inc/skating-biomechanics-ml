@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../ble/ble_manager.dart';
+import '../metrics/metrics_screen.dart';
 import 'recorder.dart';
 
 class CameraReadyScreen extends StatefulWidget {
@@ -88,6 +89,17 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                       '${ble.leftDevice != null ? "L" : "—"} / ${ble.rightDevice != null ? "R" : "—"}',
                       style: const TextStyle(fontSize: 14),
                     ),
+                  ),
+                  const Spacer(),
+                  IconButton(
+                    icon: const Icon(Icons.show_chart, color: Colors.white, size: 20),
+                    tooltip: 'Датчики',
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const MetricsScreen()),
+                      );
+                    },
                   ),
                 ],
               ),
