@@ -29,6 +29,6 @@ def __lldb_init_module(debugger: lldb.SBDebugger, _):
     # BreakpointCreateByName. For some reasons callback function does not
     # get carried over from dummy target for the later.
     bp = target.BreakpointCreateByRegex("^NOTIFY_DEBUGGER_ABOUT_RX_PAGES$")
-    bp.SetScriptCallbackFunction("{}.handle_new_rx_page".format(__name__))
+    bp.SetScriptCallbackFunction(f"{__name__}.handle_new_rx_page")
     bp.SetAutoContinue(True)
     print("-- LLDB integration loaded --")
