@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
+import { useMountEffect } from "@/lib/useMountEffect"
 
 interface ProcessState {
   status: string
@@ -9,15 +10,17 @@ interface ProcessState {
   error?: string
 }
 
+const IDLE = { state: null, isConnected: false }
+
 export function useProcessStream(taskId: string | null) {
   const [state, setState] = useState<ProcessState | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const esRef = useRef<EventSource | null>(null)
 
-  useEffect(() => {
+  useMountEffect(() => {
     if (!taskId) return
 
-    const es = new EventSource(`/api/process/${taskId}/stream`)
+    const es = new EventSource(`/api/v1/process/${taskId}/stream`)
     esRef.current = es
 
     es.onopen = () => setIsConnected(true)
@@ -38,7 +41,8 @@ export function useProcessStream(taskId: string | null) {
       es.close()
       setIsConnected(false)
     }
-  }, [taskId])
+  })
 
+  if (!taskId) return IDLE
   return { state, isConnected }
 }
