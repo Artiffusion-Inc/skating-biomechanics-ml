@@ -15,7 +15,6 @@ def test_multi_gpu_extractor_init():
     assert extractor.config == config
     assert extractor.output_format == "normalized"
     assert extractor.conf_threshold == 0.5
-    assert extractor.mode == "balanced"
 
 
 def test_multi_gpu_extractor_single_gpu_fallback():
@@ -39,12 +38,12 @@ def test_multi_gpu_extractor_custom_params():
         config=config,
         output_format="pixels",
         conf_threshold=0.3,
-        mode="lightweight",
+        model_path="data/models/moganet/moganet_b_ap2d_384x288.onnx",
     )
 
     assert extractor.output_format == "pixels"
     assert extractor.conf_threshold == 0.3
-    assert extractor.mode == "lightweight"
+    assert extractor.model_path == "data/models/moganet/moganet_b_ap2d_384x288.onnx"
 
 
 @pytest.mark.skipif(len(MultiGPUConfig().enabled_gpus) < 2, reason="Requires at least 2 GPUs")

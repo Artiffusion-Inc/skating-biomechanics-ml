@@ -38,4 +38,3 @@ def test_batch_method_signature():
     assert "video_path" in params
     assert "person_click" in params
     assert "progress_cb" in params
-    assert "batch_size" in params
