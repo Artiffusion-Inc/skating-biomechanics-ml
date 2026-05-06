@@ -15,9 +15,9 @@ ml/
 │   ├── pipeline.py                   # AnalysisPipeline orchestrator
 │   ├── web_helpers.py                # Preview rendering for detect endpoint
 │   ├── pose_estimation/              # 2D pose extraction
-│   │   ├── pose_extractor.py       # RTMO via rtmlib (COCO 17kp) — PRIMARY
+│   │   ├── pose_extractor.py       # PersonDetector + MogaNetBatch (COCO 17kp) — PRIMARY
 │   │   ├── h36m.py                   # H3.6M 17kp format handling
-│   │   ├── halpe26.py                # DELETED - no longer used (RTMO uses COCO 17kp)
+│   │   ├── halpe26.py                # DELETED - no longer used (MogaNet-B uses COCO 17kp)
 │   │   ├── normalizer.py             # Root-centering + scale normalization
 │   │   └── person_selector.py        # Interactive person selection
 │   ├── pose_3d/                      # 3D pose lifting
@@ -111,7 +111,7 @@ ml/
 ## Pipeline Flow
 
 ```
-Video → PoseExtractor (RTMO COCO 17kp)
+Video → PoseExtractor (PersonDetector + MogaNetBatch, COCO 17kp)
      → GapFiller → Smoothing (One-Euro)
      → [Optional] CorrectiveLens (3D lift → constraints → project back)
      → PhaseDetector (CoM-based)
@@ -166,7 +166,7 @@ Two async arq jobs:
 | Job | Trigger | What it does |
 |-----|---------|-------------|
 | `process_video_task` | `POST /process` | Full ML pipeline → save to DB |
-| `detect_video_task` | `POST /detect` | RTMPose → render preview → store Valkey |
+| `detect_video_task` | `POST /detect` | PersonDetector + MogaNetBatch → render preview → store Valkey |
 
 Both jobs download video from R2, process on GPU, store results. When `VASTAI_API_KEY` set, dispatch to Vast.ai Serverless GPU.
 
