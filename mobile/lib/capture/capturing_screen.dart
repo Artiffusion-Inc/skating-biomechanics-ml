@@ -22,9 +22,13 @@ class CapturingScreen extends StatefulWidget {
 class _CapturingScreenState extends State<CapturingScreen> {
   double _leftAngle = 0;
   double _rightAngle = 0;
+  bool _leftActive = false;
+  bool _rightActive = false;
   Duration _elapsed = Duration.zero;
   bool _stopping = false;
   Timer? _elapsedTimer;
+  Timer? _leftTimeout;
+  Timer? _rightTimeout;
 
   @override
   void initState() {
@@ -35,6 +39,8 @@ class _CapturingScreenState extends State<CapturingScreen> {
   @override
   void dispose() {
     _elapsedTimer?.cancel();
+    _leftTimeout?.cancel();
+    _rightTimeout?.cancel();
     super.dispose();
   }
 
@@ -43,8 +49,26 @@ class _CapturingScreenState extends State<CapturingScreen> {
 
     try {
       await captureProvider.start(
-        onLeftEdgeAngle: (a) => setState(() => _leftAngle = a),
-        onRightEdgeAngle: (a) => setState(() => _rightAngle = a),
+        onLeftEdgeAngle: (a) {
+          setState(() {
+            _leftAngle = a;
+            _leftActive = true;
+          });
+          _leftTimeout?.cancel();
+          _leftTimeout = Timer(const Duration(milliseconds: 100), () {
+            if (mounted) setState(() => _leftActive = false);
+          });
+        },
+        onRightEdgeAngle: (a) {
+          setState(() {
+            _rightAngle = a;
+            _rightActive = true;
+          });
+          _rightTimeout?.cancel();
+          _rightTimeout = Timer(const Duration(milliseconds: 100), () {
+            if (mounted) setState(() => _rightActive = false);
+          });
+        },
       );
 
       final start = captureProvider.startTime;
@@ -121,7 +145,14 @@ class _CapturingScreenState extends State<CapturingScreen> {
             const SizedBox.expand(),
           // Grid overlay
           if (recorder.showGrid)
-            Positioned.fill(child: EdgeOverlay(leftAngle: _leftAngle, rightAngle: _rightAngle)),
+            Positioned.fill(
+              child: EdgeOverlay(
+                leftAngle: _leftAngle,
+                rightAngle: _rightAngle,
+                leftActive: _leftActive,
+                rightActive: _rightActive,
+              ),
+            ),
           // Top bar
           SafeArea(
             child: Column(
