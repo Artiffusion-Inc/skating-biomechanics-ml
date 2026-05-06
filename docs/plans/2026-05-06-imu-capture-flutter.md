@@ -95,7 +95,7 @@ message IMUStream {
 
 Add to `dependencies`:
 ```yaml
-protobuf: ^3.1.0
+protobuf: ^6.0.0
 permission_handler: ^11.3.0
 flutter_secure_storage: ^9.2.0
 provider: ^6.1.0
