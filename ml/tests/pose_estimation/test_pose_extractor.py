@@ -1,13 +1,9 @@
 """Tests for PoseExtractor and extract_poses convenience function."""
 
-import sys
-from pathlib import Path
 from unittest.mock import MagicMock
 
 import numpy as np
 import pytest
-
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from src.pose_estimation.pose_extractor import PoseExtractor, extract_poses
 from src.types import PersonClick, TrackedExtraction, VideoMeta

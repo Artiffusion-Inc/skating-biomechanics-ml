@@ -118,7 +118,7 @@ jobs:
       - name: Debug editable install
         run: |
           uv run python -c "
-          import sys, pkgutil
+          import sys, pkgutil, importlib.util
           print('sys.path:')
           for p in sys.path:
               print(' ', p)
@@ -126,6 +126,9 @@ jobs:
           import src
           print('src.__file__:', src.__file__)
           print('src.__path__:', getattr(src, '__path__', 'N/A'))
+          print()
+          spec = importlib.util.find_spec('src.pose_estimation')
+          print('find_spec(src.pose_estimation):', spec)
           print()
           found = False
           for importer, name, ispkg in pkgutil.iter_modules(src.__path__):
@@ -139,6 +142,12 @@ jobs:
               print('import src.pose_estimation: OK')
           except Exception as e:
               print('import src.pose_estimation: FAIL', type(e).__name__, e)
+          print()
+          try:
+              from src.pose_estimation.batch_extractor import BatchPoseExtractor
+              print('from src.pose_estimation.batch_extractor import BatchPoseExtractor: OK')
+          except Exception as e:
+              print('from src.pose_estimation.batch_extractor import BatchPoseExtractor: FAIL', type(e).__name__, e)
           print('Editable .pth files:')
           import glob
           for p in glob.glob('/home/runner/_work/**/*.pth', recursive=True):

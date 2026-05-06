@@ -2,14 +2,10 @@
 
 from __future__ import annotations
 
-import sys
 from pathlib import Path
 
 import numpy as np
 import pytest
-
-# Ensure ml/src is on path before imports
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 from src.pose_estimation.batch_extractor import BatchPoseExtractor, extract_poses_batched
 from src.types import PersonClick, TrackedExtraction, VideoMeta
