@@ -21,9 +21,9 @@ services:
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-src}
       POSTGRES_USER: ${POSTGRES_USER:-skatelab}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-skatelab_dev}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U skatelab -d src"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skatelab} -d ${POSTGRES_DB:-src}"]
       interval: 5s
       timeout: 3s
       retries: 5
