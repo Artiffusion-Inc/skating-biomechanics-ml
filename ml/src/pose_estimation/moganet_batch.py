@@ -62,7 +62,8 @@ def preprocess_crops(
         # Resize
         resized = cv2.resize(crop, (new_w, new_h), interpolation=cv2.INTER_LINEAR)
 
-        # Pad to input_size with zeros (will be normalized, so 0 after mean subtraction)
+        # Pad to input_size with zeros
+        # (after normalization: (0 - mean)/std ≈ -2.12)
         padded = np.zeros((input_h, input_w, 3), dtype=np.uint8)
         pad_top = (input_h - new_h) // 2
         pad_left = (input_w - new_w) // 2
@@ -139,10 +140,12 @@ def rescale_keypoints(
         crop_h, crop_w = crops[i].shape[:2]
         x1, y1, _x2, _y2 = bboxes[i]
 
-        # Undo letterbox: reverse the scaling and padding applied in preprocess_crops
+        # Undo letterbox: must match exact forward computation in preprocess_crops
         scale = min(input_w / crop_w, input_h / crop_h)
-        pad_left = (input_w - crop_w * scale) / 2
-        pad_top = (input_h - crop_h * scale) / 2
+        new_w = int(crop_w * scale)
+        new_h = int(crop_h * scale)
+        pad_left = (input_w - new_w) // 2
+        pad_top = (input_h - new_h) // 2
 
         # Reverse padding and scaling, then translate by bbox origin
         rescaled[i, :, 0] = (keypoints[i, :, 0] - pad_left) / scale + x1
@@ -261,6 +264,11 @@ class MogaNetBatch:
                 np.zeros((0, 17), dtype=np.float32),
             )
 
+        if len(crops) != len(bboxes):
+            raise ValueError(
+                f"crops and bboxes must have same length, got {len(crops)} and {len(bboxes)}"
+            )
+
         # Preprocess
         batch_tensor = preprocess_crops(crops)
 
@@ -278,12 +286,19 @@ class MogaNetBatch:
         # Rescale to original frame coords
         keypoints = rescale_keypoints(keypoints, crops, bboxes)
 
-        # Apply score threshold
-        scores[scores < self._score_thr] = 0.0
+        # Apply score threshold without mutating raw scores
+        thresholded_scores = scores.copy()
+        thresholded_scores[thresholded_scores < self._score_thr] = 0.0
 
-        return keypoints, scores
+        return keypoints, thresholded_scores
 
     def close(self) -> None:
         """Release ONNX session resources."""
         if hasattr(self, "_session"):
             del self._session
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
