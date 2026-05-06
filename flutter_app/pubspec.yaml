@@ -35,8 +35,10 @@ dependencies:
   protobuf: ^6.0.0
   flutter_blue_plus: ^1.32.0
   async: ^2.11.0
+  camera: ^0.10.5
 
 dev_dependencies:
+  mocktail: ^1.0.0
   flutter_test:
     sdk: flutter
 
