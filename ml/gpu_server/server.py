@@ -124,64 +124,84 @@ def _s3(req: ProcessRequest):
 @app.post("/process", response_model=ProcessResponse)
 async def process(req: ProcessRequest):
     from src.types import PersonClick
-    from src.web_helpers import process_video_pipeline
+    from src.utils.frame_buffer import AsyncFrameReader
+    from src.utils.video_writer import H264Writer
+    from src.visualization.pipeline import VizPipeline, prepare_poses
 
     ACTIVE_REQUESTS.inc()
     start = time.perf_counter()
     try:
         async with await _s3(req) as s3:
             with tempfile.TemporaryDirectory() as tmpdir:
-                video_local = str(Path(tmpdir) / "input.mp4")
-                output_local = str(Path(tmpdir) / "output.mp4")
+                video_local = Path(tmpdir) / "input.mp4"
+                output_local = Path(tmpdir) / "output.mp4"
 
                 logger.info("Downloading video from R2: %s", req.video_r2_key)
-                await s3.download_file(req.r2_bucket, req.video_r2_key, video_local)
+                await s3.download_file(req.r2_bucket, req.video_r2_key, str(video_local))
 
                 click = (
                     PersonClick(x=req.person_click["x"], y=req.person_click["y"])
                     if req.person_click
                     else None
                 )
-                ml = req.ml_flags
 
-                logger.info("Running pipeline (ml_flags=%s)", ml)
-                result = process_video_pipeline(
-                    video_path=video_local,
+                logger.info("Running pipeline (ml_flags=%s)", req.ml_flags)
+                prepared = prepare_poses(
+                    video_local,
                     person_click=click,
                     frame_skip=req.frame_skip,
-                    layer=req.layer,
                     tracking=req.tracking,
-                    blade_3d=False,
-                    export=req.export,
-                    output_path=output_local,
                     progress_cb=None,
-                    cancel_event=None,
-                    depth=ml.get("depth", False),
-                    optical_flow=ml.get("optical_flow", False),
-                    segment=ml.get("segment", False),
-                    foot_track=ml.get("foot_track", False),
-                    matting=ml.get("matting", False),
-                    inpainting=ml.get("inpainting", False),
-                    element_type=req.element_type,
                 )
+
+                pipe = VizPipeline(
+                    meta=prepared.meta,
+                    poses_norm=prepared.poses_norm,
+                    poses_px=prepared.poses_px,
+                    poses_3d=prepared.poses_3d,
+                    layer=req.layer,
+                    confs=prepared.confs,
+                    frame_indices=prepared.frame_indices,
+                )
+
+                meta = prepared.meta
+                writer = H264Writer(output_local, meta.width, meta.height, meta.fps)
+                reader = AsyncFrameReader(video_local, buffer_size=16, frame_skip=1)
+                reader.start()
+
+                frame_idx = 0
+                pose_idx = 0
+
+                while True:
+                    result = reader.get_frame()
+                    if result is None:
+                        break
+                    fi, frame = result
+                    current_pose_idx, pose_idx = pipe.find_pose_idx(fi, pose_idx)
+                    frame, _ = pipe.render_frame(frame, fi, current_pose_idx)
+                    pipe.draw_frame_counter(frame, fi)
+                    writer.write(frame)
+                    frame_idx += 1
+
+                reader.join(timeout=5)
+                writer.close()
+
+                result = {
+                    "stats": {
+                        "total_frames": meta.num_frames,
+                        "valid_frames": prepared.n_valid,
+                        "fps": meta.fps,
+                        "resolution": f"{meta.width}x{meta.height}",
+                    },
+                }
 
                 out_key = req.video_r2_key.replace("input/", "output/")
                 logger.info("Uploading result to R2: %s", out_key)
 
-                # Parallel uploads with asyncio.gather
-                upload_tasks = [s3.upload_file(output_local, req.r2_bucket, out_key)]
+                upload_tasks = [s3.upload_file(str(output_local), req.r2_bucket, out_key)]
 
                 poses_key = None
-                if result.get("poses_path") and Path(result["poses_path"]).exists():
-                    poses_key = out_key.replace(".mp4", "_poses.npy")
-                    upload_tasks.append(
-                        s3.upload_file(result["poses_path"], req.r2_bucket, poses_key)
-                    )
-
                 csv_key = None
-                if result.get("csv_path") and Path(result["csv_path"]).exists():
-                    csv_key = out_key.replace(".mp4", "_biomechanics.csv")
-                    upload_tasks.append(s3.upload_file(result["csv_path"], req.r2_bucket, csv_key))
 
                 await asyncio.gather(*upload_tasks)
 
