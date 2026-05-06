@@ -1,8 +1,8 @@
 # Skating Biomechanics ML
 
-[![CI](https://github.com/Artiffusion-Inc/skating-biomechanics-ml/actions/workflows/ci.yml/badge.svg?branch=master&label=CI)](https://github.com/Artiffusion-Inc/skating-biomechanics-ml/actions)
-[![codecov](https://codecov.io/github/Artiffusion-Inc/skating-biomechanics-ml/graph/badge.svg?token=0QK5TTR8QZ)](https://codecov.io/github/Artiffusion-Inc/skating-biomechanics-ml)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Artiffusion-Inc/skating-biomechanics-ml/pulls)
+[![CI](https://github.com/Artiffusion-Inc/skatelab/actions/workflows/ci.yml/badge.svg?branch=master&label=CI)](https://github.com/Artiffusion-Inc/skatelab/actions)
+[![codecov](https://codecov.io/github/Artiffusion-Inc/skatelab/graph/badge.svg?token=0QK5TTR8QZ)](https://codecov.io/github/Artiffusion-Inc/skatelab)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen)](https://github.com/Artiffusion-Inc/skatelab/pulls)
 
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)](https://www.python.org)
 [![Litestar](https://img.shields.io/badge/Litestar-2.x%2B-EDDA7A?logo=python&logoColor=black)](https://litestar.dev)
@@ -52,7 +52,7 @@ Video → RTMPose (rtmlib, CUDA) → HALPE26 (26kp) → H3.6M (17kp)
 ## Project Structure
 
 ```
-skating-biomechanics-ml/
+skatelab/
 ├── backend/               # Litestar API server
 │   ├── app/               # Python package (backend.app.*)
 │   ├── tests/             # Backend tests

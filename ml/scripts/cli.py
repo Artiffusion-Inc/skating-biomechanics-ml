@@ -14,10 +14,10 @@ from pathlib import Path
 
 import httpx
 
-CONFIG_DIR = Path.home() / ".config" / "skating-cli"
+CONFIG_DIR = Path.home() / ".config" / "skatelab"
 CREDS_PATH = CONFIG_DIR / "credentials.json"
 
-BACKEND_URL = os.environ.get("SKATING_BACKEND_URL", "http://localhost:8000")
+BACKEND_URL = os.environ.get("SKATELAB_BACKEND_URL", "http://localhost:8000")
 API_BASE = f"{BACKEND_URL}/api/v1"
 
 CHUNK_SIZE = 5 * 1024 * 1024

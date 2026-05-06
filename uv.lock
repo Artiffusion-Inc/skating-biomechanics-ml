@@ -26,9 +26,9 @@ exclude-newer-span = "P7D"
 
 [manifest]
 members = [
-    "skating-backend",
-    "skating-biomechanics-ml",
-    "skating-ml",
+    "backend",
+    "ml",
+    "skatelab",
 ]
 
 [[package]]
@@ -489,6 +489,55 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/7d/b2/51899539b6ceeeb420d40ed3cd4b7a40519404f9baf3d4ac99dc413a834b/babel-2.18.0.tar.gz", hash = "sha256:b80b99a14bd085fcacfa15c9165f651fbb3406e66cc603abf11c5750937c992d", size = 9959554, upload-time = "2026-02-01T12:30:56.078Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/77/f5/21d2de20e8b8b0408f0681956ca2c69f1320a3848ac50e6e7f39c6159675/babel-2.18.0-py3-none-any.whl", hash = "sha256:e2b422b277c2b9a9630c1d7903c2a00d0830c409c59ac8cae9081c92f1aeba35", size = 10196845, upload-time = "2026-02-01T12:30:53.445Z" },
+]
+
+[[package]]
+name = "backend"
+version = "0.1.0"
+source = { editable = "backend" }
+dependencies = [
+    { name = "aiobotocore" },
+    { name = "alembic" },
+    { name = "arq" },
+    { name = "asyncpg" },
+    { name = "bcrypt" },
+    { name = "boto3" },
+    { name = "email-validator" },
+    { name = "granian" },
+    { name = "librosa" },
+    { name = "litestar", extra = ["standard"] },
+    { name = "msaf" },
+    { name = "passlib", extra = ["bcrypt"] },
+    { name = "pychromaprint" },
+    { name = "pydantic-settings" },
+    { name = "pyjwt" },
+    { name = "python-multipart" },
+    { name = "redis" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "structlog" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiobotocore", specifier = ">=3.4.0" },
+    { name = "alembic", specifier = ">=1.18.4" },
+    { name = "arq", specifier = ">=0.27.0" },
+    { name = "asyncpg", specifier = ">=0.30" },
+    { name = "bcrypt", specifier = ">=4.0,<4.1" },
+    { name = "boto3", specifier = ">=1.42.83" },
+    { name = "email-validator", specifier = ">=2.3.0" },
+    { name = "granian", specifier = ">=2.0" },
+    { name = "librosa", specifier = ">=0.10.0" },
+    { name = "litestar", extras = ["standard"], specifier = ">=2.15" },
+    { name = "msaf", specifier = ">=0.1.0" },
+    { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7" },
+    { name = "pychromaprint", specifier = ">=0.8" },
+    { name = "pydantic-settings", specifier = ">=2.0.0" },
+    { name = "pyjwt", specifier = ">=2.9" },
+    { name = "python-multipart", specifier = ">=0.0.22" },
+    { name = "redis", specifier = ">=5.0.0" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
+    { name = "structlog", specifier = ">=25.5.0" },
 ]
 
 [[package]]
@@ -2690,6 +2739,49 @@ wheels = [
 ]
 
 [[package]]
+name = "ml"
+version = "0.1.0"
+source = { editable = "ml" }
+dependencies = [
+    { name = "aiobotocore" },
+    { name = "av" },
+    { name = "deep-sort-realtime" },
+    { name = "dtw-python" },
+    { name = "httpx" },
+    { name = "numba" },
+    { name = "numpy" },
+    { name = "nvidia-ml-py" },
+    { name = "onnxruntime-gpu" },
+    { name = "opencv-python" },
+    { name = "pillow" },
+    { name = "prometheus-client" },
+    { name = "pygltflib" },
+    { name = "scipy" },
+    { name = "trimesh" },
+    { name = "ultralytics" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiobotocore", specifier = ">=3.4.0" },
+    { name = "av", specifier = ">=17.0.0" },
+    { name = "deep-sort-realtime", specifier = ">=1.3.2" },
+    { name = "dtw-python", specifier = ">=1.5.0" },
+    { name = "httpx", specifier = ">=0.28.0" },
+    { name = "numba", specifier = ">=0.60.0" },
+    { name = "numpy", specifier = ">=2.0.0" },
+    { name = "nvidia-ml-py", specifier = ">=13.0.0" },
+    { name = "onnxruntime-gpu", specifier = ">=1.24.4" },
+    { name = "opencv-python", specifier = ">=4.10.0" },
+    { name = "pillow", specifier = ">=12.1.1" },
+    { name = "prometheus-client", specifier = ">=0.21.0" },
+    { name = "pygltflib", specifier = ">=1.16.5" },
+    { name = "scipy", specifier = ">=1.14.0" },
+    { name = "trimesh", specifier = ">=4.11.5" },
+    { name = "ultralytics", specifier = ">=8.0.0" },
+]
+
+[[package]]
 name = "ml-dtypes"
 version = "0.5.4"
 source = { registry = "https://pypi.org/simple" }
@@ -4790,56 +4882,7 @@ wheels = [
 ]
 
 [[package]]
-name = "skating-backend"
-version = "0.1.0"
-source = { editable = "backend" }
-dependencies = [
-    { name = "aiobotocore" },
-    { name = "alembic" },
-    { name = "arq" },
-    { name = "asyncpg" },
-    { name = "bcrypt" },
-    { name = "boto3" },
-    { name = "email-validator" },
-    { name = "granian" },
-    { name = "librosa" },
-    { name = "litestar", extra = ["standard"] },
-    { name = "msaf" },
-    { name = "passlib", extra = ["bcrypt"] },
-    { name = "pychromaprint" },
-    { name = "pydantic-settings" },
-    { name = "pyjwt" },
-    { name = "python-multipart" },
-    { name = "redis" },
-    { name = "sqlalchemy", extra = ["asyncio"] },
-    { name = "structlog" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiobotocore", specifier = ">=3.4.0" },
-    { name = "alembic", specifier = ">=1.18.4" },
-    { name = "arq", specifier = ">=0.27.0" },
-    { name = "asyncpg", specifier = ">=0.30" },
-    { name = "bcrypt", specifier = ">=4.0,<4.1" },
-    { name = "boto3", specifier = ">=1.42.83" },
-    { name = "email-validator", specifier = ">=2.3.0" },
-    { name = "granian", specifier = ">=2.0" },
-    { name = "librosa", specifier = ">=0.10.0" },
-    { name = "litestar", extras = ["standard"], specifier = ">=2.15" },
-    { name = "msaf", specifier = ">=0.1.0" },
-    { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7" },
-    { name = "pychromaprint", specifier = ">=0.8" },
-    { name = "pydantic-settings", specifier = ">=2.0.0" },
-    { name = "pyjwt", specifier = ">=2.9" },
-    { name = "python-multipart", specifier = ">=0.0.22" },
-    { name = "redis", specifier = ">=5.0.0" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0" },
-    { name = "structlog", specifier = ">=25.5.0" },
-]
-
-[[package]]
-name = "skating-biomechanics-ml"
+name = "skatelab"
 version = "0.1.0"
 source = { virtual = "." }
 
@@ -4877,49 +4920,6 @@ dev = [
     { name = "ruff", specifier = ">=0.8.0" },
     { name = "structlog", specifier = ">=25.5.0" },
     { name = "vulture", specifier = ">=2.0" },
-]
-
-[[package]]
-name = "skating-ml"
-version = "0.1.0"
-source = { editable = "ml" }
-dependencies = [
-    { name = "aiobotocore" },
-    { name = "av" },
-    { name = "deep-sort-realtime" },
-    { name = "dtw-python" },
-    { name = "httpx" },
-    { name = "numba" },
-    { name = "numpy" },
-    { name = "nvidia-ml-py" },
-    { name = "onnxruntime-gpu" },
-    { name = "opencv-python" },
-    { name = "pillow" },
-    { name = "prometheus-client" },
-    { name = "pygltflib" },
-    { name = "scipy" },
-    { name = "trimesh" },
-    { name = "ultralytics" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiobotocore", specifier = ">=3.4.0" },
-    { name = "av", specifier = ">=17.0.0" },
-    { name = "deep-sort-realtime", specifier = ">=1.3.2" },
-    { name = "dtw-python", specifier = ">=1.5.0" },
-    { name = "httpx", specifier = ">=0.28.0" },
-    { name = "numba", specifier = ">=0.60.0" },
-    { name = "numpy", specifier = ">=2.0.0" },
-    { name = "nvidia-ml-py", specifier = ">=13.0.0" },
-    { name = "onnxruntime-gpu", specifier = ">=1.24.4" },
-    { name = "opencv-python", specifier = ">=4.10.0" },
-    { name = "pillow", specifier = ">=12.1.1" },
-    { name = "prometheus-client", specifier = ">=0.21.0" },
-    { name = "pygltflib", specifier = ">=1.16.5" },
-    { name = "scipy", specifier = ">=1.14.0" },
-    { name = "trimesh", specifier = ">=4.11.5" },
-    { name = "ultralytics", specifier = ">=8.0.0" },
 ]
 
 [[package]]

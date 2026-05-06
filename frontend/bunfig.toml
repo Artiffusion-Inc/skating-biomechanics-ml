@@ -1,4 +1,4 @@
-# Bun configuration for skating-biomechanics-ml frontend
+# Bun configuration for skatelab frontend
 
 [install]
 # Allow semantic versioning (not exact versions)

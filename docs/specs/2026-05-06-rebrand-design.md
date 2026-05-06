@@ -24,7 +24,7 @@ Rebrand `skating-biomechanics-ml` → **SkateLab**. Product name for B2B market 
 | Backend pyproject.toml `name` | `skating-backend` | `backend` | Internal, dir-based |
 | ML pyproject.toml `name` | `skating-ml` | `ml` | Internal, dir-based |
 | Frontend package.json `name` | `frontend` | `frontend` | No change |
-| Docker image | `skating-ml-gpu` | `skatelab-gpu` | Registry = external |
+| Docker image | `skating-ml-gpu` | `skatelab-worker` | Registry = external, role-based |
 | CLI config dir | `~/.config/skating-cli/` | `~/.config/skatelab/` | External |
 | ENV var prefix | `SKATING_*` | `SKATELAB_*` | External |
 | Git repo name | `skating-biomechanics-ml` | `skatelab` | External |

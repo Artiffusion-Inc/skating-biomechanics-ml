@@ -1,7 +1,7 @@
 [project]
-name = "skating-ml"
+name = "ml"
 version = "0.1.0"
-description = "ML pipeline for figure skating biomechanics analysis"
+description = "SkateLab ML pipeline — pose estimation, biomechanics, recommendations"
 requires-python = ">=3.11"
 dependencies = [
     "onnxruntime-gpu>=1.24.4",  # ONNX Runtime with CUDA backend for MogaNet-B

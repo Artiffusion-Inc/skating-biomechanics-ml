@@ -2,7 +2,7 @@
 
 **Date:** 2026-04-18  
 **Authors:** Multi-Agent Research Team (3 agents)  
-**Repository:** skating-biomechanics-ml  
+**Repository:** skatelab  
 **Branch:** refactor/pipeline-profiling
 
 ---

@@ -1,7 +1,7 @@
 [project]
-name = "skating-backend"
+name = "backend"
 version = "0.1.0"
-description = "Litestar backend for figure skating biomechanics analysis"
+description = "SkateLab backend — Litestar API server"
 requires-python = ">=3.11"
 dependencies = [
     "asyncpg>=0.30",

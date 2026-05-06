@@ -62,7 +62,7 @@ spec:
           value: "${VASTAI_API_KEY}"
         - name: RESEND_API_KEY
           value: "${RESEND_API_KEY}"
-      image: ghcr.io/artiffusion-inc/skating-backend:latest
+      image: ghcr.io/artiffusion-inc/skatelab-backend:latest
       name: backend
     - env:
         - name: NEXT_PUBLIC_API_URL

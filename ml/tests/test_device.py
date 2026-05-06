@@ -145,11 +145,11 @@ class TestDeviceConfig:
             cfg = DeviceConfig(device="auto")
             assert cfg.device == "cpu"
 
-    def test_env_override_skating_device(self):
-        """SKATING_DEVICE env var overrides default."""
+    def test_env_override_skatelab_device(self):
+        """SKATELAB_DEVICE env var overrides default."""
         from src.device import DeviceConfig
 
-        with mock.patch.dict(os.environ, {"SKATING_DEVICE": "cpu"}):
+        with mock.patch.dict(os.environ, {"SKATELAB_DEVICE": "cpu"}):
             cfg = DeviceConfig()
             assert cfg.device == "cpu"
 

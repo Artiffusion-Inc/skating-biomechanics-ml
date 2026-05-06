@@ -60,8 +60,8 @@ jobs:
           file: ml/gpu_server/Containerfile
           push: true
           tags: |
-            ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-ml-gpu:latest
-            ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-ml-gpu:${{ github.sha }}
+            ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-worker:latest
+            ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-worker:${{ github.sha }}
 
       - name: Build summary
         if: always()
@@ -72,6 +72,6 @@ jobs:
           | Metric | Value |
           |--------|-------|
           | Status | `${{ steps.build.outcome }}` |
-          | Image | `ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-ml-gpu:${{ github.sha }}` |
+          | Image | `ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-worker:${{ github.sha }}` |
 
           EOF

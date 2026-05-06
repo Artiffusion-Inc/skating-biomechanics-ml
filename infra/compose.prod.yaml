@@ -40,7 +40,7 @@ services:
 
   # --- Backend API ---
   backend:
-    image: ghcr.io/${GHCR_OWNER:-Artiffusion-Inc}/skating-backend:${TAG:-latest}
+    image: ghcr.io/${GHCR_OWNER:-Artiffusion-Inc}/skatelab-backend:${TAG:-latest}
     restart: unless-stopped
     environment:
       DATABASE_URL: ${DATABASE_URL}

@@ -267,7 +267,7 @@ jobs:
           context: .
           file: backend/Containerfile
           push: false
-          tags: skating-backend:ci
+          tags: skatelab-backend:ci
 
   docker-frontend:
     name: Docker Build (Frontend)

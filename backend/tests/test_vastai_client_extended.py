@@ -25,7 +25,7 @@ def _reset_caches():
 def _make_settings():
     s = MagicMock()
     s.vastai.api_key.get_secret_value.return_value = "test-api-key"
-    s.vastai.endpoint_name = "skating-ml-gpu"
+    s.vastai.endpoint_name = "skatelab-worker"
     s.r2.endpoint_url = "https://r2.example.com"
     s.r2.access_key_id.get_secret_value.return_value = "r2-key-id"
     s.r2.secret_access_key.get_secret_value.return_value = "r2-secret"
@@ -73,12 +73,12 @@ async def test_asyncio_get_worker_url_success():
     with (
         patch("app.vastai.client._get_async_client", return_value=mock_client),
     ):
-        url = await _asyncio_get_worker_url("skating-ml-gpu", "test-key")
+        url = await _asyncio_get_worker_url("skatelab-worker", "test-key")
 
     assert url == "https://async-worker.vast.ai:8000"
     mock_client.post.assert_called_once()
     call_kwargs = mock_client.post.call_args.kwargs
-    assert call_kwargs["json"]["endpoint"] == "skating-ml-gpu"
+    assert call_kwargs["json"]["endpoint"] == "skatelab-worker"
     assert call_kwargs["headers"]["Authorization"] == "Bearer test-key"
 
 

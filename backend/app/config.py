@@ -98,7 +98,7 @@ class R2Config(BaseSettings):
 
     access_key_id: SecretStr = SecretStr("")
     secret_access_key: SecretStr = SecretStr("")
-    bucket: str = "skating-ml-pipeline"
+    bucket: str = "skatelab-pipeline"
     endpoint_url: str = ""
     presign_expires: int = 3600
 
@@ -110,7 +110,7 @@ class VastAIConfig(BaseSettings):
     """Vast.ai Serverless GPU settings."""
 
     api_key: SecretStr = SecretStr("")
-    endpoint_name: str = "skating-ml-gpu"
+    endpoint_name: str = "skatelab-worker"
 
     class Config:
         env_prefix = "VASTAI_"

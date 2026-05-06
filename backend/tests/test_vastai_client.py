@@ -14,12 +14,12 @@ def test_get_worker_url_success():
     mock_resp.raise_for_status = MagicMock()
 
     with patch("app.vastai.client.httpx.post", return_value=mock_resp) as mock_post:
-        url = _get_worker_url("skating-ml-gpu", "test-key")
+        url = _get_worker_url("skatelab-worker", "test-key")
 
     assert url == "https://worker-1.vast.ai:8000"
     mock_post.assert_called_once()
     call_kwargs = mock_post.call_args.kwargs
-    assert call_kwargs["json"]["endpoint"] == "skating-ml-gpu"
+    assert call_kwargs["json"]["endpoint"] == "skatelab-worker"
 
 
 def test_vast_result_fields():
@@ -65,7 +65,7 @@ def test_process_video_remote_passes_r2_key(mock_post):
     with patch("app.vastai.client.get_settings") as mock_settings:
         s = MagicMock()
         s.vastai.api_key.get_secret_value.return_value = "test-key"
-        s.vastai.endpoint_name = "skating-ml-gpu"
+        s.vastai.endpoint_name = "skatelab-worker"
         s.r2.endpoint_url = "https://r2.example.com"
         s.r2.access_key_id.get_secret_value.return_value = "key-id"
         s.r2.secret_access_key.get_secret_value.return_value = "secret"

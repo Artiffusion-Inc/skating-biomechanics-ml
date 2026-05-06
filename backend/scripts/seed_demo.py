@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Make backend package importable
-sys.path.insert(0, "/home/michael/Github/skating-biomechanics-ml/backend")
+sys.path.insert(0, "/home/michael/Github/skatelab/backend")
 
 from app.auth.security import hash_password  # noqa: E402
 from app.database import async_session_factory  # noqa: E402

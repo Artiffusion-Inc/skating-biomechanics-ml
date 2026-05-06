@@ -102,8 +102,8 @@ jobs:
           file: backend/Containerfile
           push: true
           tags: |
-            ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-backend:latest
-            ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-backend:${{ github.sha }}
+            ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-backend:latest
+            ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-backend:${{ github.sha }}
 
       - name: Backend build summary
         if: always()
@@ -114,7 +114,7 @@ jobs:
           | Metric | Value |
           |--------|-------|
           | Status | \`${{ steps.build.outcome }}\` |
-          | Image | \`ghcr.io/${{ steps.ghcr.outputs.owner }}/skating-backend:${{ github.sha }}\` |
+          | Image | \`ghcr.io/${{ steps.ghcr.outputs.owner }}/skatelab-backend:${{ github.sha }}\` |
 
           EOF
 
@@ -176,7 +176,7 @@ jobs:
             export GHCR_OWNER="${{ steps.ghcr.outputs.owner }}"
 
             envsubst < deploy.yaml > deploy-rendered.yaml
-            sed -i "s|ghcr.io/artiffusion-inc/skating-backend:latest|ghcr.io/${GHCR_OWNER}/skating-backend:${TAG}|g" deploy-rendered.yaml
+            sed -i "s|ghcr.io/artiffusion-inc/skatelab-backend:latest|ghcr.io/${GHCR_OWNER}/skatelab-backend:${TAG}|g" deploy-rendered.yaml
             sed -i "s|ghcr.io/artiffusion-inc/skating-frontend:latest|ghcr.io/${GHCR_OWNER}/skating-frontend:${TAG}|g" deploy-rendered.yaml
 
             # Clean up old compose containers and pods before kube play
