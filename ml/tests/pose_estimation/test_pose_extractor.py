@@ -1,5 +1,7 @@
 """Tests for PoseExtractor and extract_poses convenience function."""
 
+import sys
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import numpy as np
