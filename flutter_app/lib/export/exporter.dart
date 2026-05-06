@@ -48,7 +48,9 @@ class Exporter {
     await File(manifestPath).writeAsString(manifest);
 
     final archive = Archive();
-    archive.addFile(await _archiveFile(targetVideo));
+    if (await targetVideo.exists()) {
+      archive.addFile(await _archiveFile(targetVideo));
+    }
     archive.addFile(await _archiveFile(File(leftCsvPath)));
     archive.addFile(await _archiveFile(File(rightCsvPath)));
     archive.addFile(await _archiveFile(File(manifestPath)));
@@ -66,10 +68,12 @@ class Exporter {
     try {
       downloads = await getDownloadsDirectory();
     } catch (_) {}
-    downloads ??= await getExternalStorageDirectory();
     if (downloads == null) {
-      throw StateError('Unable to locate Downloads directory');
+      try {
+        downloads = await getExternalStorageDirectory();
+      } catch (_) {}
     }
+    downloads ??= await getTemporaryDirectory();
     final dir = Directory('${downloads.path}/EdgeSense');
     await dir.create(recursive: true);
     return dir;

@@ -8,14 +8,21 @@ void main() {
 
   const channel = MethodChannel('plugins.flutter.io/path_provider');
   final tempDir = Directory.systemTemp.createTempSync('edgesense_test_');
+  late File dummyVideo;
 
   setUpAll(() {
+    dummyVideo = File('${tempDir.path}/dummy_video.mp4');
+    dummyVideo.writeAsBytesSync([0x00, 0x00, 0x00, 0x00]);
+
     TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
         .setMockMethodCallHandler(channel, (call) async {
       if (call.method == 'getDownloadsDirectory') {
         return tempDir.path;
       }
       if (call.method == 'getExternalStorageDirectory') {
+        return tempDir.path;
+      }
+      if (call.method == 'getTemporaryDirectory') {
         return tempDir.path;
       }
       return null;
@@ -32,7 +39,7 @@ void main() {
     test('exports a zip with correct extension', () async {
       final exporter = Exporter();
       final result = await exporter.export(
-        videoPath: '/dev/null',
+        videoPath: dummyVideo.path,
         leftSamples: [],
         rightSamples: [],
         t0: DateTime.now(),
@@ -45,7 +52,7 @@ void main() {
     test('includes samples in csv and zip', () async {
       final exporter = Exporter();
       final result = await exporter.export(
-        videoPath: '/dev/null',
+        videoPath: dummyVideo.path,
         leftSamples: [
           {
             'relative_timestamp_ms': 0,
