@@ -78,6 +78,35 @@ void main() {
       expect(result.angleZ, closeTo(25.0 * scaleAngle, 0.001));
     });
 
+    test('handles negative angle values', () {
+      final payload = [
+        packetHeader, typeAngle,
+        0xFF, 0xFF, // X = -1
+        0x00, 0x00, // Y
+        0x00, 0x00, // Z
+        0x00, // padding
+      ];
+      final packet = _withChecksum(payload);
+      final result = WT901Parser.parse(packet);
+      expect(result, isNotNull);
+      expect(result!.angleX, closeTo(-1.0 * scaleAngle, 0.001));
+    });
+
+    test('angle scale maps 180 degrees to physical units', () {
+      // raw = 32768 represents 180 degrees
+      final payload = [
+        packetHeader, typeAngle,
+        0x00, 0x00, // X
+        0x00, 0x00, // Y
+        0x00, 0x80, // Z = 32768 (-32768 in int16)
+        0x00, // padding
+      ];
+      final packet = _withChecksum(payload);
+      final result = WT901Parser.parse(packet);
+      expect(result, isNotNull);
+      expect(result!.angleZ, closeTo(-180.0, 0.01));
+    });
+
     test('parses quaternion packet with all components', () {
       final payload = [
         packetHeader, typeQuat,
