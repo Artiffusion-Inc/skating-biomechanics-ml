@@ -7,8 +7,8 @@ metadata:
   annotations:
     podman.io/restart-policy: always
   labels:
-    app: skating-app
-  name: skating-app
+    app: skatelab
+  name: skatelab
 spec:
   containers:
     - args:
@@ -22,25 +22,25 @@ spec:
           hostIP: 127.0.0.1
       volumeMounts:
         - mountPath: /etc/prometheus/prometheus.yml
-          name: opt-skating-app-prometheus.yml-host-0
+          name: opt-skatelab-prometheus.yml-host-0
           readOnly: true
         - mountPath: /etc/prometheus/rules
-          name: opt-skating-app-prometheus-rules-host-1
+          name: opt-skatelab-prometheus-rules-host-1
           readOnly: true
         - mountPath: /prometheus
-          name: skating-app-prometheus-data-pvc
+          name: skatelab-prometheus-data-pvc
     - env:
         - name: POSTGRES_DB
-          value: skating
+          value: skatelab
         - name: POSTGRES_PASSWORD
           value: "${POSTGRES_PASSWORD}"
         - name: POSTGRES_USER
-          value: skating
+          value: skatelab
       image: docker.io/library/postgres:16-alpine
       name: postgres
       volumeMounts:
         - mountPath: /var/lib/postgresql/data
-          name: skating-app-postgres-data-pvc
+          name: skatelab-postgres-data-pvc
     - env:
         - name: DATABASE_URL
           value: "${DATABASE_URL}"
@@ -67,13 +67,13 @@ spec:
     - env:
         - name: NEXT_PUBLIC_API_URL
           value: /api
-      image: ghcr.io/artiffusion-inc/skating-frontend:latest
+      image: ghcr.io/artiffusion-inc/skatelab-frontend:latest
       name: frontend
     - env:
         - name: CLOUDFLARE_API_TOKEN
           value: "${CLOUDFLARE_API_TOKEN}"
         - name: DOMAIN
-          value: bbank.pro
+          value: skatelab.ru
       image: ghcr.io/caddybuilds/caddy-cloudflare:latest
       name: caddy
       ports:
@@ -83,42 +83,42 @@ spec:
           hostPort: 443
       volumeMounts:
         - mountPath: /etc/caddy/Caddyfile
-          name: opt-skating-app-Caddyfile-host-2
+          name: opt-skatelab-Caddyfile-host-2
           readOnly: true
         - mountPath: /data
-          name: skating-app-caddy-data-pvc
+          name: skatelab-caddy-data-pvc
         - mountPath: /config
-          name: skating-app-caddy-config-pvc
+          name: skatelab-caddy-config-pvc
     - image: docker.io/valkey/valkey:8-alpine
       name: valkey
       volumeMounts:
         - mountPath: /data
-          name: skating-app-valkey-data-pvc
+          name: skatelab-valkey-data-pvc
   volumes:
     - hostPath:
-        path: /opt/skating-app/Caddyfile
+        path: /opt/skatelab/Caddyfile
         type: File
       name: opt-skating-app-Caddyfile-host-2
     - hostPath:
-        path: /opt/skating-app/prometheus.yml
+        path: /opt/skatelab/prometheus.yml
         type: File
       name: opt-skating-app-prometheus.yml-host-0
     - hostPath:
-        path: /opt/skating-app/prometheus/rules
+        path: /opt/skatelab/prometheus/rules
         type: Directory
       name: opt-skating-app-prometheus-rules-host-1
     - name: skating-app-caddy-config-pvc
       persistentVolumeClaim:
-        claimName: skating-app_caddy-config
+        claimName: skatelab_caddy-config
     - name: skating-app-caddy-data-pvc
       persistentVolumeClaim:
-        claimName: skating-app_caddy-data
+        claimName: skatelab_caddy-data
     - name: skating-app-postgres-data-pvc
       persistentVolumeClaim:
-        claimName: skating-app_postgres-data
+        claimName: skatelab_postgres-data
     - name: skating-app-prometheus-data-pvc
       persistentVolumeClaim:
-        claimName: skating-app_prometheus-data
+        claimName: skatelab_prometheus-data
     - name: skating-app-valkey-data-pvc
       persistentVolumeClaim:
-        claimName: skating-app_valkey-data
+        claimName: skatelab_valkey-data

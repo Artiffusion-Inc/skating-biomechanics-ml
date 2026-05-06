@@ -9,13 +9,13 @@ services:
     image: docker.io/library/postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-skating}
-      POSTGRES_USER: ${POSTGRES_USER:-skating}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skating}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-skatelab}"]
       interval: 10s
       timeout: 3s
       retries: 5
