@@ -22,7 +22,7 @@ void main() {
     test('dispose sets controller to null', () async {
       final recorder = CameraRecorder();
       await recorder.initialize([]);
-      await recorder.dispose();
+      recorder.dispose();
       expect(recorder.controller, isNull);
     });
   });

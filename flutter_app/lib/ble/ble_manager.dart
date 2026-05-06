@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
 import 'wt901_parser.dart';
+import 'package:async/async.dart';
 
 class IMUDevice {
   final BluetoothDevice device;
@@ -35,7 +37,7 @@ class IMUDevice {
   }
 }
 
-class BleManager {
+class BleManager extends ChangeNotifier {
   List<ScanResult> scanResults = [];
   IMUDevice? leftDevice;
   IMUDevice? rightDevice;
@@ -61,6 +63,7 @@ class BleManager {
     } else {
       rightDevice = imuDevice;
     }
+    notifyListeners();
   }
 
   Future<void> connectAll() async {
@@ -75,5 +78,11 @@ class BleManager {
       if (leftDevice != null) leftDevice!.disconnect(),
       if (rightDevice != null) rightDevice!.disconnect(),
     ]);
+  }
+
+  Stream<(WT901Packet?, WT901Packet?)> startStreams() {
+    final leftStream = leftDevice?.startNotifications() ?? Stream<WT901Packet>.empty();
+    final rightStream = rightDevice?.startNotifications() ?? Stream<WT901Packet>.empty();
+    return StreamZip([leftStream, rightStream]).map((pair) => (pair[0], pair[1]));
   }
 }

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
+import 'package:flutter/material.dart';
 
-class CalibrationService {
+class CalibrationService extends ChangeNotifier {
   List<double>? leftRef;
   List<double>? rightRef;
 

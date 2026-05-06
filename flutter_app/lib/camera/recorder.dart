@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
+import 'package:flutter/material.dart';
 
-class CameraRecorder {
+class CameraRecorder extends ChangeNotifier {
   CameraController? _controller;
   bool get isInitialized => _controller?.value.isInitialized ?? false;
 
@@ -37,8 +38,10 @@ class CameraRecorder {
 
   CameraController? get controller => _controller;
 
-  Future<void> dispose() async {
-    await _controller?.dispose();
+  @override
+  void dispose() {
+    _controller?.dispose();
     _controller = null;
+    super.dispose();
   }
 }
