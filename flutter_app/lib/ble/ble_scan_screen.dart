@@ -12,55 +12,54 @@ class BleScanScreen extends StatefulWidget {
 }
 
 class _BleScanScreenState extends State<BleScanScreen> {
-  bool _scanning = false;
-  String? _error;
-
   @override
   void initState() {
     super.initState();
-    _startScan();
-  }
-
-  @override
-  void dispose() {
-    // Don't use context in dispose — use BleManager directly
-    super.dispose();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startScan());
   }
 
   Future<void> _startScan() async {
-    setState(() {
-      _scanning = true;
-      _error = null;
-    });
-    try {
-      await context.read<BleManager>().startScan();
-    } catch (e) {
-      if (mounted) setState(() => _error = e.toString());
-    } finally {
-      if (mounted) setState(() => _scanning = false);
-    }
+    await context.read<BleManager>().startScan();
   }
 
   @override
   Widget build(BuildContext context) {
     final ble = context.watch<BleManager>();
+    final devices = ble.namedScanResults;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Подключение IMU')),
       body: Column(
         children: [
           _StatusBar(ble: ble),
-          if (_error != null)
+          if (!ble.isBluetoothOn)
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(12),
               color: Colors.red.shade900,
-              child: Text(_error!, style: const TextStyle(fontSize: 12)),
+              child: const Text('Bluetooth выключен', style: TextStyle(fontSize: 14)),
+            ),
+          if (!ble.locationPermissionGranted)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.orange.shade900,
+              child: const Text(
+                'Для BLE сканирования нужно разрешение на местоположение',
+                style: TextStyle(fontSize: 14),
+              ),
+            ),
+          if (ble.scanError != null)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              color: Colors.red.shade900,
+              child: Text(ble.scanError!, style: const TextStyle(fontSize: 12)),
             ),
           Expanded(
-            child: ble.scanResults.isEmpty
+            child: devices.isEmpty
                 ? Center(
-                    child: _scanning
+                    child: ble.isScanning
                         ? const CircularProgressIndicator()
                         : TextButton.icon(
                             onPressed: _startScan,
@@ -69,11 +68,11 @@ class _BleScanScreenState extends State<BleScanScreen> {
                           ),
                   )
                 : ListView.builder(
-                    itemCount: ble.scanResults.length,
+                    itemCount: devices.length,
                     itemBuilder: (ctx, i) => _DeviceTile(
-                      result: ble.scanResults[i],
+                      result: devices[i],
                       ble: ble,
-                      onAssign: () => _showAssignSheet(ble.scanResults[i], ble),
+                      onAssign: () => _showAssignSheet(devices[i], ble),
                     ),
                   ),
           ),
@@ -83,7 +82,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
               children: [
                 Expanded(
                   child: OutlinedButton.icon(
-                    onPressed: _scanning ? null : _startScan,
+                    onPressed: ble.isScanning ? null : _startScan,
                     icon: const Icon(Icons.search),
                     label: const Text('Сканировать'),
                   ),
@@ -91,9 +90,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
                 const SizedBox(width: 12),
                 Expanded(
                   child: FilledButton.icon(
-                    onPressed: ble.leftDevice != null || ble.rightDevice != null
-                        ? widget.onReady
-                        : null,
+                    onPressed: ble.canProceed ? widget.onReady : null,
                     icon: const Icon(Icons.arrow_forward),
                     label: const Text('Далее'),
                   ),
@@ -107,8 +104,9 @@ class _BleScanScreenState extends State<BleScanScreen> {
   }
 
   void _showAssignSheet(ScanResult result, BleManager ble) {
-    final isLeft = ble.leftDevice?.device.id == result.device.id;
-    final isRight = ble.rightDevice?.device.id == result.device.id;
+    final device = result.device;
+    final isLeft = ble.leftDevice?.device.id == device.id;
+    final isRight = ble.rightDevice?.device.id == device.id;
 
     if (isLeft) {
       ble.unassignDevice('left');
@@ -126,9 +124,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
           mainAxisSize: MainAxisSize.min,
           children: [
             ListTile(
-              title: Text(result.device.platformName.isNotEmpty
-                  ? result.device.platformName
-                  : 'Устройство'),
+              title: Text(result.device.platformName),
               subtitle: Text(result.device.id.id),
             ),
             const Divider(),
@@ -162,18 +158,28 @@ class _StatusBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final parts = <String>[];
-    if (ble.leftDevice != null) parts.add('Левый ✓');
-    if (ble.rightDevice != null) parts.add('Правый ✓');
+    if (ble.leftDevice != null) {
+      parts.add('Левый ${ble.leftDevice!.isConnected ? '✓' : '…'}');
+    }
+    if (ble.rightDevice != null) {
+      parts.add('Правый ${ble.rightDevice!.isConnected ? '✓' : '…'}');
+    }
 
-    final color = ble.leftDevice != null && ble.rightDevice != null
+    final leftOk = ble.leftDevice?.isConnected ?? false;
+    final rightOk = ble.rightDevice?.isConnected ?? false;
+    final color = leftOk && rightOk
         ? Colors.green.shade800
-        : ble.leftDevice != null || ble.rightDevice != null
+        : leftOk || rightOk
             ? Colors.orange.shade800
             : Colors.grey.shade800;
 
     final text = parts.isEmpty
-        ? 'Выберите датчики (нажмите на устройство)'
-        : '${parts.join('  ')}  —  можно продолжить';
+        ? 'Нажмите на устройство для назначения'
+        : leftOk && rightOk
+            ? '${parts.join('  ')}  —  оба подключены'
+            : leftOk || rightOk
+                ? '${parts.join('  ')}  —  можно продолжить'
+                : '${parts.join('  ')}  —  подключение…';
 
     return Container(
       width: double.infinity,
@@ -206,12 +212,18 @@ class _DeviceTile extends StatelessWidget {
         Icons.bluetooth,
         color: isLeft || isRight ? Colors.blue : Colors.grey,
       ),
-      title: Text(name.isNotEmpty ? name : 'Неизвестное устройство'),
+      title: Text(name),
       subtitle: Text(result.device.id.id),
       trailing: isLeft
-          ? Chip(label: const Text('Левый'), backgroundColor: Colors.blue.shade800)
+          ? Chip(
+              label: Text('Левый ${ble.leftDevice?.isConnected ?? false ? '✓' : '…'}'),
+              backgroundColor: Colors.blue.shade800,
+            )
           : isRight
-              ? Chip(label: const Text('Правый'), backgroundColor: Colors.purple.shade800)
+              ? Chip(
+                  label: Text('Правый ${ble.rightDevice?.isConnected ?? false ? '✓' : '…'}'),
+                  backgroundColor: Colors.purple.shade800,
+                )
               : null,
       onTap: onAssign,
     );
