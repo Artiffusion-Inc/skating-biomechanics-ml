@@ -179,6 +179,11 @@ jobs:
             sed -i "s|ghcr.io/artiffusion-inc/skating-backend:latest|ghcr.io/${GHCR_OWNER}/skating-backend:${TAG}|g" deploy-rendered.yaml
             sed -i "s|ghcr.io/artiffusion-inc/skating-frontend:latest|ghcr.io/${GHCR_OWNER}/skating-frontend:${TAG}|g" deploy-rendered.yaml
 
+            # Clean up old compose containers and pods before kube play
+            podman stop $(podman ps -aq --filter name=skating-app) 2>/dev/null || true
+            podman rm -f $(podman ps -aq --filter name=skating-app) 2>/dev/null || true
+            podman pod rm -f $(podman pod ps -q --filter name=skating-app) 2>/dev/null || true
+
             podman kube play --replace deploy-rendered.yaml
 
       - name: Run database migrations
