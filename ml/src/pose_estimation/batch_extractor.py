@@ -34,16 +34,22 @@ def _get_tqdm():
 
         class _TqdmMock:
             """Minimal tqdm mock for when tqdm is unavailable."""
+
             def __init__(self, iterable=None, **_):
                 self.iterable = iterable
+
             def update(self, *_a):
                 pass
+
             def close(self):
                 pass
+
             def __enter__(self):
                 return self
+
             def __exit__(self, *_a):
                 pass
+
             def __iter__(self):
                 return iter(self.iterable or [])
 
