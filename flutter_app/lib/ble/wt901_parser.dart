@@ -1,18 +1,20 @@
 import 'dart:typed_data';
 import 'wt901_constants.dart';
 
-enum WT901PacketType { accelerometer, gyroscope, quaternion, unknown }
+enum WT901PacketType { accelerometer, gyroscope, quaternion, angle, unknown }
 
 class WT901Packet {
   final WT901PacketType type;
   final double? accX, accY, accZ;
   final double? gyroX, gyroY, gyroZ;
+  final double? angleX, angleY, angleZ;
   final double? quatW, quatX, quatY, quatZ;
 
   const WT901Packet({
     required this.type,
     this.accX, this.accY, this.accZ,
     this.gyroX, this.gyroY, this.gyroZ,
+    this.angleX, this.angleY, this.angleZ,
     this.quatW, this.quatX, this.quatY, this.quatZ,
   });
 }
@@ -42,6 +44,7 @@ class WT901Parser {
     switch (typeByte) {
       case typeAccel: type = WT901PacketType.accelerometer; break;
       case typeGyro: type = WT901PacketType.gyroscope; break;
+      case typeAngle: type = WT901PacketType.angle; break;
       case typeQuat: type = WT901PacketType.quaternion; break;
       default: type = WT901PacketType.unknown;
     }
@@ -52,6 +55,7 @@ class WT901Parser {
 
     double? accX, accY, accZ;
     double? gyroX, gyroY, gyroZ;
+    double? angleX, angleY, angleZ;
     double? quatW, quatX, quatY, quatZ;
 
     if (type == WT901PacketType.accelerometer) {
@@ -62,6 +66,10 @@ class WT901Parser {
       gyroX = _readInt16Scaled(data, 2, scaleGyro);
       gyroY = _readInt16Scaled(data, 4, scaleGyro);
       gyroZ = _readInt16Scaled(data, 6, scaleGyro);
+    } else if (type == WT901PacketType.angle) {
+      angleX = _readInt16Scaled(data, 2, scaleAngle);
+      angleY = _readInt16Scaled(data, 4, scaleAngle);
+      angleZ = _readInt16Scaled(data, 6, scaleAngle);
     } else if (type == WT901PacketType.quaternion) {
       quatW = _readInt16Scaled(data, 2, scaleQuat);
       quatX = _readInt16Scaled(data, 4, scaleQuat);
@@ -73,6 +81,7 @@ class WT901Parser {
       type: type,
       accX: accX, accY: accY, accZ: accZ,
       gyroX: gyroX, gyroY: gyroY, gyroZ: gyroZ,
+      angleX: angleX, angleY: angleY, angleZ: angleZ,
       quatW: quatW, quatX: quatX, quatY: quatY, quatZ: quatZ,
     );
   }

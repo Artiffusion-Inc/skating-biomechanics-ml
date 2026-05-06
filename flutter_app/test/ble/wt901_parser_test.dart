@@ -61,6 +61,23 @@ void main() {
       expect(result.gyroZ, closeTo(3.0 * scaleGyro, 0.001));
     });
 
+    test('parses angle packet', () {
+      final payload = [
+        packetHeader, typeAngle,
+        0x64, 0x00, // X = 100
+        0x32, 0x00, // Y = 50
+        0x19, 0x00, // Z = 25
+        0x00, // padding
+      ];
+      final packet = _withChecksum(payload);
+      final result = WT901Parser.parse(packet);
+      expect(result, isNotNull);
+      expect(result!.type, WT901PacketType.angle);
+      expect(result.angleX, closeTo(100.0 * scaleAngle, 0.001));
+      expect(result.angleY, closeTo(50.0 * scaleAngle, 0.001));
+      expect(result.angleZ, closeTo(25.0 * scaleAngle, 0.001));
+    });
+
     test('parses quaternion packet with all components', () {
       final payload = [
         packetHeader, typeQuat,
@@ -86,7 +103,17 @@ void main() {
       expect(result!.type, WT901PacketType.unknown);
       expect(result.accX, isNull);
       expect(result.gyroX, isNull);
+      expect(result.angleX, isNull);
       expect(result.quatW, isNull);
+    });
+
+    test('checksum rollover', () {
+      // Payload where sum of first 10 bytes exceeds 255
+      final payload = [packetHeader, typeAccel, ...List.filled(packetLength - 2, 0xFF)];
+      final packet = _withChecksum(payload);
+      final result = WT901Parser.parse(packet);
+      expect(result, isNotNull);
+      expect(result!.type, WT901PacketType.accelerometer);
     });
 
     test('scale factors produce physical units for accelerometer', () {
