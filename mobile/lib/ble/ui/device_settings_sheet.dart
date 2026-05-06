@@ -35,7 +35,7 @@ class DeviceSettingsSheet extends StatelessWidget {
               device.platformName,
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            Text(device.id.id, style: const TextStyle(fontSize: 12, color: Colors.white70)),
+            Text(device.remoteId.str, style: const TextStyle(fontSize: 12, color: Colors.white70)),
             const SizedBox(height: 16),
             _BatteryTile(
               voltage: voltage,

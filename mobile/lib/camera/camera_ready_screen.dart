@@ -131,14 +131,14 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                             if (ble.leftDevice != null) ...[
                               _BatteryChip(
                                 label: 'L',
-                                voltage: ble.batteryLevels[ble.leftDevice!.device.id.id],
+                                voltage: ble.batteryLevels[ble.leftDevice!.device.remoteId.str],
                               ),
                               const SizedBox(width: 6),
                             ],
                             if (ble.rightDevice != null) ...[
                               _BatteryChip(
                                 label: 'R',
-                                voltage: ble.batteryLevels[ble.rightDevice!.device.id.id],
+                                voltage: ble.batteryLevels[ble.rightDevice!.device.remoteId.str],
                               ),
                             ],
                           ],
@@ -212,7 +212,7 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                   gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.7)],
+                    colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
                   ),
                 ),
                 child: Row(

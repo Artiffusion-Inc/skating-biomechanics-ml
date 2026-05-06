@@ -5,8 +5,8 @@ import 'package:edgesense_capture/main.dart' as app;
 void main() {
   patrolTest(
     'full capture flow: permissions → ble → calibration → camera → stop',
-    (PatrolTester $) async {
-      await app.main();
+    ($) async {
+      app.main();
       await $.pumpAndSettle();
 
       // 1. Permissions screen

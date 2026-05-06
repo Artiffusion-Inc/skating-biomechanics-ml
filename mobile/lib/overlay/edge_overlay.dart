@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../i18n/strings.g.dart';
 
 class EdgeOverlay extends StatelessWidget {
   final double leftAngle;
@@ -16,6 +17,7 @@ class EdgeOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final t = Translations.of(context);
     final leftStale = !leftActive;
     final rightStale = !rightActive;
 
@@ -37,11 +39,14 @@ class EdgeOverlay extends StatelessWidget {
             Row(
               children: [
                 if (leftStale) ...[
-                  Icon(Icons.warning_amber, color: Colors.red.shade400, size: 16),
+                  Tooltip(
+                    message: t.overlay.staleAlert,
+                    child: Icon(Icons.warning_amber, color: Colors.red.shade400, size: 16),
+                  ),
                   const SizedBox(width: 4),
                 ],
                 Text(
-                  'L: ${leftAngle.toStringAsFixed(1)}°',
+                  '${t.overlay.leftLabel} ${leftAngle.toStringAsFixed(1)}°',
                   style: TextStyle(
                     color: leftStale ? Colors.red.shade300 : Colors.white,
                     fontSize: 18,
@@ -53,11 +58,14 @@ class EdgeOverlay extends StatelessWidget {
             Row(
               children: [
                 if (rightStale) ...[
-                  Icon(Icons.warning_amber, color: Colors.red.shade400, size: 16),
+                  Tooltip(
+                    message: t.overlay.staleAlert,
+                    child: Icon(Icons.warning_amber, color: Colors.red.shade400, size: 16),
+                  ),
                   const SizedBox(width: 4),
                 ],
                 Text(
-                  'R: ${rightAngle.toStringAsFixed(1)}°',
+                  '${t.overlay.rightLabel} ${rightAngle.toStringAsFixed(1)}°',
                   style: TextStyle(
                     color: rightStale ? Colors.red.shade300 : Colors.white,
                     fontSize: 18,

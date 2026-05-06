@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../i18n/strings.g.dart';
 import '../ble/ble_manager.dart';
-import '../ble/wt901_parser.dart';
 import 'calibration_service.dart';
 
 class CalibrationScreen extends StatefulWidget {

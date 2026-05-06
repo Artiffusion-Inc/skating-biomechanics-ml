@@ -81,7 +81,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
                       result: devices[i],
                       leftDevice: ble.leftDevice,
                       rightDevice: ble.rightDevice,
-                      voltage: ble.batteryLevels[devices[i].device.id.id],
+                      voltage: ble.batteryLevels[devices[i].device.remoteId.str],
                       onAssign: () => _showAssignSheet(devices[i], ble),
                       onSettings: () => _showSensorSettings(devices[i], ble),
                     ),
@@ -116,8 +116,8 @@ class _BleScanScreenState extends State<BleScanScreen> {
 
   void _showAssignSheet(ScanResult result, BleManager ble) {
     final device = result.device;
-    final isLeft = ble.leftDevice?.device.id == device.id;
-    final isRight = ble.rightDevice?.device.id == device.id;
+    final isLeft = ble.leftDevice?.device.remoteId == device.remoteId;
+    final isRight = ble.rightDevice?.device.remoteId == device.remoteId;
 
     if (isLeft) {
       ble.unassignDevice('left');
@@ -148,7 +148,7 @@ class _BleScanScreenState extends State<BleScanScreen> {
       context: context,
       builder: (ctx) => DeviceSettingsSheet(
         device: result.device,
-        voltage: ble.batteryLevels[result.device.id.id],
+        voltage: ble.batteryLevels[result.device.remoteId.str],
         commander: commander,
         onRequestBattery: () async {
           await commander.requestBattery();

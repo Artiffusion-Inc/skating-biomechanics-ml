@@ -47,6 +47,7 @@ class Translations with BaseTranslations<AppLocale, Translations> {
 	late final TranslationsCameraRu camera = TranslationsCameraRu.internal(_root);
 	late final TranslationsCaptureRu capture = TranslationsCaptureRu.internal(_root);
 	late final TranslationsMetricsRu metrics = TranslationsMetricsRu.internal(_root);
+	late final TranslationsOverlayRu overlay = TranslationsOverlayRu.internal(_root);
 	late final TranslationsExportRu export = TranslationsExportRu.internal(_root);
 }
 
@@ -263,6 +264,24 @@ class TranslationsMetricsRu {
 	String get edgeAngle => 'Edge Angle';
 }
 
+// Path: overlay
+class TranslationsOverlayRu {
+	TranslationsOverlayRu.internal(this._root);
+
+	final Translations _root; // ignore: unused_field
+
+	// Translations
+
+	/// ru: 'Л:'
+	String get leftLabel => 'Л:';
+
+	/// ru: 'П:'
+	String get rightLabel => 'П:';
+
+	/// ru: 'Нет данных'
+	String get staleAlert => 'Нет данных';
+}
+
 // Path: export
 class TranslationsExportRu {
 	TranslationsExportRu.internal(this._root);
@@ -452,6 +471,9 @@ extension on Translations {
 			'metrics.gyro' => 'Гироскоп',
 			'metrics.accel' => 'Акселерометр',
 			'metrics.edgeAngle' => 'Edge Angle',
+			'overlay.leftLabel' => 'Л:',
+			'overlay.rightLabel' => 'П:',
+			'overlay.staleAlert' => 'Нет данных',
 			'export.title' => 'Результат',
 			'export.success' => 'Запись сохранена',
 			'export.error' => 'Ошибка при сохранении',

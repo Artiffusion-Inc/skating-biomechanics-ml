@@ -5,8 +5,8 @@ import 'package:edgesense_capture/main.dart' as app;
 void main() {
   patrolTest(
     'grants permissions and navigates to BLE scan',
-    (PatrolTester $) async {
-      await app.main();
+    ($) async {
+      app.main();
       await $.pumpAndSettle();
 
       // Permissions screen

@@ -22,8 +22,8 @@ class ScannerTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isLeft = leftDevice?.device.id == result.device.id;
-    final isRight = rightDevice?.device.id == result.device.id;
+    final isLeft = leftDevice?.device.remoteId == result.device.remoteId;
+    final isRight = rightDevice?.device.remoteId == result.device.remoteId;
     final name = result.device.platformName;
 
     return ListTile(
@@ -32,7 +32,7 @@ class ScannerTile extends StatelessWidget {
         color: isLeft || isRight ? Colors.blue : Colors.grey,
       ),
       title: Text(name),
-      subtitle: Text(result.device.id.id),
+      subtitle: Text(result.device.remoteId.str),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

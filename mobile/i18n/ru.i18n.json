@@ -88,6 +88,11 @@
     "accel": "Акселерометр",
     "edgeAngle": "Edge Angle"
   },
+  "overlay": {
+    "leftLabel": "Л:",
+    "rightLabel": "П:",
+    "staleAlert": "Нет данных"
+  },
   "export": {
     "title": "Результат",
     "success": "Запись сохранена",

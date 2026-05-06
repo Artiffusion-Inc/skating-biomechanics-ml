@@ -23,7 +23,7 @@ class ConnectionSheet extends StatelessWidget {
         children: [
           ListTile(
             title: Text(device.platformName),
-            subtitle: Text(device.id.id),
+            subtitle: Text(device.remoteId.str),
           ),
           const Divider(),
           ListTile(

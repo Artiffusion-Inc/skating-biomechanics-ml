@@ -113,7 +113,7 @@ class BleManager extends ChangeNotifier {
       device: device,
       side: side,
       onBattery: (v) {
-        batteryLevels[device.id.id] = v;
+        batteryLevels[device.remoteId.str] = v;
         notifyListeners();
       },
     );

@@ -15,7 +15,7 @@ class _GridPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = Colors.white.withOpacity(0.3)
+      ..color = Colors.white.withValues(alpha: 0.3)
       ..strokeWidth = 1;
     final dx = size.width / 3;
     final dy = size.height / 3;

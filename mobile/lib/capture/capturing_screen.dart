@@ -189,14 +189,14 @@ class _CapturingScreenState extends State<CapturingScreen> {
                       if (ble.leftDevice != null) ...[
                         _BatteryChip(
                           label: 'L',
-                          voltage: ble.batteryLevels[ble.leftDevice!.device.id.id],
+                          voltage: ble.batteryLevels[ble.leftDevice!.device.remoteId.str],
                         ),
                         const SizedBox(width: 6),
                       ],
                       if (ble.rightDevice != null) ...[
                         _BatteryChip(
                           label: 'R',
-                          voltage: ble.batteryLevels[ble.rightDevice!.device.id.id],
+                          voltage: ble.batteryLevels[ble.rightDevice!.device.remoteId.str],
                         ),
                       ],
                       const SizedBox(width: 6),
