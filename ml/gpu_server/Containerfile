@@ -40,11 +40,6 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     boto3==1.42.80 \
     httpx==0.28.1
 
-# rtmlib with --no-deps to prevent torch/timm from being pulled in
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv pip install --python /opt/venv/bin/python --no-deps --no-cache-dir \
-    rtmlib==0.0.15
-
 # Strip unnecessary files from venv
 RUN find /opt/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null; \
     find /opt/venv -type f -name "*.pyc" -delete 2>/dev/null; \

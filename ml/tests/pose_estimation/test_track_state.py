@@ -5,7 +5,7 @@ from src.pose_estimation._track_state import TrackState
 
 
 def test_track_state_init_no_tracker():
-    ts = TrackState(fps=30.0, tracking_backend="rtmlib", tracking_mode="none")
+    ts = TrackState(fps=30.0, tracking_backend="custom", tracking_mode="none")
     assert ts.tracker_instances == (None, None, None)
     assert ts.target_track_id is None
     assert ts.track_hit_counts == {}
@@ -19,7 +19,7 @@ def test_track_state_init_custom_tracker():
 
 
 def test_track_state_init_sports2d():
-    ts = TrackState(fps=30.0, tracking_backend="rtmlib", tracking_mode="sports2d")
+    ts = TrackState(fps=30.0, tracking_backend="custom", tracking_mode="sports2d")
     assert ts.sports2d_tracker is not None
     assert ts.custom_tracker is None
 

@@ -1,4 +1,4 @@
-"""Tests for batch RTMO integration."""
+"""Tests for batch pose extraction integration."""
 
 from __future__ import annotations
 
@@ -19,7 +19,7 @@ def test_extract_video_tracked_accepts_use_batch_param():
 
 
 def test_extract_video_tracked_dispatches_to_batch():
-    """When use_batch=True, should use BatchRTMO path."""
+    """When use_batch=True, should use _extract_batch path."""
     from src.pose_estimation.pose_extractor import PoseExtractor
 
     # Verify the batch method exists

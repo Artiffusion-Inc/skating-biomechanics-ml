@@ -2,7 +2,7 @@
 
 H3.6M Architecture:
     Pipeline uses H3.6M 17-keypoint format as primary.
-    2D: PoseExtractor (rtmlib), 3D: AthletePose3DExtractor
+    2D: PoseExtractor (PersonDetector + MogaNetBatch)
 """
 
 from pathlib import Path
@@ -103,7 +103,7 @@ class TestAnalysisPipelineAnalyze:
             reference_store=reference_store,
         )
 
-        # Mock _extract_and_track to avoid video I/O and rtmlib
+        # Mock _extract_and_track to avoid video I/O and ONNX
         pipeline._extract_and_track = MagicMock(return_value=(sample_3d_poses, 0))
 
         # Mock normalizer
@@ -727,9 +727,9 @@ class TestPipelineLazyLoading:
         """Should lazy-load PoseExtractor."""
         from pathlib import Path
 
-        model_file = Path("rtmpose-body_with_feet_simcc-balance-26keypoints.onnx")
+        model_file = Path("data/models/moganet/moganet_b_ap2d_384x288.onnx")
         if not model_file.exists():
-            pytest.skip("rtmlib model not available")
+            pytest.skip("MogaNet-B model not available")
 
         pipeline = AnalysisPipeline()
 

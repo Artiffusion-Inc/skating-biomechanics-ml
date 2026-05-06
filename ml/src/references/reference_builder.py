@@ -2,7 +2,7 @@
 
 H3.6M Migration:
     Uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: PoseExtractor (rtmlib RTMO Body)
+    2D extraction: PoseExtractor (PersonDetector + MogaNetBatch)
 
 This module provides tools to create reference datasets from
 expert skating videos for comparison with user performances.

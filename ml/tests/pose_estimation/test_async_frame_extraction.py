@@ -60,15 +60,15 @@ class TestPoseExtractorIntegration:
         from src.pose_estimation.pose_extractor import PoseExtractor
 
         extractor = PoseExtractor.__new__(PoseExtractor)
-        extractor._mode = "balanced"
-        extractor._tracking_backend = "rtmlib"
+        extractor._model_path = "data/models/moganet/moganet_b_ap2d_384x288.onnx"
+        extractor._tracking_backend = "custom"
         extractor._tracking_mode = "sports2d"
         extractor._conf_threshold = 0.3
         extractor._output_format = "normalized"
         extractor._frame_skip = frame_skip
         extractor._device = "cpu"
-        extractor._backend = "onnxruntime"
-        extractor._tracker = MagicMock()
+        extractor._person_detector = MagicMock()
+        extractor._moganet = MagicMock()
         return extractor
 
     def _mock_video_capture(self):
