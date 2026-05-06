@@ -14,6 +14,8 @@ class CaptureController extends ChangeNotifier {
   StreamSubscription? _streamSubscription;
 
   DateTime? get startTime => t0;
+  int get leftSampleCount => _leftBuffer.length;
+  int get rightSampleCount => _rightBuffer.length;
 
   Future<CaptureResult?> start({
     required BleManager bleManager,
