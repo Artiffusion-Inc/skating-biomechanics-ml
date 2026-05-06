@@ -1,12 +1,7 @@
-"""Batched RTMO pose extractor for GPU optimization.
+"""Batched MogaNet-B pose extractor for GPU optimization.
 
-This module implements frame batching for RTMO inference, providing 3-5x speedup
-over sequential per-frame processing.
-
-Key optimization: Process multiple frames in a single RTMO inference call,
-reducing kernel launch overhead and improving GPU utilization.
-
-Expected speedup: 3-5x for batch size 8-16
+Top-down pipeline: detect all frames → batch crops → MogaNet-B ONNX
+→ decode → tracking.
 
 Usage:
     from src.pose_estimation import BatchPoseExtractor
@@ -19,10 +14,15 @@ from __future__ import annotations
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
+
+from ..types import PersonClick, TrackedExtraction
+from ..utils.video import get_video_meta
+from .h36m import coco_to_h36m
+
+logger = logging.getLogger(__name__)
 
 
 def _get_tqdm():
@@ -49,74 +49,32 @@ def _get_tqdm():
         return _tqdm_mock
 
 
-if TYPE_CHECKING:
-    from rtmlib import Body, PoseTracker
-else:
-    try:
-        from rtmlib import Body, PoseTracker
-    except ImportError:
-        PoseTracker = None  # type: ignore[assignment]
-        Body = None  # type: ignore[assignment]
-
-from ..types import PersonClick, TrackedExtraction
-from ..utils.video import get_video_meta
-from .h36m import coco_to_h36m
-
-logger = logging.getLogger(__name__)
-
-
 class BatchPoseExtractor:
-    """RTMO pose extractor with frame batching.
+    """MogaNet-B pose extractor with frame batching.
 
-    Processes multiple frames in a single inference call, reducing kernel launch
-    overhead and improving GPU utilization.
+    Top-down pipeline: detect all frames → batch crops → MogaNet-B ONNX
+    → decode → tracking.
 
     Args:
         batch_size: Number of frames to process per batch (default: 8).
-        mode: Model preset — "lightweight" (fast), "balanced" (default),
-            "performance" (accurate).
-        conf_threshold: Minimum keypoint confidence to accept [0, 1].
-        output_format: "normalized" for [0, 1] coords, "pixels" for absolute.
-        device: "cpu" or "cuda" (default: "auto").
-        backend: Inference backend — "onnxruntime" or "opencv".
-
-    Attributes:
-        batch_size: Number of frames per batch.
-        device: Resolved device ("cuda" or "cpu").
-
-    Example:
-        >>> extractor = BatchPoseExtractor(batch_size=8, device="cuda")
-        >>> result = extractor.extract_video_tracked("video.mp4")
-        >>> print(f"Processed {result.poses.shape[0]} frames")
+        model_path: Path to MogaNet-B ONNX model.
+        conf_threshold: Minimum keypoint confidence [0, 1].
+        output_format: "normalized" or "pixels".
+        device: "cpu", "cuda", or "auto".
     """
 
     def __init__(
         self,
         batch_size: int = 8,
-        mode: str = "balanced",
+        model_path: str = "data/models/moganet/moganet_b_ap2d_384x288.onnx",
         conf_threshold: float = 0.3,
         output_format: str = "normalized",
         device: str = "auto",
-        backend: str = "onnxruntime",
     ) -> None:
-        """Initialize batch pose extractor.
-
-        Args:
-            batch_size: Number of frames to process per batch.
-            mode: Model preset.
-            conf_threshold: Confidence threshold.
-            output_format: Output coordinate format.
-            device: Device to use.
-            backend: Inference backend.
-        """
-        if PoseTracker is None:
-            raise ImportError("rtmlib is not installed. Install with: uv add rtmlib")
-
         self.batch_size = max(1, batch_size)
-        self._mode = mode
+        self._model_path = model_path
         self._conf_threshold = conf_threshold
         self._output_format = output_format
-        self._backend = backend
 
         # Resolve device
         if device == "auto":
@@ -126,44 +84,52 @@ class BatchPoseExtractor:
         else:
             self._device = device
 
-        # Lazy-initialised on first call
-        self._tracker: PoseTracker | None = None
-        self._batch_rtmo = None  # Lazy-init BatchRTMO for true batch inference
+        # Initialize top-down components
+        from ..detection.person_detector import PersonDetector
+        from .moganet_batch import MogaNetBatch
 
-    @property
-    def tracker(self) -> PoseTracker:
-        """Lazy-initialise rtmlib PoseTracker on first access."""
-        if self._tracker is None:
-            if Body is None:
-                raise ImportError("rtmlib Body model not available")
+        self._person_detector = PersonDetector(confidence=conf_threshold)
+        self._moganet = MogaNetBatch(
+            model_path=model_path,
+            device=device,
+            score_thr=conf_threshold,
+        )
 
-            from functools import partial
+    def _detect_and_crop(
+        self,
+        frame: np.ndarray,
+    ) -> tuple[list[np.ndarray], list[tuple[int, int, int, int]]]:
+        """Run person detection on a frame and return padded crops + bboxes.
 
-            from rtmlib import Custom
-            from rtmlib import PoseTracker as RTMPoseTracker
+        Expands each detection bbox by 20% padding (10% on each side) and
+        clips to frame bounds.
 
-            rtmo_urls = {
-                "performance": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211.zip",
-                "lightweight": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-s_8xb32-600e_body7-640x640-dac2bf74_20231211.zip",
-                "balanced": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-m_16xb16-600e_body7-640x640-39e78cc4_20231211.zip",
-            }
+        Args:
+            frame: Input frame (H, W, 3) BGR.
 
-            RTMOSolution = partial(
-                Custom,
-                pose_class="RTMO",
-                pose=rtmo_urls[self._mode],
-                pose_input_size=(640, 640),
-                to_openpose=False,
-                backend=self._backend,
-                device=self._device,
-            )
+        Returns:
+            (crops, bboxes) where crops is a list of np.ndarray crop images
+            and bboxes is a list of (x1, y1, x2, y2) integer tuples in
+            original frame coordinates.
+        """
+        h, w = frame.shape[:2]
+        detection = self._person_detector.detect_frame(frame)
+        if detection is None:
+            return [], []
 
-            self._tracker = RTMPoseTracker(
-                RTMOSolution,
-                tracking=False,  # We'll do tracking ourselves
-            )
+        # Expand by 20% padding (10% on each side)
+        bw = detection.x2 - detection.x1
+        bh = detection.y2 - detection.y1
+        pad_x = bw * 0.1
+        pad_y = bh * 0.1
 
-        return self._tracker
+        x1 = max(0, int(detection.x1 - pad_x))
+        y1 = max(0, int(detection.y1 - pad_y))
+        x2 = min(w, int(detection.x2 + pad_x))
+        y2 = min(h, int(detection.y2 + pad_y))
+
+        crop = frame[y1:y2, x1:x2]
+        return [crop], [(x1, y1, x2, y2)]
 
     def extract_video_tracked(
         self,
@@ -208,8 +174,6 @@ class BatchPoseExtractor:
 
         try:
             frame_idx = 0
-            batch_buffer = []
-            batch_indices = []
 
             while cap.isOpened() and frame_idx < num_frames:
                 ret, frame = cap.read()
@@ -223,31 +187,44 @@ class BatchPoseExtractor:
                     scale = 1920 / max(h, w)
                     frame = cv2.resize(frame, (int(w * scale), int(h * scale)))
 
-                batch_buffer.append(frame)
-                batch_indices.append(frame_idx)
+                crops, bboxes = self._detect_and_crop(frame)
 
-                # Process batch when full
-                if len(batch_buffer) >= self.batch_size:
-                    poses_batch = self._process_batch(batch_buffer, w, h)
-                    for idx, pose in zip(batch_indices, poses_batch, strict=True):
-                        all_poses[idx] = pose
-                    batch_buffer = []
-                    batch_indices = []
+                if not crops:
+                    # No detection → NaN pose (already pre-allocated)
+                    pass
+                else:
+                    keypoints, scores = self._moganet.infer_batch(crops, bboxes)
+                    if keypoints is not None and len(keypoints) > 0:
+                        # Use first detected person (same as old behaviour)
+                        kp = keypoints[0].astype(np.float32)  # (17, 2) pixels
+                        conf = scores[0].astype(np.float32)  # (17,)
+
+                        # Build COCO (17, 3) with confidence
+                        coco = np.zeros((17, 3), dtype=np.float32)
+                        coco[:, :2] = kp
+                        coco[:, 2] = conf
+
+                        # Normalize to [0, 1]
+                        coco[:, 0] /= w
+                        coco[:, 1] /= h
+
+                        # Convert to H3.6M 17kp
+                        h36m = coco_to_h36m(coco)
+
+                        # Convert to pixels if requested
+                        if self._output_format == "pixels":
+                            h36m[:, 0] *= w
+                            h36m[:, 1] *= h
+
+                        all_poses[frame_idx] = h36m
 
                 frame_idx += 1
-                pbar.update(len(batch_indices))
+                pbar.update(1)
                 if progress_cb:
                     progress_cb(
                         frame_idx / num_frames * 0.5,
                         f"Extracting poses... {frame_idx}/{num_frames}",
                     )
-
-            # Process remaining frames
-            if batch_buffer:
-                poses_batch = self._process_batch(batch_buffer, w, h)
-                for idx, pose in zip(batch_indices, poses_batch, strict=True):
-                    all_poses[idx] = pose
-                pbar.update(len(batch_indices))
 
         finally:
             cap.release()
@@ -270,73 +247,12 @@ class BatchPoseExtractor:
             video_meta=video_meta,
         )
 
-    def _process_batch(
-        self,
-        frames: list[np.ndarray],
-        original_width: int,
-        original_height: int,
-    ) -> list[np.ndarray]:
-        """Process a batch of frames through RTMO with true batch inference.
-
-        This is the key optimization: single RTMO call for multiple frames.
-
-        Args:
-            frames: List of frames to process (H, W, 3).
-            original_width: Original video width for normalization.
-            original_height: Original video height for normalization.
-
-        Returns:
-            List of H3.6M poses (17, 3) for each frame.
-        """
-        # Lazy-init BatchRTMO
-        if self._batch_rtmo is None:
-            from .rtmo_batch import BatchRTMO
-
-            self._batch_rtmo = BatchRTMO(
-                mode=self._mode,
-                device=self._device,
-                score_thr=self._conf_threshold,
-            )
-
-        results = self._batch_rtmo.infer_batch(frames)
-
-        poses = []
-        for keypoints, scores in results:
-            if keypoints is None or len(keypoints) == 0:
-                poses.append(np.full((17, 3), np.nan, dtype=np.float32))
-                continue
-
-            # Use first detected person
-            kp = keypoints[0].astype(np.float32)  # (17, 2) pixels
-            conf = scores[0].astype(np.float32)  # (17,)
-
-            # Build COCO (17, 3) with confidence
-            coco = np.zeros((17, 3), dtype=np.float32)
-            coco[:, :2] = kp
-            coco[:, 2] = conf
-
-            # Normalize to [0, 1]
-            coco[:, 0] /= original_width
-            coco[:, 1] /= original_height
-
-            # Convert to H3.6M 17kp
-            h36m = coco_to_h36m(coco)
-
-            # Convert to pixels if requested
-            if self._output_format == "pixels":
-                h36m[:, 0] *= original_width
-                h36m[:, 1] *= original_height
-
-            poses.append(h36m)
-
-        return poses
-
     def close(self) -> None:
         """Release resources."""
-        if self._batch_rtmo is not None:
-            self._batch_rtmo.close()
-            self._batch_rtmo = None
-        self._tracker = None
+        if hasattr(self, "_moganet") and self._moganet is not None:
+            self._moganet.close()
+        self._moganet = None
+        self._person_detector = None
 
     def __enter__(self):
         """Context manager entry."""
@@ -350,11 +266,11 @@ class BatchPoseExtractor:
 def extract_poses_batched(
     video_path: Path | str,
     batch_size: int = 8,
-    mode: str = "balanced",
+    model_path: str = "data/models/moganet/moganet_b_ap2d_384x288.onnx",
     output_format: str = "normalized",
     person_click: PersonClick | None = None,
 ) -> TrackedExtraction:
-    """Extract H3.6M poses from video using batched RTMO inference.
+    """Extract H3.6M poses from video using batched MogaNet-B inference.
 
     Convenience function that creates a BatchPoseExtractor and runs
     tracked extraction.
@@ -362,7 +278,7 @@ def extract_poses_batched(
     Args:
         video_path: Path to video file.
         batch_size: Number of frames to process per batch.
-        mode: Model preset — "lightweight", "balanced", "performance".
+        model_path: Path to MogaNet-B ONNX model.
         output_format: "normalized" or "pixels".
         person_click: Optional click to select target person.
 
@@ -375,7 +291,7 @@ def extract_poses_batched(
     """
     extractor = BatchPoseExtractor(
         batch_size=batch_size,
-        mode=mode,
+        model_path=model_path,
         output_format=output_format,
     )
     return extractor.extract_video_tracked(video_path, person_click=person_click)

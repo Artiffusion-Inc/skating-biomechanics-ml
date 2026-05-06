@@ -28,45 +28,65 @@ def dummy_video_meta():
 
 
 @pytest.fixture
-def mock_batch_rtmo(monkeypatch):
-    """Mock BatchRTMO so no ONNX model is loaded."""
+def mock_moganet_batch(monkeypatch):
+    """Mock MogaNetBatch so no ONNX model is loaded."""
 
-    class FakeBatchRTMO:
+    class FakeMogaNetBatch:
         def __init__(self, **kwargs):
             self.kwargs = kwargs
             self.closed = False
 
-        def infer_batch(self, frames):
-            """Return one detection per frame with COCO 17 keypoints."""
-            results = []
-            for _ in frames:
-                # (1 person, 17 keypoints, 2 coords)
-                kps = np.zeros((1, 17, 2), dtype=np.float32)
-                kps[0, 0] = [320.0, 100.0]  # nose
-                kps[0, 5] = [280.0, 150.0]  # left shoulder
-                kps[0, 6] = [360.0, 150.0]  # right shoulder
-                kps[0, 7] = [260.0, 220.0]  # left elbow
-                kps[0, 8] = [380.0, 220.0]  # right elbow
-                kps[0, 9] = [250.0, 290.0]  # left wrist
-                kps[0, 10] = [390.0, 290.0]  # right wrist
-                kps[0, 11] = [280.0, 300.0]  # left hip
-                kps[0, 12] = [360.0, 300.0]  # right hip
-                kps[0, 13] = [280.0, 380.0]  # left knee
-                kps[0, 14] = [360.0, 380.0]  # right knee
-                kps[0, 15] = [280.0, 450.0]  # left ankle
-                kps[0, 16] = [360.0, 450.0]  # right ankle
-                scores = np.ones((1, 17), dtype=np.float32)
-                results.append((kps, scores))
-            return results
+        def infer_batch(self, crops, bboxes):
+            if not crops:
+                return np.zeros((0, 17, 2), np.float32), np.zeros((0, 17), np.float32)
+            keypoints = []
+            scores = []
+            for crop in crops:
+                h, w = crop.shape[:2]
+                kp = np.zeros((1, 17, 2), dtype=np.float32)
+                kp[0, :, 0] = w / 2
+                kp[0, :, 1] = h / 2
+                keypoints.append(kp[0])
+                scores.append(np.ones(17, dtype=np.float32))
+            return np.array(keypoints), np.array(scores)
 
         def close(self):
             self.closed = True
 
     monkeypatch.setattr(
-        "src.pose_estimation.rtmo_batch.BatchRTMO",
-        FakeBatchRTMO,
+        "src.pose_estimation.moganet_batch.MogaNetBatch",
+        FakeMogaNetBatch,
     )
-    return FakeBatchRTMO
+    return FakeMogaNetBatch
+
+
+@pytest.fixture
+def mock_person_detector(monkeypatch):
+    """Mock PersonDetector to always return a fixed bbox."""
+
+    class FakePersonDetector:
+        def __init__(self, **kwargs):
+            pass
+
+        def detect_frame(self, frame):
+            h, w = frame.shape[:2]
+            return type(
+                "BBox",
+                (),
+                {
+                    "x1": float(w * 0.1),
+                    "y1": float(h * 0.1),
+                    "x2": float(w * 0.9),
+                    "y2": float(h * 0.9),
+                    "confidence": 0.9,
+                },
+            )()
+
+    monkeypatch.setattr(
+        "src.detection.person_detector.PersonDetector",
+        FakePersonDetector,
+    )
+    return FakePersonDetector
 
 
 @pytest.fixture
@@ -111,32 +131,29 @@ def mock_get_video_meta(monkeypatch, dummy_video_meta):
 
 
 class TestBatchPoseExtractorInit:
-    def test_default_init(self):
+    def test_default_init(self, mock_moganet_batch, mock_person_detector):
         """Should initialize with default parameters."""
         extractor = BatchPoseExtractor()
         assert extractor.batch_size == 8
-        assert extractor._mode == "balanced"
         assert extractor._conf_threshold == 0.3
         assert extractor._output_format == "normalized"
 
-    def test_custom_init(self):
+    def test_custom_init(self, mock_moganet_batch, mock_person_detector):
         """Should accept custom parameters."""
         extractor = BatchPoseExtractor(
             batch_size=16,
-            mode="performance",
+            model_path="custom.onnx",
             conf_threshold=0.5,
             output_format="pixels",
             device="cpu",
-            backend="opencv",
         )
         assert extractor.batch_size == 16
-        assert extractor._mode == "performance"
         assert extractor._conf_threshold == 0.5
         assert extractor._output_format == "pixels"
         assert extractor._device == "cpu"
-        assert extractor._backend == "opencv"
+        assert extractor._model_path == "custom.onnx"
 
-    def test_batch_size_clamped_to_one(self):
+    def test_batch_size_clamped_to_one(self, mock_moganet_batch, mock_person_detector):
         """Negative batch size should be clamped to 1."""
         extractor = BatchPoseExtractor(batch_size=-5)
         assert extractor.batch_size == 1
@@ -145,7 +162,8 @@ class TestBatchPoseExtractorInit:
 class TestBatchPoseExtractorExtractVideoTracked:
     def test_extract_video_tracked_returns_tracked_extraction(
         self,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
         mock_video_capture,
         mock_get_video_meta,
     ):
@@ -161,7 +179,8 @@ class TestBatchPoseExtractorExtractVideoTracked:
 
     def test_extract_video_tracked_with_person_click(
         self,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
         mock_video_capture,
         mock_get_video_meta,
     ):
@@ -176,7 +195,8 @@ class TestBatchPoseExtractorExtractVideoTracked:
 
     def test_extract_video_tracked_progress_cb(
         self,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
         mock_video_capture,
         mock_get_video_meta,
     ):
@@ -193,6 +213,8 @@ class TestBatchPoseExtractorExtractVideoTracked:
 
     def test_extract_video_tracked_video_open_failure(
         self,
+        mock_moganet_batch,
+        mock_person_detector,
         mock_get_video_meta,
         monkeypatch,
     ):
@@ -221,130 +243,74 @@ class TestBatchPoseExtractorExtractVideoTracked:
     ):
         """Should raise ValueError when no valid poses are detected."""
 
-        class EmptyBatchRTMO:
+        class EmptyPersonDetector:
             def __init__(self, **kwargs):
                 pass
 
-            def infer_batch(self, frames):
-                # Return empty detections for every frame
-                return [
-                    (np.zeros((0, 17, 2), dtype=np.float32), np.zeros((0, 17), dtype=np.float32))
-                    for _ in frames
-                ]
+            def detect_frame(self, frame):
+                return None
+
+        monkeypatch.setattr(
+            "src.detection.person_detector.PersonDetector",
+            EmptyPersonDetector,
+        )
+
+        class FakeMogaNetBatch:
+            def __init__(self, **kwargs):
+                pass
+
+            def infer_batch(self, crops, bboxes):
+                if not crops:
+                    return np.zeros((0, 17, 2), np.float32), np.zeros((0, 17), np.float32)
+                return np.zeros((len(crops), 17, 2), np.float32), np.zeros(
+                    (len(crops), 17), np.float32
+                )
 
             def close(self):
                 pass
 
         monkeypatch.setattr(
-            "src.pose_estimation.rtmo_batch.BatchRTMO",
-            EmptyBatchRTMO,
+            "src.pose_estimation.moganet_batch.MogaNetBatch",
+            FakeMogaNetBatch,
         )
         extractor = BatchPoseExtractor(batch_size=4, device="cpu")
         with pytest.raises(ValueError, match="No valid pose detected"):
             extractor.extract_video_tracked("dummy.mp4")
 
 
-class TestBatchPoseExtractorProcessBatch:
-    def test_process_batch_normalized_output(
-        self,
-        mock_batch_rtmo,
-    ):
-        """_process_batch should return normalized H3.6M poses by default."""
-        extractor = BatchPoseExtractor(batch_size=2, device="cpu")
-        frames = [
-            np.zeros((480, 640, 3), dtype=np.uint8),
-            np.zeros((480, 640, 3), dtype=np.uint8),
-        ]
-        poses = extractor._process_batch(frames, 640, 480)
-
-        assert len(poses) == 2
-        assert poses[0].shape == (17, 3)
-        # Normalized coordinates should be in [0, 1]
-        assert np.all((poses[0][:, 0] >= 0.0) | np.isnan(poses[0][:, 0]))
-        assert np.all((poses[0][:, 0] <= 1.0) | np.isnan(poses[0][:, 0]))
-
-    def test_process_batch_pixels_output(
-        self,
-        mock_batch_rtmo,
-    ):
-        """_process_batch should return pixel coordinates when requested."""
-        extractor = BatchPoseExtractor(batch_size=2, device="cpu", output_format="pixels")
-        frames = [
-            np.zeros((480, 640, 3), dtype=np.uint8),
-        ]
-        poses = extractor._process_batch(frames, 640, 480)
-
-        assert len(poses) == 1
-        # Pixel coordinates should be up to frame dimensions
-        assert poses[0][:, 0].max() <= 640.0
-        assert poses[0][:, 1].max() <= 480.0
-
-    def test_process_batch_empty_detection(
-        self,
-        monkeypatch,
-    ):
-        """Empty detection should yield NaN pose."""
-
-        class EmptyBatchRTMO:
-            def __init__(self, **kwargs):
-                pass
-
-            def infer_batch(self, frames):
-                return [
-                    (np.zeros((0, 17, 2), dtype=np.float32), np.zeros((0, 17), dtype=np.float32))
-                    for _ in frames
-                ]
-
-            def close(self):
-                pass
-
-        monkeypatch.setattr(
-            "src.pose_estimation.rtmo_batch.BatchRTMO",
-            EmptyBatchRTMO,
-        )
-        extractor = BatchPoseExtractor(batch_size=2, device="cpu")
-        frames = [np.zeros((480, 640, 3), dtype=np.uint8)]
-        poses = extractor._process_batch(frames, 640, 480)
-        assert len(poses) == 1
-        assert np.all(np.isnan(poses[0]))
-
-
 class TestBatchPoseExtractorLifecycle:
-    def test_close_releases_resources(self, mock_batch_rtmo):
+    def test_close_releases_resources(self, mock_moganet_batch, mock_person_detector):
         """close should clear internal references."""
         extractor = BatchPoseExtractor(batch_size=2, device="cpu")
-        # Trigger lazy init of _batch_rtmo
-        frames = [np.zeros((480, 640, 3), dtype=np.uint8)]
-        extractor._process_batch(frames, 640, 480)
-        assert extractor._batch_rtmo is not None
-
         extractor.close()
-        assert extractor._batch_rtmo is None
-        assert extractor._tracker is None
+        assert extractor._moganet is None
+        assert extractor._person_detector is None
 
-    def test_context_manager(self, mock_batch_rtmo):
+    def test_context_manager(self, mock_moganet_batch, mock_person_detector):
         """Should work as a context manager."""
         with BatchPoseExtractor(batch_size=2, device="cpu") as extractor:
             assert isinstance(extractor, BatchPoseExtractor)
         # After exit, resources should be released
-        assert extractor._batch_rtmo is None
+        assert extractor._moganet is None
 
 
 class TestExtractPosesBatched:
     def test_convenience_function(
         self,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
         mock_video_capture,
         mock_get_video_meta,
     ):
         """extract_poses_batched should return TrackedExtraction."""
-        result = extract_poses_batched("dummy.mp4", batch_size=4, mode="balanced")
+        result = extract_poses_batched("dummy.mp4", batch_size=4)
         assert isinstance(result, TrackedExtraction)
         assert result.poses.shape == (10, 17, 3)
 
     def test_convenience_function_with_person_click(
         self,
-        mock_batch_rtmo,
+        mock_moganet_batch,
+        mock_person_detector,
         mock_video_capture,
         mock_get_video_meta,
     ):
