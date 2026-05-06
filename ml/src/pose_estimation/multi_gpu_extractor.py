@@ -37,7 +37,7 @@ class MultiGPUPoseExtractor:
         config: Multi-GPU configuration.
         output_format: Output coordinate format ("normalized" or "pixels").
         conf_threshold: Confidence threshold for poses.
-        mode: RTMO model mode ("lightweight", "balanced", "performance").
+        model_path: Path to MogaNet-B ONNX model.
     """
 
     def __init__(
@@ -45,7 +45,7 @@ class MultiGPUPoseExtractor:
         config: MultiGPUConfig | None = None,
         output_format: str = "normalized",
         conf_threshold: float = 0.5,
-        mode: str = "balanced",
+        model_path: str = "data/models/moganet/moganet_b_ap2d_384x288.onnx",
     ) -> None:
         """Initialize multi-GPU pose extractor.
 
@@ -53,12 +53,12 @@ class MultiGPUPoseExtractor:
             config: Multi-GPU configuration.
             output_format: Output coordinate format.
             conf_threshold: Confidence threshold for poses.
-            mode: RTMO model mode.
+            model_path: Path to MogaNet-B ONNX model.
         """
         self.config = config or MultiGPUConfig()
         self.output_format = output_format
         self.conf_threshold = conf_threshold
-        self.mode = mode
+        self.model_path = model_path
 
     def extract_video_tracked(
         self,
@@ -108,7 +108,7 @@ class MultiGPUPoseExtractor:
                     self.config.enabled_gpus[gpu_idx].device_id,
                     self.output_format,
                     self.conf_threshold,
-                    self.mode,
+                    self.model_path,
                 ): (gpu_idx, start_frame, end_frame)
                 for gpu_idx, start_frame, end_frame in chunks
             }
@@ -141,7 +141,7 @@ class MultiGPUPoseExtractor:
             output_format=self.output_format,
             device=device,
             conf_threshold=self.conf_threshold,
-            mode=self.mode,
+            model_path=self.model_path,
         )
         return extractor.extract_video_tracked(video_path, person_click=person_click)
 
@@ -154,7 +154,7 @@ class MultiGPUPoseExtractor:
         device_id: int,
         output_format: str,
         conf_threshold: float,
-        mode: str,
+        model_path: str,
     ) -> dict:
         """Extract poses from a video chunk on specific GPU.
 
@@ -168,7 +168,7 @@ class MultiGPUPoseExtractor:
             device_id: GPU device ID.
             output_format: Output coordinate format.
             conf_threshold: Confidence threshold.
-            mode: RTMO model mode.
+            model_path: Path to MogaNet-B ONNX model.
 
         Returns:
             Dict with extraction results.
@@ -184,7 +184,7 @@ class MultiGPUPoseExtractor:
             output_format=output_format,
             device="cuda",  # Will use CUDA_VISIBLE_DEVICES
             conf_threshold=conf_threshold,
-            mode=mode,
+            model_path=model_path,
         )
 
         # Extract from video
