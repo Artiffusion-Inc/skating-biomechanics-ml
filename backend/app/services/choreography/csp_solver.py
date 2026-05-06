@@ -275,8 +275,12 @@ def solve_layout(
     discipline: str,
     segment: str,
     num_layouts: int = 3,
+    seed: int | None = None,
 ) -> list[dict]:
     """Generate valid choreography layouts."""
+    if seed is not None:
+        random.seed(seed)
+
     candidates = _generate_candidates(inventory, segment)
 
     duration = music_features.get("duration", 180.0)
