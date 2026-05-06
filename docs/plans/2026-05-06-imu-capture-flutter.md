@@ -32,8 +32,14 @@ flutter_app/
 │   │   └── edge_overlay.dart        # real-time edge angle widget
 │   ├── export/
 │   │   ├── protobuf_gen/imu.pb.dart # generated from proto
-│   │   ├── exporter.dart            # zip builder
+│   │   ├── exporter.dart            # zip builder (Isolate.run)
 │   │   └── manifest_builder.dart    # manifest.json generator
+│   ├── permissions/
+│   │   └── permission_service.dart  # BLE + camera permission requests
+│   ├── theme/
+│   │   └── app_theme.dart           # Material 3 ColorScheme
+│   ├── providers/
+│   │   └── app_providers.dart       # MultiProvider setup
 │   └── main.dart                    # MaterialApp + screens
 ├── proto/
 │   └── imu.proto                    # protobuf schema
@@ -90,6 +96,9 @@ message IMUStream {
 Add to `dependencies`:
 ```yaml
 protobuf: ^3.1.0
+permission_handler: ^11.3.0
+flutter_secure_storage: ^9.2.0
+provider: ^6.1.0
 ```
 
 Add to `dev_dependencies`:
@@ -579,11 +588,39 @@ Create `flutter_app/lib/calibration/calibration_service.dart`:
 ```dart
 import 'dart:math' as math;
 
-class CalibrationService {
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+
+class CalibrationService extends ChangeNotifier {
+  static const _storage = FlutterSecureStorage();
   List<double>? leftRef;
   List<double>? rightRef;
 
-  List<double> calibrate(List<List<double>> quaternions) {
+  CalibrationService() {
+    _loadRefs();
+  }
+
+  Future<void> _loadRefs() async {
+    final leftStr = await _storage.read(key: 'left_quat_ref');
+    final rightStr = await _storage.read(key: 'right_quat_ref');
+    if (leftStr != null) {
+      leftRef = leftStr.split(',').map(double.parse).toList();
+    }
+    if (rightStr != null) {
+      rightRef = rightStr.split(',').map(double.parse).toList();
+    }
+    notifyListeners();
+  }
+
+  Future<void> _saveRefs() async {
+    if (leftRef != null) {
+      await _storage.write(key: 'left_quat_ref', value: leftRef!.join(','));
+    }
+    if (rightRef != null) {
+      await _storage.write(key: 'right_quat_ref', value: rightRef!.join(','));
+    }
+  }
+
+  Future<List<double>> calibrate(List<List<double>> quaternions, String side) async {
     assert(quaternions.isNotEmpty);
     double sumW = 0, sumX = 0, sumY = 0, sumZ = 0;
     for (final q in quaternions) {
@@ -875,6 +912,97 @@ git commit -m "feat(capture): add real-time edge angle overlay widget"
 
 ---
 
+### Task 7.5: Permission Service (BLE + Camera)
+
+**Files:**
+- Create: `flutter_app/lib/permissions/permission_service.dart`
+- Test: `flutter_app/test/permissions/permission_service_test.dart`
+
+- [ ] **Step 1: Write failing test**
+
+```dart
+import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter_app/permissions/permission_service.dart';
+
+void main() {
+  group('PermissionService', () {
+    test('requests BLE and camera permissions', () async {
+      final service = PermissionService();
+      final result = await service.requestAll();
+      expect(result, isTrue);
+    });
+  });
+}
+```
+
+- [ ] **Step 2: Run test → FAIL**
+
+- [ ] **Step 3: Implement PermissionService**
+
+Create `flutter_app/lib/permissions/permission_service.dart`:
+
+```dart
+import 'package:permission_handler/permission_handler.dart';
+
+class PermissionService {
+  Future<bool> requestAll() async {
+    final ble = await Permission.bluetoothScan.request();
+    final bleConnect = await Permission.bluetoothConnect.request();
+    final camera = await Permission.camera.request();
+    final microphone = await Permission.microphone.request();
+    return ble.isGranted &&
+        bleConnect.isGranted &&
+        camera.isGranted &&
+        microphone.isGranted;
+  }
+}
+```
+
+- [ ] **Step 4: Run test → PASS**
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add flutter_app/lib/permissions/ flutter_app/test/permissions/
+git commit -m "feat(capture): add BLE and camera permission service"
+```
+
+---
+
+### Task 7.6: Material 3 Theme
+
+**Files:**
+- Create: `flutter_app/lib/theme/app_theme.dart`
+
+- [ ] **Step 1: Implement AppTheme**
+
+Create `flutter_app/lib/theme/app_theme.dart`:
+
+```dart
+import 'package:flutter/material.dart';
+
+class AppTheme {
+  static ThemeData get dark {
+    return ThemeData(
+      useMaterial3: true,
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: const Color(0xFF1E88E5),
+        brightness: Brightness.dark,
+      ),
+    );
+  }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add flutter_app/lib/theme/
+git commit -m "feat(capture): add Material 3 dark theme"
+```
+
+---
+
 ### Task 8: Export (Zip Builder + Manifest)
 
 **Files:**
@@ -1076,18 +1204,100 @@ git commit -m "feat(capture): add .esense.zip exporter with manifest and protobu
 
 ---
 
-### Task 9: Main App Scaffold
+### Task 9: Providers + DI Setup
+
+**Files:**
+- Create: `flutter_app/lib/providers/app_providers.dart`
+
+- [ ] **Step 1: Implement AppProviders**
+
+Create `flutter_app/lib/providers/app_providers.dart`:
+
+```dart
+import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+
+import '../ble/ble_manager.dart';
+import '../camera/recorder.dart';
+import '../capture/capture_controller.dart';
+import '../calibration/calibration_service.dart';
+
+class AppProviders extends StatelessWidget {
+  final Widget child;
+  const AppProviders({super.key, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => BleManager()),
+        ChangeNotifierProvider(create: (_) => CameraRecorder()),
+        ChangeNotifierProvider(create: (_) => CaptureController()),
+        ChangeNotifierProvider(create: (_) => CalibrationService()),
+      ],
+      child: child,
+    );
+  }
+}
+```
+
+- [ ] **Step 2: Commit**
+
+```bash
+git add flutter_app/lib/providers/
+git commit -m "feat(capture): add Provider DI for all services"
+```
+
+---
+
+### Task 10: Main App Scaffold (Material 3 + Provider)
 
 **Files:**
 - Modify: `flutter_app/lib/main.dart`
+- Modify: `flutter_app/lib/calibration/calibration_service.dart` (add ChangeNotifier)
+- Modify: `flutter_app/lib/camera/recorder.dart` (add ChangeNotifier)
+- Modify: `flutter_app/lib/capture/capture_controller.dart` (add ChangeNotifier)
+- Modify: `flutter_app/lib/ble/ble_manager.dart` (add ChangeNotifier)
 
-- [ ] **Step 1: Implement minimal MaterialApp with screens**
+- [ ] **Step 1: Make services extend ChangeNotifier**
+
+Add to each service class:
+
+```dart
+import 'package:flutter/material.dart';
+
+// CalibrationService
+class CalibrationService extends ChangeNotifier {
+  // ... existing code ...
+}
+
+// CameraRecorder
+class CameraRecorder extends ChangeNotifier {
+  // ... existing code ...
+}
+
+// CaptureController
+class CaptureController extends ChangeNotifier {
+  // ... existing code ...
+}
+
+// BleManager
+class BleManager extends ChangeNotifier {
+  // ... existing code ...
+}
+```
+
+- [ ] **Step 2: Rewrite main.dart with Provider + Material 3**
 
 Replace `flutter_app/lib/main.dart`:
 
 ```dart
 import 'package:flutter/material.dart';
 import 'package:camera/camera.dart';
+import 'package:provider/provider.dart';
+
+import 'providers/app_providers.dart';
+import 'theme/app_theme.dart';
 import 'ble/ble_manager.dart';
 import 'camera/recorder.dart';
 import 'capture/capture_controller.dart';
@@ -1095,9 +1305,15 @@ import 'capture/capture_state.dart';
 import 'calibration/calibration_service.dart';
 import 'overlay/edge_overlay.dart';
 import 'export/exporter.dart';
+import 'permissions/permission_service.dart';
 
 void main() {
-  runApp(const EdgeSenseApp());
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(
+    AppProviders(
+      child: const EdgeSenseApp(),
+    ),
+  );
 }
 
 class EdgeSenseApp extends StatelessWidget {
@@ -1107,7 +1323,7 @@ class EdgeSenseApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'EdgeSense Capture',
-      theme: ThemeData.dark(),
+      theme: AppTheme.dark,
       home: const CaptureScreen(),
     );
   }
@@ -1121,41 +1337,53 @@ class CaptureScreen extends StatefulWidget {
 }
 
 class _CaptureScreenState extends State<CaptureScreen> {
-  final BleManager _bleManager = BleManager();
-  final CameraRecorder _cameraRecorder = CameraRecorder();
-  final CaptureController _captureController = CaptureController();
-  final CalibrationService _calibrationService = CalibrationService();
-
   double _leftEdge = 0.0;
   double _rightEdge = 0.0;
-  bool _isRecording = false;
-  CaptureResult? _lastResult;
 
   @override
   void initState() {
     super.initState();
-    _initializeCamera();
+    _init();
   }
 
-  Future<void> _initializeCamera() async {
+  Future<void> _init() async {
+    final permissions = await PermissionService().requestAll();
+    if (!permissions) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Permissions required')),
+        );
+      }
+      return;
+    }
     final cameras = await availableCameras();
-    await _cameraRecorder.initialize(cameras);
+    if (mounted) {
+      context.read<CameraRecorder>().initialize(cameras);
+    }
   }
 
   Future<void> _startCapture() async {
+    final bleManager = context.read<BleManager>();
+    final cameraRecorder = context.read<CameraRecorder>();
+    final captureController = context.read<CaptureController>();
+
     setState(() => _isRecording = true);
-    await _captureController.start(
-      bleManager: _bleManager,
-      cameraRecorder: _cameraRecorder,
+    await captureController.start(
+      bleManager: bleManager,
+      cameraRecorder: cameraRecorder,
       onLeftEdgeAngle: (angle) => setState(() => _leftEdge = angle),
       onRightEdgeAngle: (angle) => setState(() => _rightEdge = angle),
     );
   }
 
   Future<void> _stopCapture() async {
-    final result = await _captureController.stop(
-      bleManager: _bleManager,
-      cameraRecorder: _cameraRecorder,
+    final bleManager = context.read<BleManager>();
+    final cameraRecorder = context.read<CameraRecorder>();
+    final captureController = context.read<CaptureController>();
+
+    final result = await captureController.stop(
+      bleManager: bleManager,
+      cameraRecorder: cameraRecorder,
     );
     setState(() {
       _isRecording = false;
@@ -1165,23 +1393,39 @@ class _CaptureScreenState extends State<CaptureScreen> {
 
   Future<void> _export() async {
     if (_lastResult == null) return;
-    final exporter = Exporter();
-    final path = await exporter.export(
-      videoPath: _lastResult!.videoPath,
-      leftSamples: _lastResult!.leftSamples,
-      rightSamples: _lastResult!.rightSamples,
-      t0: _lastResult!.t0,
-      leftRef: _calibrationService.leftRef ?? [1.0, 0.0, 0.0, 0.0],
-      rightRef: _calibrationService.rightRef ?? [1.0, 0.0, 0.0, 0.0],
-      videoWidth: 1920,
-      videoHeight: 1080,
-      videoFps: 60,
-    );
-    // Show share dialog
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Exported to $path')),
-    );
+    final calibrationService = context.read<CalibrationService>();
+
+    try {
+      final path = await Isolate.run(() async {
+        final exporter = Exporter();
+        return await exporter.export(
+          videoPath: _lastResult!.videoPath,
+          leftSamples: _lastResult!.leftSamples,
+          rightSamples: _lastResult!.rightSamples,
+          t0: _lastResult!.t0,
+          leftRef: calibrationService.leftRef ?? [1.0, 0.0, 0.0, 0.0],
+          rightRef: calibrationService.rightRef ?? [1.0, 0.0, 0.0, 0.0],
+          videoWidth: 1920,
+          videoHeight: 1080,
+          videoFps: 60,
+        );
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Exported to $path')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Export failed: $e')),
+        );
+      }
+    }
   }
+
+  bool get _isRecording => context.watch<CaptureController>().status == CaptureStatus.recording;
+  CaptureResult? get _lastResult => context.watch<CaptureController>().lastResult;
 
   @override
   Widget build(BuildContext context) {
@@ -1189,7 +1433,6 @@ class _CaptureScreenState extends State<CaptureScreen> {
       appBar: AppBar(title: const Text('EdgeSense Capture')),
       body: Stack(
         children: [
-          // Camera preview would go here
           Center(
             child: Text(_isRecording ? 'Recording...' : 'Ready'),
           ),
@@ -1216,16 +1459,16 @@ class _CaptureScreenState extends State<CaptureScreen> {
 }
 ```
 
-- [ ] **Step 2: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
-git add flutter_app/lib/main.dart
-git commit -m "feat(capture): add main app scaffold with capture screen and export"
+git add flutter_app/lib/main.dart flutter_app/lib/providers/
+git commit -m "feat(capture): add Material 3 theme, Provider DI, Isolate export"
 ```
 
 ---
 
-### Task 10: Integration Test
+### Task 11: Integration Test
 
 **Files:**
 - Create: `flutter_app/integration_test/capture_flow_test.dart`
@@ -1303,3 +1546,8 @@ git commit -m "test(capture): add capture flow integration test"
 - [x] File paths exact
 - [x] TDD pattern — failing test → impl → pass → commit
 - [x] No TODO/TBD
+- [x] Provider DI for services (BleManager, CameraRecorder, CaptureController, CalibrationService)
+- [x] Material 3 theme with ColorScheme
+- [x] Permission service for BLE + camera
+- [x] Isolate.run() for heavy export operation
+- [x] flutter_secure_storage for calibration persistence
