@@ -4,8 +4,7 @@ version = "0.1.0"
 description = "ML pipeline for figure skating biomechanics analysis"
 requires-python = ">=3.11"
 dependencies = [
-    "rtmlib>=0.0.7",            # RTMPose pose estimation (HALPE26, 26kp with feet)
-    "onnxruntime-gpu>=1.24.4",  # ONNX Runtime with CUDA backend for rtmlib
+    "onnxruntime-gpu>=1.24.4",  # ONNX Runtime with CUDA backend for MogaNet-B
     "nvidia-ml-py>=13.0.0",     # NVIDIA GPU management via NVML (replaces pynvml)
     "opencv-python>=4.10.0",
     "numpy>=2.0.0",

@@ -36,7 +36,7 @@ def test_extract_batch_signature():
     sig = inspect.signature(PoseExtractor._extract_batch)
     params = list(sig.parameters.keys())
 
-    expected_params = ["self", "video_path", "person_click", "progress_cb", "batch_size"]
+    expected_params = ["self", "video_path", "person_click", "progress_cb"]
     for param in expected_params:
         assert param in params, f"Parameter {param} missing from _extract_batch"
 

@@ -1,65 +1,22 @@
-"""RTMO-based pose extractor via rtmlib.
-
-Uses the rtmlib PoseTracker with Body model to extract 17-keypoint
-COCO poses.  The output is converted to H3.6M 17-keypoint format
-for the analysis pipeline.
+"""Top-down pose extractor using PersonDetector + MogaNetBatch.
 
 Architecture:
-    Video → rtmlib PoseTracker (Body) → COCO (17kp) → H3.6M (17kp)
+    Video → PersonDetector (YOLOv11n) → crop → MogaNetBatch (ONNX)
+    → COCO 17kp → H3.6M 17kp
 
 Key advantages:
-    - One-stage detection (no separate detector needed)
-    - Better accuracy on distant/small subjects
-    - Built-in tracking with consistent IDs
+    - Top-down: better accuracy on single-person sports
     - ONNX Runtime inference (no PyTorch dependency)
-
-References:
-    - rtmlib: https://github.com/Tau-J/rtmlib
-    - RTMO: https://github.com/Tau-J/rtmlib/tree/main/docs/en/rtmo
+    - Existing tracking/post-processing preserved
 """
 
 import logging
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
-
-def _get_tqdm():
-    try:
-        from tqdm import tqdm  # noqa: TC003, S110
-
-        return tqdm
-    except (ImportError, ValueError):
-
-        def _tqdm_mock(iterable=None, **_kwargs):
-            if iterable is not None:
-                return iterable
-            return type(
-                "_TqdmMock",
-                (),
-                {
-                    "update": lambda *_a: None,
-                    "close": lambda *_a: None,
-                    "__enter__": lambda s: s,
-                    "__exit__": lambda *_a: None,
-                },
-            )()
-
-        return _tqdm_mock
-
-
-if TYPE_CHECKING:
-    from rtmlib import Body, PoseTracker
-else:
-    try:
-        from rtmlib import Body, PoseTracker
-    except ImportError:
-        PoseTracker = None  # type: ignore[assignment]
-        Body = None  # type: ignore[assignment]
-
-from ..detection.pose_tracker import PoseTracker as CustomPoseTracker
+from ..detection.person_detector import PersonDetector
 from ..tracking.skeletal_identity import compute_2d_skeletal_ratios
 from ..tracking.tracklet_merger import TrackletMerger, build_tracklets
 from ..types import PersonClick, TrackedExtraction
@@ -70,98 +27,141 @@ from ._target_selector import TargetSelector
 from ._track_state import TrackState
 from ._track_validator import TrackValidator
 from .h36m import coco_to_h36m
+from .moganet_batch import MogaNetBatch
 
 logger = logging.getLogger(__name__)
 
 
-class PoseExtractor:
-    """COCO pose extractor using rtmlib Body model (RTMO).
+def _get_tqdm():
+    try:
+        from tqdm import tqdm  # noqa: TC003, S110
 
-    Provides H3.6M 17-keypoint poses. Uses rtmlib's built-in tracking
-    for multi-person handling.
+        return tqdm
+    except (ImportError, ValueError):
+
+        class _TqdmMock:
+            """Minimal tqdm mock for when tqdm is unavailable."""
+
+            def __init__(self, iterable=None, **_):
+                self.iterable = iterable
+
+            def update(self, *_a):
+                pass
+
+            def close(self):
+                pass
+
+            def __enter__(self):
+                return self
+
+            def __exit__(self, *_a):
+                pass
+
+            def __iter__(self):
+                return iter(self.iterable or [])
+
+        return _TqdmMock
+
+
+class PoseExtractor:
+    """COCO pose extractor using PersonDetector + MogaNetBatch (top-down).
+
+    Provides H3.6M 17-keypoint poses.
 
     Args:
-        mode: Model preset — ``"lightweight"`` (fast), ``"balanced"``
-            (default), ``"performance"`` (accurate).
-        tracking_backend: ``"rtmlib"`` uses rtmlib's built-in tracker;
-            ``"custom"`` feeds detections into our PoseTracker
+        model_path: Path to MogaNet-B ONNX model.
+        tracking_backend: "custom" feeds detections into our PoseTracker
             (OC-SORT + biometric Re-ID).
+        tracking_mode: "auto", "sports2d", or "deepsort".
         conf_threshold: Minimum keypoint confidence to accept [0, 1].
-        output_format: ``"normalized"`` for [0, 1] coords. ``"pixels"``
-            for absolute pixel coords.
-        frame_skip: Process every Nth frame for pose estimation (1 = every
-            frame). Higher values = faster but less accurate. Skipped
-            frames are filled with NaN for downstream interpolation.
-        device: ``"cpu"`` or ``"cuda"``.
-        backend: Inference backend — ``"onnxruntime"`` or ``"opencv"``.
+        output_format: "normalized" for [0, 1] coords, "pixels" for absolute.
+        frame_skip: Process every Nth frame (1 = every frame).
+        device: "cpu", "cuda", or "auto".
     """
 
     def __init__(
         self,
-        mode: str = "balanced",
-        tracking_backend: str = "rtmlib",
+        model_path: str = "data/models/moganet/moganet_b_ap2d_384x288.onnx",
+        tracking_backend: str = "custom",
         tracking_mode: str = "auto",
         conf_threshold: float = 0.3,
         output_format: str = "normalized",
         frame_skip: int = 1,
         device: str = "auto",
-        backend: str = "onnxruntime",
     ) -> None:
-        if PoseTracker is None:
-            raise ImportError("rtmlib is not installed. Install with: uv add rtmlib")
-
-        self._mode = mode
+        self._model_path = model_path
         self._tracking_backend = tracking_backend
         self._tracking_mode = tracking_mode
         self._conf_threshold = conf_threshold
         self._output_format = output_format
         self._frame_skip = max(1, frame_skip)
         self._device = device
-        self._backend = backend
 
-        # Resolve device via DeviceConfig for consistent GPU-first behavior
+        # Resolve device
         if device == "auto":
             from ..device import DeviceConfig
 
             self._device = DeviceConfig(device="auto").device
 
-        # Lazy-initialised on first call
-        self._tracker: PoseTracker | None = None
+        self._person_detector = PersonDetector(confidence=conf_threshold)
+        self._moganet = MogaNetBatch(
+            model_path=model_path,
+            device=self._device,
+            score_thr=conf_threshold,
+        )
 
-    @property
-    def tracker(self):
-        """Lazy-initialise rtmlib PoseTracker on first access."""
-        if self._tracker is None:
-            if Body is None:
-                raise ImportError("rtmlib Body model not available")
-            # Create a local tracker variable with proper type
-            from functools import partial
+    # ------------------------------------------------------------------
+    # Detection helpers
+    # ------------------------------------------------------------------
 
-            from rtmlib import Custom
-            from rtmlib import PoseTracker as RTMPoseTracker
+    def _detect_and_crop(
+        self,
+        frame: np.ndarray,
+        padding: float = 0.2,
+    ) -> tuple[list[np.ndarray], list[tuple[int, int, int, int]]]:
+        """Detect persons, expand bbox, crop from frame.
 
-            rtmo_urls = {
-                "performance": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-l_16xb16-600e_body7-640x640-b37118ce_20231211.zip",
-                "lightweight": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-s_8xb32-600e_body7-640x640-dac2bf74_20231211.zip",
-                "balanced": "https://download.openmmlab.com/mmpose/v1/projects/rtmo/onnx_sdk/rtmo-m_16xb16-600e_body7-640x640-39e78cc4_20231211.zip",
-            }
+        Args:
+            frame: BGR frame (H, W, 3).
+            padding: Fraction to expand bbox on each side.
 
-            RTMOSolution = partial(
-                Custom,
-                pose_class="RTMO",
-                pose=rtmo_urls[self._mode],
-                pose_input_size=(640, 640),
-                to_openpose=False,
-                backend=self._backend,
-                device=self._device,
-            )
+        Returns:
+            (crops, bboxes) where crops is list of BGR crops and
+            bboxes is list of (x1, y1, x2, y2) in original frame coords.
+        """
+        h, w = frame.shape[:2]
+        detections = self._person_detector.detect_frame(frame)
+        if detections is None:
+            return [], []
 
-            self._tracker = RTMPoseTracker(
-                RTMOSolution,
-                tracking=True,
-                tracking_thr=0.3,
-            )
-        return self._tracker
+        # PersonDetector returns single best detection
+        # Convert to list for uniform handling
+        if hasattr(detections, "x1"):
+            detections = [detections]
+
+        crops: list[np.ndarray] = []
+        bboxes: list[tuple[int, int, int, int]] = []
+
+        for det in detections:
+            x1, y1, x2, y2 = float(det.x1), float(det.y1), float(det.x2), float(det.y2)
+            bw = x2 - x1
+            bh = y2 - y1
+
+            # Expand by padding fraction
+            pad_x = bw * padding
+            pad_y = bh * padding
+            x1 = max(0, int(x1 - pad_x))
+            y1 = max(0, int(y1 - pad_y))
+            x2 = min(w, int(x2 + pad_x))
+            y2 = min(h, int(y2 + pad_y))
+
+            crop = frame[y1:y2, x1:x2]
+            if crop.size == 0:
+                continue
+            crops.append(crop)
+            bboxes.append((x1, y1, x2, y2))
+
+        return crops, bboxes
 
     # ------------------------------------------------------------------
     # Core extraction
@@ -177,8 +177,8 @@ class PoseExtractor:
     ) -> TrackedExtraction:
         """Extract H3.6M poses from video with tracking.
 
-        Runs rtmlib Body (RTMO) on every frame, tracks all persons,
-        and selects a single target person for output.
+        Runs PersonDetector + MogaNetBatch on every frame, tracks all
+        persons, and selects a single target person for output.
 
         Args:
             video_path: Path to video file.
@@ -186,8 +186,8 @@ class PoseExtractor:
                 proximity to the click point in the first few frames.
             progress_cb: Optional callback ``(fraction, message)`` for
                 progress reporting (e.g. Gradio progress bar).
-            use_batch: If True, use BatchRTMO for batched inference.
-            batch_size: Batch size for batched inference (default 8).
+            use_batch: If True, collect all crops and run single batch.
+            batch_size: Ignored (MogaNetBatch handles batching internally).
 
         Returns:
             TrackedExtraction with poses (N, 17, 3), frame_indices,
@@ -201,7 +201,6 @@ class PoseExtractor:
                 video_path,
                 person_click=person_click,
                 progress_cb=progress_cb,
-                batch_size=batch_size,
             )
         return self._extract_per_frame(
             video_path,
@@ -215,7 +214,7 @@ class PoseExtractor:
         person_click: PersonClick | None = None,
         progress_cb=None,
     ) -> TrackedExtraction:
-        """Per-frame extraction path (delegates to shared components)."""
+        """Per-frame extraction path."""
         video_path = Path(video_path)
         video_meta = get_video_meta(video_path)
         num_frames = video_meta.num_frames
@@ -273,29 +272,14 @@ class PoseExtractor:
                 frame_idx, frame = result
                 h, w = frame.shape[:2]
 
-                # Resize large frames for detection
-                if max(h, w) > 1920:
-                    scale = 1920 / max(h, w)
-                    frame_ds = cv2.resize(frame, (int(w * scale), int(h * scale)))
-                else:
-                    frame_ds = frame
-
-                tracker = self.tracker
-                if tracker is None:
+                crops, bboxes = self._detect_and_crop(frame)
+                if not crops:
                     pbar.update(self._frame_skip)
                     continue
-                tracker_result = tracker(frame_ds)
-                if not isinstance(tracker_result, tuple) or len(tracker_result) != 2:
-                    pbar.update(self._frame_skip)
-                    continue
-                keypoints, scores = tracker_result
 
-                if frame_ds is not frame:
-                    keypoints = keypoints * (max(h, w) / 1920)
+                keypoints, scores = self._moganet.infer_batch(crops, bboxes)
 
-                if keypoints is None or len(keypoints) == 0:
-                    if track_state.custom_tracker is not None:
-                        track_state.custom_tracker.update(np.empty((0, 17, 2), dtype=np.float32))
+                if keypoints.shape[0] == 0:
                     pbar.update(self._frame_skip)
                     continue
 
@@ -312,57 +296,17 @@ class PoseExtractor:
 
                 # Fill target data
                 if track_state.target_track_id is not None:
-                    target_track_id = track_state.target_track_id
-                    found = False
-                    stolen = False
-                    for p, tid in enumerate(track_ids):
-                        if tid == target_track_id:
-                            if last_target_pose is not None and validator.is_stolen(
-                                h36m_poses[p], last_target_pose, last_target_ratios
-                            ):
-                                stolen = True
-                                break
-                            all_poses[frame_idx] = h36m_poses[p]
-                            last_target_pose = h36m_poses[p].copy()
-                            last_target_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
-                            target_lost_frame = None
-                            found = True
-                            break
-
-                    if stolen:
-                        all_poses[frame_idx] = np.full((17, 3), np.nan, dtype=np.float32)
-                        found = False
-
-                    if (not found or stolen) and last_target_pose is not None:
-                        if target_lost_frame is None:
-                            target_lost_frame = frame_idx
-                        if frame_idx - target_lost_frame <= TrackValidator.MAX_LOST_FRAMES:
-                            best_dist = float("inf")
-                            best_new_tid: int | None = None
-                            best_new_pose: np.ndarray | None = None
-                            for p, tid in enumerate(track_ids):
-                                if stolen and tid == target_track_id:
-                                    continue
-                                score = validator.migration_score(
-                                    h36m_poses[p],
-                                    last_target_pose,
-                                    elapsed=frame_idx - target_lost_frame,
-                                )
-                                if score < best_dist:
-                                    best_dist = score
-                                    best_new_tid = tid
-                                    best_new_pose = h36m_poses[p]
-                            if (
-                                best_new_tid is not None
-                                and best_dist < TrackValidator.MIGRATION_THRESHOLD
-                                and best_new_pose is not None
-                            ):
-                                track_state.target_track_id = best_new_tid
-                                all_poses[frame_idx] = best_new_pose
-                                last_target_pose = best_new_pose.copy()
-                                last_target_ratios = compute_2d_skeletal_ratios(best_new_pose)
-                                target_lost_frame = None
-                                track_state.retroactive_fill(all_poses, track_state.target_track_id)
+                    self._fill_target_pose(
+                        all_poses,
+                        frame_idx,
+                        h36m_poses,
+                        track_ids,
+                        track_state,
+                        validator,
+                        last_target_pose,
+                        last_target_ratios,
+                        target_lost_frame,
+                    )
 
                 pbar.update(self._frame_skip)
                 if progress_cb:
@@ -403,34 +347,13 @@ class PoseExtractor:
         video_path: Path | str,
         person_click: PersonClick | None = None,
         progress_cb=None,
-        batch_size: int = 8,
     ) -> TrackedExtraction:
-        """Extract poses using BatchRTMO for batched inference.
-
-        Args:
-            video_path: Path to video file.
-            person_click: Optional click to select target person.
-            progress_cb: Optional progress callback.
-            batch_size: Number of frames to process per batch.
-
-        Returns:
-            TrackedExtraction with poses (N, 17, 3), frame_indices,
-            tracking metadata.  Missing frames are filled with NaN.
-        """
-        from .rtmo_batch import BatchRTMO
-
+        """Batch extraction path: detect all frames, batch infer, then track."""
         video_path = Path(video_path)
         video_meta = get_video_meta(video_path)
         num_frames = video_meta.num_frames
 
         all_poses = np.full((num_frames, 17, 3), np.nan, dtype=np.float32)
-
-        rtmo = BatchRTMO(
-            mode=self._mode,
-            device=self._device,
-            score_thr=self._conf_threshold,
-            nms_thr=0.45,
-        )
 
         track_state = TrackState(
             fps=video_meta.fps,
@@ -485,101 +408,82 @@ class PoseExtractor:
         if not frames_to_process:
             raise ValueError(f"No frames read from video: {video_path}")
 
+        # Detect + collect crops across all frames
+        all_crops: list[np.ndarray] = []
+        all_bboxes: list[tuple[int, int, int, int]] = []
+        frame_detection_counts: list[int] = []
+
+        for frame in frames_to_process:
+            crops, bboxes = self._detect_and_crop(frame)
+            all_crops.extend(crops)
+            all_bboxes.extend(bboxes)
+            frame_detection_counts.append(len(crops))
+
+        # Batch inference on all crops at once
+        if all_crops:
+            batch_keypoints, batch_scores = self._moganet.infer_batch(all_crops, all_bboxes)
+        else:
+            batch_keypoints = np.zeros((0, 17, 2), dtype=np.float32)
+            batch_scores = np.zeros((0, 17), dtype=np.float32)
+
+        # Distribute results back to frames
         pbar = _get_tqdm()(
             total=len(frames_to_process),
             desc="Batch extracting poses",
-            unit="batch",
+            unit="frame",
             ncols=100,
             disable=progress_cb is not None,
         )
 
-        for batch_start in range(0, len(frames_to_process), batch_size):
-            batch_end = min(batch_start + batch_size, len(frames_to_process))
-            batch_frames = frames_to_process[batch_start:batch_end]
-            batch_indices = frame_indices[batch_start:batch_end]
+        kp_offset = 0
+        for frame_idx, frame in zip(frame_indices, frames_to_process, strict=True):
+            h, w = frame.shape[:2]
+            n_det = frame_detection_counts.pop(0)
 
-            batch_results = rtmo.infer_batch(batch_frames)
-
-            for frame_idx, frame, (keypoints, scores) in zip(
-                batch_indices, batch_frames, batch_results, strict=True
-            ):
-                h, w = frame.shape[:2]
-
-                if keypoints.shape[0] == 0:
-                    pbar.update(1)
-                    continue
-
-                h36m_poses = frame_processor.convert_keypoints(keypoints, scores, w, h)
-                track_ids = track_state.update_tracking(
-                    h36m_poses, frame=frame, frame_width=w, frame_height=h
-                )
-                track_state.record_frame(frame_idx, h36m_poses, track_ids)
-
-                # Target selection via click
-                selected = target_selector.select_target(h36m_poses, track_ids, frame_idx)
-                if selected is not None:
-                    track_state.target_track_id = selected
-
-                # Fill target data
-                if track_state.target_track_id is not None:
-                    target_track_id = track_state.target_track_id
-                    found = False
-                    stolen = False
-                    for p, tid in enumerate(track_ids):
-                        if tid == target_track_id:
-                            if last_target_pose is not None and validator.is_stolen(
-                                h36m_poses[p], last_target_pose, last_target_ratios
-                            ):
-                                stolen = True
-                                break
-                            all_poses[frame_idx] = h36m_poses[p]
-                            last_target_pose = h36m_poses[p].copy()
-                            last_target_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
-                            target_lost_frame = None
-                            found = True
-                            break
-
-                    if stolen:
-                        all_poses[frame_idx] = np.full((17, 3), np.nan, dtype=np.float32)
-                        found = False
-
-                    if (not found or stolen) and last_target_pose is not None:
-                        if target_lost_frame is None:
-                            target_lost_frame = frame_idx
-                        if frame_idx - target_lost_frame <= TrackValidator.MAX_LOST_FRAMES:
-                            best_dist = float("inf")
-                            best_new_tid: int | None = None
-                            best_new_pose: np.ndarray | None = None
-                            for p, tid in enumerate(track_ids):
-                                if stolen and tid == target_track_id:
-                                    continue
-                                score = validator.migration_score(
-                                    h36m_poses[p],
-                                    last_target_pose,
-                                    elapsed=frame_idx - target_lost_frame,
-                                )
-                                if score < best_dist:
-                                    best_dist = score
-                                    best_new_tid = tid
-                                    best_new_pose = h36m_poses[p]
-                            if (
-                                best_new_tid is not None
-                                and best_dist < TrackValidator.MIGRATION_THRESHOLD
-                                and best_new_pose is not None
-                            ):
-                                track_state.target_track_id = best_new_tid
-                                all_poses[frame_idx] = best_new_pose
-                                last_target_pose = best_new_pose.copy()
-                                last_target_ratios = compute_2d_skeletal_ratios(best_new_pose)
-                                target_lost_frame = None
-                                track_state.retroactive_fill(all_poses, track_state.target_track_id)
-
+            if n_det == 0:
                 pbar.update(1)
                 if progress_cb:
                     progress_cb(
                         frame_idx / num_frames * 0.3,
                         f"Batch extracting poses... {frame_idx}/{num_frames}",
                     )
+                continue
+
+            keypoints = batch_keypoints[kp_offset : kp_offset + n_det]
+            scores = batch_scores[kp_offset : kp_offset + n_det]
+            kp_offset += n_det
+
+            h36m_poses = frame_processor.convert_keypoints(keypoints, scores, w, h)
+            track_ids = track_state.update_tracking(
+                h36m_poses, frame=frame, frame_width=w, frame_height=h
+            )
+            track_state.record_frame(frame_idx, h36m_poses, track_ids)
+
+            # Target selection via click
+            selected = target_selector.select_target(h36m_poses, track_ids, frame_idx)
+            if selected is not None:
+                track_state.target_track_id = selected
+
+            # Fill target data
+            if track_state.target_track_id is not None:
+                self._fill_target_pose(
+                    all_poses,
+                    frame_idx,
+                    h36m_poses,
+                    track_ids,
+                    track_state,
+                    validator,
+                    last_target_pose,
+                    last_target_ratios,
+                    target_lost_frame,
+                )
+
+            pbar.update(1)
+            if progress_cb:
+                progress_cb(
+                    frame_idx / num_frames * 0.3,
+                    f"Batch extracting poses... {frame_idx}/{num_frames}",
+                )
 
         pbar.close()
 
@@ -606,6 +510,71 @@ class PoseExtractor:
             video_meta=video_meta,
             first_frame=first_frame,
         )
+
+    def _fill_target_pose(
+        self,
+        all_poses: np.ndarray,
+        frame_idx: int,
+        h36m_poses: np.ndarray,
+        track_ids: list[int],
+        track_state: TrackState,
+        validator: TrackValidator,
+        last_target_pose: np.ndarray | None,
+        last_target_ratios: np.ndarray | None,
+        target_lost_frame: int | None,
+    ) -> None:
+        """Fill target pose for current frame, handling stolen detection."""
+        target_track_id = track_state.target_track_id
+        found = False
+        stolen = False
+        for p, tid in enumerate(track_ids):
+            if tid == target_track_id:
+                if last_target_pose is not None and validator.is_stolen(
+                    h36m_poses[p], last_target_pose, last_target_ratios
+                ):
+                    stolen = True
+                    break
+                all_poses[frame_idx] = h36m_poses[p]
+                last_target_pose = h36m_poses[p].copy()
+                last_target_ratios = compute_2d_skeletal_ratios(h36m_poses[p])
+                target_lost_frame = None
+                found = True
+                break
+
+        if stolen:
+            all_poses[frame_idx] = np.full((17, 3), np.nan, dtype=np.float32)
+            found = False
+
+        if (not found or stolen) and last_target_pose is not None:
+            if target_lost_frame is None:
+                target_lost_frame = frame_idx
+            if frame_idx - target_lost_frame <= TrackValidator.MAX_LOST_FRAMES:
+                best_dist = float("inf")
+                best_new_tid: int | None = None
+                best_new_pose: np.ndarray | None = None
+                for p, tid in enumerate(track_ids):
+                    if stolen and tid == target_track_id:
+                        continue
+                    score = validator.migration_score(
+                        h36m_poses[p],
+                        last_target_pose,
+                        elapsed=frame_idx - target_lost_frame,
+                    )
+                    if score < best_dist:
+                        best_dist = score
+                        best_new_tid = tid
+                        best_new_pose = h36m_poses[p]
+                if (
+                    best_new_tid is not None
+                    and best_dist < TrackValidator.MIGRATION_THRESHOLD
+                    and best_new_pose is not None
+                ):
+                    track_state.target_track_id = best_new_tid
+                    all_poses[frame_idx] = best_new_pose
+                    last_target_pose = best_new_pose.copy()
+                    last_target_ratios = compute_2d_skeletal_ratios(best_new_pose)
+                    target_lost_frame = None
+                    track_state.retroactive_fill(all_poses, track_state.target_track_id)
 
     # ------------------------------------------------------------------
     # Preview
@@ -724,9 +693,9 @@ class PoseExtractor:
     ) -> list[dict]:
         """Preview all detected persons in the first few frames.
 
-        Runs rtmlib on the first ``num_frames`` frames and returns a
-        summary for each tracked person so the user can choose which
-        one to follow.
+        Runs PersonDetector + MogaNetBatch on the first ``num_frames``
+        frames and returns a summary for each tracked person so the user
+        can choose which one to follow.
 
         Args:
             video_path: Path to video file.
@@ -749,6 +718,8 @@ class PoseExtractor:
         video_meta = get_video_meta(video_path)
 
         if self._tracking_backend == "custom":
+            from ..detection.pose_tracker import PoseTracker as CustomPoseTracker
+
             custom_tracker = CustomPoseTracker(max_disappeared=30, min_hits=2, fps=video_meta.fps)
         else:
             custom_tracker = None  # type: ignore[assignment]
@@ -766,7 +737,6 @@ class PoseExtractor:
 
             deepsort_tracker = DeepSORTTracker(max_age=30, embedder_gpu=True)
 
-        rtmlib_id_map: dict[int, int] = {}
         next_internal_id = 0
         person_data: dict[int, dict] = {}
 
@@ -774,7 +744,7 @@ class PoseExtractor:
         if not cap.isOpened():
             raise RuntimeError(f"Failed to open video: {video_path}")
 
-        best_frame: np.ndarray | None = None  # keep the frame with highest avg confidence
+        best_frame: np.ndarray | None = None
 
         try:
             for frame_idx in _get_tqdm()(
@@ -787,32 +757,26 @@ class PoseExtractor:
                 h, w = frame.shape[:2]
                 if best_frame is None:
                     best_frame = frame.copy()
-                tracker = self.tracker
-                if tracker is None:
-                    continue
-                tracker_result = tracker(frame)
-                if not isinstance(tracker_result, tuple) or len(tracker_result) != 2:
-                    continue
-                keypoints, scores = tracker_result
 
-                if keypoints is None or len(keypoints) == 0:
+                crops, bboxes = self._detect_and_crop(frame)
+                if not crops:
                     if custom_tracker is not None:
                         custom_tracker.update(np.empty((0, 17, 2), dtype=np.float32))
                     continue
 
-                n_persons = len(keypoints)
+                keypoints, scores = self._moganet.infer_batch(crops, bboxes)
+                if keypoints.shape[0] == 0:
+                    continue
+
+                n_persons = keypoints.shape[0]
                 h36m_poses = np.zeros((n_persons, 17, 3), dtype=np.float32)
 
                 for p in range(n_persons):
-                    kp = keypoints[p].astype(np.float32)
-                    conf = scores[p].astype(np.float32)
-
                     coco = np.zeros((17, 3), dtype=np.float32)
-                    coco[:, :2] = kp
-                    coco[:, 2] = conf
+                    coco[:, :2] = keypoints[p].astype(np.float32)
+                    coco[:, 2] = scores[p].astype(np.float32)
                     coco[:, 0] /= w
                     coco[:, 1] /= h
-
                     h36m_poses[p] = coco_to_h36m(coco)
 
                 # Track association
@@ -829,8 +793,8 @@ class PoseExtractor:
                 elif custom_tracker is not None:
                     track_ids = custom_tracker.update(h36m_poses[:, :, :2], h36m_poses[:, :, 2])
                 else:
-                    track_ids = self._assign_track_ids(h36m_poses, rtmlib_id_map, next_internal_id)
-                    next_internal_id = max(rtmlib_id_map.values(), default=-1) + 1
+                    track_ids = list(range(next_internal_id, next_internal_id + n_persons))
+                    next_internal_id += n_persons
 
                 for p, tid in enumerate(track_ids):
                     if tid not in person_data:
@@ -867,7 +831,7 @@ class PoseExtractor:
         # Build output with deduplication
         output: list[dict] = []
         preview_path_out = preview_path
-        min_hits = max(2, num_frames // 10)  # At least 10% of scanned frames
+        min_hits = max(2, num_frames // 10)
 
         for tid, data in sorted(person_data.items(), key=lambda kv: kv[1]["hits"], reverse=True):
             if data["hits"] < min_hits:
@@ -885,7 +849,6 @@ class PoseExtractor:
             skip = False
             for existing in output:
                 ex1, ey1, ex2, ey2 = existing["bbox"]
-                # IoU check
                 ix1 = max(x1, ex1)
                 iy1 = max(y1, ey1)
                 ix2 = min(x2, ex2)
@@ -931,51 +894,6 @@ class PoseExtractor:
         except ImportError:
             logger.info("Авто-выбор: Sports2D (Венгерский алгоритм)")
             return "sports2d"
-
-    def _assign_track_ids(
-        self,
-        h36m_poses: np.ndarray,
-        id_map: dict[int, int],
-        next_id: int,
-    ) -> list[int]:
-        """Assign stable track IDs to detected poses.
-
-        For rtmlib backend (no custom tracker), uses biometric matching
-        to associate detections across frames.  First detection per person
-        gets a new ID; subsequent detections are matched by biometric
-        distance to known persons.
-
-        Args:
-            h36m_poses: (P, 17, 3) H3.6M poses for current frame.
-            id_map: Map from internal_id → internal_id (identity map,
-                used for tracking known IDs).
-            next_id: Next available internal ID.
-
-        Returns:
-            List of track IDs, one per detected person.
-        """
-        if len(h36m_poses) == 0:
-            return []
-
-        track_ids: list[int] = []
-
-        # For each detection, find closest existing track by biometric distance
-        for _tid in id_map:
-            # Store the last known pose — but we don't have it here.
-            # This is a simplified approach: for the first frame, assign new IDs.
-            pass
-
-        # Simple strategy: assign new IDs for each detection.
-        # The built-in rtmlib tracking handles spatial consistency already,
-        # but since we can't access its track IDs, we rely on the
-        # custom tracker path for production use.
-        # For the rtmlib path, we just assign sequential IDs per-frame
-        # and let biometric matching handle re-association.
-        for p in range(len(h36m_poses)):
-            new_id = next_id + p
-            track_ids.append(new_id)
-
-        return track_ids
 
     def _post_hoc_merge(
         self,
@@ -1030,7 +948,7 @@ class PoseExtractor:
 
     def close(self) -> None:
         """Release resources."""
-        self._tracker = None
+        self._moganet.close()
 
     def __enter__(self):
         """Context manager entry."""
@@ -1043,23 +961,23 @@ class PoseExtractor:
 
 def extract_poses(
     video_path: Path | str,
-    mode: str = "balanced",
+    model_path: str = "data/models/moganet/moganet_b_ap2d_384x288.onnx",
     output_format: str = "normalized",
     person_click: PersonClick | None = None,
 ) -> TrackedExtraction:
-    """Extract H3.6M poses from video using rtmlib.
+    """Extract H3.6M poses from video using PersonDetector + MogaNetBatch.
 
-    Convenience function that creates an PoseExtractor and runs
+    Convenience function that creates a PoseExtractor and runs
     tracked extraction.
 
     Args:
         video_path: Path to video file.
-        mode: Model preset — ``"lightweight"``, ``"balanced"``, ``"performance"``.
+        model_path: Path to MogaNet-B ONNX model.
         output_format: ``"normalized"`` or ``"pixels"``.
         person_click: Optional click to select target person.
 
     Returns:
         TrackedExtraction with poses populated.
     """
-    extractor = PoseExtractor(mode=mode, output_format=output_format)
+    extractor = PoseExtractor(model_path=model_path, output_format=output_format)
     return extractor.extract_video_tracked(video_path, person_click=person_click)

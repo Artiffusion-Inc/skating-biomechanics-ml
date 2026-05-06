@@ -2,7 +2,7 @@
 
 H3.6M Architecture:
     This pipeline uses H3.6M 17-keypoint format as the primary format.
-    2D extraction: PoseExtractor (rtmlib RTMO Body)
+    2D extraction: PoseExtractor (PersonDetector + MogaNetBatch)
 
 Pipeline stages:
     1. Extract & track: PoseExtractor.extract_video_tracked() + gap fill + spatial ref
@@ -45,7 +45,7 @@ class AnalysisPipeline:
     """Main pipeline for skating technique analysis.
 
     H3.6M Architecture:
-        - 2D poses: PoseExtractor (17 keypoints, normalized [0,1], rtmlib backend)
+        - 2D poses: PoseExtractor (17 keypoints, normalized [0,1], MogaNet-B backend)
     """
 
     def __init__(
@@ -112,7 +112,7 @@ class AnalysisPipeline:
         # 2. Tracked extraction (per-frame RTMO inference + tracking)
         t0 = time.perf_counter()
         extraction = extractor.extract_video_tracked(video_path, person_click=self._person_click)
-        self._profiler.record("rtmo_inference_loop", time.perf_counter() - t0)
+        self._profiler.record("pose_inference_loop", time.perf_counter() - t0)
 
         # 3. Skip pre-roll (trim leading NaN frames before first detection)
         frame_offset = extraction.first_detection_frame

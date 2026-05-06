@@ -1,10 +1,10 @@
 """Pose estimation module for figure skating analysis.
 
-This module provides H3.6M 17-keypoint pose extraction as the primary format.
-Uses RTMO via rtmlib (COCO 17kp) as the sole backend.
+Provides H3.6M 17-keypoint pose extraction as the primary format.
+Uses PersonDetector (YOLOv11n) + MogaNetBatch (ONNX) top-down pipeline.
 
 Architecture:
-    Video -> PoseExtractor (rtmlib RTMO) -> H3.6M 17kp
+    Video -> PersonDetector -> MogaNetBatch -> COCO 17kp -> H3.6M 17kp
 
 Multi-GPU:
     Video -> MultiGPUPoseExtractor -> distribute across GPUs -> H3.6M 17kp

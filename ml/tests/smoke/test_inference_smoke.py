@@ -1,7 +1,7 @@
 """Smoke test: verify core inference pipeline without GPU/video.
 
 Runs phase detection, biomechanics metrics, and recommendation generation
-on synthetic jump poses. Does NOT require rtmlib, ONNX, or CUDA.
+on synthetic jump poses. Does NOT require ONNX, PersonDetector, or CUDA.
 Purpose: CI gate to catch breaking changes in analysis logic.
 """
 

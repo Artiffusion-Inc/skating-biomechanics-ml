@@ -26,6 +26,12 @@ MODELS_DIR = Path("data/models")
 MANIFEST_PATH = MODELS_DIR / "models.manifest.json"
 
 MODELS: dict[str, dict] = {
+    "moganet_b": {
+        "source": "manual",
+        "local_filename": "moganet/moganet_b_ap2d_384x288.onnx",
+        "size_mb": "~544MB",
+        "description": "MogaNet-B pose estimator (AthletePose3D fine-tuned, ONNX)",
+    },
     "depth_anything": {
         "source": "hf",
         "repo_id": "onnx-community/depth-anything-v2-small",

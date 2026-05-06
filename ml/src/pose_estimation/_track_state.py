@@ -17,7 +17,7 @@ class TrackState:
     def __init__(
         self,
         fps: float,
-        tracking_backend: str = "rtmlib",
+        tracking_backend: str = "auto",
         tracking_mode: str = "auto",
     ) -> None:
         self.fps = fps
