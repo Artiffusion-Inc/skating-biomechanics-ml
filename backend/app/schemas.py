@@ -296,6 +296,9 @@ class TaskStatusResponse(BaseModel):
 class CreateSessionRequest(BaseModel):
     element_type: str = Field(..., min_length=1, max_length=50)
     video_key: str | None = Field(default=None, max_length=500)
+    imu_left_key: str | None = Field(default=None, max_length=500)
+    imu_right_key: str | None = Field(default=None, max_length=500)
+    manifest_key: str | None = Field(default=None, max_length=500)
 
 
 class PatchSessionRequest(BaseModel):
@@ -376,6 +379,9 @@ class SessionResponse(BaseModel):
     recommendations: list[str] | None
     overall_score: float | None
     process_task_id: str | None
+    imu_left_key: str | None = None
+    imu_right_key: str | None = None
+    manifest_key: str | None = None
     created_at: str
     processed_at: str | None
     metrics: list[SessionMetricResponse] = []

@@ -98,27 +98,27 @@ spec:
     - hostPath:
         path: /opt/skatelab/Caddyfile
         type: File
-      name: opt-skating-app-Caddyfile-host-2
+      name: opt-skatelab-Caddyfile-host-2
     - hostPath:
         path: /opt/skatelab/prometheus.yml
         type: File
-      name: opt-skating-app-prometheus.yml-host-0
+      name: opt-skatelab-prometheus.yml-host-0
     - hostPath:
         path: /opt/skatelab/prometheus/rules
         type: Directory
-      name: opt-skating-app-prometheus-rules-host-1
-    - name: skating-app-caddy-config-pvc
+      name: opt-skatelab-prometheus-rules-host-1
+    - name: skatelab-caddy-config-pvc
       persistentVolumeClaim:
         claimName: skatelab_caddy-config
-    - name: skating-app-caddy-data-pvc
+    - name: skatelab-caddy-data-pvc
       persistentVolumeClaim:
         claimName: skatelab_caddy-data
-    - name: skating-app-postgres-data-pvc
+    - name: skatelab-postgres-data-pvc
       persistentVolumeClaim:
         claimName: skatelab_postgres-data
-    - name: skating-app-prometheus-data-pvc
+    - name: skatelab-prometheus-data-pvc
       persistentVolumeClaim:
         claimName: skatelab_prometheus-data
-    - name: skating-app-valkey-data-pvc
+    - name: skatelab-valkey-data-pvc
       persistentVolumeClaim:
         claimName: skatelab_valkey-data

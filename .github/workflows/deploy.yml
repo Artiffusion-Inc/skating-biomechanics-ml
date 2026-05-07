@@ -180,9 +180,11 @@ jobs:
             sed -i "s|ghcr.io/artiffusion-inc/skatelab-frontend:latest|ghcr.io/${GHCR_OWNER}/skatelab-frontend:${TAG}|g" deploy-rendered.yaml
 
             # Clean up old compose containers and pods before kube play
-            podman stop $(podman ps -aq --filter name=skatelab) 2>/dev/null || true
-            podman rm -f $(podman ps -aq --filter name=skatelab) 2>/dev/null || true
-            podman pod rm -f $(podman pod ps -q --filter name=skatelab) 2>/dev/null || true
+            for pod_name in skatelab skating-app; do
+              podman stop $(podman ps -aq --filter name=$pod_name) 2>/dev/null || true
+              podman rm -f $(podman ps -aq --filter name=$pod_name) 2>/dev/null || true
+              podman pod rm -f $(podman pod ps -q --filter name=$pod_name) 2>/dev/null || true
+            done
 
             podman kube play --replace deploy-rendered.yaml
 
@@ -196,6 +198,11 @@ jobs:
           command_timeout: 1m
           script: |
             sleep 10
+            # Ensure skatelab role and database exist (idempotent)
+            podman exec skatelab-postgres psql -U skating -d skating -c \
+              "DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'skatelab') THEN CREATE ROLE skatelab WITH LOGIN PASSWORD '${{ secrets.POSTGRES_PASSWORD }}' SUPERUSER CREATEDB; END IF; END $$;" 2>/dev/null || true
+            podman exec skatelab-postgres psql -U skatelab -d postgres -c \
+              "SELECT 'CREATE DATABASE skatelab' WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'skatelab')\\gexec" 2>/dev/null || true
             podman exec skatelab-backend alembic upgrade head
 
       - name: Health check
