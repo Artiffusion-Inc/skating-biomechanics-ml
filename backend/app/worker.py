@@ -13,12 +13,15 @@ import logging
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
 import sentry_sdk
 from arq import Retry
 from arq.connections import RedisSettings
+
+if TYPE_CHECKING:
+    from sentry_sdk.types import Event, Hint
 
 from app.config import get_settings
 from app.storage import download_file
@@ -44,7 +47,7 @@ os.environ.setdefault("OMP_NUM_THREADS", str(_settings.app.omp_num_threads))
 _VASTAI_SEMAPHORE = asyncio.Semaphore(5)
 
 
-def _filter_cuda_oom(event: dict, hint: dict) -> dict | None:
+def _filter_cuda_oom(event: Event, hint: Hint) -> Event | None:
     msg = (event.get("message") or "").lower()
     if "cuda" in msg and "out of memory" in msg:
         return None
