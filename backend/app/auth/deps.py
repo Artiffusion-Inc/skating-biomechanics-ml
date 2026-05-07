@@ -67,6 +67,18 @@ CurrentUser = Annotated[User, Dependency()]
 DbDep = Annotated[AsyncSession, Dependency()]
 
 
+async def get_verified_user(user: CurrentUser) -> User:
+    """Dependency that requires the user to have verified their email."""
+    if not user.is_verified:
+        raise NotAuthorizedException(
+            detail="Email verification required. Please check your inbox or request a new verification link."
+        )
+    return user
+
+
+VerifiedUser = Annotated[User, Dependency()]
+
+
 async def require_workspace_role(
     workspace_id: str,
     user: User,

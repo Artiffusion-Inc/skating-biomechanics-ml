@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Sequence  # noqa: TC003
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, ClassVar
@@ -17,7 +18,7 @@ from litestar.status_codes import (
     HTTP_409_CONFLICT,
 )
 
-from app.auth.deps import CurrentUser, DbDep
+from app.auth.deps import CurrentUser, DbDep, VerifiedUser
 from app.crud.connection import (
     create as create_conn,
 )
@@ -34,6 +35,7 @@ from app.crud.connection import (
 from app.crud.user import get_by_email
 from app.models.connection import ConnectionStatus, ConnectionType
 from app.schemas import ConnectionListResponse, ConnectionResponse, InviteRequest
+from app.services.email import EmailService
 
 if TYPE_CHECKING:
     from app.models.connection import Connection
@@ -51,7 +53,9 @@ class ConnectionsController(Controller):
     tags: ClassVar[Sequence[str]] = ["connections"]
 
     @post("/invite", status_code=HTTP_201_CREATED)
-    async def invite(self, data: InviteRequest, user: CurrentUser, db: DbDep) -> ConnectionResponse:
+    async def invite(
+        self, data: InviteRequest, verified_user: VerifiedUser, db: DbDep
+    ) -> ConnectionResponse:
         """User invites another user to a connection."""
         to_user = await get_by_email(db, data.to_user_email)
         if not to_user:
@@ -62,7 +66,7 @@ class ConnectionsController(Controller):
 
         conn_type = ConnectionType(data.connection_type)
         existing = await get_active_conn(
-            db, from_user_id=user.id, to_user_id=to_user.id, connection_type=conn_type
+            db, from_user_id=verified_user.id, to_user_id=to_user.id, connection_type=conn_type
         )
         if existing:
             raise ClientException(
@@ -72,15 +76,28 @@ class ConnectionsController(Controller):
 
         conn = await create_conn(
             db,
-            from_user_id=user.id,
+            from_user_id=verified_user.id,
             to_user_id=to_user.id,
             connection_type=conn_type,
-            initiated_by=user.id,
+            initiated_by=verified_user.id,
         )
+
+        email_svc = EmailService()
+        inviter_name = verified_user.display_name or verified_user.email
+        with contextlib.suppress(Exception):
+            await email_svc.send_coaching_invite(
+                to=to_user.email,
+                inviter_name=inviter_name,
+                connection_type=data.connection_type,
+                locale=to_user.language,
+            )
+
         return _conn_to_response(conn)
 
     @post("/{conn_id:str}/accept", status_code=HTTP_200_OK)
-    async def accept_invite(self, conn_id: str, user: CurrentUser, db: DbDep) -> ConnectionResponse:
+    async def accept_invite(
+        self, conn_id: str, verified_user: VerifiedUser, db: DbDep
+    ) -> ConnectionResponse:
         """Invitee accepts a connection."""
         conn = await get_conn_by_id(db, conn_id)
         if not conn:
@@ -88,7 +105,7 @@ class ConnectionsController(Controller):
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Connection not found",
             )
-        if conn.to_user_id != user.id:
+        if conn.to_user_id != verified_user.id:
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",
@@ -106,7 +123,7 @@ class ConnectionsController(Controller):
 
     @post("/{conn_id:str}/end", status_code=HTTP_200_OK)
     async def end_connection(
-        self, conn_id: str, user: CurrentUser, db: DbDep
+        self, conn_id: str, verified_user: VerifiedUser, db: DbDep
     ) -> ConnectionResponse:
         """Either party ends the connection."""
         conn = await get_conn_by_id(db, conn_id)
@@ -115,7 +132,7 @@ class ConnectionsController(Controller):
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Connection not found",
             )
-        if user.id not in (conn.from_user_id, conn.to_user_id):
+        if verified_user.id not in (conn.from_user_id, conn.to_user_id):
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",

@@ -21,7 +21,7 @@ from litestar.status_codes import (
     HTTP_422_UNPROCESSABLE_ENTITY,
 )
 
-from app.auth.deps import CurrentUser, DbDep
+from app.auth.deps import CurrentUser, DbDep, VerifiedUser
 from app.crud.choreography import (
     count_programs_by_user,
     create_music_analysis,
@@ -72,7 +72,7 @@ class ChoreographyController(Controller):
     async def upload_music(
         self,
         request: Request,
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         db: DbDep,
         file: UploadFile,
     ) -> UploadMusicResponse:
@@ -108,7 +108,7 @@ class ChoreographyController(Controller):
         # Create record as "pending"
         music = await create_music_analysis(
             db,
-            user_id=user.id,
+            user_id=verified_user.id,
             filename=file.filename or "unknown",
             audio_url="",
             duration_sec=0,
@@ -118,7 +118,7 @@ class ChoreographyController(Controller):
 
         try:
             # Upload to R2 (blocking boto3 — run in thread pool)
-            r2_key = f"music/{user.id}/{music.id}{suffix}"
+            r2_key = f"music/{verified_user.id}/{music.id}{suffix}"
             logger.info("Uploading to R2: %s", r2_key)
             await asyncio.to_thread(upload_file, tmp_path, r2_key)
             logger.info("R2 upload complete")
@@ -180,7 +180,7 @@ class ChoreographyController(Controller):
 
     @post("/generate")
     async def generate_layout(
-        self, data: GenerateRequest, user: CurrentUser, db: DbDep
+        self, data: GenerateRequest, verified_user: VerifiedUser, db: DbDep
     ) -> GenerateResponse:
         """Generate choreography layouts via CSP solver."""
         music = await get_music_analysis_by_id(db, data.music_id)
@@ -189,7 +189,7 @@ class ChoreographyController(Controller):
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Music analysis not found",
             )
-        if music.user_id != user.id:
+        if music.user_id != verified_user.id:
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",
@@ -293,12 +293,12 @@ class ChoreographyController(Controller):
 
     @post("/programs", status_code=HTTP_201_CREATED)
     async def create_new_program(
-        self, data: SaveProgramRequest, user: CurrentUser, db: DbDep
+        self, data: SaveProgramRequest, verified_user: VerifiedUser, db: DbDep
     ) -> ChoreographyProgramResponse:
         """Create a new choreography program."""
         program = await create_program(
             db,
-            user_id=user.id,
+            user_id=verified_user.id,
             discipline=data.discipline or "mens_singles",
             segment=data.segment or "free_skate",
             title=data.title,
@@ -336,7 +336,7 @@ class ChoreographyController(Controller):
         self,
         program_id: str,
         data: SaveProgramRequest,
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         db: DbDep,
     ) -> ChoreographyProgramResponse:
         """Update a choreography program."""
@@ -346,7 +346,7 @@ class ChoreographyController(Controller):
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Program not found",
             )
-        if program.user_id != user.id:
+        if program.user_id != verified_user.id:
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",
@@ -367,7 +367,9 @@ class ChoreographyController(Controller):
         return _program_to_response(program)
 
     @delete("/programs/{program_id:str}", status_code=HTTP_204_NO_CONTENT)
-    async def delete_existing_program(self, program_id: str, user: CurrentUser, db: DbDep) -> None:
+    async def delete_existing_program(
+        self, program_id: str, verified_user: VerifiedUser, db: DbDep
+    ) -> None:
         """Delete a choreography program."""
         program = await get_program_by_id(db, program_id)
         if not program:
@@ -375,7 +377,7 @@ class ChoreographyController(Controller):
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Program not found",
             )
-        if program.user_id != user.id:
+        if program.user_id != verified_user.id:
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",
@@ -391,7 +393,7 @@ class ChoreographyController(Controller):
         self,
         program_id: str,
         data: ExportRequest,
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         db: DbDep,
     ) -> dict:
         """Export a program as SVG, PDF, or JSON."""
@@ -401,7 +403,7 @@ class ChoreographyController(Controller):
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Program not found",
             )
-        if program.user_id != user.id:
+        if program.user_id != verified_user.id:
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",

@@ -38,3 +38,4 @@ class User(TimestampMixin, Base):
 
     # Metadata
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)

@@ -11,7 +11,7 @@ from litestar import Controller, delete, get, patch, post
 from litestar.exceptions import ClientException, NotFoundException
 from litestar.status_codes import HTTP_201_CREATED, HTTP_204_NO_CONTENT
 
-from app.auth.deps import CurrentUser, DbDep, require_workspace_role
+from app.auth.deps import CurrentUser, DbDep, VerifiedUser, require_workspace_role
 from app.crud.user import get_by_email
 from app.crud.workspace import (
     add_workspace_member,
@@ -38,13 +38,17 @@ class WorkspacesController(Controller):
 
     @post("", status_code=HTTP_201_CREATED)
     async def create(
-        self, data: CreateWorkspaceRequest, user: CurrentUser, db: DbDep
+        self, data: CreateWorkspaceRequest, verified_user: VerifiedUser, db: DbDep
     ) -> WorkspaceResponse:
         existing = await get_workspace_by_slug(db, data.slug)
         if existing:
             raise ClientException(detail="Workspace slug already taken")
         ws = await create_workspace(
-            db, name=data.name, slug=data.slug, owner_id=user.id, description=data.description
+            db,
+            name=data.name,
+            slug=data.slug,
+            owner_id=verified_user.id,
+            description=data.description,
         )
         return WorkspaceResponse.model_validate(ws)
 
@@ -68,10 +72,10 @@ class WorkspacesController(Controller):
         self,
         workspace_id: str,
         data: InviteMemberRequest,
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         db: DbDep,
     ) -> WorkspaceMemberResponse:
-        await require_workspace_role(workspace_id, user, db, min_role=WorkspaceRole.ADMIN)
+        await require_workspace_role(workspace_id, verified_user, db, min_role=WorkspaceRole.ADMIN)
         target = await get_by_email(db, data.email)
         if not target:
             raise ClientException(detail="User not found")
@@ -80,7 +84,7 @@ class WorkspacesController(Controller):
             workspace_id=workspace_id,
             user_id=target.id,
             role=WorkspaceRole(data.role),
-            invited_by=user.id,
+            invited_by=verified_user.id,
         )
         resp = WorkspaceMemberResponse.model_validate(member)
         resp.user_name = target.display_name or target.email
@@ -97,9 +101,9 @@ class WorkspacesController(Controller):
 
     @delete("/{workspace_id:str}/members/{user_id:str}", status_code=HTTP_204_NO_CONTENT)
     async def remove_member(
-        self, workspace_id: str, user_id: str, user: CurrentUser, db: DbDep
+        self, workspace_id: str, user_id: str, verified_user: VerifiedUser, db: DbDep
     ) -> None:
-        await require_workspace_role(workspace_id, user, db, min_role=WorkspaceRole.ADMIN)
+        await require_workspace_role(workspace_id, verified_user, db, min_role=WorkspaceRole.ADMIN)
         await remove_workspace_member(db, workspace_id, user_id)
 
     @patch("/{workspace_id:str}/members/{user_id:str}/role")
@@ -108,10 +112,10 @@ class WorkspacesController(Controller):
         workspace_id: str,
         user_id: str,
         data: InviteMemberRequest,
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         db: DbDep,
     ) -> WorkspaceMemberResponse:
-        await require_workspace_role(workspace_id, user, db, min_role=WorkspaceRole.ADMIN)
+        await require_workspace_role(workspace_id, verified_user, db, min_role=WorkspaceRole.ADMIN)
         updated = await update_member_role(db, workspace_id, user_id, WorkspaceRole(data.role))
         if not updated:
             raise NotFoundException(detail="Member not found")

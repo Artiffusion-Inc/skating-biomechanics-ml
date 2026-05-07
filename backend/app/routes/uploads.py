@@ -12,7 +12,7 @@ from litestar.params import Parameter
 from litestar.status_codes import HTTP_400_BAD_REQUEST
 from pydantic import BaseModel
 
-from app.auth.deps import CurrentUser
+from app.auth.deps import VerifiedUser
 from app.config import get_settings
 from app.storage import _client
 
@@ -32,7 +32,7 @@ class UploadsController(Controller):
     @post("/init")
     async def init_upload(
         self,
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         file_name: str = Parameter(min_length=1),
         content_type: str = Parameter(default="video/mp4"),
         total_size: int = Parameter(gt=0),
@@ -40,7 +40,7 @@ class UploadsController(Controller):
         """Initialize a multipart upload. Returns upload_id and pre-signed part URLs."""
         r2 = _client()
         bucket = get_settings().r2.bucket
-        key = f"uploads/{user.id}/{uuid.uuid4()}/{file_name}"
+        key = f"uploads/{verified_user.id}/{uuid.uuid4()}/{file_name}"
 
         upload_id = r2.create_multipart_upload(
             Bucket=bucket,
@@ -75,7 +75,9 @@ class UploadsController(Controller):
         }
 
     @post("/complete")
-    async def complete_upload(self, user: CurrentUser, data: CompleteUploadRequest) -> dict:
+    async def complete_upload(
+        self, verified_user: VerifiedUser, data: CompleteUploadRequest
+    ) -> dict:
         """Complete a multipart upload. Returns the final object key."""
         r2 = _client()
         bucket = get_settings().r2.bucket

@@ -82,6 +82,8 @@ def create_app() -> Litestar:
             "/api/v1/auth/logout",
             "/api/v1/auth/forgot-password",
             "/api/v1/auth/reset-password",
+            "/api/v1/auth/verify-email",
+            "/api/v1/auth/resend-verification",
             "/api/v1/health",
             "/api/v1/models",
             "/api/v1/outputs",

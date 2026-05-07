@@ -15,7 +15,7 @@ from litestar.status_codes import (
     HTTP_404_NOT_FOUND,
 )
 
-from app.auth.deps import CurrentUser, DbDep
+from app.auth.deps import CurrentUser, DbDep, VerifiedUser
 from app.crud.connection import is_connected_as
 from app.crud.session import count_by_user, create, get_by_id, list_by_user, soft_delete, update
 from app.models.connection import ConnectionType
@@ -70,11 +70,11 @@ class SessionsController(Controller):
 
     @post("", status_code=HTTP_201_CREATED)
     async def create_session(
-        self, data: CreateSessionRequest, user: CurrentUser, db: DbDep
+        self, data: CreateSessionRequest, verified_user: VerifiedUser, db: DbDep
     ) -> SessionResponse:
         session = await create(
             db,
-            user_id=user.id,
+            user_id=verified_user.id,
             element_type=data.element_type,
             video_key=data.video_key,
             status="queued" if data.video_key else "uploading",
@@ -156,7 +156,7 @@ class SessionsController(Controller):
         self,
         session_id: str,
         data: PatchSessionRequest,
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         db: DbDep,
     ) -> SessionResponse:
         session = await get_by_id(db, session_id)
@@ -165,7 +165,7 @@ class SessionsController(Controller):
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Session not found",
             )
-        if session.user_id != user.id:
+        if session.user_id != verified_user.id:
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",
@@ -174,14 +174,14 @@ class SessionsController(Controller):
         return await _session_to_response(session)
 
     @delete("/{session_id:str}", status_code=HTTP_204_NO_CONTENT)
-    async def delete_session(self, session_id: str, user: CurrentUser, db: DbDep) -> None:
+    async def delete_session(self, session_id: str, verified_user: VerifiedUser, db: DbDep) -> None:
         session = await get_by_id(db, session_id)
         if not session:
             raise ClientException(
                 status_code=HTTP_404_NOT_FOUND,
                 detail="Session not found",
             )
-        if session.user_id != user.id:
+        if session.user_id != verified_user.id:
             raise ClientException(
                 status_code=HTTP_403_FORBIDDEN,
                 detail="Not authorized",
@@ -193,7 +193,7 @@ class SessionsController(Controller):
         self,
         *,
         ids: str = Parameter(required=True),
-        user: CurrentUser,
+        verified_user: VerifiedUser,
         db: DbDep,
     ) -> None:
         session_ids = [sid.strip() for sid in ids.split(",") if sid.strip()]
@@ -201,7 +201,7 @@ class SessionsController(Controller):
             session = await get_by_id(db, sid)
             if not session:
                 continue
-            if session.user_id != user.id:
+            if session.user_id != verified_user.id:
                 raise ClientException(
                     status_code=HTTP_403_FORBIDDEN,
                     detail="Cannot delete another user's session",

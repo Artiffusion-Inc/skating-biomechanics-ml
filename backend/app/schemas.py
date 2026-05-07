@@ -57,6 +57,14 @@ class ResetPasswordRequest(BaseModel):
     password: str = Field(min_length=8, max_length=128)
 
 
+class VerifyEmailRequest(BaseModel):
+    token: str
+
+
+class ResendVerificationRequest(BaseModel):
+    email: EmailStr
+
+
 class MessageResponse(BaseModel):
     message: str
 
@@ -74,6 +82,7 @@ class UserResponse(BaseModel):
     theme: str
     onboarding_role: str | None
     is_active: bool
+    is_verified: bool
     created_at: str
     updated_at: str
 

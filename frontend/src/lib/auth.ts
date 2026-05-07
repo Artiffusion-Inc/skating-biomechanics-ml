@@ -39,6 +39,7 @@ export const UserResponseSchema = z.object({
   theme: z.string(),
   onboarding_role: z.string().nullable(),
   is_active: z.boolean(),
+  is_verified: z.boolean(),
   created_at: z.string(),
 })
 
@@ -138,4 +139,30 @@ export async function updateOnboardingRole(
     headers: JSON_POST,
     body: JSON.stringify({ onboarding_role: role }),
   })
+}
+
+export async function verifyEmail(token: string): Promise<{ message: string }> {
+  const res = await fetch("/api/v1/auth/verify-email", {
+    method: "POST",
+    headers: JSON_POST,
+    body: JSON.stringify({ token }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.message ?? "Verification failed")
+  }
+  return res.json()
+}
+
+export async function resendVerification(email: string): Promise<{ message: string }> {
+  const res = await fetch("/api/v1/auth/resend-verification", {
+    method: "POST",
+    headers: JSON_POST,
+    body: JSON.stringify({ email }),
+  })
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.message ?? "Resend failed")
+  }
+  return res.json()
 }

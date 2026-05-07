@@ -23,6 +23,7 @@ dependencies = [
     "librosa>=0.10.0",
     "aiobotocore>=3.4.0",
     "pychromaprint>=0.8",
+    "resend>=2.0.0",
 ]
 
 [build-system]

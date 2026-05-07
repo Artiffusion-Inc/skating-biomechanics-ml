@@ -100,6 +100,7 @@ async def authed_user(db_session: AsyncSession) -> User:
         bio="Skater",
         height_cm=175,
         weight_kg=70.0,
+        is_verified=True,
     )
     db_session.add(user)
     await db_session.flush()

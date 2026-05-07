@@ -123,6 +123,8 @@ class ResendConfig(BaseSettings):
     from_email: str = "noreply@skatelab.ru"
     from_name: str = "SkateLab"
     reset_url_template: str = "https://skatelab.ru/reset-password?token={token}"
+    verify_url_template: str = "https://skatelab.ru/verify-email?token={token}"
+    dashboard_url: str = "https://skatelab.ru/dashboard"
 
     class Config:
         env_prefix = "RESEND_"
