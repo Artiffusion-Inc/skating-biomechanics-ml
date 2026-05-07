@@ -1,0 +1,38 @@
+version: '3'
+
+tasks:
+  build:
+    desc: Build debug APK with correct Android SDK env
+    dir: flutter_app
+    cmds:
+      - |
+        export ANDROID_HOME=/home/michael/.local/share/android/sdk
+        export ANDROID_SDK_ROOT=/home/michael/.local/share/android/sdk
+        export ANDROID_USER_HOME=/home/michael/.local/share/android
+        flutter build apk --debug
+
+  install:
+    desc: Install debug APK to connected Android device
+    dir: flutter_app
+    cmds:
+      - |
+        export ANDROID_HOME=/home/michael/.local/share/android/sdk
+        export ANDROID_SDK_ROOT=/home/michael/.local/share/android/sdk
+        export ANDROID_USER_HOME=/home/michael/.local/share/android
+        adb install -r build/app/outputs/flutter-apk/app-debug.apk
+
+  build-install:
+    desc: Build and install APK in one go
+    deps: [build]
+    cmds:
+      - task: install
+
+  test:
+    desc: Run all Flutter tests
+    dir: flutter_app
+    cmds:
+      - |
+        export ANDROID_HOME=/home/michael/.local/share/android/sdk
+        export ANDROID_SDK_ROOT=/home/michael/.local/share/android/sdk
+        export ANDROID_USER_HOME=/home/michael/.local/share/android
+        flutter test

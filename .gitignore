@@ -12,7 +12,7 @@ eggs/
 .eggs/
 lib/
 !frontend/src/lib/
-!mobile/lib/
+!flutter_app/lib/
 lib64/
 parts/
 sdist/
