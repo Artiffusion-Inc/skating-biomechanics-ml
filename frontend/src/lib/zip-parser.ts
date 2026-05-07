@@ -2,8 +2,8 @@ import { unzip, type Unzipped } from "fflate"
 
 export interface ZipContents {
   video: File | null
-  imuLeft: ArrayBuffer | null
-  imuRight: ArrayBuffer | null
+  imuLeft: Uint8Array | null
+  imuRight: Uint8Array | null
   manifest: { [key: string]: unknown } | null
   videoName: string | null
   manifestVersion: string | null
@@ -32,8 +32,8 @@ export async function parseZip(file: File): Promise<ZipContents> {
 
   let video: File | null = null
   let videoName: string | null = null
-  let imuLeft: ArrayBuffer | null = null
-  let imuRight: ArrayBuffer | null = null
+  let imuLeft: Uint8Array | null = null
+  let imuRight: Uint8Array | null = null
   let manifest: { [key: string]: unknown } | null = null
   let manifestVersion: string | null = null
 
@@ -45,13 +45,13 @@ export async function parseZip(file: File): Promise<ZipContents> {
 
     const ext = name.split(".").pop()?.toLowerCase() ?? ""
     if (ext === "mp4" || ext === "mov" || ext === "webm") {
-      const blob = new Blob([data], { type: `video/${ext}` })
+      const blob = new Blob([new Uint8Array(data) as BlobPart], { type: `video/${ext}` })
       video = new File([blob], name, { type: `video/${ext}` })
       videoName = name
     } else if (name.endsWith("_left.pb")) {
-      imuLeft = data.buffer as ArrayBuffer
+      imuLeft = data
     } else if (name.endsWith("_right.pb")) {
-      imuRight = data.buffer as ArrayBuffer
+      imuRight = data
     } else if (ext === "json") {
       try {
         const parsed = JSON.parse(new TextDecoder().decode(data)) as { [key: string]: unknown }
