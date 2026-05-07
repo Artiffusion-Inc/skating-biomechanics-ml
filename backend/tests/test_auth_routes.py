@@ -6,6 +6,7 @@ import pytest
 from app.auth.security import hash_password, hash_token
 from app.models.password_reset_token import PasswordResetToken
 from app.models.user import User
+from app.models.verification_token import VerificationToken
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -444,3 +445,129 @@ async def test_reset_password_rate_limit(client, mock_valkey):
         assert resp.status_code == 429
     finally:
         _tm._pool.pop("valkey", None)
+
+
+# ---------------------------------------------------------------------------
+# Email verification
+# ---------------------------------------------------------------------------
+
+
+async def test_verify_email_valid_token(client, db_session: AsyncSession):
+    """Verify-email with valid token marks user as verified."""
+    user = User(email="verify@example.com", hashed_password=hash_password("pass"))
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    token_raw = "v" * 64
+    token_hash_str = hash_token(token_raw)
+    vt = VerificationToken(
+        user_id=user.id,
+        token_hash=token_hash_str,
+        expires_at=datetime.now(UTC) + timedelta(hours=24),
+    )
+    db_session.add(vt)
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": token_raw},
+    )
+    assert resp.status_code == 200
+    assert "verified" in resp.json()["message"].lower()
+
+    from sqlalchemy import select
+
+    result = await db_session.execute(select(User).where(User.id == user.id))
+    updated = result.scalar_one()
+    assert updated.is_verified is True
+
+    result = await db_session.execute(
+        select(VerificationToken).where(VerificationToken.id == vt.id)
+    )
+    used_token = result.scalar_one()
+    assert used_token.used_at is not None
+
+
+async def test_verify_email_invalid_token(client):
+    """Verify-email with invalid token returns 400."""
+    resp = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": "invalidtoken"},
+    )
+    assert resp.status_code == 400
+    assert "invalid" in resp.json()["message"].lower()
+
+
+async def test_verify_email_expired_token(client, db_session: AsyncSession):
+    """Verify-email with expired token returns 400."""
+    user = User(email="expired-verify@example.com", hashed_password=hash_password("pass"))
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    token_raw = "x" * 64
+    token_hash_str = hash_token(token_raw)
+    vt = VerificationToken(
+        user_id=user.id,
+        token_hash=token_hash_str,
+        expires_at=datetime.now(UTC) - timedelta(hours=1),
+    )
+    db_session.add(vt)
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/auth/verify-email",
+        json={"token": token_raw},
+    )
+    assert resp.status_code == 400
+
+
+async def test_resend_verification_existing_user(client, db_session: AsyncSession):
+    """Resend-verification creates a new token for unverified user."""
+    user = User(
+        email="resend@example.com", hashed_password=hash_password("pass"), is_verified=False
+    )
+    db_session.add(user)
+    await db_session.flush()
+    await db_session.refresh(user)
+
+    resp = await client.post(
+        "/api/v1/auth/resend-verification",
+        json={"email": "resend@example.com"},
+    )
+    assert resp.status_code == 200
+
+    from sqlalchemy import select
+
+    result = await db_session.execute(
+        select(VerificationToken).where(VerificationToken.user_id == user.id)
+    )
+    token = result.scalar_one_or_none()
+    assert token is not None
+    assert token.used_at is None
+
+
+async def test_resend_verification_already_verified(client, db_session: AsyncSession):
+    """Resend-verification returns generic message for already verified user."""
+    user = User(
+        email="verified@example.com", hashed_password=hash_password("pass"), is_verified=True
+    )
+    db_session.add(user)
+    await db_session.flush()
+
+    resp = await client.post(
+        "/api/v1/auth/resend-verification",
+        json={"email": "verified@example.com"},
+    )
+    assert resp.status_code == 200
+    assert "verification sent" in resp.json()["message"].lower()
+
+
+async def test_resend_verification_nonexistent_email(client):
+    """Resend-verification returns generic message for unknown email."""
+    resp = await client.post(
+        "/api/v1/auth/resend-verification",
+        json={"email": "nobody@example.com"},
+    )
+    assert resp.status_code == 200
