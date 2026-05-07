@@ -1,6 +1,7 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../i18n/strings.g.dart';
 import '../ble/ble_manager.dart';
 import '../metrics/metrics_screen.dart';
@@ -198,30 +199,16 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
                             spacing: 8,
                             children: [
                               if (ble.leftDevice != null)
-                                Chip(
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                  label: Text(
+                                shad.PrimaryBadge(
+                                  child: Text(
                                     '${t.ble.left} ${ble.leftDevice!.isConnected.value ? "✓" : "…"}',
-                                    style: const TextStyle(fontSize: 10),
                                   ),
-                                  backgroundColor:
-                                      ble.leftDevice!.isConnected.value
-                                      ? Colors.green.shade800
-                                      : Colors.orange.shade800,
                                 ),
                               if (ble.rightDevice != null)
-                                Chip(
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                  label: Text(
+                                shad.PrimaryBadge(
+                                  child: Text(
                                     '${t.ble.right} ${ble.rightDevice!.isConnected.value ? "✓" : "…"}',
-                                    style: const TextStyle(fontSize: 10),
                                   ),
-                                  backgroundColor:
-                                      ble.rightDevice!.isConnected.value
-                                      ? Colors.green.shade800
-                                      : Colors.orange.shade800,
                                 ),
                             ],
                           ),

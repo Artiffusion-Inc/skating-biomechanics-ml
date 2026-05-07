@@ -1,8 +1,14 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'camera_factory.dart';
 
 class CameraRecorder extends ChangeNotifier {
+  final CameraFactory _factory;
+
+  CameraRecorder({CameraFactory? factory})
+    : _factory = factory ?? SystemCameraFactory();
+
   CameraController? _controller;
   CameraLensDirection _lensDirection = CameraLensDirection.back;
   ResolutionPreset _resolution = ResolutionPreset.high;
@@ -21,7 +27,7 @@ class CameraRecorder extends ChangeNotifier {
       return;
     }
     _controller?.dispose();
-    _controller = CameraController(
+    _controller = _factory.createController(
       cameras.firstWhere(
         (c) => c.lensDirection == _lensDirection,
         orElse: () => cameras.first,
@@ -43,13 +49,13 @@ class CameraRecorder extends ChangeNotifier {
     _lensDirection = _lensDirection == CameraLensDirection.back
         ? CameraLensDirection.front
         : CameraLensDirection.back;
-    final cameras = await availableCameras();
+    final cameras = await _factory.getCameras();
     await initialize(cameras);
   }
 
   Future<void> setResolution(ResolutionPreset r) async {
     _resolution = r;
-    final cameras = await availableCameras();
+    final cameras = await _factory.getCameras();
     await initialize(cameras);
   }
 

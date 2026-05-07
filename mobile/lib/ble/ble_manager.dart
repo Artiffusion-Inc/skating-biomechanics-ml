@@ -1,9 +1,10 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'wt901_parser.dart';
 import 'imu_device.dart';
+import 'ble_platform.dart';
+import 'ble_platform_fbp.dart';
 
 enum BleScanError { bluetoothOff, locationRequired, unknown }
 
@@ -20,11 +21,13 @@ class BleManager extends ChangeNotifier {
 
   final Map<String, double> batteryLevels = {};
 
+  final BlePlatform _platform;
   StreamSubscription? _scanSubscription;
   StreamSubscription? _adapterSubscription;
 
-  BleManager() {
-    _adapterSubscription = FlutterBluePlus.adapterState.listen((state) {
+  BleManager({BlePlatform? platform})
+    : _platform = platform ?? BlePlatformFbp() {
+    _adapterSubscription = _platform.adapterState.listen((state) {
       if (state == BluetoothAdapterState.off) {
         stopScan();
       }
@@ -33,21 +36,21 @@ class BleManager extends ChangeNotifier {
   }
 
   bool get isBluetoothOn =>
-      FlutterBluePlus.adapterStateNow == BluetoothAdapterState.on;
+      _platform.adapterStateNow == BluetoothAdapterState.on;
 
   bool get canProceed =>
       (leftDevice?.isConnected.value ?? false) ||
       (rightDevice?.isConnected.value ?? false);
 
   Future<bool> checkLocationPermission() async {
-    locationPermissionGranted = await Permission.location.isGranted;
+    locationPermissionGranted = await _platform.locationGranted;
     notifyListeners();
     return locationPermissionGranted;
   }
 
   Future<bool> checkBluetoothPermissions() async =>
-      await Permission.bluetoothScan.isGranted &&
-      await Permission.bluetoothConnect.isGranted;
+      await _platform.bluetoothScanGranted &&
+      await _platform.bluetoothConnectGranted;
 
   DateTime? _lastScanStop;
 
@@ -78,7 +81,7 @@ class BleManager extends ChangeNotifier {
     }
 
     // Ensure previous scan fully stopped
-    await FlutterBluePlus.stopScan();
+    await _platform.stopScan();
     await _scanSubscription?.cancel();
     _scanSubscription = null;
     scanResults = [];
@@ -87,13 +90,13 @@ class BleManager extends ChangeNotifier {
     isScanning = true;
     notifyListeners();
 
-    _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+    _scanSubscription = _platform.scanResults.listen((results) {
       scanResults = results;
       notifyListeners();
     });
 
     try {
-      await FlutterBluePlus.startScan(
+      await _platform.startScan(
         timeout: const Duration(seconds: 10),
         androidScanMode: AndroidScanMode.lowLatency,
       );
@@ -110,7 +113,7 @@ class BleManager extends ChangeNotifier {
   Future<void> stopScan() async {
     await _scanSubscription?.cancel();
     _scanSubscription = null;
-    await FlutterBluePlus.stopScan();
+    await _platform.stopScan();
     isScanning = false;
     _lastScanStop = DateTime.now();
     notifyListeners();

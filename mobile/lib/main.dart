@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 
 import 'providers/app_providers.dart';
 import 'theme/app_theme.dart';
@@ -17,9 +18,10 @@ class EdgeSenseApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp.router(
+    return shad.ShadcnApp.router(
       title: 'EdgeSense Capture',
-      theme: AppTheme.dark,
+      theme: shad.ThemeData(colorScheme: shad.ColorSchemes.darkZinc),
+      materialTheme: AppTheme.dark,
       routerConfig: buildRouter(),
       locale: TranslationProvider.of(context).flutterLocale,
       supportedLocales: AppLocaleUtils.supportedLocales,

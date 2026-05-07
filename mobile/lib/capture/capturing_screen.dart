@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import '../../i18n/strings.g.dart';
 import '../ble/ble_manager.dart';
 import '../capture/capture_provider.dart';
@@ -240,17 +241,16 @@ class _CapturingScreenState extends State<CapturingScreen> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton.extended(
+      floatingActionButton: shad.DestructiveButton(
         onPressed: _stopping ? null : _stopCapture,
-        icon: _stopping
+        leading: _stopping
             ? const SizedBox(
                 width: 20,
                 height: 20,
                 child: CircularProgressIndicator(strokeWidth: 2),
               )
             : const Icon(Icons.stop),
-        label: Text(_stopping ? t.capture.saving : t.capture.stop),
-        backgroundColor: Colors.red,
+        child: Text(_stopping ? t.capture.saving : t.capture.stop),
       ),
     );
   }

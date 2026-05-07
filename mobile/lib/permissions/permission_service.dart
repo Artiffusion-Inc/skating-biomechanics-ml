@@ -1,12 +1,18 @@
 import 'package:permission_handler/permission_handler.dart';
+import 'permission_handler.dart';
 
 class PermissionService {
+  final PermissionGateway _gateway;
+
+  PermissionService({PermissionGateway? gateway})
+    : _gateway = gateway ?? PermissionHandlerGateway();
+
   Future<bool> requestAll() async {
-    final location = await Permission.location.request();
-    final ble = await Permission.bluetoothScan.request();
-    final bleConnect = await Permission.bluetoothConnect.request();
-    final camera = await Permission.camera.request();
-    final microphone = await Permission.microphone.request();
+    final location = await _gateway.requestLocation();
+    final ble = await _gateway.requestBluetoothScan();
+    final bleConnect = await _gateway.requestBluetoothConnect();
+    final camera = await _gateway.requestCamera();
+    final microphone = await _gateway.requestMicrophone();
     return location.isGranted &&
         ble.isGranted &&
         bleConnect.isGranted &&

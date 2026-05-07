@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:shadcn_flutter/shadcn_flutter.dart' as shad;
 import 'permission_service.dart';
-import '../../../i18n/strings.g.dart';
+import '../../i18n/strings.g.dart';
 
 class PermissionsScreen extends StatelessWidget {
   final VoidCallback onGranted;
@@ -29,14 +30,14 @@ class PermissionsScreen extends StatelessWidget {
                 style: const TextStyle(color: Colors.white70),
               ),
               const SizedBox(height: 32),
-              FilledButton.icon(
+              shad.PrimaryButton(
                 key: const Key('grantPermissionsBtn'),
                 onPressed: () async {
                   final granted = await PermissionService().requestAll();
                   if (granted) onGranted();
                 },
-                icon: const Icon(Icons.verified_user),
-                label: Text(t.permissions.grant),
+                leading: const Icon(Icons.verified_user),
+                child: Text(t.permissions.grant),
               ),
             ],
           ),
