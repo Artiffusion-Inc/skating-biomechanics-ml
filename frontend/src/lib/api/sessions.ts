@@ -60,6 +60,9 @@ const SessionSchema = z.object({
   recommendations: z.array(z.string()).nullable(),
   overall_score: z.number().nullable(),
   process_task_id: z.string().nullable().optional(),
+  imu_left_key: z.string().nullable().optional(),
+  imu_right_key: z.string().nullable().optional(),
+  manifest_key: z.string().nullable().optional(),
   created_at: z.string(),
   processed_at: z.string().nullable(),
   metrics: z.array(SessionMetricSchema),
@@ -91,8 +94,13 @@ export function useSession(id: string, opts?: Pick<UseQueryOptions<Session>, "re
 export function useCreateSession() {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (body: { element_type: string; video_key?: string }) =>
-      apiPost("/sessions", SessionSchema, body),
+    mutationFn: (body: {
+      element_type: string
+      video_key?: string
+      imu_left_key?: string
+      imu_right_key?: string
+      manifest_key?: string
+    }) => apiPost("/sessions", SessionSchema, body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["sessions"] }),
   })
 }
