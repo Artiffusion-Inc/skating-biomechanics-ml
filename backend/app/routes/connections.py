@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 from collections.abc import Sequence  # noqa: TC003
 from datetime import UTC, datetime
 from typing import TYPE_CHECKING, ClassVar
@@ -34,6 +35,7 @@ from app.crud.connection import (
 from app.crud.user import get_by_email
 from app.models.connection import ConnectionStatus, ConnectionType
 from app.schemas import ConnectionListResponse, ConnectionResponse, InviteRequest
+from app.services.email import EmailService
 
 if TYPE_CHECKING:
     from app.models.connection import Connection
@@ -77,6 +79,17 @@ class ConnectionsController(Controller):
             connection_type=conn_type,
             initiated_by=user.id,
         )
+
+        email_svc = EmailService()
+        inviter_name = user.display_name or user.email
+        with contextlib.suppress(Exception):
+            await email_svc.send_coaching_invite(
+                to=to_user.email,
+                inviter_name=inviter_name,
+                connection_type=data.connection_type,
+                locale=to_user.language,
+            )
+
         return _conn_to_response(conn)
 
     @post("/{conn_id:str}/accept", status_code=HTTP_200_OK)

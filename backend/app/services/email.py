@@ -59,8 +59,8 @@ class EmailService:
                     "variables": {"RESET_URL": reset_url},
                 },
             }
-            email = resend.Emails.send(params)
-            return email["id"]
+            email = resend.Emails.send(params)  # type: ignore[arg-type]
+            return str(email["id"])
         except Exception:
             logger.exception("Failed to send password reset email to %s", to)
             return None
@@ -78,8 +78,8 @@ class EmailService:
                     "variables": {"VERIFY_URL": verify_url},
                 },
             }
-            email = resend.Emails.send(params)
-            return email["id"]
+            email = resend.Emails.send(params)  # type: ignore[arg-type]
+            return str(email["id"])
         except Exception:
             logger.exception("Failed to send email verification to %s", to)
             return None
@@ -102,8 +102,8 @@ class EmailService:
                     },
                 },
             }
-            email = resend.Emails.send(params)
-            return email["id"]
+            email = resend.Emails.send(params)  # type: ignore[arg-type]
+            return str(email["id"])
         except Exception:
             logger.exception("Failed to send coaching invite email to %s", to)
             return None

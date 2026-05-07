@@ -37,6 +37,15 @@ from app.crud.refresh_token import get_active_by_hash, mark_used, revoke, revoke
 from app.crud.user import create as create_user
 from app.crud.user import get_by_email
 from app.crud.user import get_by_id as get_user_by_id
+from app.crud.verification_token import (
+    create as create_verification_token_crud,
+)
+from app.crud.verification_token import (
+    get_by_hash as get_verification_by_hash,
+)
+from app.crud.verification_token import (
+    mark_used as mark_verification_used,
+)
 from app.middleware import check_rate_limit
 from app.schemas import (
     ForgotPasswordRequest,
@@ -44,10 +53,12 @@ from app.schemas import (
     MessageResponse,
     RefreshRequest,
     RegisterRequest,
+    ResendVerificationRequest,
     ResetPasswordRequest,
     TokenResponse,
+    VerifyEmailRequest,
 )
-from app.services.email import send_password_reset_email
+from app.services.email import EmailService
 
 settings = get_settings()
 
@@ -144,7 +155,6 @@ class AuthController(Controller):
 
         user = await get_by_email(db, data.email)
         if not user:
-            # Return same message to avoid email enumeration
             return MessageResponse(message="If email exists, reset link sent")
 
         raw_token = create_password_reset_token()
@@ -156,8 +166,11 @@ class AuthController(Controller):
             expires_at=datetime.now(UTC) + timedelta(hours=1),
         )
 
-        with contextlib.suppress(RuntimeError):
-            await send_password_reset_email(data.email, raw_token)
+        email_svc = EmailService()
+        with contextlib.suppress(Exception):
+            await email_svc.send_password_reset(
+                to=data.email, token=raw_token, locale=user.language
+            )
 
         return MessageResponse(message="If email exists, reset link sent")
 
@@ -198,3 +211,62 @@ class AuthController(Controller):
         existing = await get_active_by_hash(db, token_hash)
         if existing:
             await revoke(db, existing)
+
+    @post("/verify-email", status_code=HTTP_200_OK)
+    async def verify_email(
+        self, request: Request, db: DbDep, data: VerifyEmailRequest
+    ) -> MessageResponse:
+        """Verify user email with token from verification link."""
+        ip = request.client.host if request.client else "unknown"
+        await check_rate_limit(f"verify_ip:{ip}", max_requests=10, window_seconds=300)
+
+        token_hash = hash_token(data.token)
+        existing = await get_verification_by_hash(db, token_hash)
+        if not existing:
+            raise ClientException(
+                status_code=400,
+                detail="Invalid or expired verification token",
+            )
+
+        user = await get_user_by_id(db, existing.user_id)
+        if not user:
+            raise ClientException(
+                status_code=400,
+                detail="Invalid or expired verification token",
+            )
+
+        user.is_verified = True
+        db.add(user)
+        await mark_verification_used(db, existing)
+        await db.flush()
+
+        return MessageResponse(message="Email verified successfully")
+
+    @post("/resend-verification", status_code=HTTP_200_OK)
+    async def resend_verification(
+        self, request: Request, db: DbDep, data: ResendVerificationRequest
+    ) -> MessageResponse:
+        """Resend email verification link."""
+        ip = request.client.host if request.client else "unknown"
+        await check_rate_limit(f"resend_ip:{ip}", max_requests=3, window_seconds=3600)
+
+        user = await get_by_email(db, data.email)
+        if not user or user.is_verified:
+            return MessageResponse(message="If email exists and unverified, verification sent")
+
+        raw_token = create_password_reset_token()
+        token_hash = hash_token(raw_token)
+        await create_verification_token_crud(
+            db,
+            user_id=user.id,
+            token_hash=token_hash,
+            expires_at=datetime.now(UTC) + timedelta(hours=24),
+        )
+
+        email_svc = EmailService()
+        with contextlib.suppress(Exception):
+            await email_svc.send_email_verification(
+                to=data.email, token=raw_token, locale=user.language
+            )
+
+        return MessageResponse(message="If email exists and unverified, verification sent")
