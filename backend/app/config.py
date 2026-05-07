@@ -3,13 +3,15 @@
 Uses pydantic-settings with nested config groups and env prefixes.
 All services read configuration from one .env file.
 
-Env prefixes:
+Env Prefixes:
   VALKEY_     — queue / cache
   DATABASE_   — PostgreSQL
   JWT_        — authentication tokens
   CORS_       — cross-origin policy
   R2_         — Cloudflare R2 object storage
   VASTAI_     — remote GPU
+  RESEND_     — transactional email
+  SENTRY_     — error monitoring
   APP_        — general (host, port, dirs, logging)
 """
 
@@ -130,6 +132,18 @@ class ResendConfig(BaseSettings):
         env_prefix = "RESEND_"
 
 
+class SentryConfig(BaseSettings):
+    """Sentry error monitoring settings."""
+
+    dsn: SecretStr = SecretStr("")
+    environment: str = "development"
+    traces_sample_rate: float = 0.1
+    profiles_sample_rate: float = 0.1
+
+    class Config:
+        env_prefix = "SENTRY_"
+
+
 class AppConfig(BaseSettings):
     """General application settings."""
 
@@ -162,6 +176,7 @@ class Settings(BaseSettings):
     r2: R2Config = Field(default_factory=R2Config)
     vastai: VastAIConfig = Field(default_factory=VastAIConfig)
     resend: ResendConfig = Field(default_factory=ResendConfig)
+    sentry: SentryConfig = Field(default_factory=SentryConfig)
     app: AppConfig = Field(default_factory=AppConfig)
 
     model_config = SettingsConfigDict(
