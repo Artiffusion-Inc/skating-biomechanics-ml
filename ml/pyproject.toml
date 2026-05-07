@@ -20,6 +20,9 @@ dependencies = [
     "aiobotocore>=3.4.0",
     "prometheus-client>=0.21.0",
     "httpx>=0.28.0",
+    "torch>=2.11.0",
+    "torchvision>=0.26.0",
+    "scikit-learn>=1.8.0",
 ]
 
 [build-system]
