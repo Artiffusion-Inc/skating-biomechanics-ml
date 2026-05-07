@@ -50,6 +50,9 @@ class Session(TimestampMixin, Base):
     overall_score: Mapped[float | None] = mapped_column(Float)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     process_task_id: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    imu_left_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    imu_right_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
+    manifest_key: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
     # Relationship to metrics
     metrics: Mapped[list[SessionMetric]] = relationship(

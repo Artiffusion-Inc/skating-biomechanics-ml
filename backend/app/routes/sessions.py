@@ -57,6 +57,9 @@ async def _session_to_response(session) -> SessionResponse:
             "recommendations": session.recommendations,
             "overall_score": session.overall_score,
             "process_task_id": session.process_task_id,
+            "imu_left_key": session.imu_left_key,
+            "imu_right_key": session.imu_right_key,
+            "manifest_key": session.manifest_key,
             "created_at": session.created_at,
             "processed_at": session.processed_at,
             "metrics": session.metrics,
@@ -77,6 +80,9 @@ class SessionsController(Controller):
             user_id=verified_user.id,
             element_type=data.element_type,
             video_key=data.video_key,
+            imu_left_key=data.imu_left_key,
+            imu_right_key=data.imu_right_key,
+            manifest_key=data.manifest_key,
             status="queued" if data.video_key else "uploading",
         )
         return await _session_to_response(session)
