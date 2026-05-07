@@ -2,6 +2,8 @@
 
 Detects element boundaries using motion energy analysis and classifies
 each segment using rule-based heuristics.
+
+ML backend: set `tas_model_path` to use BiGRU+RF instead of rules.
 """
 
 from pathlib import Path
@@ -28,6 +30,8 @@ class ElementSegmenter:
 
     Uses motion energy analysis to detect stillness periods between elements,
     then classifies each segment using rule-based heuristics.
+
+    ML backend: set `tas_model_path` to use BiGRU+RF instead of rules.
     """
 
     def __init__(
@@ -36,6 +40,8 @@ class ElementSegmenter:
         min_still_duration: float = 0.5,
         min_segment_duration: float = 0.5,
         boundary_window: int = 10,
+        tas_model_path: Path | str | None = None,
+        tas_classifier_path: Path | str | None = None,
     ) -> None:
         """Initialize element segmenter.
 
@@ -44,11 +50,31 @@ class ElementSegmenter:
             min_still_duration: Minimum seconds for stillness period (default 0.5s).
             min_segment_duration: Minimum seconds for valid segment (default 0.5s).
             boundary_window: Frames to search for boundary refinement (default 10).
+            tas_model_path: Path to BiGRU checkpoint for ML-based segmentation.
+            tas_classifier_path: Path to RF classifier for fine element types.
         """
         self._stillness_threshold = stillness_threshold
         self._min_still_duration = min_still_duration
         self._min_segment_duration = min_segment_duration
         self._boundary_window = boundary_window
+        self._tas_model_path = Path(tas_model_path) if tas_model_path else None
+        self._tas_classifier_path = Path(tas_classifier_path) if tas_classifier_path else None
+        self._tas_segmenter: object | None = None
+
+    def _get_tas_segmenter(self) -> object | None:
+        """Lazy init TAS segmenter."""
+        if self._tas_segmenter is not None:
+            return self._tas_segmenter
+        if self._tas_model_path is None or not self._tas_model_path.exists():
+            return None
+        from ..tas.inference import TASElementSegmenter
+
+        self._tas_segmenter = TASElementSegmenter(
+            model_path=self._tas_model_path,
+            classifier_path=self._tas_classifier_path,
+            min_segment_duration=self._min_segment_duration,
+        )
+        return self._tas_segmenter
 
     def segment(
         self,
@@ -63,11 +89,17 @@ class ElementSegmenter:
             poses: NormalizedPose sequence (num_frames, 33, 2).
             video_path: Path to original video file.
             video_meta: Video metadata.
-            method: Segmentation strategy ("adaptive", "motion_energy").
+            method: Segmentation strategy ("adaptive", "motion_energy", "tas_ml").
 
         Returns:
             SegmentationResult with detected segments.
         """
+        # ML backend if requested
+        if method == "tas_ml":
+            tas = self._get_tas_segmenter()
+            if tas is not None:
+                return self._segment_with_tas(tas, poses, video_path, video_meta)
+
         # Stage 1: Compute motion energy signal
         motion_energy = self._compute_motion_energy(poses)
 
@@ -96,6 +128,33 @@ class ElementSegmenter:
             video_meta=video_meta,
             method=method,
             confidence=overall_confidence,
+        )
+
+    def _segment_with_tas(
+        self,
+        tas_segmenter: object,
+        poses: NormalizedPose,
+        video_path: Path,
+        video_meta: "VideoMeta",
+    ) -> SegmentationResult:
+        """Run TAS ML segmentation and wrap result."""
+        segs = tas_segmenter.segment(poses, fps=video_meta.fps)
+        element_segs: list[ElementSegment] = []
+        for seg in segs:
+            element_segs.append(
+                ElementSegment(
+                    element_type=seg["element_type"],
+                    start=seg["start"],
+                    end=seg["end"],
+                    confidence=seg["confidence"],
+                )
+            )
+        return SegmentationResult(
+            segments=element_segs,
+            video_path=video_path,
+            video_meta=video_meta,
+            method="tas_ml",
+            confidence=float(np.mean([s.confidence for s in element_segs])) if element_segs else 0.0,
         )
 
     def _compute_motion_energy(self, poses: NormalizedPose) -> NDArray[np.float32]:
