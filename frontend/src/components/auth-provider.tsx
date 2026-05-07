@@ -19,6 +19,13 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
+function needsVerificationRedirect(user: UserResponse): boolean {
+  if (user.is_verified) return false
+  if (typeof window === "undefined") return false
+  const path = window.location.pathname
+  return !path.startsWith("/verify-email") && !path.startsWith("/resend-verification")
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [user, setUser] = useState<UserResponse | null>(null)
@@ -39,6 +46,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         theme: "system",
         onboarding_role: null,
         is_active: true,
+        is_verified: true,
         created_at: new Date().toISOString(),
       })
       setIsLoading(false)
@@ -51,11 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // apiFetch handles 401 → silent refresh → retry automatically.
-    // If both tokens expired, apiFetch redirects to /login.
     auth
       .fetchMe()
-      .then(setUser)
+      .then(u => {
+        setUser(u)
+        if (needsVerificationRedirect(u)) {
+          router.push("/verify-email")
+        }
+      })
       .catch(() => {
         clearTokens()
         router.push("/login")
@@ -68,6 +79,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     auth.setTokens(tokens.access_token, tokens.refresh_token)
     const u = await auth.fetchMe()
     setUser(u)
+    if (needsVerificationRedirect(u)) {
+      router.push("/verify-email")
+    }
   }
 
   async function register(email: string, password: string, displayName?: string) {
@@ -75,6 +89,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     auth.setTokens(tokens.access_token, tokens.refresh_token)
     const u = await auth.fetchMe()
     setUser(u)
+    router.push("/verify-email")
   }
 
   async function logout() {

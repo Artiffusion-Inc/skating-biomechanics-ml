@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 @pytest.fixture
 async def other_user(db_session: AsyncSession) -> User:
-    user = User(email="other@example.com", hashed_password=hash_password("pass"))
+    user = User(email="other@example.com", hashed_password=hash_password("pass"), is_verified=True)
     db_session.add(user)
     await db_session.flush()
     await db_session.refresh(user)
@@ -30,7 +30,7 @@ def other_headers(other_user):
 
 @pytest.fixture
 async def coach_user(db_session: AsyncSession) -> User:
-    user = User(email="coach@example.com", hashed_password=hash_password("pass"))
+    user = User(email="coach@example.com", hashed_password=hash_password("pass"), is_verified=True)
     db_session.add(user)
     await db_session.flush()
     await db_session.refresh(user)
@@ -39,7 +39,7 @@ async def coach_user(db_session: AsyncSession) -> User:
 
 @pytest.fixture
 async def skater_user(db_session: AsyncSession) -> User:
-    user = User(email="skater@example.com", hashed_password=hash_password("pass"))
+    user = User(email="skater@example.com", hashed_password=hash_password("pass"), is_verified=True)
     db_session.add(user)
     await db_session.flush()
     await db_session.refresh(user)

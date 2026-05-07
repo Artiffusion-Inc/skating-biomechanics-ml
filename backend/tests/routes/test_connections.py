@@ -15,7 +15,7 @@ if TYPE_CHECKING:
 
 @pytest_asyncio.fixture
 async def user_a(db_session: AsyncSession) -> User:
-    user = User(email="a@example.com", hashed_password=hash_password("pass"))
+    user = User(email="a@example.com", hashed_password=hash_password("pass"), is_verified=True)
     db_session.add(user)
     await db_session.flush()
     await db_session.refresh(user)
@@ -24,7 +24,7 @@ async def user_a(db_session: AsyncSession) -> User:
 
 @pytest_asyncio.fixture
 async def user_b(db_session: AsyncSession) -> User:
-    user = User(email="b@example.com", hashed_password=hash_password("pass"))
+    user = User(email="b@example.com", hashed_password=hash_password("pass"), is_verified=True)
     db_session.add(user)
     await db_session.flush()
     await db_session.refresh(user)
@@ -222,7 +222,7 @@ async def test_end_connection_not_found(client, auth_headers_a):
 @pytest.mark.asyncio
 async def test_end_connection_not_party(client, active_connection: str, db_session: AsyncSession):
     """A third user who is not part of the connection gets 403."""
-    third = User(email="third@example.com", hashed_password=hash_password("pass"))
+    third = User(email="third@example.com", hashed_password=hash_password("pass"), is_verified=True)
     db_session.add(third)
     await db_session.flush()
     await db_session.refresh(third)

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager
 from litestar.di import Provide
 from sqlalchemy.ext.asyncio import AsyncSession  # noqa: TC002
 
-from app.auth.deps import get_current_user
+from app.auth.deps import get_current_user, get_verified_user
 from app.config import Settings, get_settings
 from app.database import async_session_factory
 
@@ -64,4 +64,5 @@ dependencies = {
     "db": Provide(db_proxy, sync_to_thread=False),
     "db_session": Provide(db_session_proxy, sync_to_thread=False),
     "user": Provide(get_current_user, sync_to_thread=False),
+    "verified_user": Provide(get_verified_user, sync_to_thread=False),
 }
