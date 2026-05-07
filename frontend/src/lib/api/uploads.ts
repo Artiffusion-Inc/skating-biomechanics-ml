@@ -92,3 +92,34 @@ export class ChunkedUploader {
     return init.key
   }
 }
+
+const PresignResponseSchema = z.object({
+  url: z.string(),
+  key: z.string(),
+})
+
+/** Get a presigned PUT URL for direct R2 upload (small files like IMU/manifest). */
+export async function presignUpload(
+  fileName: string,
+  contentType = "application/octet-stream",
+): Promise<{ url: string; key: string }> {
+  return apiFetch(
+    `/uploads/presign?file_name=${encodeURIComponent(fileName)}&content_type=${encodeURIComponent(contentType)}`,
+    PresignResponseSchema,
+    { method: "POST" },
+  )
+}
+
+/** Upload data directly to R2 via presigned PUT URL. */
+export async function uploadToPresignedUrl(
+  url: string,
+  data: Blob | ArrayBuffer,
+  contentType = "application/octet-stream",
+): Promise<void> {
+  const res = await fetch(url, {
+    method: "PUT",
+    body: data,
+    headers: { "Content-Type": contentType },
+  })
+  if (!res.ok) throw new Error(`Presigned upload failed: ${res.status}`)
+}
