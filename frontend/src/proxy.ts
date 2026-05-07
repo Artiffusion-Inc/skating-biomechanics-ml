@@ -44,7 +44,7 @@ function buildCsp(nonce: string, isDev: boolean): string {
     .join("; ")
 }
 
-export function proxy(request: NextRequest) {
+export function proxy(_request: NextRequest) {
   const nonce = crypto.randomUUID().replace(/-/g, "")
   const isDev = process.env.NODE_ENV === "development"
   const csp = buildCsp(nonce, isDev)
