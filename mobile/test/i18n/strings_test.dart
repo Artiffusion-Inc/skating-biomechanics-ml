@@ -1,5 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
-import '../../lib/i18n/strings.g.dart';
+import 'package:edgesense_capture/i18n/strings.g.dart';
 
 void main() {
   group('Russian translations', () {

@@ -2,10 +2,10 @@ import 'dart:async';
 import 'package:camera/camera.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
-import '../../lib/capture/capture_repository.dart';
-import '../../lib/ble/ble_manager.dart';
-import '../../lib/camera/recorder.dart';
-import '../../lib/ble/wt901_parser.dart';
+import 'package:edgesense_capture/capture/capture_repository.dart';
+import 'package:edgesense_capture/ble/ble_manager.dart';
+import 'package:edgesense_capture/camera/recorder.dart';
+import 'package:edgesense_capture/ble/wt901_parser.dart';
 
 class MockBleManager extends Mock implements BleManager {}
 

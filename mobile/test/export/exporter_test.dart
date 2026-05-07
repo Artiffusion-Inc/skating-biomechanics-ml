@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fixnum/fixnum.dart';
 import 'package:archive/archive.dart';
-import '../../lib/export/exporter.dart';
-import '../../lib/export/protobuf_gen/imu.pb.dart';
+import 'package:edgesense_capture/export/exporter.dart';
+import 'package:edgesense_capture/export/protobuf_gen/imu.pb.dart';
 
 void main() {
   group('Exporter', () {
@@ -21,14 +21,14 @@ void main() {
       }
     });
 
-    Future<String> _createDummyVideo() async {
+    Future<String> createDummyVideo() async {
       final path = '${tempDir.path}/dummy.mp4';
       await File(path).writeAsBytes([0, 0, 0, 0]); // minimal bytes
       return path;
     }
 
     test('export creates zip with protobuf IMU streams', () async {
-      final videoPath = await _createDummyVideo();
+      final videoPath = await createDummyVideo();
       final samples = [
         {
           'relative_timestamp_ms': 0,
@@ -95,7 +95,7 @@ void main() {
     });
 
     test('export computes max duration from both channels', () async {
-      final videoPath = await _createDummyVideo();
+      final videoPath = await createDummyVideo();
       final left = [
         {
           'relative_timestamp_ms': 0,

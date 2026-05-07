@@ -29,6 +29,7 @@ class _CameraReadyScreenState extends State<CameraReadyScreen> {
   Future<void> _initCamera() async {
     try {
       final cameras = await availableCameras();
+      if (!mounted) return;
       final recorder = context.read<CameraRecorder>();
       await recorder.initialize(cameras);
     } catch (e) {
