@@ -1,6 +1,6 @@
 import 'dart:convert';
 import 'package:flutter_test/flutter_test.dart';
-import '../../lib/export/manifest_builder.dart';
+import 'package:edgesense_capture/export/manifest_builder.dart';
 
 void main() {
   group('ManifestBuilder', () {

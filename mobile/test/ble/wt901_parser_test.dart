@@ -11,7 +11,9 @@ void main() {
         valid[0] = packetHeader;
         valid[1] = typeAccel;
         var sum = 0;
-        for (var i = 0; i < packetLength - 1; i++) sum += valid[i];
+        for (var i = 0; i < packetLength - 1; i++) {
+          sum += valid[i];
+        }
         valid[packetLength - 1] = sum & 0xFF;
 
         final garbage = List<int>.filled(packetLength, 0xFF);

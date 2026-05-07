@@ -95,7 +95,7 @@ class Exporter {
     final h = dt.hour.toString().padLeft(2, '0');
     final min = dt.minute.toString().padLeft(2, '0');
     final s = dt.second.toString().padLeft(2, '0');
-    return 'capture_$y$m$d\_$h$min$s';
+    return 'capture_$y$m${d}_$h$min$s';
   }
 
   Future<void> _writeProtobuf(

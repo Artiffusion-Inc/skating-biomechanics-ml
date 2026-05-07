@@ -55,6 +55,8 @@ flutter_gen:
     image: true
 
 dev_dependencies:
+  integration_test:
+    sdk: flutter
   mocktail: ^1.0.0
   flutter_test:
     sdk: flutter

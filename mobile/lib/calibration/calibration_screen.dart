@@ -187,11 +187,12 @@ class _CalibResult extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Translations.of(context);
-    if (ref == null)
+    if (ref == null) {
       return Text(
         '$label: ${t.calibration.noData}',
         style: const TextStyle(color: Colors.white54),
       );
+    }
     return Text(
       '$label: q=[${ref![0].toStringAsFixed(3)}, ${ref![1].toStringAsFixed(3)}, ${ref![2].toStringAsFixed(3)}, ${ref![3].toStringAsFixed(3)}]',
       style: const TextStyle(fontFamily: 'monospace', fontSize: 12),

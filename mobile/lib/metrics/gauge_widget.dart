@@ -8,6 +8,7 @@ class RadialGauge extends StatelessWidget {
   final String unit;
 
   const RadialGauge({
+    super.key,
     required this.value,
     this.min = -2000,
     this.max = 2000,

@@ -108,6 +108,7 @@ class _CapturingScreenState extends State<CapturingScreen> {
         leftRef: leftRef,
         rightRef: rightRef,
       );
+      if (!mounted) return;
       final t = Translations.of(context);
       await Share.shareXFiles([XFile(exportPath)], text: t.capture.shareText);
       if (mounted) widget.onComplete(exportPath);
