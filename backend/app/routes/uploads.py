@@ -101,3 +101,27 @@ class UploadsController(Controller):
         )
 
         return {"status": "completed", "key": data.key}
+
+    @post("/presign")
+    async def presign_upload(
+        self,
+        verified_user: VerifiedUser,
+        file_name: str = Parameter(min_length=1),
+        content_type: str = Parameter(default="application/octet-stream"),
+    ) -> dict:
+        """Generate a presigned PUT URL for direct R2 upload (small files)."""
+        r2 = _client()
+        bucket = get_settings().r2.bucket
+        key = f"uploads/{verified_user.id}/{uuid.uuid4()}/{file_name}"
+
+        url = r2.generate_presigned_url(
+            ClientMethod="put_object",
+            Params={
+                "Bucket": bucket,
+                "Key": key,
+                "ContentType": content_type,
+            },
+            ExpiresIn=3600,
+        )
+
+        return {"url": url, "key": key}
