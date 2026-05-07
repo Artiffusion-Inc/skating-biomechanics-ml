@@ -52,14 +52,14 @@ create_template \
 # Coaching invite — Russian
 create_template \
   "Coaching Invite (RU)" "coaching-invite-ru" \
-  "Приглашение от {{{INVITER_NAME}}} — SkateLab" \
+  "Приглашение на SkateLab" \
   "$TEMPLATES_DIR/coaching-invite-ru.html" \
   "INVITER_NAME:string" "CONNECTION_TYPE:string" "DASHBOARD_URL:string"
 
 # Coaching invite — English
 create_template \
   "Coaching Invite (EN)" "coaching-invite-en" \
-  "Invitation from {{{INVITER_NAME}}} — SkateLab" \
+  "Invitation on SkateLab" \
   "$TEMPLATES_DIR/coaching-invite-en.html" \
   "INVITER_NAME:string" "CONNECTION_TYPE:string" "DASHBOARD_URL:string"
 
