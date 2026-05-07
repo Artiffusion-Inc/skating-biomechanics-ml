@@ -13,11 +13,15 @@ import logging
 import os
 from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, ClassVar
+from typing import TYPE_CHECKING, Any, ClassVar
 
 import numpy as np
+import sentry_sdk
 from arq import Retry
 from arq.connections import RedisSettings
+
+if TYPE_CHECKING:
+    from sentry_sdk.types import Event, Hint
 
 from app.config import get_settings
 from app.storage import download_file
@@ -41,6 +45,31 @@ os.environ.setdefault("OMP_NUM_THREADS", str(_settings.app.omp_num_threads))
 
 # Semaphore to limit concurrent Vast.ai serverless dispatches
 _VASTAI_SEMAPHORE = asyncio.Semaphore(5)
+
+
+def _filter_cuda_oom(event: Event, hint: Hint) -> Event | None:
+    msg = (event.get("message") or "").lower()
+    if "cuda" in msg and "out of memory" in msg:
+        return None
+    return event
+
+
+def _init_worker_sentry() -> None:
+    dsn = _settings.sentry.dsn.get_secret_value()
+    if not dsn:
+        return
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=_settings.sentry.environment,
+        traces_sample_rate=_settings.sentry.traces_sample_rate,
+        profiles_sample_rate=_settings.sentry.profiles_sample_rate,
+        send_default_pii=False,
+        before_send=_filter_cuda_oom,
+    )
+    sentry_sdk.set_tag("component", "ml-worker")
+
+
+_init_worker_sentry()
 
 
 def _sample_poses(

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import sentry_sdk
 import structlog
 from litestar import Litestar, Router
 from litestar.config.cors import CORSConfig
@@ -9,6 +10,7 @@ from litestar.config.response_cache import ResponseCacheConfig
 from litestar.exceptions import HTTPException
 from litestar.middleware.rate_limit import RateLimitConfig
 from litestar.security.jwt import JWTAuth
+from sentry_sdk.integrations.litestar import LitestarIntegration
 
 from app.auth.deps import retrieve_user_handler
 from app.config import get_settings
@@ -32,6 +34,23 @@ from app.routes import (
     workspaces,
 )
 
+
+def init_sentry() -> None:
+    settings = get_settings()
+    dsn = settings.sentry.dsn.get_secret_value()
+    if not dsn:
+        return
+    sentry_sdk.init(
+        dsn=dsn,
+        environment=settings.sentry.environment,
+        traces_sample_rate=settings.sentry.traces_sample_rate,
+        profiles_sample_rate=settings.sentry.profiles_sample_rate,
+        send_default_pii=False,
+        integrations=[LitestarIntegration()],
+    )
+
+
+init_sentry()
 configure_logging()
 logger = structlog.get_logger()
 
