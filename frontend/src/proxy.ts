@@ -3,21 +3,11 @@ import type { NextRequest } from "next/server"
 
 const cspDirectives: Record<string, string[]> = {
   "default-src": ["'self'"],
-  "script-src": [
-    "'self'",
-    "'strict-dynamic'",
-    "'unsafe-inline'",
-    "https://cdn.jsdelivr.net",
-  ],
+  "script-src": ["'self'", "'strict-dynamic'", "'unsafe-inline'", "https://cdn.jsdelivr.net"],
   "style-src": ["'self'", "'unsafe-inline'"],
   "img-src": ["'self'", "data:", "blob:"],
   "media-src": ["'self'", "blob:"],
-  "connect-src": [
-    "'self'",
-    "blob:",
-    "https://*.r2.cloudflarestorage.com",
-    "http://localhost:8000",
-  ],
+  "connect-src": ["'self'", "blob:", "https://*.r2.cloudflarestorage.com", "http://localhost:8000"],
   "font-src": ["'self'"],
   "object-src": ["'none'"],
   "frame-ancestors": ["'none'"],
