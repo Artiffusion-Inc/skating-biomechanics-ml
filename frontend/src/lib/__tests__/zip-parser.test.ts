@@ -8,7 +8,7 @@ function createTestZip(files: { name: string; content: string | Uint8Array }[]):
     entries[f.name] = typeof f.content === "string" ? strToU8(f.content) : f.content
   }
   const zipped = zipSync(entries)
-  return new File([zipped], "test.zip", { type: "application/zip" })
+  return new File([zipped as BlobPart], "test.zip", { type: "application/zip" })
 }
 
 describe("zip-parser", () => {
@@ -42,9 +42,7 @@ describe("zip-parser", () => {
   })
 
   it("returns nulls for missing components", async () => {
-    const zip = createTestZip([
-      { name: "video.mp4", content: "only-video" },
-    ])
+    const zip = createTestZip([{ name: "video.mp4", content: "only-video" }])
     const result = await parseZip(zip)
 
     expect(result.video).not.toBeNull()
@@ -54,9 +52,7 @@ describe("zip-parser", () => {
   })
 
   it("returns null video when ZIP has no video", async () => {
-    const zip = createTestZip([
-      { name: "data.json", content: "{}" },
-    ])
+    const zip = createTestZip([{ name: "data.json", content: "{}" }])
     const result = await parseZip(zip)
 
     expect(result.video).toBeNull()
