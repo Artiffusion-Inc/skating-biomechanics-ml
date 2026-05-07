@@ -116,8 +116,7 @@ jobs:
           arch: x86_64
           emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim
           disable-animations: true
-          script: |
-            cd mobile
-            flutter test integration_test/permissions_test.dart
+          working-directory: mobile
+          script: flutter test integration_test/permissions_test.dart
         env:
           JAVA_HOME: ${{ env.JAVA_HOME_17_X64 }}
